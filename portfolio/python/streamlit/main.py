@@ -1,28 +1,20 @@
 import os
-import requests
-from pprint import pprint
 
-from alpha_vantage.timeseries import TimeSeries  # https://pypi.org/project/alpha-vantage/
+import requests
 import streamlit as st
+from alpha_vantage.timeseries import TimeSeries  # https://pypi.org/project/alpha-vantage/
 
 API_KEY = os.getenv('API_KEY')
 st.title('Portfolio App')
 
-API_KEY = 'T60Q1RPYX7I7MONU'
+# replace the "demo" apikey below with your own key from https://www.alphavantage.co/support/#api-key
+search_url = f'https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords=tesco&apikey={API_KEY}'
+r = requests.get(search_url)
+data = r.json()
 
-keywords = st.text_input('Search by Script name ....')
-if keywords:
-    search_url = f'https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords={keywords}&apikey={API_KEY}'
-    r = requests.get(search_url)
-    data = r.json()
-    print(data)
-    st.json(data)
-    matches = data.get('bestMatches')
-    if matches:
-        symbols = tuple(match['1. symbol'] for match in matches)
-        symbol= st.selectbox('Select the relevant symbol', symbols)
-        st.write('You selected:', symbol)
-        u = f'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=SIEMENS&interval=5min&apikey={API_KEY}'
-        r = requests.get(u)
-        data = r.json()
-        st.json(data)
+print(data)
+
+ts = TimeSeries(key=API_KEY, output_format='pandas')
+data, meta_data = ts.get_intraday(symbol='MSFT', interval='1min', outputsize='full')
+
+print(data)
