@@ -1,3 +1,5 @@
 .venv
 .gitignore
 .idea
+.ipynb_checkpoints
+/portfolio/python/streamlit/rough.ipynb

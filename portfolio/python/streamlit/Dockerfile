@@ -1,7 +1,7 @@
 FROM scratch
 # pull official base image
 RUN echo "$PWD"
-FROM python:3.9.7 as builder
+FROM python:3.10.6 as builder
 
 EXPOSE 8501
 
@@ -15,7 +15,8 @@ ENV PYTHONUNBUFFERED 1
 # install dependencies
 RUN python -m pip install --upgrade pip
 COPY requirements.txt .
-RUN python -m pip install -r requirements.txt
+COPY constraints.txt .
+RUN python -m pip install -r requirements.txt -c constraints.txrt
 COPY main.py .
 RUN apt-get update
 RUN apt-get update -y

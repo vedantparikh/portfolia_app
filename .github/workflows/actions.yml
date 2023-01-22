@@ -1,0 +1,31 @@
+name: run main.py
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r ./portfolio/python/requirements.txt
+#      - name: start streamlit
+ #       env:
+  #        API_KEY: ${{secrets.API_KEY}}
+   #     run: streamlit portfolio/python/main.py
+#      - name: commit files
+ #       run: |
+  #        git config --local user.email "action@github.com"
+   #       git config --local user.name "Github Action"
+    #      git add -A
+     #     git diff-index --quiet HEAD || (git commit -a -m "test update github commit" --allow-empty)
+      #- name: push changes
+       # uses: ad-m/github-push-action@v0.6.0
+        #with:
+         # github_token: ${{secrets.GITHUB_TOKEN}}
