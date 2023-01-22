@@ -1,7 +1,7 @@
 FROM scratch
 # pull official base image
 RUN echo "$PWD"
-FROM python:3.9.7 as builder
+FROM python:3.10.6 as builder
 
 EXPOSE 8501
 
