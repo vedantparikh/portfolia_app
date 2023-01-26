@@ -1,13 +1,24 @@
-import plotly.express as px
+from typing import (
+    List,
+    Tuple,
+)
+
+import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 import yahooquery as yq
 import yfinance as yf
 from plotly.subplots import make_subplots
+from ta.volatility import BollingerBands
 
 st.title('Portfolio App')
 
-def get_symbols(query):
+
+def get_symbols(query: str) -> List[Tuple[str, str, str]]:
+    """
+    Returns the matching tickers and their relevant info.
+    @:param query: Query string to look for a ticker.
+    """
     try:
         data = yq.search(query)
     except ValueError:
@@ -20,7 +31,27 @@ def get_symbols(query):
         symbol = []
         for quote in quotes:
             symbol.append((quote['symbol'], quote['quoteType'], quote['exchange']))
+
         return symbol
+
+
+def get_bollinger_theory(df: pd.DataFrame) -> pd.DataFrame:
+
+    indicator_bb = BollingerBands(close=df["Close"], window=20, window_dev=2)
+
+    # Add Bollinger Bands features
+    df['bb_bbm'] = indicator_bb.bollinger_mavg()
+    df['bb_bbh'] = indicator_bb.bollinger_hband()
+    df['bb_bbl'] = indicator_bb.bollinger_lband()
+
+    # Add Bollinger Band high indicator
+    df['bb_bbhi'] = indicator_bb.bollinger_hband_indicator()
+
+    # Add Bollinger Band low indicator
+    df['bb_bbli'] = indicator_bb.bollinger_lband_indicator()
+
+    return df
+
 
 keywords = st.text_input('Search by Script name ....')
 # keywords = ('SIEMENS.NS')
@@ -47,14 +78,43 @@ if keywords:
         fig.update_layout(
             xaxis=dict(
                 rangeslider=dict(
-            visible=True
-        ),
-        type="date"
+                    visible=True
+                ),
+                type="date"
             )
         )
         st.plotly_chart(fig, use_container_width=True)
 
         hist = msft.history(period="max", interval='1d')
+        hist = get_bollinger_theory(hist)
+        import plotly.express as px
+
+        hist['Date'] = hist.index
+        st.text(
+            "Some quick observations you can make from looking at this graph "
+            "is that the closing prices of the stock mostly stay in between "
+            "both the Bollinger bands. "
+            "In addition, you can identify buy signals when the price line hits the lower "
+            "band and sell signals when the price line hits the higher band.")
+        hh = hist[['Date', 'Close', 'bb_bbh', 'bb_bbl']]
+        fig = px.line(hh, x='Date', y=hh.columns)
+        fig.update_xaxes(
+            title_text='Date',
+            rangeslider_visible=True,
+            rangeselector=dict(
+                buttons=list([
+                    dict(count=1, label='1M', step='month', stepmode='backward'),
+                    dict(count=3, label='3M', step='month', stepmode='backward'),
+                    dict(count=6, label='6M', step='month', stepmode='backward'),
+                    dict(count=1, label='YTD', step='year', stepmode='todate'),
+                    dict(count=1, label='1Y', step='year', stepmode='backward'),
+                    dict(count=2, label='2Y', step='year', stepmode='backward'),
+                    dict(step='all')])))
+        st.plotly_chart(fig, use_container_width=True)
+
+        # Show plot
+        fig.show()
+
         candlesticks = go.Candlestick(
             x=hist.index,
             open=hist['Open'],
@@ -72,9 +132,12 @@ if keywords:
         )
 
         fig = go.Figure(candlesticks)
-        fig = make_subplots(specs=[[{"secondary_y": True}]])
+        fig = make_subplots(specs=[[{
+            "secondary_y": True
+        }]])
         fig.add_trace(candlesticks, secondary_y=False)
         fig.add_trace(volume_bars, secondary_y=True)
+        # fig.add_trace(bb_bbm, secondary_y=True)
         fig.update_yaxes(title="Price", secondary_y=False, showgrid=True)
         fig.update_yaxes(title="Volume", secondary_y=True, showgrid=False)
         fig.update_xaxes(
@@ -84,9 +147,15 @@ if keywords:
         )
         st.plotly_chart(fig, use_container_width=True)
 
-        c_area = px.area(hist.Close, title='FACBOOK SHARE PRICE (2013-2020)')
+        c_area = go.Scatter(x=hist.index, y=hist.Close, fill='tonexty', hoverinfo='text')
+        fig = go.Figure(c_area)
+        fig = make_subplots(specs=[[{
+            "secondary_y": True
+        }]])
+        fig.add_trace(c_area, secondary_y=False)
+        fig.add_trace(volume_bars, secondary_y=True)
 
-        c_area.update_xaxes(
+        fig.update_xaxes(
             title_text='Date',
             rangeslider_visible=True,
             rangeselector=dict(
@@ -99,7 +168,8 @@ if keywords:
                     dict(count=2, label='2Y', step='year', stepmode='backward'),
                     dict(step='all')])))
 
-        c_area.update_yaxes(title_text='Close Price', tickprefix='₹')
-        c_area.update_layout(showlegend=False,)
+        fig.update_yaxes(title_text='Close Price', secondary_y=False, showgrid=True, tickprefix='₹')
+        fig.update_yaxes(title_text='Volume', secondary_y=True, showgrid=False)
+        fig.update_layout(showlegend=False, )
 
-        st.plotly_chart(c_area, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True)
