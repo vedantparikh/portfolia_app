@@ -19,6 +19,7 @@ COPY requirements.txt .
 COPY constraints.txt .
 RUN python -m pip install -r requirements.txt -c constraints.txt
 COPY main.py .
+COPY plots .
 RUN apt-get update
 RUN apt-get update -y
 
