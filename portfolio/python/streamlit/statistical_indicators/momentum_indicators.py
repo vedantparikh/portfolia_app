@@ -2,6 +2,7 @@ import pandas as pd
 from ta.momentum import (
     ROCIndicator,
     RSIIndicator,
+    StochasticOscillator,
     StochRSIIndicator,
 )
 
@@ -72,6 +73,28 @@ class MomentumIndicators(BaseIndicator):
 
         return self.df
 
+    def stoch_oscillator_indicator(self, window: int = 14, smooth_window: int = 3,
+                                   fillna: bool = False) -> pd.DataFrame:
+        """
+        Stochastic Oscillator
+        Developed in the late 1950s by George Lane. The stochastic oscillator presents the location of the closing
+        price of a stock in relation to the high and low range of the price of a stock over a period of time,
+        typically a 14-day period.
+        https://school.stockcharts.com/doku.php?id=technical_indicators:stochastic_oscillator_fast_slow_and_full
+        :param window: N -Period.
+        :param smooth_window: SMA period over stoch_k.
+        :param fillna: If True, fill NaN values.
+        :return: DataFrame with Stochastic Oscillator indicator fileds.
+        """
+        stochastic_oscillator = StochasticOscillator(
+            close=self.df.Close, high=self.df.High, low=self.df.Low, window=window, smooth_window=smooth_window,
+            fillna=fillna
+        )
+        self.df['stoch'] = stochastic_oscillator.stoch()
+        self.df['stoch_signal'] = stochastic_oscillator.stoch_signal()
+
+        return self.df
+
     def all_momentum_indicators(self) -> pd.DataFrame:
         """
         Applies all momentum indicators.
@@ -80,5 +103,6 @@ class MomentumIndicators(BaseIndicator):
         self.df = self.rsi_indicator()
         self.df = self.roc_indicator()
         self.df = self.stoch_rsi_indicator()
+        self.df = self.stoch_oscillator_indicator()
 
         return self.df
