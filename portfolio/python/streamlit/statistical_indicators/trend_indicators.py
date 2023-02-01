@@ -3,13 +3,14 @@ from ta.trend import (
     ADXIndicator,
     AroonIndicator,
     MACD,
+    PSARIndicator,
 )
 
+from portfolio.python.streamlit.statistical_indicators.base import BaseIndicator
 
-class TrendIndicators:
+
+class TrendIndicators(BaseIndicator):
     """ Returns a Pandas Dataframe with calculated different Trend Indicators. """
-    def __int__(self, df: pd.DataFrame) -> None:
-        self.df = df
 
     def macd_indicator(
             self, window_slow: int = 26, window_fast: int = 12, window_sign: int = 9, fillna: bool = False
@@ -68,5 +69,40 @@ class TrendIndicators:
         self.df['aroon_down'] = aroon.aroon_down()
         self.df['aroon_up'] = aroon.aroon_up()
         self.df['aroon_indicator'] = aroon.aroon_indicator()
+
+        return self.df
+
+    def psar_indicator(self, step: float = 0.02, max_step: float = 0.2, fillna: bool = False) -> pd.DataFrame:
+        """
+        Parabolic Stop and Reverse (Parabolic SAR)
+        The Parabolic Stop and Reverse, more commonly known as the Parabolic SAR,is a trend-following indicator
+        developed by J. Welles Wilder. The Parabolic SAR is displayed as a single parabolic line (or dots) underneath
+        the price bars in an uptrend, and above the price bars in a downtrend.
+        https://school.stockcharts.com/doku.php?id=technical_indicators:parabolic_sar
+        :param step: Acceleration Factor used to compute the SAR.
+        :param max_step: Maximum value allowed for the Acceleration Factor.
+        :param fillna:  If True, fill nan values.
+        :return: DataFrame with the PSAR indicator fields.
+        """
+        psar = PSARIndicator(
+            high=self.df.High, low=self.df.Low, close=self.df.Close, step=step, max_step=max_step, fillna=fillna
+        )
+        self.df['psar'] = psar.psar()
+        self.df['psar_down'] = psar.psar_down()
+        self.df['psar_down_indicator'] = psar.psar_down_indicator()
+        self.df['psar_up'] = psar.psar_up()
+        self.df['psar_up_indicator'] = psar.psar_up_indicator()
+
+        return self.df
+
+    def all_trend_indicators(self) -> pd.DataFrame:
+        """
+        Applies all trend indicators.
+        :return: DataFrame with the all defined trend indicators.
+        """
+        self.df = self.macd_indicator()
+        self.df = self.aroon_indicator()
+        self.df = self.adx_indicator()
+        self.df = self.psar_indicator()
 
         return self.df

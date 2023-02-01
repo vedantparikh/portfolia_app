@@ -105,7 +105,7 @@ if keywords:
             "both the Bollinger bands. "
             "In addition, you can identify buy signals when the price line hits the lower "
             "band and sell signals when the price line hits the higher band.")
-        hh = hist[['Date', 'Close', 'bb_bbh', 'bb_bbl']]
+        hh = hist[['Date', 'bb_bbh', 'bb_bbl', 'bb_bbm']]
         fig = px.line(hh, x='Date', y=hh.columns)
         # fig.add_scatter(hist, x='Date', y=hist.roci_cumsum)
         fig.update_xaxes(
