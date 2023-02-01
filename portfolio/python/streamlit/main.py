@@ -21,7 +21,7 @@ st.set_page_config(page_title='Portfolio', page_icon=':bar_chart:', layout='wide
 def get_symbols(query: str) -> List[Tuple[str, str, str]]:
     """
     Returns the matching tickers and their relevant info.
-    @:param query: Query string to look for a ticker.
+    :param query: Query string to look for a ticker.
     """
     try:
         data = yq.search(query)
