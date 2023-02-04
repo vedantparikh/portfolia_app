@@ -5,4 +5,5 @@
 /portfolio/python/streamlit/rough.ipynb
  __pycache__/
  *.pyc
+**/__pycache__/
  /portfolio/python/streamlit/plots/__pycache__/

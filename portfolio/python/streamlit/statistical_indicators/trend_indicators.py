@@ -1,12 +1,11 @@
 import pandas as pd
+from statistical_indicators.base import BaseIndicator
 from ta.trend import (
     ADXIndicator,
     AroonIndicator,
     MACD,
     PSARIndicator,
 )
-
-from portfolio.python.streamlit.statistical_indicators.base import BaseIndicator
 
 
 class TrendIndicators(BaseIndicator):
@@ -25,8 +24,10 @@ class TrendIndicators(BaseIndicator):
         :param fillna: if True, fill NaN values.
         :return: DataFrame with the MACD indicator fields.
         """
-        macd = MACD(close=self.df.Close, window_slow=window_slow, window_fast=window_fast, window_sign=window_sign,
-                    fillna=fillna)
+        macd = MACD(
+            close=self.df.Close, window_slow=window_slow, window_fast=window_fast, window_sign=window_sign,
+            fillna=fillna
+            )
         self.df['MACD'] = macd.macd()
         self.df['Signal'] = macd.macd_signal()
         self.df['Histogram'] = macd.macd_diff()

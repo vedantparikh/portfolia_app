@@ -13,7 +13,7 @@ from ta.momentum import ROCIndicator
 from ta.volatility import BollingerBands
 
 import streamlit as st
-from plots import MacdRsiVolumeCandelstickChart
+from plots.momentum_indicator import MomentumIndicatorChart
 
 st.set_page_config(page_title='Portfolio', page_icon=':bar_chart:', layout='wide')
 
@@ -66,30 +66,6 @@ if keywords:
         symbol = st.selectbox('Select the relevant symbol', symbols)
         st.write('You selected:', symbol)
         msft = yf.Ticker(symbol)
-        hist = msft.history(period="7d", interval='1m')
-
-        # https://plotly.com/python/time-series/
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=hist.index, y=hist.Close, texttemplate="%{df.Close[-1]}: <br>(%{df.Close[0]})", ))
-
-        fig.update_xaxes(
-            rangebreaks=[
-                dict(bounds=[15.15, 9.15], pattern="hour"),
-                dict(bounds=["sat", "mon"]),
-            ]
-        )
-        fig.update_layout(
-            title="Avg Population: {}".format('hist.Close[0]'),
-            title_x=0.5,
-            xaxis=dict(
-                rangeslider=dict(
-                    visible=True
-                ),
-                type="date"
-            )
-        )
-        st.plotly_chart(fig, use_container_width=True)
-
         hist = msft.history(period="max", interval='1d')
         hist = get_bollinger_theory(hist)
         hist['roci'] = ROCIndicator(hist.Close).roc()
@@ -140,52 +116,37 @@ if keywords:
             showlegend=False,
 
         )
-
-        fig = go.Figure(candlesticks)
         fig = make_subplots(
-            specs=[[{
-                "secondary_y": True
-            }]]
+            rows=4, cols=1, shared_xaxes=True, vertical_spacing=0.005,
+            specs=[[{"secondary_y": True}], [{"secondary_y": False}], [{"secondary_y": False}],
+                   [{"secondary_y": False}]],
+            row_width=[0.2, 0.3, 0.3, 0.8]
         )
-        fig.add_trace(candlesticks, secondary_y=False)
-        fig.add_trace(volume_bars, secondary_y=True)
-        # fig.add_trace(bb_bbm, secondary_y=True)
+        fig.add_trace(candlesticks, row=1, col=1, secondary_y=False)
+        fig.add_trace(volume_bars, row=1, col=1, secondary_y=True)
         fig.update_yaxes(title="Price", secondary_y=False, showgrid=True)
         fig.update_yaxes(title="Volume", secondary_y=True, showgrid=False)
         fig.update_xaxes(
-            rangebreaks=[
-                dict(bounds=["sat", "mon"]),
-            ]
+            title_text='Date',
+            rangeslider_visible=True,
+            rangeselector=dict(
+                buttons=list(
+                    [
+                        dict(count=1, label='1M', step='month', stepmode='backward'),
+                        dict(count=3, label='3M', step='month', stepmode='backward'),
+                        dict(count=6, label='6M', step='month', stepmode='backward'),
+                        dict(count=1, label='YTD', step='year', stepmode='todate'),
+                        dict(count=1, label='1Y', step='year', stepmode='backward'),
+                        dict(count=2, label='2Y', step='year', stepmode='backward'),
+                        dict(step='all')]
+                )
+            )
         )
-        st.plotly_chart(fig, use_container_width=True)
-
-        # # Area
-        #
-        # c_area = go.Scatter(x=hist.index, y=hist.Close, fill='tonexty', hoverinfo='text')
-        # fig = go.Figure(c_area)
-        # fig = make_subplots(specs=[[{
-        #     "secondary_y": True
-        # }]])
-        # fig.add_trace(c_area, secondary_y=False)
-        # fig.add_trace(volume_bars, secondary_y=True)
-        #
         # fig.update_xaxes(
-        #     title_text='Date',
-        #     rangeslider_visible=True,
-        #     rangeselector=dict(
-        #         buttons=list([
-        #             dict(count=1, label='1M', step='month', stepmode='backward'),
-        #             dict(count=3, label='3M', step='month', stepmode='backward'),
-        #             dict(count=6, label='6M', step='month', stepmode='backward'),
-        #             dict(count=1, label='YTD', step='year', stepmode='todate'),
-        #             dict(count=1, label='1Y', step='year', stepmode='backward'),
-        #             dict(count=2, label='2Y', step='year', stepmode='backward'),
-        #             dict(step='all')])))
-        #
-        # fig.update_yaxes(title_text='Close Price', secondary_y=False, showgrid=True, tickprefix='₹')
-        # fig.update_yaxes(title_text='Volume', secondary_y=True, showgrid=False)
-        # fig.update_layout(showlegend=False, )
-        #
-        # st.plotly_chart(fig, use_container_width=True)
-        chart = MacdRsiVolumeCandelstickChart().plot(df=hist, ticker=symbol)
-        st.plotly_chart(chart, use_container_width=True)
+        #     rangebreaks=[
+        #         dict(bounds=["sat", "mon"]),
+        #     ]
+        # )
+
+        fig = MomentumIndicatorChart(df=hist).rsi_indicator_chart(fig=fig, row=2, column=1)
+        st.plotly_chart(fig, use_container_width=True)

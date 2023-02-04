@@ -1,11 +1,11 @@
 import pandas as pd
 import plotly.graph_objects as go
 
-from streamlit.statistical_indicators import MomentumIndicators
+from statistical_indicators import MomentumIndicators
 
 
 class MomentumIndicatorChart:
-    def __int__(self, df: pd.DataFrame) -> None:
+    def __init__(self, df: pd.DataFrame) -> None:
         self.df = df
 
         assert not self.df.empty, "No DataFrame was provided to perform the indicator calculation."
@@ -28,9 +28,10 @@ class MomentumIndicatorChart:
         """
 
         df = self.momentum_indicator.rsi_indicator(window=window, fillna=fillna)
+        df = df.iloc[window:]
         fig.add_trace(
             go.Scatter(
-                x=df.index.iloc[window:], y=df.RSI.iloc[window:], name='RSI', line=dict(color=color, width=width)
+                x=df.index, y=df.RSI, name='RSI', line=dict(color=color, width=width)
             ),
             row=row, col=column
         )
