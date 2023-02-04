@@ -1,1 +1,2 @@
+from .momentum_indicator import MomentumIndicatorChart
 from .plots import MacdRsiVolumeCandelstickChart
