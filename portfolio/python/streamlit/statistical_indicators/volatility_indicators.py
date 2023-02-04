@@ -1,7 +1,7 @@
 import pandas as pd
 from ta.volatility import (
     AverageTrueRange,
-    BollingerBands,
+    BollingerBands, KeltnerChannel,
 )
 
 from portfolio.python.streamlit.statistical_indicators.base import BaseIndicator
@@ -60,12 +60,45 @@ class VolatilityIndicators(BaseIndicator):
 
         return self.df
 
+    def keltner_channel_indicator(
+            self, window: int = 20, window_atr: int = 10, fillna: bool = False, original_version: bool = True,
+            multiplier: int = 2
+    ) -> pd.DataFrame:
+        """
+        Keltner Channels are a trend following indicator used to identify reversals with channel breakouts and channel
+        direction. Channels can also be used to identify overbought and oversold levels when the trend is flat.
+        https://school.stockcharts.com/doku.php?id=technical_indicators:keltner_channels
+        :param window: N -Period.
+        :param window_atr: N atr period. Only valid if original_version param is False.
+        :param fillna: If True, fill NaN values.
+        :param original_version: If True, use original version as the centerline (SMA of typical price) if False,
+        use EMA of close as the centerline. More info:
+        https://school.stockcharts.com/doku.php?id=technical_indicators:keltner_channels
+        :param multiplier: The multiplier has the most effect on the channel width. default is 2
+        :return: DataFrame with Keltner channel indicator fields.
+        """
+        keltner_channel = KeltnerChannel(
+            high=self.df.High, low=self.df.Low, close=self.df.Close, window=window, window_atr=window_atr,
+            fillna=fillna, original_version=original_version, multiplier=multiplier
+        )
+        self.df['keltner_channel_hband'] = keltner_channel.keltner_channel_hband()
+        self.df['keltner_channel_hband_indicator'] = keltner_channel.keltner_channel_hband_indicator()
+        self.df['keltner_channel_lband'] = keltner_channel.keltner_channel_lband()
+        self.df['keltner_channel_lband_indicator'] = keltner_channel.keltner_channel_lband_indicator()
+        self.df['keltner_channel_mband'] = keltner_channel.keltner_channel_mband()
+        self.df['keltner_channel_pband'] = keltner_channel.keltner_channel_pband()
+        self.df['keltner_channel_wband'] = keltner_channel.keltner_channel_wband()
+
+        return self.df
+
     def all_volatility_indicators(self) -> pd.DataFrame:
         """
         Applies all volatility indicators.
         :return: DataFrame with the all defined volatility indicators.
         """
+
         self.df = self.bollinger_bands_indicator()
         self.df = self.average_true_range_indicator()
+        self.df = self.keltner_channel_indicator()
 
         return self.df

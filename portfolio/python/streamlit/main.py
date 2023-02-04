@@ -6,13 +6,13 @@ from typing import (
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import streamlit as st
 import yahooquery as yq
 import yfinance as yf
 from plotly.subplots import make_subplots
 from ta.momentum import ROCIndicator
 from ta.volatility import BollingerBands
 
+import streamlit as st
 from plots import MacdRsiVolumeCandelstickChart
 
 st.set_page_config(page_title='Portfolio', page_icon=':bar_chart:', layout='wide')
@@ -40,7 +40,6 @@ def get_symbols(query: str) -> List[Tuple[str, str, str]]:
 
 
 def get_bollinger_theory(df: pd.DataFrame) -> pd.DataFrame:
-
     indicator_bb = BollingerBands(close=df["Close"], window=20, window_dev=2)
 
     # Add Bollinger Bands features
@@ -73,7 +72,6 @@ if keywords:
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=hist.index, y=hist.Close, texttemplate="%{df.Close[-1]}: <br>(%{df.Close[0]})", ))
 
-
         fig.update_xaxes(
             rangebreaks=[
                 dict(bounds=[15.15, 9.15], pattern="hour"),
@@ -81,7 +79,7 @@ if keywords:
             ]
         )
         fig.update_layout(
-            title="Avg Population: {}".format(hist.Close[0]),
+            title="Avg Population: {}".format('hist.Close[0]'),
             title_x=0.5,
             xaxis=dict(
                 rangeslider=dict(
@@ -104,22 +102,27 @@ if keywords:
             "is that the closing prices of the stock mostly stay in between "
             "both the Bollinger bands. "
             "In addition, you can identify buy signals when the price line hits the lower "
-            "band and sell signals when the price line hits the higher band.")
-        hh = hist[['Date', 'bb_bbh', 'bb_bbl', 'bb_bbm']]
+            "band and sell signals when the price line hits the higher band."
+        )
+        hh = hist[['Date', 'bb_bbh', 'bb_bbl', 'bb_bbm', 'Close']]
         fig = px.line(hh, x='Date', y=hh.columns)
         # fig.add_scatter(hist, x='Date', y=hist.roci_cumsum)
         fig.update_xaxes(
             title_text='Date',
             rangeslider_visible=True,
             rangeselector=dict(
-                buttons=list([
-                    dict(count=1, label='1M', step='month', stepmode='backward'),
-                    dict(count=3, label='3M', step='month', stepmode='backward'),
-                    dict(count=6, label='6M', step='month', stepmode='backward'),
-                    dict(count=1, label='YTD', step='year', stepmode='todate'),
-                    dict(count=1, label='1Y', step='year', stepmode='backward'),
-                    dict(count=2, label='2Y', step='year', stepmode='backward'),
-                    dict(step='all')])))
+                buttons=list(
+                    [
+                        dict(count=1, label='1M', step='month', stepmode='backward'),
+                        dict(count=3, label='3M', step='month', stepmode='backward'),
+                        dict(count=6, label='6M', step='month', stepmode='backward'),
+                        dict(count=1, label='YTD', step='year', stepmode='todate'),
+                        dict(count=1, label='1Y', step='year', stepmode='backward'),
+                        dict(count=2, label='2Y', step='year', stepmode='backward'),
+                        dict(step='all')]
+                )
+            )
+        )
         st.plotly_chart(fig, use_container_width=True)
 
         candlesticks = go.Candlestick(
@@ -139,9 +142,11 @@ if keywords:
         )
 
         fig = go.Figure(candlesticks)
-        fig = make_subplots(specs=[[{
-            "secondary_y": True
-        }]])
+        fig = make_subplots(
+            specs=[[{
+                "secondary_y": True
+            }]]
+        )
         fig.add_trace(candlesticks, secondary_y=False)
         fig.add_trace(volume_bars, secondary_y=True)
         # fig.add_trace(bb_bbm, secondary_y=True)
