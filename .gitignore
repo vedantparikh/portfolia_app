@@ -3,3 +3,6 @@
 .idea
 .ipynb_checkpoints
 /portfolio/python/streamlit/rough.ipynb
+ __pycache__/
+ *.pyc
+ /portfolio/python/streamlit/plots/__pycache__/
