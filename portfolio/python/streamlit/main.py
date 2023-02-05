@@ -10,6 +10,7 @@ from plotly.subplots import make_subplots
 
 import streamlit as st
 from plots import MomentumIndicatorChart
+from plots import TrendIndicatorChart
 
 st.set_page_config(page_title='Portfolio', page_icon=':bar_chart:', layout='wide')
 
@@ -47,23 +48,17 @@ if keywords:
         hist = msft.history(period="max", interval='1d')
 
         fig = make_subplots(
-            rows=3, cols=1, shared_xaxes=True, row_heights=[0.5, 0.25, 0.25]
+            rows=5, cols=1, shared_xaxes=True, row_heights=[0.4, 0.1, 0.1, 0.1, 0.3]
         )
         fig.add_trace(
             go.Candlestick(
                 x=hist.index, open=hist.Open, close=hist.Close, low=hist.Low, high=hist.High, showlegend=True,
-                name='Close',
+                name='Candle',
             ), row=1, col=1
         )
-        fig.add_trace(
-            go.Bar(
-                x=hist.index, y=hist.Volume, showlegend=True, name='Volume',
-            ), row=2, col=1
-        )
-        fig = MomentumIndicatorChart(df=hist).rsi_indicator_chart(fig=fig, row=3, column=1)
         fig.update_layout(
             autosize=True,
-            height=1800,
+            height=1000,
             xaxis=dict(
                 rangeselector=dict(
                     buttons=list(
@@ -71,23 +66,47 @@ if keywords:
                             dict(count=1, label="1m", step="month", stepmode="backward"),
                             dict(count=6, label="6m", step="month", stepmode="backward"),
                             dict(count=1, label="YTD", step="year", stepmode="todate"),
-                            dict(count=1, label="1y", step="year", stepmode="backward"),
-                            dict(step="all"),
+                            dict(count=1, label="1Y", step="year", stepmode="backward"),
+                            dict(count=1, label="2Y", step="year", stepmode="backward"),
+                            dict(label='All', step="all"),
                         ]
                     )
                 ),
                 rangeslider=dict(visible=False),
                 type="date",
             ),
-            xaxis2=dict(
-                rangeslider=dict(visible=False),
-                type="date",
-            ),
+        )
+        fig.add_trace(
+            go.Bar(
+                x=hist.index, y=hist.Volume, showlegend=True, name='Volume',
+            ), row=2, col=1
+        )
+        xaxis2 = dict(
+            rangeslider=dict(visible=False),
+            type="date",
+        ),
+        fig = MomentumIndicatorChart(df=hist).rsi_indicator_chart(fig=fig, row=3, column=1)
+        fig.update_layout(
             xaxis3=dict(
                 rangeslider=dict(visible=False),
                 type="date",
             ),
         )
+        fig = MomentumIndicatorChart(df=hist).roc_indicator_chart(fig=fig, row=4, column=1)
+        fig.update_layout(
+            xaxis4=dict(
+                rangeslider=dict(visible=False),
+                type="date",
+            ),
+        )
+        fig = TrendIndicatorChart(df=hist).macd_indicator(fig=fig, row=5, column=1)
+        fig.update_layout(
+            xaxis5=dict(
+                rangeslider=dict(visible=False),
+                type="date",
+            ),
+        )
+
         fig.update_xaxes(matches='x')
 
         st.plotly_chart(fig, use_container_width=True)

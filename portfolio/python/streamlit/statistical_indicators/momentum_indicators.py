@@ -68,8 +68,7 @@ class MomentumIndicators(BaseIndicator):
         return self.df
 
     def stoch_oscillator_indicator(
-            self, window: int = 14, smooth_window: int = 3,
-            fillna: bool = False
+            self, window: int = 14, smooth_window: int = 3, fillna: bool = False
     ) -> pd.DataFrame:
         """
         Stochastic Oscillator

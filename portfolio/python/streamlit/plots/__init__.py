@@ -1,2 +1,3 @@
-from .momentum_indicator import MomentumIndicatorChart
+from .momentum_indicators import MomentumIndicatorChart
 from .plots import MacdRsiVolumeCandelstickChart
+from .trend_indicators import TrendIndicatorChart
