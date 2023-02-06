@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 from statistical_indicators import VolatilityIndicators
 
 
-class VolumeIndicatorChart:
+class VolatilityIndicatorChart:
     def __init__(self, df: pd.DataFrame) -> None:
         self.df = df
 
@@ -110,12 +110,12 @@ class VolumeIndicatorChart:
         )
         fig.add_trace(
             go.Scatter(
-                x=df.index, y=df.keltner_channel_hband, name='Keltner channel hband', line=dict(color=color, width=width)
+                x=df.index, y=df.keltner_channel_hband, name='Keltner Channel hband', line=dict(color=color, width=width)
             ), row=row, col=column
         )
         fig.add_trace(
             go.Scatter(
-                x=df.index, y=df.keltner_channel_lband, name='Keltner channel lband', line=dict(color='cyan', width=width)
+                x=df.index, y=df.keltner_channel_lband, name='Keltner Channel lband', line=dict(color='cyan', width=width)
             ), row=row, col=column
         )
         fig.update_yaxes(title_text='Keltner Channel', row=row, col=column)
