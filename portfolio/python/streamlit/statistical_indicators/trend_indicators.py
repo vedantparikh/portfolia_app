@@ -49,9 +49,9 @@ class TrendIndicators(BaseIndicator):
         :return: DataFrame with ADX indicator fields.
         """
         adx = ADXIndicator(high=self.df.High, low=self.df.Low, close=self.df.Close, window=window, fillna=fillna)
-        self.df['adx'] = adx.adx()
-        self.df['adx_neg'] = adx.adx_neg()
-        self.df['adx_pos'] = adx.adx_pos()
+        self.df['ADX'] = adx.adx()
+        self.df['ADX_neg'] = adx.adx_neg()
+        self.df['ADX_pos'] = adx.adx_pos()
 
         return self.df
 

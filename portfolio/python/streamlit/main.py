@@ -59,6 +59,10 @@ if keywords:
         fig.update_layout(
             autosize=True,
             height=1000,
+            yaxis=dict(
+                autorange=True,
+                fixedrange=False
+            ),
             xaxis=dict(
                 rangeselector=dict(
                     buttons=list(
@@ -81,15 +85,25 @@ if keywords:
                 x=hist.index, y=hist.Volume, showlegend=True, name='Volume',
             ), row=2, col=1
         )
-        xaxis2 = dict(
-            rangeslider=dict(visible=False),
-            type="date",
-        ),
+        fig.update_layout(
+            xaxis2=dict(
+                rangeslider=dict(visible=False),
+                type="date",
+            ),
+            yaxis2=dict(
+                autorange=True,
+                fixedrange=False
+            ),
+        )
         fig = MomentumIndicatorChart(df=hist).rsi_indicator_chart(fig=fig, row=3, column=1)
         fig.update_layout(
             xaxis3=dict(
                 rangeslider=dict(visible=False),
                 type="date",
+            ),
+            yaxis3=dict(
+                autorange=True,
+                fixedrange=False
             ),
         )
         fig = MomentumIndicatorChart(df=hist).roc_indicator_chart(fig=fig, row=4, column=1)
@@ -98,12 +112,20 @@ if keywords:
                 rangeslider=dict(visible=False),
                 type="date",
             ),
+            yaxis4=dict(
+                autorange=True,
+                fixedrange=False
+            ),
         )
         fig = TrendIndicatorChart(df=hist).macd_indicator(fig=fig, row=5, column=1)
         fig.update_layout(
             xaxis5=dict(
                 rangeslider=dict(visible=False),
                 type="date",
+            ),
+            yaxis5=dict(
+                autorange=True,
+                fixedrange=False
             ),
         )
 
