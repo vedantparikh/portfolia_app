@@ -11,6 +11,7 @@ from plotly.subplots import make_subplots
 import streamlit as st
 from plots import MomentumIndicatorChart
 from plots import TrendIndicatorChart
+from plots import VolumeIndicatorChart
 
 st.set_page_config(page_title='Portfolio', page_icon=':bar_chart:', layout='wide')
 
@@ -128,6 +129,7 @@ if keywords:
                 fixedrange=False
             ),
         )
+        fig = VolumeIndicatorChart(df=hist).bollinger_bands_indicator(fig=fig, row=1, column=1)
 
         fig.update_xaxes(matches='x')
 
