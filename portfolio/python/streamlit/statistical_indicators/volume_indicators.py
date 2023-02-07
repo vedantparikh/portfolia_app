@@ -4,7 +4,7 @@ from ta.volume import (
     VolumeWeightedAveragePrice,
 )
 
-from streamlit.statistical_indicators.base import BaseIndicator
+from statistical_indicators.base import BaseIndicator
 
 
 class VolumeIndicators(BaseIndicator):

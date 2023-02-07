@@ -1,12 +1,11 @@
 import pandas as pd
+from statistical_indicators.base import BaseIndicator
 from ta.trend import (
     ADXIndicator,
     AroonIndicator,
     MACD,
     PSARIndicator,
 )
-
-from portfolio.python.streamlit.statistical_indicators.base import BaseIndicator
 
 
 class TrendIndicators(BaseIndicator):
@@ -25,8 +24,10 @@ class TrendIndicators(BaseIndicator):
         :param fillna: if True, fill NaN values.
         :return: DataFrame with the MACD indicator fields.
         """
-        macd = MACD(close=self.df.Close, window_slow=window_slow, window_fast=window_fast, window_sign=window_sign,
-                    fillna=fillna)
+        macd = MACD(
+            close=self.df.Close, window_slow=window_slow, window_fast=window_fast, window_sign=window_sign,
+            fillna=fillna
+            )
         self.df['MACD'] = macd.macd()
         self.df['Signal'] = macd.macd_signal()
         self.df['Histogram'] = macd.macd_diff()
@@ -48,9 +49,9 @@ class TrendIndicators(BaseIndicator):
         :return: DataFrame with ADX indicator fields.
         """
         adx = ADXIndicator(high=self.df.High, low=self.df.Low, close=self.df.Close, window=window, fillna=fillna)
-        self.df['adx'] = adx.adx()
-        self.df['adx_neg'] = adx.adx_neg()
-        self.df['adx_pos'] = adx.adx_pos()
+        self.df['ADX'] = adx.adx()
+        self.df['ADX_neg'] = adx.adx_neg()
+        self.df['ADX_pos'] = adx.adx_pos()
 
         return self.df
 

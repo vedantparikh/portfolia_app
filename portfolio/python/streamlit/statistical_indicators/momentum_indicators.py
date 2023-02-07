@@ -1,12 +1,6 @@
 import pandas as pd
-from ta.momentum import (
-    ROCIndicator,
-    RSIIndicator,
-    StochasticOscillator,
-    StochRSIIndicator,
-)
-
-from portfolio.python.streamlit.statistical_indicators.base import BaseIndicator
+from statistical_indicators.base import BaseIndicator
+from ta.momentum import (ROCIndicator, RSIIndicator, StochRSIIndicator, StochasticOscillator)
 
 
 class MomentumIndicators(BaseIndicator):
@@ -73,8 +67,9 @@ class MomentumIndicators(BaseIndicator):
 
         return self.df
 
-    def stoch_oscillator_indicator(self, window: int = 14, smooth_window: int = 3,
-                                   fillna: bool = False) -> pd.DataFrame:
+    def stoch_oscillator_indicator(
+            self, window: int = 14, smooth_window: int = 3, fillna: bool = False
+    ) -> pd.DataFrame:
         """
         Stochastic Oscillator
         Developed in the late 1950s by George Lane. The stochastic oscillator presents the location of the closing
