@@ -241,7 +241,7 @@ class MacdRsiVolumeCandelstickChart:
         # Update basic layout properties (width&height, background color, title, etc.)
         fig.update_layout(
             # width=800,
-            #               height=800,
+            # height=800,
             # plot_bgcolor='#0E1117',
             # paper_bgcolor='#0E1117',
             title={
