@@ -4,7 +4,7 @@ from ta.trend import (
     ADXIndicator,
     AroonIndicator,
     MACD,
-    PSARIndicator,
+    PSARIndicator, CCIIndicator,
 )
 
 
@@ -27,7 +27,7 @@ class TrendIndicators(BaseIndicator):
         macd = MACD(
             close=self.df.Close, window_slow=window_slow, window_fast=window_fast, window_sign=window_sign,
             fillna=fillna
-            )
+        )
         self.df['MACD'] = macd.macd()
         self.df['Signal'] = macd.macd_signal()
         self.df['Histogram'] = macd.macd_diff()
@@ -105,5 +105,24 @@ class TrendIndicators(BaseIndicator):
         self.df = self.aroon_indicator()
         self.df = self.adx_indicator()
         self.df = self.psar_indicator()
+
+        return self.df
+
+    def cci_indicator(self, window: int = 20, constant: float = 0.015, fillna: bool= False) -> pd.DataFrame:
+        """
+        CCI measures the difference between a security’s price change and its average price change.
+        High positive readings indicate that prices are well above their average, which is a show of strength.
+        Low negative readings indicate that prices are well below their average, which is a show of weakness.
+        http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:commodity_channel_index_cci
+        :param window:
+        :param constant:
+        :param fillna:
+        :return:
+        """
+        cci_indicator = CCIIndicator(
+            high=self.df.High, low=self.df.Low, close=self.df.Close,window = window, constant= constant, fillna= fillna
+        )
+
+        self.df['CCI'] = cci_indicator.cci()
 
         return self.df
