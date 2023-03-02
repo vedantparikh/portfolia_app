@@ -3,13 +3,14 @@ import pandas as pd
 import plotly.graph_objects as go
 
 from statistical_indicators import TrendIndicators
+from trading_strategy.trend_strategy import MACDStrategy
 
 
 class TrendIndicatorChart:
     def __init__(self, df: pd.DataFrame) -> None:
         self.df = df
 
-        assert not self.df.empty, "No DataFrame was provided to perform the indicator calculation."
+        assert not self.df.empty, 'No DataFrame was provided to perform the indicator calculation.'
         self.trend_indicator = TrendIndicators(df=df)
 
     def macd_indicator(
@@ -33,7 +34,11 @@ class TrendIndicatorChart:
         df = self.trend_indicator.macd_indicator(
             window_slow=window_slow, window_fast=window_fast, fillna=fillna, window_sign=window_sign,
         )
+        df = MACDStrategy(df=df).buy_sell_strategy()
         df['Hist-Color'] = np.where(df['Histogram'] < 0, 'red', 'green')
+        df['MACD-Buy-Sell'] = np.where(df['MACD_buy_or_sell'] < 0, 'green', 'red')
+        df.Close = df.Close.round(2)
+        df.MACD_price_difference = df.MACD_price_difference.round(2)
         fig.add_trace(
             go.Bar(
                 x=df.index, y=df.Histogram, name='Histogram', marker_color=df['Hist-Color'], showlegend=True
@@ -41,12 +46,22 @@ class TrendIndicatorChart:
         )
         fig.add_trace(
             go.Scatter(
-                x=df.index, y=df.MACD, name='MACD', line=dict(color='darkorange', width=width)
+                x=df.index, y=df.MACD, name='MACD', line=dict(color='darkorange', width=width),
+                text='Close ₹: ' + df['Close'].astype(str) + '<br>Volume : ' + df['Volume'].astype(str),
             ), row=row, col=column
         )
         fig.add_trace(
             go.Scatter(
-                x=df.index, y=df.Signal, name='Signal', line=dict(color='cyan', width=width)
+                x=df.index, y=df.Signal, name='Signal', line=dict(color='cyan', width=width),
+                text='Close ₹: ' + df['Close'].astype(str) + '<br>Volume : ' + df['Volume'].astype(str),
+            ), row=row, col=column
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=df.index, y=df.MACD_buy_or_sell, mode='markers', marker_symbol='triangle-up',
+                marker=dict(size=15), marker_color=df['MACD-Buy-Sell'],
+                text='Close ₹: ' + df['Close'].astype(str) + '<br>Volume : ' + df['Volume'].astype(str) +
+                     '<br>Close diff ₹: ' + df['MACD_price_difference'].astype(str),
             ), row=row, col=column
         )
         fig.update_yaxes(title_text='MACD', row=row, col=column)

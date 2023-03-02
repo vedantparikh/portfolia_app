@@ -79,7 +79,7 @@ class MomentumIndicators(BaseIndicator):
         :param window: N -Period.
         :param smooth_window: SMA period over stoch_k.
         :param fillna: If True, fill NaN values.
-        :return: DataFrame with Stochastic Oscillator indicator fileds.
+        :return: DataFrame with Stochastic Oscillator indicator fields.
         """
         stochastic_oscillator = StochasticOscillator(
             close=self.df.Close, high=self.df.High, low=self.df.Low, window=window, smooth_window=smooth_window,
