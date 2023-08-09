@@ -12,6 +12,7 @@ import streamlit as st
 from plots import MomentumIndicatorChart
 from plots import TrendIndicatorChart
 from plots import VolatilityIndicatorChart
+from trading_strategy.trend_strategy.gfs_strategy.gfs import GfsStrategy
 
 st.set_page_config(page_title='Portfolio', page_icon=':bar_chart:', layout='wide')
 
@@ -81,6 +82,12 @@ if keywords:
                 rangeslider=dict(visible=False),
                 type="date",
             ),
+        )
+        gfs = GfsStrategy(symbol=symbol).calculate_gfs()
+        fig.add_annotation(
+            x=hist.shape[0], y=hist.Close.max(), xref="x", yref="y",
+            text=f"GFS Strategy:<br> Grandfather: {gfs['grandfather']}<br> Father: {gfs['father']}<br> Son: {gfs['son']} "
+                 f"<br> Recommendation: {gfs['recommendation']}", showarrow=False, yshift=10,
         )
         fig.add_trace(
             go.Bar(
