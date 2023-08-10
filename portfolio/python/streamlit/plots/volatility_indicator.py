@@ -1,19 +1,12 @@
-import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
-from statistical_indicators import VolatilityIndicators
-
 
 class VolatilityIndicatorChart:
-    def __init__(self, df: pd.DataFrame) -> None:
-        self.df = df
-
-        assert not self.df.empty, "No DataFrame was provided to perform the indicator calculation."
-        self.volatility_indicator = VolatilityIndicators(df=df)
 
     def bollinger_bands_indicator(
-            self, fig: go, row: int, column: int, window: int = 20, window_dev: int = 2, fillna: bool = False,
+            self, df: pd.DataFrame, fig: go, row: int, column: int, window: int = 20, window_dev: int = 2,
+            fillna: bool = False,
             color: str = 'gold', width: int = 2,
     ) -> go:
         """
@@ -29,7 +22,6 @@ class VolatilityIndicatorChart:
         :return: Plotly go plot.
         """
 
-        df = self.volatility_indicator.bollinger_bands_indicator(window=window, window_dev=window_dev, fillna=fillna)
         df = df.iloc[window:]
         fig.add_trace(
             go.Scatter(
@@ -51,7 +43,8 @@ class VolatilityIndicatorChart:
         return fig
 
     def average_true_range_indicator(
-            self, fig: go, row: int, column: int, window: int = 20, fillna: bool = False, color: str = 'gold',
+            self, df: pd.DataFrame, fig: go, row: int, column: int, window: int = 20, fillna: bool = False,
+            color: str = 'gold',
             width: int = 2,
     ) -> go:
         """
@@ -66,7 +59,6 @@ class VolatilityIndicatorChart:
         :return: Plotly go plot.
         """
 
-        df = self.volatility_indicator.average_true_range(window=window, fillna=fillna)
         df = df.iloc[window:]
         fig.add_trace(
             go.Scatter(
@@ -78,7 +70,8 @@ class VolatilityIndicatorChart:
         return fig
 
     def keltner_channel_indicator(
-            self, fig: go, row: int, column: int, window: int = 20, window_atr: int = 10, original_version: bool = True,
+            self, df: pd.DataFrame, fig: go, row: int, column: int, window: int = 20, window_atr: int = 10,
+            original_version: bool = True,
             multiplier: int = 2, fillna: bool = False, color: str = 'gold', width: int = 2,
     ) -> go:
         """
@@ -98,24 +91,23 @@ class VolatilityIndicatorChart:
         :return: Plotly go plot.
         """
 
-        df = self.volatility_indicator.keltner_channel_indicator(
-            window=window, window_atr=window_atr, original_version=original_version, multiplier=multiplier,
-            fillna=fillna
-        )
         df = df.iloc[window:]
         fig.add_trace(
             go.Scatter(
-                x=df.index, y=df.keltner_channel_mband, name='Keltner Channel mband', line=dict(color='green', width=width)
+                x=df.index, y=df.keltner_channel_mband, name='Keltner Channel mband',
+                line=dict(color='green', width=width)
             ), row=row, col=column
         )
         fig.add_trace(
             go.Scatter(
-                x=df.index, y=df.keltner_channel_hband, name='Keltner Channel hband', line=dict(color=color, width=width)
+                x=df.index, y=df.keltner_channel_hband, name='Keltner Channel hband',
+                line=dict(color=color, width=width)
             ), row=row, col=column
         )
         fig.add_trace(
             go.Scatter(
-                x=df.index, y=df.keltner_channel_lband, name='Keltner Channel lband', line=dict(color='cyan', width=width)
+                x=df.index, y=df.keltner_channel_lband, name='Keltner Channel lband',
+                line=dict(color='cyan', width=width)
             ), row=row, col=column
         )
         fig.update_yaxes(title_text='Keltner Channel', row=row, col=column)

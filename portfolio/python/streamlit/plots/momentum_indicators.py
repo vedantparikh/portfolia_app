@@ -5,14 +5,15 @@ from statistical_indicators import MomentumIndicators
 
 
 class MomentumIndicatorChart:
-    def __init__(self, df: pd.DataFrame) -> None:
-        self.df = df
-
-        assert not self.df.empty, "No DataFrame was provided to perform the indicator calculation."
-        self.momentum_indicator = MomentumIndicators(df=df)
+    # def __init__(self, df: pd.DataFrame) -> None:
+    #     self.df = df
+    #
+    #     assert not self.df.empty, "No DataFrame was provided to perform the indicator calculation."
+    #     self.momentum_indicator = MomentumIndicators(df=df)
 
     def rsi_indicator_chart(
-            self, fig: go, row: int, column: int, window: int = 14, fillna: bool = False, color: str = 'gold',
+            self, df: pd.DataFrame, fig: go, row: int, column: int, window: int = 14, fillna: bool = False,
+            color: str = 'gold',
             width: int = 2
     ) -> go:
         """
@@ -27,7 +28,6 @@ class MomentumIndicatorChart:
         :return: Plotly go plot.
         """
 
-        df = self.momentum_indicator.rsi_indicator(window=window, fillna=fillna)
         df = df.iloc[window:]
         fig.add_trace(
             go.Scatter(
@@ -40,7 +40,8 @@ class MomentumIndicatorChart:
         return fig
 
     def roc_indicator_chart(
-            self, fig: go, row: int, column: int, window: int = 12, fillna: bool = False, color: str = 'gold',
+            self, df: pd.DataFrame, fig: go, row: int, column: int, window: int = 12, fillna: bool = False,
+            color: str = 'gold',
             width: int = 2
     ) -> go:
         """
@@ -55,7 +56,6 @@ class MomentumIndicatorChart:
         :return: Plotly go plot.
         """
 
-        df = self.momentum_indicator.roc_indicator(window=window, fillna=fillna)
         df = df.iloc[window:]
         fig.add_trace(
             go.Scatter(
@@ -68,7 +68,8 @@ class MomentumIndicatorChart:
         return fig
 
     def stoch_rsi_indicator_chart(
-            self, fig: go, row: int, column: int, window: int = 14, smooth1: int = 3, smooth2: int = 3,
+            self, df: pd.DataFrame, fig: go, row: int, column: int, window: int = 14, smooth1: int = 3,
+            smooth2: int = 3,
             fillna: bool = False, color: str = 'gold', width: int = 2
     ) -> go:
         """
@@ -85,7 +86,6 @@ class MomentumIndicatorChart:
         :return: Plotly go plot.
         """
 
-        df = self.momentum_indicator.stoch_rsi_indicator(window=window, smooth1=smooth1, smooth2=smooth2, fillna=fillna)
         df = df.iloc[window:]
         fig.add_trace(
             # TODO: multiple fields.
@@ -99,7 +99,8 @@ class MomentumIndicatorChart:
         return fig
 
     def stoch_oscillator_indicator_chart(
-            self, fig: go, row: int, column: int, window: int = 14, smooth_window: int = 3, fillna: bool = False,
+            self, df: pd.DataFrame, fig: go, row: int, column: int, window: int = 14, smooth_window: int = 3,
+            fillna: bool = False,
             color: str = 'gold', width: int = 2
     ) -> go:
         """
@@ -115,9 +116,6 @@ class MomentumIndicatorChart:
         :return: Plotly go plot.
         """
 
-        df = self.momentum_indicator.stoch_oscillator_indicator(
-            window=window, smooth_window=smooth_window, fillna=fillna
-        )
         df = df.iloc[window:]
         fig.add_trace(
             # TODO: multiple fields.

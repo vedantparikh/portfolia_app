@@ -1,19 +1,12 @@
-import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
-from statistical_indicators import VolumeIndicators
-
 
 class VolumeIndicatorChart:
-    def __init__(self, df: pd.DataFrame) -> None:
-        self.df = df
-
-        assert not self.df.empty, "No DataFrame was provided to perform the indicator calculation."
-        self.volume_indicator = VolumeIndicators(df=df)
 
     def mfi_indicator(
-            self, fig: go, row: int, column: int, window: int = 14, fillna: bool = False, color: str = 'gold',
+            self, df: pd.DataFrame, fig: go, row: int, column: int, window: int = 14, fillna: bool = False,
+            color: str = 'gold',
             width: int = 2
     ) -> go:
         """
@@ -28,7 +21,6 @@ class VolumeIndicatorChart:
         :return: Plotly go plot.
         """
 
-        df = self.volume_indicator.mfi_indicator(window=window, fillna=fillna)
         df = df.iloc[window:]
         fig.add_trace(
             go.Scatter(
@@ -41,7 +33,7 @@ class VolumeIndicatorChart:
         return fig
 
     def volume_price_trend_indicator(
-            self, fig: go, row: int, column: int, fillna: bool = False, color: str = 'gold', width: int = 2
+            self, df: pd.DataFrame, fig: go, row: int, column: int, fillna: bool = False, color: str = 'gold', width: int = 2
     ) -> go:
         """
         Creates plot for the Volume price trend indicator.
@@ -54,7 +46,6 @@ class VolumeIndicatorChart:
         :return: Plotly go plot.
         """
 
-        df = self.volume_indicator.volume_price_trend_indicator(fillna=fillna)
         fig.add_trace(
             go.Scatter(
                 x=df.index, y=df.volume_price_trend, name='Volume Price Trend', line=dict(color=color, width=width)
@@ -66,7 +57,7 @@ class VolumeIndicatorChart:
         return fig
 
     def volume_weighted_average_price(
-            self, fig: go, row: int, column: int, window: int = 14, fillna: bool = False, color: str = 'gold',
+            self, df: pd.DataFrame, fig: go, row: int, column: int, window: int = 14, fillna: bool = False, color: str = 'gold',
             width: int = 2
     ) -> go:
         """
@@ -81,7 +72,6 @@ class VolumeIndicatorChart:
         :return: Plotly go plot.
         """
 
-        df = self.volume_indicator.volume_weighted_average_price(window=window, fillna=fillna)
         fig.add_trace(
             go.Scatter(
                 x=df.index, y=df.volume_weighted_average_price, name='Volume Weighted Average Price',
@@ -94,7 +84,7 @@ class VolumeIndicatorChart:
         return fig
 
     def on_balance_volume_indicator(
-            self, fig: go, row: int, column: int, fillna: bool = False, color: str = 'gold', width: int = 2
+            self, df: pd.DataFrame, fig: go, row: int, column: int, fillna: bool = False, color: str = 'gold', width: int = 2
     ) -> go:
         """
         Creates plot for the On Balance Volume indicator.
@@ -107,7 +97,6 @@ class VolumeIndicatorChart:
         :return: Plotly go plot.
         """
 
-        df = self.volume_indicator.on_balance_volume_indicator(fillna=fillna)
         fig.add_trace(
             go.Scatter(
                 x=df.index, y=df.on_balance_volume, name='On Balance Volume', line=dict(color=color, width=width)
@@ -119,7 +108,7 @@ class VolumeIndicatorChart:
         return fig
 
     def force_index_indicator(
-            self, fig: go, row: int, column: int, window: int = 13, fillna: bool = False, color: str = 'gold',
+            self, df: pd.DataFrame, fig: go, row: int, column: int, window: int = 13, fillna: bool = False, color: str = 'gold',
             width: int = 2
     ) -> go:
         """
@@ -134,7 +123,6 @@ class VolumeIndicatorChart:
         :return: Plotly go plot.
         """
 
-        df = self.volume_indicator.force_index_indicator(window=window, fillna=fillna)
         fig.add_trace(
             go.Scatter(
                 x=df.index, y=df.force_index, name='Force Index (FI)',
