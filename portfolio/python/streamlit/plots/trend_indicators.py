@@ -2,19 +2,13 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
-from statistical_indicators import TrendIndicators
 from trading_strategy.trend_strategy import MACDStrategy
 
 
 class TrendIndicatorChart:
-    def __init__(self, df: pd.DataFrame) -> None:
-        self.df = df
-
-        assert not self.df.empty, 'No DataFrame was provided to perform the indicator calculation.'
-        self.trend_indicator = TrendIndicators(df=df)
 
     def macd_indicator(
-            self, fig: go, row: int, column: int, window_slow: int = 26, window_fast: int = 12, window_sign: int = 9,
+            self, df:pd.DataFrame, fig: go, row: int, column: int, window_slow: int = 26, window_fast: int = 12, window_sign: int = 9,
             fillna: bool = False, color: str = 'gold', width: int = 2,
     ) -> go:
         """
@@ -31,9 +25,6 @@ class TrendIndicatorChart:
         :return: Plotly go plot.
         """
 
-        df = self.trend_indicator.macd_indicator(
-            window_slow=window_slow, window_fast=window_fast, fillna=fillna, window_sign=window_sign,
-        )
         df = MACDStrategy(df=df).buy_sell_strategy()
         df['Hist-Color'] = np.where(df['Histogram'] < 0, 'red', 'green')
         df['MACD-Buy-Sell'] = np.where(df['MACD_buy_or_sell'] < 0, 'green', 'red')
@@ -69,7 +60,7 @@ class TrendIndicatorChart:
         return fig
 
     def adx_indicator(
-            self, fig: go, row: int, column: int, window: int = 14, fillna: bool = False, color: str = 'gold',
+            self, df:pd.DataFrame, fig: go, row: int, column: int, window: int = 14, fillna: bool = False, color: str = 'gold',
             width: int = 2,
     ) -> go:
         """
@@ -84,7 +75,6 @@ class TrendIndicatorChart:
         :return: Plotly go plot.
         """
 
-        df = self.trend_indicator.adx_indicator(window=window, fillna=fillna)
         df = df.iloc[window:]
         fig.add_trace(
             go.Scatter(
@@ -106,7 +96,7 @@ class TrendIndicatorChart:
         return fig
 
     def aroon_indicator(
-            self, fig: go, row: int, column: int, window: int = 25, fillna: bool = False, color: str = 'gold',
+            self, df:pd.DataFrame, fig: go, row: int, column: int, window: int = 25, fillna: bool = False, color: str = 'gold',
             width: int = 2,
     ) -> go:
         """
@@ -121,7 +111,6 @@ class TrendIndicatorChart:
         :return: Plotly go plot.
         """
 
-        df = self.trend_indicator.adx_indicator(window=window, fillna=fillna)
         df = df.iloc[window:]
         fig.add_trace(
             go.Scatter(
@@ -143,7 +132,7 @@ class TrendIndicatorChart:
         return fig
 
     def psar_indicator(
-            self, fig: go, row: int, column: int, step: float = 0.02, max_step: float = 0.2, fillna: bool = False,
+            self, df:pd.DataFrame, fig: go, row: int, column: int, step: float = 0.02, max_step: float = 0.2, fillna: bool = False,
             color: str = 'gold', width: int = 2,
     ) -> go:
         """
@@ -159,7 +148,6 @@ class TrendIndicatorChart:
         :return: Plotly go plot.
         """
 
-        df = self.trend_indicator.psar_indicator(step=step, max_step=max_step, fillna=fillna)
         fig.add_trace(
             go.Scatter(
                 x=df.index, y=df.psar, name='PSAR', line=dict(color='green', width=width)

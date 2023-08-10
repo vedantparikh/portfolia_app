@@ -1,3 +1,4 @@
+from concurrent.futures import ProcessPoolExecutor
 from typing import (
     List,
     Tuple,
@@ -12,6 +13,7 @@ import streamlit as st
 from plots import MomentumIndicatorChart
 from plots import TrendIndicatorChart
 from plots import VolatilityIndicatorChart
+from statistical_indicators import MomentumIndicators, TrendIndicators, VolatilityIndicators
 from trading_strategy.trend_strategy.gfs_strategy.gfs import GfsStrategy
 
 st.set_page_config(page_title='Portfolio', page_icon=':bar_chart:', layout='wide')
@@ -83,11 +85,24 @@ if keywords:
                 type="date",
             ),
         )
-        gfs = GfsStrategy(symbol=symbol).calculate_gfs()
+        with ProcessPoolExecutor() as executor:
+            # execute the task
+            future_gfs = executor.submit(GfsStrategy(symbol=symbol).calculate_gfs)
+            future_rsi = executor.submit(MomentumIndicators(df=hist).rsi_indicator)
+            future_roc = executor.submit(MomentumIndicators(df=hist).roc_indicator)
+            future_macd = executor.submit(TrendIndicators(df=hist).macd_indicator)
+            future_bollinger = executor.submit(VolatilityIndicators(df=hist).bollinger_bands_indicator)
+
+            gfs = future_gfs.result()
+            rsi = future_rsi.result()
+            roc = future_roc.result()
+            macd = future_macd.result()
+            bollinger = future_bollinger.result()
+
         fig.add_annotation(
-            x=hist.shape[0], y=hist.Close.max(), xref="x", yref="y",
             text=f"GFS Strategy:<br> Grandfather: {gfs['grandfather']}<br> Father: {gfs['father']}<br> Son: {gfs['son']} "
-                 f"<br> Recommendation: {gfs['recommendation']}", showarrow=False, yshift=10,
+                 f"<br> Recommendation: {gfs['recommendation']}", align='left', showarrow=False, xref='paper',
+            yref='paper', x=1.1, y=0.8, bordercolor='black', borderwidth=1
         )
         fig.add_trace(
             go.Bar(
@@ -104,7 +119,7 @@ if keywords:
                 fixedrange=False
             ),
         )
-        fig = MomentumIndicatorChart(df=hist).rsi_indicator_chart(fig=fig, row=3, column=1)
+        fig = MomentumIndicatorChart().rsi_indicator_chart(df=rsi, fig=fig, row=3, column=1)
         fig.update_layout(
             xaxis3=dict(
                 rangeslider=dict(visible=False),
@@ -115,7 +130,7 @@ if keywords:
                 fixedrange=False
             ),
         )
-        fig = MomentumIndicatorChart(df=hist).roc_indicator_chart(fig=fig, row=4, column=1)
+        fig = MomentumIndicatorChart().roc_indicator_chart(df=roc, fig=fig, row=4, column=1)
         fig.update_layout(
             xaxis4=dict(
                 rangeslider=dict(visible=False),
@@ -126,7 +141,7 @@ if keywords:
                 fixedrange=False
             ),
         )
-        fig = TrendIndicatorChart(df=hist).macd_indicator(fig=fig, row=5, column=1)
+        fig = TrendIndicatorChart().macd_indicator(df=macd, fig=fig, row=5, column=1)
         fig.update_layout(
             xaxis5=dict(
                 rangeslider=dict(visible=False),
@@ -137,7 +152,7 @@ if keywords:
                 fixedrange=False
             ),
         )
-        fig = VolatilityIndicatorChart(df=hist).bollinger_bands_indicator(fig=fig, row=1, column=1)
+        fig = VolatilityIndicatorChart().bollinger_bands_indicator(df=bollinger, fig=fig, row=1, column=1)
 
         fig.update_xaxes(matches='x')
 
