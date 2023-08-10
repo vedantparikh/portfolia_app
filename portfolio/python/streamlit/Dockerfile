@@ -19,10 +19,11 @@ ENV PATH="/opt/venv/bin:$PATH"
 RUN python -m pip install --upgrade pip
 COPY requirements.txt .
 COPY constraints.txt .
-RUN python -m pip install -r requirements.txt -c constraints.txt
+RUN python -m pip install -r requirements.txt
 COPY main.py .
 COPY plots ./plots/
 COPY statistical_indicators ./statistical_indicators/
+COPY trading_strategy ./trading_strategy/
 
 RUN ls -ll
 

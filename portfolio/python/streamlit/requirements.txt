@@ -5,3 +5,4 @@ yfinance==0.2.27
 yahooquery==2.3.0
 plotly==5.15.0
 ta==0.10.2
+altair<5
