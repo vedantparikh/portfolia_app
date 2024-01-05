@@ -1,6 +1,6 @@
 FROM scratch
 # pull official base image
-FROM python:3.11.4 as builder
+FROM python:3.12.1 as builder
 
 EXPOSE 8501
 
