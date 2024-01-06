@@ -1,8 +1,6 @@
-streamlit==1.25.0
 pre-commit==3.3.3
-requests==2.31.0
 yfinance==0.2.27
 yahooquery==2.3.0
-plotly==5.15.0
 ta==0.10.2
-altair
+fastapi==0.108.0
+uvicorn==0.25.0
