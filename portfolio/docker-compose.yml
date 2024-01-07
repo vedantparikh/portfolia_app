@@ -1,15 +1,17 @@
 version: "3.8"
 
 services:
-  web:
+  streamlit:
     build: ./python/streamlit
     ports:
       - 8501:8501
   app:
-    container_name: app-dev
-    image: app-dev
     build: ./js
     volumes:
       - ./js/src:/app/src
     ports:
       - 3000:3000
+  api:
+    build: ./python/api
+    ports:
+      - 8080:8080

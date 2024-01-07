@@ -12,10 +12,12 @@ class MacdRsiVolumeCandelstickChart:
     def get_closed_dates(self, df):
         """Return a list containing all dates on which the stock market was closed."""
         # Create a dataframe that contains all dates from the start until today.
-        timeline = pd.date_range(start=df['Date'].iloc[0], end=df['Date'].iloc[-1])
+        timeline = pd.date_range(
+            start=df['Date'].iloc[0], end=df['Date'].iloc[-1])
 
         # Create a list of the dates existing in the dataframe.
-        df_dates = [day.strftime('%Y-%m-%d') for day in pd.to_datetime(df['Date'])]
+        df_dates = [day.strftime('%Y-%m-%d')
+                    for day in pd.to_datetime(df['Date'])]
 
         # Finally, determine which dates from the 'timeline' do not exist in our dataframe.
         closed_dates = [
@@ -182,8 +184,10 @@ class MacdRsiVolumeCandelstickChart:
                                col=column)
 
         # Update the y-axis limits
-        ymin = 25 if df['RSI'].iloc[30:].min() > 25 else df['RSI'].iloc[30:].min() - 5
-        ymax = 75 if df['RSI'].iloc[30:].max() < 75 else df['RSI'].iloc[30:].max() + 5
+        ymin = 25 if df['RSI'].iloc[30:].min(
+        ) > 25 else df['RSI'].iloc[30:].min() - 5
+        ymax = 75 if df['RSI'].iloc[30:].max(
+        ) < 75 else df['RSI'].iloc[30:].max() + 5
         fig.update_yaxes(range=[ymin, ymax], row=row, col=column)
 
         return fig
