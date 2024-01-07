@@ -1,11 +1,11 @@
 from fastapi import FastAPI
+import uvicorn
 
-from market.stock import get_symbols
+from market.routers import router as market_router
 
 app = FastAPI()
 
+app.include_router(market_router, prefix='/api')
 
-@app.get("/symbols/")
-async def symbols(name: str):
-
-    return await get_symbols(name=name)
+if '__name__' == '__main__':
+    uvicorn.run(app, host='0.0.0.0', port='8000')
