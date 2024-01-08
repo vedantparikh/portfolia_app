@@ -43,3 +43,4 @@ virtualenv==20.25.0
 webencodings==0.5.1
 yahooquery==2.3.0
 yfinance==0.2.27
+sqlalchemy==2.0.25

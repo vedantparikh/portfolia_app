@@ -4,3 +4,4 @@ yahooquery==2.3.0
 ta==0.10.2
 fastapi==0.108.0
 uvicorn==0.25.0
+sqlalchemy==2.0.25
