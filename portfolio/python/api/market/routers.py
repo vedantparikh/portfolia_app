@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from .stock import get_symbols, get_symbol_data
+from .services import get_symbols, get_symbol_data
 
 router = APIRouter(prefix='/market', tags=['market-data'])
 
