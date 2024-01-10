@@ -2,8 +2,7 @@ from datetime import datetime
 from uuid import uuid4
 
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy import Column, Uuid, String, DateTime
-from sqlalchemy.orm import MappedAsDataclass, Mapped, mapped_column
+from sqlalchemy import Column, String, DateTime
 from passlib import hash
 
 from authentication.database import Base

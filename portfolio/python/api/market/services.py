@@ -28,6 +28,7 @@ def get_symbol_df(name: str, period: str = 'max', interval: str = '1d')->pd.Data
     ticker = yf.Ticker(name)
     df = ticker.history(period=period, interval=interval)
     df['Datetime'] = df.index
+    ticker.get_balance_sheet
     return df
 
 

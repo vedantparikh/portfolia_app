@@ -1,7 +1,4 @@
-pre-commit==3.3.3
-yfinance==0.2.27
-yahooquery==2.3.0
-ta==0.10.2
+ta==0.11.0
 fastapi==0.108.0
 uvicorn==0.25.0
 sqlalchemy==2.0.25

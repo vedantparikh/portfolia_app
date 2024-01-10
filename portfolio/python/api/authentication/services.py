@@ -1,5 +1,4 @@
-import logging
-from click import UUID
+from uuid import UUID
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 import jwt
