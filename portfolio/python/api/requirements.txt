@@ -7,3 +7,5 @@ pyjwt==2.8.0
 passlib==1.7.4
 bcrypt==4.1.2
 python-multipart==0.0.6
+yahooquery==2.3.0
+yfinance==0.2.35
