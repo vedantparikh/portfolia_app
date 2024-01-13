@@ -10,10 +10,8 @@ POSTGRES_HOST: str = os.environ.get("POSTGRES_HOST")
 POSTGRES_DB: str = os.environ.get("POSTGRES_DB")  
 DEBUG: bool = True if os.environ.get("DEBUG") == "True" else False
 
-if DEBUG:
-    SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
-else:
-    SQLALCHEMY_DATABASE_URL = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}/{POSTGRES_DB}"
+
+SQLALCHEMY_DATABASE_URL = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}/{POSTGRES_DB}"
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine)
