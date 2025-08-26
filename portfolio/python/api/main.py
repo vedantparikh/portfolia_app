@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 import uvicorn
 
 from market.routers import router as market_router
+from auth import auth_router
 from database.connection import get_db, health_check, redis_health_check
 from database.utils import get_database_stats, validate_database_integrity
 from database.config import db_settings
@@ -24,6 +25,7 @@ app.add_middleware(
 )
 
 app.include_router(market_router, prefix="/api")
+app.include_router(auth_router, prefix="/api")
 
 
 @app.get("/health")
