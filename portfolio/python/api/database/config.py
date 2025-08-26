@@ -25,6 +25,23 @@ class DatabaseSettings(BaseSettings):
     REDIS_DB: int = 0
     REDIS_PASSWORD: Optional[str] = None
 
+    # API Configuration
+    API_HOST: str = "0.0.0.0"
+    API_PORT: int = 8080
+    DEBUG: bool = False
+    LOG_LEVEL: str = "INFO"
+
+    # Security
+    SECRET_KEY: str = "your-secret-key-change-in-production"
+    JWT_SECRET_KEY: str = "your-jwt-secret-key-change-in-production"
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+
+    # External APIs
+    YAHOO_FINANCE_API_KEY: Optional[str] = None
+    ALPHA_VANTAGE_API_KEY: Optional[str] = None
+
     @property
     def postgres_url(self) -> str:
         """Get PostgreSQL connection URL."""

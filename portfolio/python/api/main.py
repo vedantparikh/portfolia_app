@@ -6,6 +6,7 @@ import uvicorn
 from market.routers import router as market_router
 from database.connection import get_db, health_check, redis_health_check
 from database.utils import get_database_stats, validate_database_integrity
+from database.config import db_settings
 
 app = FastAPI(
     title="Portfolia API",
@@ -69,4 +70,9 @@ async def detailed_health_check(db: Session = Depends(get_db)):
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    uvicorn.run(
+        app,
+        host=db_settings.API_HOST,
+        port=db_settings.API_PORT,
+        log_level=db_settings.LOG_LEVEL.lower(),
+    )

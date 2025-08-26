@@ -7,6 +7,19 @@ set -e
 
 echo "🚀 Setting up Portfolia database..."
 
+# Check if .env file exists
+if [ ! -f ".env" ]; then
+    echo "⚠️  .env file not found. Running environment setup first..."
+    ./setup_environment.sh
+    echo ""
+fi
+
+# Load environment variables
+if [ -f ".env" ]; then
+    echo "📝 Loading environment variables..."
+    export $(cat .env | grep -v '^#' | xargs)
+fi
+
 # Check if virtual environment exists
 if [ ! -d ".venv" ]; then
     echo "❌ Virtual environment not found. Please run 'python -m venv .venv' first."
