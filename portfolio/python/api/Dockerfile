@@ -1,13 +1,12 @@
-FROM scratch
 # pull official base image
-FROM python:3.12.1 as builder
+FROM python:3.12.2 as builder
 
 EXPOSE 8080
 
 # set work directory
 WORKDIR /usr/src/app
 
-# set environment variablesdoc
+# set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 RUN python -m venv /opt/venv
@@ -20,9 +19,12 @@ RUN python -m pip install --upgrade pip
 COPY requirements.txt .
 COPY constraints.txt .
 RUN python -m pip install -r requirements.txt
-COPY main.py .
-COPY statistical_indicators ./statistical_indicators/
-COPY trading_strategy ./trading_strategy/
+
+# Copy the entire api directory structure
+COPY . .
+
+# Add the current directory to Python path
+ENV PYTHONPATH="${PYTHONPATH}:/usr/src/app"
 
 RUN ls -ll
 
