@@ -1,32 +1,85 @@
-import pandas as pd
+import polars as pl
 from statistical_indicators.base import BaseIndicator
-from ta.momentum import (ROCIndicator, RSIIndicator, StochRSIIndicator, StochasticOscillator)
 
 
 class MomentumIndicators(BaseIndicator):
-    """ Returns a Pandas Dataframe with calculated different Momentum Indicators. """
+    """Returns a Polars Dataframe with calculated different Momentum Indicators."""
 
-    def rsi_indicator(self, window: int = 14, fillna: bool = False) -> pd.DataFrame:
+    def rsi_indicator(self, window: int = 14, fillna: bool = False) -> pl.DataFrame:
         """
         Relative Strength Index (RSI)
-        Compares the magnitude of recent gains and losses over a specified time period to measure speed and change
-        of price movements of a security. It is primarily used to attempt to identify overbought or oversold conditions
-        in the trading of an asset.
+        Compares the magnitude of recent gains and losses over a specified time
+        period to measure speed and change of price movements of a security. It is
+        primarily used to attempt to identify overbought or oversold conditions in
+        the trading of an asset.
         https://www.investopedia.com/terms/r/rsi.asp
         :param window: N -Period.
         :param fillna: If True, fill NaN values.
-        :return: DataFrame with RSI indicator fields.
+        :return: DataFrame with RSI indicator field.
         """
-        self.df['RSI'] = RSIIndicator(close=self.df.Close, window=window, fillna=fillna).rsi()
+        # Calculate price changes
+        self.df = self.df.with_columns([pl.col("Close").diff().alias("price_change")])
+
+        # Calculate gains and losses
+        self.df = self.df.with_columns(
+            [
+                pl.when(pl.col("price_change") > 0)
+                .then(pl.col("price_change"))
+                .otherwise(0)
+                .alias("gains"),
+                pl.when(pl.col("price_change") < 0)
+                .then(-pl.col("price_change"))
+                .otherwise(0)
+                .alias("losses"),
+            ]
+        )
+
+        # Calculate RSI using exponential moving averages (to match ta package)
+        # Use alpha = 1/window for EMA
+        min_periods = 0 if fillna else window
+
+        self.df = self.df.with_columns(
+            [
+                pl.col("gains")
+                .ewm_mean(span=window, min_periods=min_periods)
+                .alias("avg_gains"),
+                pl.col("losses")
+                .ewm_mean(span=window, min_periods=min_periods)
+                .alias("avg_losses"),
+            ]
+        )
+
+        # Calculate RSI
+        self.df = self.df.with_columns(
+            [
+                pl.when(pl.col("avg_losses") == 0)
+                .then(100.0)
+                .otherwise(
+                    100.0
+                    - (100.0 / (1.0 + (pl.col("avg_gains") / pl.col("avg_losses"))))
+                )
+                .alias("RSI")
+            ]
+        )
+
+        # Clean up temporary columns
+        self.df = self.df.drop(
+            ["price_change", "gains", "losses", "avg_gains", "avg_losses"]
+        )
+
+        if not fillna:
+            self.df = self.df.with_columns(
+                [pl.col("RSI").fill_null(strategy="forward")]
+            )
 
         return self.df
 
-    def roc_indicator(self, window: int = 12, fillna: bool = False) -> pd.DataFrame:
+    def roc_indicator(self, window: int = 12, fillna: bool = False) -> pl.DataFrame:
         """
         Rate of Change (ROC)
         The Rate-of-Change (ROC) indicator, which is also referred to as simply Momentum, is a pure momentum oscillator
         that measures the percent change in price from one period to the next. The ROC calculation compares the current
-        price with the price “n” periods ago. The plot forms an oscillator that fluctuates above and below the zero line
+        price with the price "n" periods ago. The plot forms an oscillator that fluctuates above and below the zero line
          as the Rate-of-Change moves from positive to negative. As a momentum oscillator, ROC signals include centerline
           crossovers, divergences and overbought-oversold readings. Divergences fail to foreshadow reversals more often
           than not, so this article will forgo a detailed discussion on them. Even though centerline crossovers are
@@ -37,18 +90,31 @@ class MomentumIndicators(BaseIndicator):
         :param fillna: If True, fill NaN values.
         :return: DataFrame with ROC indicator field.
         """
+        # Calculate ROC: ((Current Price - Price n periods ago) / Price n periods ago) * 100
+        self.df = self.df.with_columns(
+            [
+                (
+                    (pl.col("Close") - pl.col("Close").shift(window))
+                    / pl.col("Close").shift(window)
+                    * 100
+                ).alias("ROC")
+            ]
+        )
 
-        self.df['ROC'] = ROCIndicator(close=self.df.Close, window=window, fillna=fillna).roc()
+        if not fillna:
+            self.df = self.df.with_columns(
+                [pl.col("ROC").fill_null(strategy="forward")]
+            )
 
         return self.df
 
     def stoch_rsi_indicator(
-            self, window: int = 14, smooth1: int = 3, smooth2: int = 3, fillna: bool = False
-    ) -> pd.DataFrame:
+        self, window: int = 14, smooth1: int = 3, smooth2: int = 3, fillna: bool = False
+    ) -> pl.DataFrame:
         """
         Stochastic RSI
         The StochRSI oscillator was developed to take advantage of both momentum indicators in order to create a more
-        sensitive indicator that is attuned to a specific security’s historical performance rather than a generalized
+        sensitive indicator that is attuned to a specific security's historical performance rather than a generalized
         analysis of price change.
         https://school.stockcharts.com/doku.php?id=technical_indicators:stochrsi
         https://www.investopedia.com/terms/s/stochrsi.asp
@@ -58,18 +124,58 @@ class MomentumIndicators(BaseIndicator):
         :param fillna: If True, fill NaN values.
         :return: DataFrame with Stochastic RSI indicator fields.
         """
-        stoch_rsi = StochRSIIndicator(
-            close=self.df.Close, window=window, smooth1=smooth1, smooth2=smooth2, fillna=fillna
+        # First calculate RSI if not already present
+        if "RSI" not in self.df.columns:
+            self.df = self.rsi_indicator(window=window, fillna=fillna)
+
+        # Calculate Stochastic RSI
+        # %K = (RSI - RSI_min) / (RSI_max - RSI_min)
+        self.df = self.df.with_columns(
+            [
+                pl.col("RSI").rolling_min(window_size=window).alias("rsi_min"),
+                pl.col("RSI").rolling_max(window_size=window).alias("rsi_max"),
+            ]
         )
-        self.df['stoch_rsi'] = stoch_rsi.stochrsi()
-        self.df['stoch_rsi_d'] = stoch_rsi.stochrsi_d()
-        self.df['stoch_rsi_k'] = stoch_rsi.stochrsi_k()
+
+        self.df = self.df.with_columns(
+            [
+                (
+                    (pl.col("RSI") - pl.col("rsi_min"))
+                    / (pl.col("rsi_max") - pl.col("rsi_min"))
+                    * 100
+                ).alias("stoch_rsi_k")
+            ]
+        )
+
+        # %D = SMA of %K
+        self.df = self.df.with_columns(
+            [
+                pl.col("stoch_rsi_k")
+                .rolling_mean(window_size=smooth1)
+                .alias("stoch_rsi_d")
+            ]
+        )
+
+        # Stochastic RSI = %D
+        self.df = self.df.with_columns([pl.col("stoch_rsi_d").alias("stoch_rsi")])
+
+        # Clean up temporary columns
+        self.df = self.df.drop(["rsi_min", "rsi_max"])
+
+        if not fillna:
+            self.df = self.df.with_columns(
+                [
+                    pl.col("stoch_rsi").fill_null(strategy="forward"),
+                    pl.col("stoch_rsi_d").fill_null(strategy="forward"),
+                    pl.col("stoch_rsi_k").fill_null(strategy="forward"),
+                ]
+            )
 
         return self.df
 
     def stoch_oscillator_indicator(
-            self, window: int = 14, smooth_window: int = 3, fillna: bool = False
-    ) -> pd.DataFrame:
+        self, window: int = 14, smooth_window: int = 3, fillna: bool = False
+    ) -> pl.DataFrame:
         """
         Stochastic Oscillator
         Developed in the late 1950s by George Lane. The stochastic oscillator presents the location of the closing
@@ -81,16 +187,48 @@ class MomentumIndicators(BaseIndicator):
         :param fillna: If True, fill NaN values.
         :return: DataFrame with Stochastic Oscillator indicator fields.
         """
-        stochastic_oscillator = StochasticOscillator(
-            close=self.df.Close, high=self.df.High, low=self.df.Low, window=window, smooth_window=smooth_window,
-            fillna=fillna
+        # Calculate Stochastic Oscillator
+        # %K = (Close - Low_min) / (High_max - Low_min) * 100
+        self.df = self.df.with_columns(
+            [
+                pl.col("Low").rolling_min(window_size=window).alias("low_min"),
+                pl.col("High").rolling_max(window_size=window).alias("high_max"),
+            ]
         )
-        self.df['stoch'] = stochastic_oscillator.stoch()
-        self.df['stoch_signal'] = stochastic_oscillator.stoch_signal()
+
+        self.df = self.df.with_columns(
+            [
+                (
+                    (pl.col("Close") - pl.col("low_min"))
+                    / (pl.col("high_max") - pl.col("low_min"))
+                    * 100
+                ).alias("stoch")
+            ]
+        )
+
+        # %D = SMA of %K
+        self.df = self.df.with_columns(
+            [
+                pl.col("stoch")
+                .rolling_mean(window_size=smooth_window)
+                .alias("stoch_signal")
+            ]
+        )
+
+        # Clean up temporary columns
+        self.df = self.df.drop(["low_min", "high_max"])
+
+        if not fillna:
+            self.df = self.df.with_columns(
+                [
+                    pl.col("stoch").fill_null(strategy="forward"),
+                    pl.col("stoch_signal").fill_null(strategy="forward"),
+                ]
+            )
 
         return self.df
 
-    def all_momentum_indicators(self) -> pd.DataFrame:
+    def all_momentum_indicators(self) -> pl.DataFrame:
         """
         Applies all momentum indicators.
         :return: DataFrame with the all defined momentum indicators.
@@ -99,5 +237,4 @@ class MomentumIndicators(BaseIndicator):
         self.df = self.roc_indicator()
         self.df = self.stoch_rsi_indicator()
         self.df = self.stoch_oscillator_indicator()
-
         return self.df
