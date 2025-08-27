@@ -1,9 +1,7 @@
 # Core Framework
 fastapi==0.116.1
 uvicorn[standard]==0.30.1
-pydantic==2.8.2
-pydantic-settings==2.3.4
-email-validator==2.1.0
+python-multipart==0.0.9
 
 # Database
 sqlalchemy==2.0.31
@@ -15,7 +13,7 @@ redis==5.0.3
 polars==0.20.1
 numpy==2.0.0
 pandas==2.2.2
-yfinance==0.2.38
+yfinance==0.2.65
 yahooquery==2.4.1
 
 # HTTP and API
@@ -25,7 +23,9 @@ httpx==0.27.0
 # Authentication and Security
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
-python-multipart==0.0.9
+pydantic==2.8.2
+pydantic-settings==2.3.4
+email-validator==2.1.0
 
 # Utilities
 python-dotenv==1.0.1
@@ -44,3 +44,6 @@ pre-commit==3.7.1
 mkdocs==1.6.0
 mkdocs-material==9.5.27
 mkdocstrings[python]==0.25.1
+
+# Scheduling (New dependency for market data service)
+schedule==1.2.0

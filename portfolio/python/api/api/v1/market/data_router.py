@@ -1,0 +1,330 @@
+"""
+Market Data Router
+API endpoints for market data operations with fallback to local data.
+"""
+
+from fastapi import APIRouter, HTTPException, Depends, Query
+from typing import List, Optional, Dict, Any
+from datetime import datetime, timedelta
+import pandas as pd
+import asyncio
+
+from services.market_data_service import market_data_service
+from services.data_scheduler import data_scheduler
+from app.core.database.connection import get_db_session
+from sqlalchemy.ext.asyncio import AsyncSession
+
+router = APIRouter(prefix="/market-data", tags=["market-data"])
+
+
+@router.get("/ticker/{symbol}")
+async def get_ticker_data(
+    symbol: str,
+    period: str = Query(
+        "1y",
+        description="Data period (1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max)",
+    ),
+    interval: str = Query(
+        "1d",
+        description="Data interval (1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo)",
+    ),
+    use_fallback: bool = Query(
+        True, description="Use fallback to local data if yfinance fails"
+    ),
+    session: AsyncSession = Depends(get_db_session),
+):
+    """
+    Get market data for a specific ticker with fallback to local data.
+
+    This endpoint first tries to fetch fresh data from yfinance, then falls back
+    to locally stored data if the external API fails.
+    """
+    try:
+        symbol = symbol.upper()
+
+        if use_fallback:
+            # Use the fallback service (always max period for comprehensive data)
+            data = await market_data_service.get_data_with_fallback(symbol, "max", "1d")
+        else:
+            # Try only yfinance (always max period for comprehensive data)
+            data = await market_data_service.fetch_ticker_data(symbol, "max", "1d")
+
+        if data is None:
+            raise HTTPException(
+                status_code=404, detail=f"No data available for ticker {symbol}"
+            )
+
+        # Convert DataFrame to JSON-serializable format
+        result = {
+            "symbol": symbol,
+            "period": period,
+            "interval": interval,
+            "data_points": len(data),
+            "data": data.reset_index().to_dict(orient="records"),
+        }
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error retrieving data for {symbol}: {str(e)}"
+        )
+
+
+@router.get("/ticker/{symbol}/local")
+async def get_local_ticker_data(
+    symbol: str,
+    start_date: Optional[datetime] = Query(
+        None, description="Start date for data range"
+    ),
+    end_date: Optional[datetime] = Query(None, description="End date for data range"),
+    limit: int = Query(100, description="Maximum number of records to return"),
+):
+    """
+    Get market data for a specific ticker from local database only.
+
+    This endpoint retrieves data that has been previously stored locally,
+    without attempting to fetch from external sources.
+    """
+    try:
+        symbol = symbol.upper()
+
+        data = await market_data_service.get_market_data(
+            symbol, start_date, end_date, limit
+        )
+
+        if data is None:
+            raise HTTPException(
+                status_code=404, detail=f"No local data available for ticker {symbol}"
+            )
+
+        result = {
+            "symbol": symbol,
+            "source": "local_database",
+            "data_points": len(data),
+            "data": data.reset_index().to_dict(orient="records"),
+        }
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error retrieving local data for {symbol}: {str(e)}",
+        )
+
+
+@router.post("/ticker/{symbol}/update")
+async def update_ticker_data(
+    symbol: str,
+    force_update: bool = Query(
+        False, description="Force update even if data is recent"
+    ),
+):
+    """
+    Manually update market data for a specific ticker.
+
+    This endpoint triggers an immediate update of market data for the specified ticker.
+    """
+    try:
+        symbol = symbol.upper()
+
+        # Check if update is needed
+        if not force_update:
+            quality_info = await market_data_service.get_data_quality_info(symbol)
+            if "error" not in quality_info and quality_info.get("is_fresh", False):
+                return {
+                    "message": f"Data for {symbol} is already fresh",
+                    "last_updated": quality_info.get("last_updated"),
+                    "data_age_days": quality_info.get("data_age_days"),
+                }
+
+        # Perform the update
+        success = await market_data_service._update_single_ticker(symbol)
+
+        if success:
+            return {
+                "message": f"Successfully updated data for {symbol}",
+                "status": "success",
+            }
+        else:
+            raise HTTPException(
+                status_code=500, detail=f"Failed to update data for {symbol}"
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error updating data for {symbol}: {str(e)}"
+        )
+
+
+@router.get("/ticker/{symbol}/quality")
+async def get_ticker_data_quality(symbol: str):
+    """
+    Get information about data quality and freshness for a specific ticker.
+
+    This endpoint provides metadata about the stored data, including
+    when it was last updated and how fresh it is.
+    """
+    try:
+        symbol = symbol.upper()
+
+        quality_info = await market_data_service.get_data_quality_info(symbol)
+
+        if "error" in quality_info:
+            raise HTTPException(status_code=404, detail=quality_info["error"])
+
+        return quality_info
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error getting quality info for {symbol}: {str(e)}"
+        )
+
+
+@router.post("/update/all")
+async def update_all_tickers(
+    tickers: Optional[List[str]] = Query(
+        None, description="Specific tickers to update, or all if not specified"
+    )
+):
+    """
+    Update market data for multiple tickers.
+
+    This endpoint triggers updates for either specified tickers or all active tickers.
+    """
+    try:
+        results = await data_scheduler.manual_update(tickers)
+
+        successful = [ticker for ticker, success in results.items() if success]
+        failed = [ticker for ticker, success in results.items() if not success]
+
+        return {
+            "message": "Update operation completed",
+            "total_tickers": len(results),
+            "successful": successful,
+            "failed": failed,
+            "success_count": len(successful),
+            "failed_count": len(failed),
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error updating tickers: {str(e)}")
+
+
+@router.get("/tickers/active")
+async def get_active_tickers():
+    """
+    Get list of all active tickers in the system.
+
+    This endpoint returns all tickers that are currently being tracked
+    and have data stored locally.
+    """
+    try:
+        tickers = await data_scheduler._get_active_tickers()
+
+        return {"active_tickers": tickers, "count": len(tickers)}
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error retrieving active tickers: {str(e)}"
+        )
+
+
+@router.get("/status")
+async def get_service_status():
+    """
+    Get the current status of the market data service.
+
+    This endpoint provides information about the service health,
+    including scheduler status and recent operations.
+    """
+    try:
+        # Get scheduler status
+        scheduler_status = {
+            "is_running": data_scheduler.is_running,
+            "update_interval_hours": data_scheduler.update_interval_hours,
+            "batch_size": data_scheduler.batch_size,
+        }
+
+        # Get recent update logs (last 24 hours)
+        async with get_db_session() as session:
+            from models.market_data import DataUpdateLog
+            from sqlalchemy import select, and_
+
+            cutoff_time = datetime.utcnow() - timedelta(hours=24)
+            result = await session.execute(
+                select(DataUpdateLog)
+                .where(DataUpdateLog.created_at >= cutoff_time)
+                .order_by(DataUpdateLog.created_at.desc())
+                .limit(10)
+            )
+
+            recent_logs = result.scalars().all()
+
+            logs_summary = []
+            for log in recent_logs:
+                logs_summary.append(
+                    {
+                        "ticker": log.ticker_symbol,
+                        "operation": log.operation,
+                        "status": log.status,
+                        "timestamp": log.created_at.isoformat(),
+                        "records_processed": log.records_processed,
+                    }
+                )
+
+        return {
+            "service_status": "healthy",
+            "scheduler": scheduler_status,
+            "recent_operations": logs_summary,
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error getting service status: {str(e)}"
+        )
+
+
+@router.post("/scheduler/start")
+async def start_scheduler():
+    """Start the market data scheduler."""
+    try:
+        if data_scheduler.is_running:
+            return {"message": "Scheduler is already running", "status": "running"}
+
+        # Start scheduler in background
+        asyncio.create_task(data_scheduler.start_scheduler())
+
+        return {"message": "Scheduler started successfully", "status": "started"}
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error starting scheduler: {str(e)}"
+        )
+
+
+@router.post("/scheduler/stop")
+async def stop_scheduler():
+    """Stop the market data scheduler."""
+    try:
+        if not data_scheduler.is_running:
+            return {"message": "Scheduler is not running", "status": "stopped"}
+
+        await data_scheduler.stop_scheduler()
+
+        return {"message": "Scheduler stopped successfully", "status": "stopped"}
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error stopping scheduler: {str(e)}"
+        )

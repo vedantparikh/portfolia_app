@@ -3,6 +3,17 @@ from typing import Optional, List
 from datetime import datetime
 from decimal import Decimal
 
+class Symbol(BaseModel):
+    id: int
+    symbol: str
+    name: str
+    is_active: bool
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
 class StockData(BaseModel):
     symbol: str
     price: Decimal

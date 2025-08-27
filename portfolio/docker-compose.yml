@@ -64,48 +64,74 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-      
-  postgres:
-    image: postgres:16.2-alpine
-    volumes:
-      - portfolio_data:/var/lib/postgresql/data/
+
+  data-service:
+    build: 
+      context: ./python/api
+      dockerfile: Dockerfile
+    command: ["python", "start_data_service.py"]
     env_file:
       - .env.docker
-    ports: 
-      - "${POSTGRES_PORT}:5432"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      # Mount source code for live reload
+      - ./python/api/app:/app/app:delegated
+      - ./python/api/models:/app/models:delegated
+      - ./python/api/services:/app/services:delegated
+      - ./python/api/start_data_service.py:/app/start_data_service.py:delegated
+      - ./python/api/requirements.txt:/app/requirements.txt:delegated
     networks:
       - portfolio_network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import psycopg2; print('OK')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - portfolio_network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
-      timeout: 10s
+      timeout: 5s
       retries: 5
-      
+      start_period: 30s
+
   redis:
     image: redis:7-alpine
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "${REDIS_PORT}:6379"
     volumes:
       - redis_data:/data
-    env_file:
-      - .env.docker
     networks:
       - portfolio_network
-    restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
-      timeout: 10s
+      timeout: 5s
       retries: 5
+      start_period: 30s
+
+volumes:
+  postgres_data:
+  redis_data:
 
 networks:
   portfolio_network:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
-
-volumes:
-  portfolio_data:
-  redis_data:
