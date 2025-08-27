@@ -2,7 +2,7 @@
 
 echo "🚀 Starting FastAPI Backend..."
 cd python/api
-source venv/bin/activate
+source .venv/bin/activate
 echo "✅ Virtual environment activated"
 echo "📡 Starting server on http://localhost:8080"
 echo "📚 API docs available at http://localhost:8080/docs"
