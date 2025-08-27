@@ -1,0 +1,153 @@
+import os
+from sqlalchemy import create_engine, text
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.pool import QueuePool
+import redis
+import logging
+from typing import Optional
+import asyncio
+from contextlib import asynccontextmanager
+
+from app.config import settings
+
+logger = logging.getLogger(__name__)
+
+# Create SQLAlchemy engine
+engine = create_engine(
+    settings.DATABASE_URL,
+    poolclass=QueuePool,
+    pool_size=20,
+    max_overflow=30,
+    pool_pre_ping=True,
+    pool_recycle=3600,
+    echo=settings.DEBUG
+)
+
+# Create session factory
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# Create base class for models
+Base = declarative_base()
+
+# Redis client
+redis_client: Optional[redis.Redis] = None
+
+def get_redis_client() -> Optional[redis.Redis]:
+    """Get Redis client instance."""
+    global redis_client
+    if redis_client is None:
+        try:
+            redis_client = redis.Redis(
+                host=settings.REDIS_HOST,
+                port=settings.REDIS_PORT,
+                db=settings.REDIS_DB,
+                decode_responses=True,
+                socket_connect_timeout=5,
+                socket_timeout=5
+            )
+            # Test connection
+            redis_client.ping()
+            logger.info("Redis connection established successfully")
+        except Exception as e:
+            logger.error(f"Failed to connect to Redis: {e}")
+            redis_client = None
+    return redis_client
+
+
+def get_db() -> Session:
+    """Get database session."""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+async def init_db():
+    """Initialize database connection."""
+    try:
+        # Test database connection
+        with engine.connect() as connection:
+            result = connection.execute(text("SELECT 1"))
+            logger.info("Database connection established successfully")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to connect to database: {e}")
+        return False
+
+
+async def create_tables():
+    """Create all database tables."""
+    try:
+        # Import all models to ensure they are registered
+        from app.core.database.models import Base
+        
+        # Create all tables
+        Base.metadata.create_all(bind=engine)
+        logger.info("Database tables created successfully")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to create database tables: {e}")
+        return False
+
+
+async def get_db_health() -> dict:
+    """Get database health status."""
+    try:
+        # Test database connection
+        with engine.connect() as connection:
+            result = connection.execute(text("SELECT 1"))
+            db_status = "healthy"
+    except Exception as e:
+        logger.error(f"Database health check failed: {e}")
+        db_status = "unhealthy"
+    
+    # Test Redis connection
+    try:
+        redis_client = get_redis_client()
+        if redis_client and redis_client.ping():
+            redis_status = "healthy"
+        else:
+            redis_status = "unhealthy"
+    except Exception as e:
+        logger.error(f"Redis health check failed: {e}")
+        redis_status = "unhealthy"
+    
+    return {
+        "database": db_status,
+        "redis": redis_status,
+        "overall": "healthy" if db_status == "healthy" and redis_status == "healthy" else "degraded"
+    }
+
+
+def close_db():
+    """Close database connections."""
+    try:
+        engine.dispose()
+        logger.info("Database connections closed")
+    except Exception as e:
+        logger.error(f"Error closing database connections: {e}")
+
+
+def close_redis():
+    """Close Redis connection."""
+    global redis_client
+    if redis_client:
+        try:
+            redis_client.close()
+            redis_client = None
+            logger.info("Redis connection closed")
+        except Exception as e:
+            logger.error(f"Error closing Redis connection: {e}")
+
+
+# Context manager for database sessions
+@asynccontextmanager
+async def get_db_session():
+    """Get database session with automatic cleanup."""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

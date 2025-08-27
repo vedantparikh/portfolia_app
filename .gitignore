@@ -3,7 +3,62 @@
 .idea
 .ipynb_checkpoints
 /portfolio/python/streamlit/rough.ipynb
- __pycache__/
- *.pyc
-**/__pycache__/
- /portfolio/python/streamlit/plots/__pycache__/
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Coverage files
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+.hypothesis/
+
+# Pytest cache
+.pytest_cache/
+.pytest_cache/*
+.pytest_cache/*/*
+
+# MyPy cache
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+.env.docker
+
+# IDE files
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
