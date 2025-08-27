@@ -9,9 +9,9 @@ from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
-from database.connection import get_db
-from database.models import User, UserProfile, UserSession
-from auth.schemas import (
+from app.core.database.connection import get_db
+from app.core.database.models import User, UserProfile, UserSession
+from app.core.auth.schemas import (
     UserCreate,
     UserLogin,
     UserUpdate,
@@ -25,7 +25,7 @@ from auth.schemas import (
     TwoFactorSetup,
     TwoFactorVerify,
 )
-from auth.utils import (
+from app.core.auth.utils import (
     get_password_hash,
     verify_password,
     create_tokens,
@@ -38,7 +38,7 @@ from auth.utils import (
     sanitize_username,
     log_security_event,
 )
-from auth.dependencies import (
+from app.core.auth.dependencies import (
     get_current_user,
     get_current_active_user,
     get_current_verified_user,
@@ -49,7 +49,7 @@ from auth.dependencies import (
     get_user_agent,
 )
 
-router = APIRouter(prefix="/auth", tags=["authentication"])
+router = APIRouter(tags=["authentication"])
 
 
 @router.post(
@@ -141,8 +141,8 @@ async def login_user(
     user_credentials: UserLogin, request: Request, db: Session = Depends(get_db)
 ):
     """Authenticate user and return JWT tokens."""
-    # Find user by email
-    user = db.query(User).filter(User.email == user_credentials.email.lower()).first()
+    # Find user by username
+    user = db.query(User).filter(User.username == user_credentials.username.lower()).first()
 
     if not user or not verify_password(user_credentials.password, user.password_hash):
         # Log failed login attempt
@@ -150,13 +150,13 @@ async def login_user(
         log_security_event(
             None,
             "failed_login",
-            f"Failed login attempt for email: {user_credentials.email} from IP: {client_ip}",
+            f"Failed login attempt for username: {user_credentials.username} from IP: {client_ip}",
             client_ip,
         )
 
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
+            detail="Incorrect username or password",
         )
 
     if not user.is_active:

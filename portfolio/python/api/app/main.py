@@ -74,34 +74,29 @@ try:
 except ImportError as e:
     logger.warning(f"Could not import test router: {e}")
 
-# TODO: Uncomment these when the actual routers are implemented
-# try:
-#     from api.v1.auth.router import router as auth_router
-#     app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
-#     logger.info("Auth router included successfully")
-# except ImportError as e:
-#     logger.warning(f"Could not import auth router: {e}")
+# Include authentication router
+try:
+    from app.core.auth.router import router as auth_router
+    app.include_router(auth_router, prefix="/api/v1/auth", tags=["authentication"])
+    logger.info("Auth router included successfully")
+except ImportError as e:
+    logger.warning(f"Could not import auth router: {e}")
 
-# try:
-#     from api.v1.market.router import router as market_router
-#     app.include_router(market_router, prefix="/api/v1/market", tags=["market"])
-#     logger.info("Market router included successfully")
-# except ImportError as e:
-#     logger.warning(f"Could not import market router: {e}")
+# Include market router
+try:
+    from api.v1.market.routers import router as market_router
+    app.include_router(market_router, prefix="/api/v1", tags=["market-data"])
+    logger.info("Market router included successfully")
+except ImportError as e:
+    logger.warning(f"Could not import market router: {e}")
 
-# try:
-#     from api.v1.portfolio.router import router as portfolio_router
-#     app.include_router(portfolio_router, prefix="/api/v1/portfolio", tags=["portfolio"])
-#     logger.info("Portfolio router included successfully")
-# except ImportError as e:
-#     logger.warning(f"Could not import portfolio router: {e}")
-
-# try:
-#     from api.v1.statistical_indicators.router import router as indicators_router
-#     app.include_router(indicators_router, prefix="/api/v1/indicators", tags=["indicators"])
-#     logger.info("Statistical indicators router included successfully")
-# except ImportError as e:
-#     logger.warning(f"Could not import statistical indicators router: {e}")
+# Include statistical indicators router
+try:
+    from utils.indicators.routers import router as indicators_router
+    app.include_router(indicators_router, prefix="/api/v1", tags=["statistical-indicators"])
+    logger.info("Statistical indicators router included successfully")
+except ImportError as e:
+    logger.warning(f"Could not import statistical indicators router: {e}")
 
 
 @app.get("/")
