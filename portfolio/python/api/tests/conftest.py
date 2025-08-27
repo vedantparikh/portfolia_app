@@ -10,13 +10,35 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+import sys
+import os
+
+# Add the parent directory to Python path for imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+# Set testing environment BEFORE importing app modules
+os.environ["TESTING"] = "true"
+os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+os.environ["POSTGRES_HOST"] = "localhost"
+os.environ["POSTGRES_PORT"] = "5432"
+os.environ["POSTGRES_USER"] = "test_user"
+os.environ["POSTGRES_PASSWORD"] = "test_password"
+os.environ["POSTGRES_DB"] = "test_db"
+os.environ["REDIS_HOST"] = "localhost"
+os.environ["REDIS_PORT"] = "6379"
+os.environ["REDIS_DB"] = "1"
+os.environ["REDIS_PASSWORD"] = ""
+os.environ["SECRET_KEY"] = "test-secret-key-for-testing-only"
+os.environ["JWT_SECRET_KEY"] = "test-jwt-secret-key-for-testing-only"
+
+# Force SQLite for testing
+os.environ["FORCE_SQLITE"] = "true"
+
+# Import after setting environment variables to ensure test config is used
 from app.main import app
 from app.core.database.connection import Base, get_db
 from app.config import settings
 
-
-# Set testing environment
-os.environ["TESTING"] = "true"
 
 # Create test database
 @pytest.fixture(scope="session")
@@ -42,8 +64,15 @@ def test_db_session_factory(test_db_engine):
 
 @pytest.fixture(scope="function")
 def test_db(test_db_engine, test_db_session_factory):
-    """Create test database session."""
-    # Create tables
+    """
+    Create test database session for each test function.
+    
+    Each test gets a fresh database session with:
+    - Clean tables (recreated for each test)
+    - Isolated data (no cross-test contamination)
+    - Automatic cleanup after each test
+    """
+    # Create tables for this test
     Base.metadata.create_all(bind=test_db_engine)
     
     # Create session
@@ -51,8 +80,11 @@ def test_db(test_db_engine, test_db_session_factory):
     
     yield session
     
-    # Cleanup
+    # Cleanup - rollback changes and close session
+    session.rollback()
     session.close()
+    
+    # Clean tables after each test to ensure isolation
     Base.metadata.drop_all(bind=test_db_engine)
 
 
@@ -67,6 +99,13 @@ def client(test_db) -> Generator:
     
     # Override database dependency
     app.dependency_overrides[get_db] = override_get_db
+    
+    # Also override any other database-related dependencies
+    try:
+        from app.core.database.init_db import init_db
+        app.dependency_overrides[init_db] = lambda: None
+    except ImportError:
+        pass
     
     with TestClient(app) as test_client:
         yield test_client
@@ -103,6 +142,24 @@ async def async_client(test_db) -> AsyncGenerator:
     app.dependency_overrides.clear()
 
 
+@pytest.fixture(scope="session", autouse=True)
+def cleanup_test_database(test_db_engine):
+    """
+    Clean up test database after all tests complete.
+    
+    This fixture runs automatically after all tests finish and ensures:
+    1. All SQLite tables are dropped
+    2. Database engine is properly disposed
+    3. No test data persists between test runs
+    4. Clean test environment for next run
+    """
+    yield
+    # Drop all tables and close engine after all tests
+    Base.metadata.drop_all(bind=test_db_engine)
+    test_db_engine.dispose()
+    print("\n🧹 Test database cleaned up successfully!")
+
+
 # Test data fixtures
 @pytest.fixture
 def sample_user_data():
@@ -111,54 +168,34 @@ def sample_user_data():
         "username": "testuser",
         "email": "test@example.com",
         "password": "testpassword123",
-        "full_name": "Test User"
+        "confirm_password": "testpassword123"
     }
 
 
 @pytest.fixture
-def sample_portfolio_data():
-    """Sample portfolio data for testing."""
+def sample_login_data():
+    """Sample login data for testing."""
     return {
-        "name": "Test Portfolio",
-        "description": "A test portfolio for testing purposes",
-        "risk_tolerance": "moderate"
+        "username": "testuser",
+        "password": "testpassword123"
     }
 
 
 @pytest.fixture
-def sample_asset_data():
-    """Sample asset data for testing."""
+def sample_market_data():
+    """Sample market data for testing."""
     return {
         "symbol": "AAPL",
-        "name": "Apple Inc.",
-        "asset_type": "stock",
-        "quantity": 100,
-        "purchase_price": 150.0
+        "period": "1d",
+        "interval": "1m"
     }
 
 
-# Cleanup fixtures
-@pytest.fixture(autouse=True)
-def cleanup_test_files():
-    """Clean up test files after tests."""
-    yield
-    
-    # Remove test database file if it exists
-    test_db_path = Path("./test.db")
-    if test_db_path.exists():
-        test_db_path.unlink()
-    
-    # Remove coverage files
-    coverage_files = [
-        Path("./.coverage"),
-        Path("./coverage.xml"),
-        Path("./htmlcov")
-    ]
-    
-    for file_path in coverage_files:
-        if file_path.exists():
-            if file_path.is_file():
-                file_path.unlink()
-            elif file_path.is_dir():
-                import shutil
-                shutil.rmtree(file_path)
+@pytest.fixture
+def sample_indicator_data():
+    """Sample indicator data for testing."""
+    return {
+        "name": "AAPL",
+        "period": 14,
+        "interval": "1d"
+    }

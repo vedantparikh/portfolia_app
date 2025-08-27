@@ -15,6 +15,7 @@ polars==0.20.1
 numpy==2.0.0
 pandas==2.2.2
 yfinance==0.2.38
+yahooquery==2.4.1
 
 # HTTP and API
 requests==2.32.3

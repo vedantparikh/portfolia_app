@@ -8,10 +8,10 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from jose import JWTError, jwt
 
-from database.connection import get_db
-from database.models import User, UserProfile
-from auth.utils import verify_token, SECRET_KEY, ALGORITHM
-from auth.schemas import TokenData
+from app.core.database.connection import get_db
+from app.core.database.models import User, UserProfile
+from app.core.auth.utils import verify_token, SECRET_KEY, ALGORITHM
+from app.core.auth.schemas import TokenData
 
 # Security scheme for Bearer token authentication
 security = HTTPBearer()

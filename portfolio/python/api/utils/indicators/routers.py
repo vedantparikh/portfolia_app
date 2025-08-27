@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
 from .momentum_indicators import MomentumIndicators
-from market.stock import get_symbol_df
+from api.v1.market.stock import get_symbol_df
 
 router = APIRouter(prefix="/statistical-indicators", tags=["statistical-indicators"])
 
