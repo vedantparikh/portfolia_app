@@ -328,3 +328,113 @@ async def stop_scheduler():
         raise HTTPException(
             status_code=500, detail=f"Error stopping scheduler: {str(e)}"
         )
+
+
+@router.post("/ticker/{symbol}/refresh-info")
+async def refresh_ticker_info(symbol: str):
+    """
+    Refresh company information for a specific ticker.
+
+    This endpoint fetches fresh company information from yfinance
+    and updates the ticker record in the database.
+    """
+    try:
+        symbol = symbol.upper()
+
+        success = await market_data_service.refresh_ticker_info(symbol)
+
+        if success:
+            return {
+                "message": f"Ticker information refreshed successfully for {symbol}",
+                "symbol": symbol,
+                "status": "refreshed",
+            }
+        else:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Failed to refresh ticker information for {symbol}",
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error refreshing ticker information for {symbol}: {str(e)}",
+        )
+
+
+@router.post("/tickers/refresh-all-info")
+async def refresh_all_ticker_info():
+    """
+    Refresh company information for all active tickers.
+
+    This endpoint fetches fresh company information from yfinance
+    for all active tickers and updates their records in the database.
+    """
+    try:
+        results = await market_data_service.refresh_all_ticker_info()
+
+        successful = [symbol for symbol, success in results.items() if success]
+        failed = [symbol for symbol, success in results.items() if not success]
+
+        return {
+            "message": "Ticker information refresh completed",
+            "total_tickers": len(results),
+            "successful": successful,
+            "failed": failed,
+            "success_count": len(successful),
+            "failure_count": len(failed),
+            "status": "completed",
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error refreshing all ticker information: {str(e)}"
+        )
+
+
+@router.get("/ticker/{symbol}/info")
+async def get_ticker_info(symbol: str):
+    """
+    Get comprehensive ticker information including company details.
+
+    This endpoint retrieves the ticker information stored in the database,
+    including company name, sector, industry, and exchange.
+    """
+    try:
+        symbol = symbol.upper()
+
+        async with get_db_session() as session:
+            from models.market_data import TickerInfo
+            from sqlalchemy import select
+
+            result = await session.execute(
+                select(TickerInfo).where(TickerInfo.symbol == symbol)
+            )
+            ticker = result.scalar_one_or_none()
+
+            if not ticker:
+                raise HTTPException(
+                    status_code=404, detail=f"Ticker {symbol} not found in database"
+                )
+
+            return {
+                "symbol": ticker.symbol,
+                "name": ticker.name,
+                "company_name": ticker.company_name,
+                "sector": ticker.sector,
+                "industry": ticker.industry,
+                "exchange": ticker.exchange,
+                "is_active": ticker.is_active,
+                "created_at": ticker.created_at.isoformat(),
+                "updated_at": ticker.updated_at.isoformat(),
+            }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error retrieving ticker information for {symbol}: {str(e)}",
+        )

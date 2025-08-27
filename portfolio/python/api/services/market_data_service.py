@@ -120,7 +120,7 @@ class MarketDataService:
             return False
 
     async def _get_or_create_ticker(self, symbol: str, session: Session) -> TickerInfo:
-        """Get existing ticker or create new one."""
+        """Get existing ticker or create new one with comprehensive company information."""
         try:
             # Check if ticker exists
             result = session.execute(
@@ -129,12 +129,32 @@ class MarketDataService:
             ticker = result.scalar_one_or_none()
 
             if ticker:
+                # Update existing ticker with fresh company info
+                logger.info(f"Updating existing ticker info for {symbol}")
+                company_info = await self._fetch_company_info(symbol)
+
+                ticker.name = company_info["name"]
+                ticker.company_name = company_info["company_name"]
+                ticker.sector = company_info["sector"]
+                ticker.industry = company_info["industry"]
+                ticker.exchange = company_info["exchange"]
+                ticker.updated_at = datetime.now(timezone.utc)
+
+                session.commit()
+                session.refresh(ticker)
                 return ticker
 
-            # Create new ticker
+            # Create new ticker with comprehensive company information
+            logger.info(f"Creating new ticker with company info for {symbol}")
+            company_info = await self._fetch_company_info(symbol)
+
             ticker = TickerInfo(
                 symbol=symbol,
-                name=symbol,  # Could be enhanced with company info
+                name=company_info["name"],
+                company_name=company_info["company_name"],
+                sector=company_info["sector"],
+                industry=company_info["industry"],
+                exchange=company_info["exchange"],
                 is_active=True,
                 created_at=datetime.now(timezone.utc),
                 updated_at=datetime.now(timezone.utc),
@@ -143,6 +163,7 @@ class MarketDataService:
             session.commit()
             session.refresh(ticker)
 
+            logger.info(f"Created ticker {symbol}: {ticker.name} ({ticker.sector})")
             return ticker
 
         except Exception as e:
@@ -404,6 +425,128 @@ class MarketDataService:
         except Exception as e:
             logger.error(f"Error getting data quality info for {symbol}: {e}")
             return {"error": str(e)}
+
+    async def _fetch_company_info(self, symbol: str) -> Dict[str, Any]:
+        """
+        Fetch comprehensive company information from yfinance.
+
+        Args:
+            symbol: Stock symbol
+
+        Returns:
+            Dictionary with company information
+        """
+        try:
+            ticker = yf.Ticker(symbol)
+
+            # Get company info
+            info = ticker.info
+
+            company_data = {
+                "name": info.get("longName", symbol),
+                "company_name": info.get("longName", info.get("shortName", symbol)),
+                "sector": info.get("sector", None),
+                "industry": info.get("industry", None),
+                "exchange": info.get("exchange", None),
+                "market_cap": info.get("marketCap", None),
+                "country": info.get("country", None),
+                "currency": info.get("currency", None),
+                "website": info.get("website", None),
+                "business_summary": info.get("longBusinessSummary", None),
+            }
+
+            logger.info(
+                f"Fetched company info for {symbol}: {company_data['name']} ({company_data['sector']})"
+            )
+            return company_data
+
+        except Exception as e:
+            logger.warning(f"Failed to fetch company info for {symbol}: {e}")
+            # Return basic info if yfinance fails
+            return {
+                "name": symbol,
+                "company_name": symbol,
+                "sector": None,
+                "industry": None,
+                "exchange": None,
+                "market_cap": None,
+                "country": None,
+                "currency": None,
+                "website": None,
+                "business_summary": None,
+            }
+
+    async def refresh_ticker_info(self, symbol: str) -> bool:
+        """
+        Refresh company information for an existing ticker.
+
+        Args:
+            symbol: Stock symbol
+
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            async with get_db_session() as session:
+                # Get existing ticker
+                result = session.execute(
+                    select(TickerInfo).where(TickerInfo.symbol == symbol)
+                )
+                ticker = result.scalar_one_or_none()
+
+                if not ticker:
+                    logger.warning(f"Ticker {symbol} not found in database")
+                    return False
+
+                # Fetch fresh company info
+                company_info = await self._fetch_company_info(symbol)
+
+                # Update ticker with new information
+                ticker.name = company_info["name"]
+                ticker.company_name = company_info["company_name"]
+                ticker.sector = company_info["sector"]
+                ticker.industry = company_info["industry"]
+                ticker.exchange = company_info["exchange"]
+                ticker.updated_at = datetime.now(timezone.utc)
+
+                session.commit()
+                session.refresh(ticker)
+
+                logger.info(
+                    f"Refreshed ticker info for {symbol}: {ticker.name} ({ticker.sector})"
+                )
+                return True
+
+        except Exception as e:
+            logger.error(f"Error refreshing ticker info for {symbol}: {e}")
+            return False
+
+    async def refresh_all_ticker_info(self) -> Dict[str, bool]:
+        """
+        Refresh company information for all active tickers.
+
+        Returns:
+            Dictionary with refresh status for each symbol
+        """
+        try:
+            async with get_db_session() as session:
+                # Get all active tickers
+                result = session.execute(
+                    select(TickerInfo).where(TickerInfo.is_active == True)
+                )
+                tickers = result.scalars().all()
+
+                results = {}
+                for ticker in tickers:
+                    logger.info(f"Refreshing company info for {ticker.symbol}")
+                    success = await self.refresh_ticker_info(ticker.symbol)
+                    results[ticker.symbol] = success
+
+                return results
+
+        except Exception as e:
+            logger.error(f"Error refreshing all ticker info: {e}")
+            return {}
 
 
 # Global instance
