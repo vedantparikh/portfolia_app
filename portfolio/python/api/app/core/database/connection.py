@@ -17,11 +17,11 @@ logger = logging.getLogger(__name__)
 engine = create_engine(
     settings.DATABASE_URL,
     poolclass=QueuePool,
-    pool_size=20,
-    max_overflow=30,
+    pool_size=settings.POOL_SIZE,
+    max_overflow=settings.MAX_OVERFLOW,
     pool_pre_ping=True,
-    pool_recycle=3600,
-    echo=settings.DEBUG
+    pool_recycle=settings.POOL_RECYCLE,
+    echo=settings.DEBUG,
 )
 
 # Create session factory
@@ -32,6 +32,7 @@ Base = declarative_base()
 
 # Redis client
 redis_client: Optional[redis.Redis] = None
+
 
 def get_redis_client() -> Optional[redis.Redis]:
     """Get Redis client instance."""
@@ -44,7 +45,7 @@ def get_redis_client() -> Optional[redis.Redis]:
                 db=settings.REDIS_DB,
                 decode_responses=True,
                 socket_connect_timeout=5,
-                socket_timeout=5
+                socket_timeout=5,
             )
             # Test connection
             redis_client.ping()
@@ -82,7 +83,7 @@ async def create_tables():
     try:
         # Import all models to ensure they are registered
         from app.core.database.models import Base
-        
+
         # Create all tables
         Base.metadata.create_all(bind=engine)
         logger.info("Database tables created successfully")
@@ -102,7 +103,7 @@ async def get_db_health() -> dict:
     except Exception as e:
         logger.error(f"Database health check failed: {e}")
         db_status = "unhealthy"
-    
+
     # Test Redis connection
     try:
         redis_client = get_redis_client()
@@ -113,11 +114,15 @@ async def get_db_health() -> dict:
     except Exception as e:
         logger.error(f"Redis health check failed: {e}")
         redis_status = "unhealthy"
-    
+
     return {
         "database": db_status,
         "redis": redis_status,
-        "overall": "healthy" if db_status == "healthy" and redis_status == "healthy" else "degraded"
+        "overall": (
+            "healthy"
+            if db_status == "healthy" and redis_status == "healthy"
+            else "degraded"
+        ),
     }
 
 

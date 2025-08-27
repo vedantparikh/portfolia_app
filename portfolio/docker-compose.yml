@@ -3,6 +3,8 @@ services:
     build: ./python/streamlit
     ports:
       - 8501:8501
+    env_file:
+      - .env.docker
     networks:
       - portfolio_network
       
@@ -12,6 +14,8 @@ services:
       - ./js/src:/app/src
     ports:
       - 3000:3000
+    env_file:
+      - .env.docker
     networks:
       - portfolio_network
       
@@ -19,21 +23,10 @@ services:
     build: 
       context: ./python/api
       dockerfile: Dockerfile
-      target: development
     ports:
       - "${API_PORT}:8000"
-    environment:
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=${POSTGRES_PORT}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-      - REDIS_HOST=redis
-      - REDIS_PORT=${REDIS_PORT}
-      - DEBUG=${DEBUG}
-      - PYTHONPATH=/app
-      - PORT=8000
-      - HOST=0.0.0.0
+    env_file:
+      - .env.docker
     depends_on:
       postgres:
         condition: service_healthy
@@ -61,10 +54,8 @@ services:
     image: postgres:16.2-alpine
     volumes:
       - portfolio_data:/var/lib/postgresql/data/
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
+    env_file:
+      - .env.docker
     ports: 
       - "${POSTGRES_PORT}:5432"
     networks:
@@ -82,6 +73,8 @@ services:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
+    env_file:
+      - .env.docker
     networks:
       - portfolio_network
     restart: unless-stopped
@@ -100,6 +93,4 @@ networks:
 
 volumes:
   portfolio_data:
-    driver: local
   redis_data:
-    driver: local
