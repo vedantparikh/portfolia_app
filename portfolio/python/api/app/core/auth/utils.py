@@ -9,16 +9,16 @@ from typing import Optional, Union
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi import HTTPException, status
-from app.core.database.config import db_settings
+from app.config import settings
 
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # JWT token configuration
-ALGORITHM = db_settings.JWT_ALGORITHM
-SECRET_KEY = db_settings.JWT_SECRET_KEY
-ACCESS_TOKEN_EXPIRE_MINUTES = db_settings.ACCESS_TOKEN_EXPIRE_MINUTES
-REFRESH_TOKEN_EXPIRE_DAYS = db_settings.REFRESH_TOKEN_EXPIRE_DAYS
+ALGORITHM = settings.JWT_ALGORITHM
+SECRET_KEY = settings.JWT_SECRET_KEY
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
+REFRESH_TOKEN_EXPIRE_DAYS = settings.REFRESH_TOKEN_EXPIRE_DAYS
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:

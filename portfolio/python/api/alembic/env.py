@@ -16,8 +16,8 @@ if config.config_file_name is not None:
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-from database.connection import Base
-from database.config import db_settings
+from app.core.database.connection import Base
+from app.core.database.config import db_settings
 
 # Set the target metadata to our models
 target_metadata = Base.metadata

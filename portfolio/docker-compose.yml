@@ -3,8 +3,16 @@ services:
     build: ./python/streamlit
     ports:
       - 8501:8501
+    env_file:
+      - .env.docker
     networks:
       - portfolio_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
       
   app:
     build: ./js
@@ -12,46 +20,46 @@ services:
       - ./js/src:/app/src
     ports:
       - 3000:3000
+    env_file:
+      - .env.docker
     networks:
       - portfolio_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
       
   api:
     build: 
       context: ./python/api
       dockerfile: Dockerfile
-      target: development
     ports:
       - "${API_PORT}:8000"
-    environment:
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=${POSTGRES_PORT}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-      - REDIS_HOST=redis
-      - REDIS_PORT=${REDIS_PORT}
-      - DEBUG=${DEBUG}
-      - PYTHONPATH=/app
-      - PORT=8000
-      - HOST=0.0.0.0
+    env_file:
+      - .env.docker
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     volumes:
-      # Development: Mount source code for live reload
-      - ./python/api:/app:delegated
-      # Exclude virtual environment and cache
-      - /app/.venv
-      - /app/__pycache__
-      - /app/.pytest_cache
-      - /app/.coverage
+      # Development: Mount source code for live reload (exclude cache)
+      - ./python/api/app:/app/app:delegated
+      - ./python/api/models:/app/models:delegated
+      - ./python/api/utils:/app/utils:delegated
+      - ./python/api/api:/app/api:delegated
+      - ./python/api/alembic:/app/alembic:delegated
+      - ./python/api/services:/app/services:delegated
+      - ./python/api/start_api.py:/app/start_api.py:delegated
+      - ./python/api/start_api.sh:/app/start_api.sh:delegated
+      - ./python/api/requirements.txt:/app/requirements.txt:delegated
     networks:
       - portfolio_network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health', timeout=5)"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -61,10 +69,8 @@ services:
     image: postgres:16.2-alpine
     volumes:
       - portfolio_data:/var/lib/postgresql/data/
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
+    env_file:
+      - .env.docker
     ports: 
       - "${POSTGRES_PORT}:5432"
     networks:
@@ -82,6 +88,8 @@ services:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
+    env_file:
+      - .env.docker
     networks:
       - portfolio_network
     restart: unless-stopped
@@ -100,6 +108,4 @@ networks:
 
 volumes:
   portfolio_data:
-    driver: local
   redis_data:
-    driver: local
