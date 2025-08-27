@@ -4,16 +4,16 @@ services:
     image: postgres:15
     container_name: portfolia_postgres
     environment:
-      POSTGRES_DB: portfolio
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d portfolio"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -25,7 +25,7 @@ services:
     image: redis:7-alpine
     container_name: portfolia_redis
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -43,15 +43,18 @@ services:
       dockerfile: Dockerfile
     container_name: portfolia_api
     environment:
-      - DATABASE_URL=postgresql://user:password@postgres:5432/portfolio
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_DB=0
-      - DEBUG=true
-      - HOST=0.0.0.0
-      - PORT=8000
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_DB=${REDIS_DB}
+      - DEBUG=${DEBUG}
+      - HOST=${API_HOST}
+      - PORT=${API_PORT}
+      - LOG_LEVEL=${LOG_LEVEL}
+      - SECRET_KEY=${SECRET_KEY}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
     ports:
-      - "8000:8000"
+      - "${API_PORT}:8000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -59,8 +62,6 @@ services:
         condition: service_healthy
     volumes:
       - .:/app
-      - /app/__pycache__
-      - /app/.pytest_cache
     networks:
       - portfolia_network
     restart: unless-stopped
