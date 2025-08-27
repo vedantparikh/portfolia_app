@@ -7,6 +7,12 @@ services:
       - .env.docker
     networks:
       - portfolio_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
       
   app:
     build: ./js
@@ -18,6 +24,12 @@ services:
       - .env.docker
     networks:
       - portfolio_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
       
   api:
     build: 
@@ -33,18 +45,21 @@ services:
       redis:
         condition: service_healthy
     volumes:
-      # Development: Mount source code for live reload
-      - ./python/api:/app:delegated
-      # Exclude virtual environment and cache
-      - /app/.venv
-      - /app/__pycache__
-      - /app/.pytest_cache
-      - /app/.coverage
+      # Development: Mount source code for live reload (exclude cache)
+      - ./python/api/app:/app/app:delegated
+      - ./python/api/models:/app/models:delegated
+      - ./python/api/utils:/app/utils:delegated
+      - ./python/api/api:/app/api:delegated
+      - ./python/api/alembic:/app/alembic:delegated
+      - ./python/api/services:/app/services:delegated
+      - ./python/api/start_api.py:/app/start_api.py:delegated
+      - ./python/api/start_api.sh:/app/start_api.sh:delegated
+      - ./python/api/requirements.txt:/app/requirements.txt:delegated
     networks:
       - portfolio_network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health', timeout=5)"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
       interval: 30s
       timeout: 10s
       retries: 3

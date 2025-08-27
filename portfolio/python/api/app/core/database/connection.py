@@ -9,19 +9,19 @@ from typing import Optional
 import asyncio
 from contextlib import asynccontextmanager
 
-from app.config import settings
+from app.core.database.config import db_settings
 
 logger = logging.getLogger(__name__)
 
 # Create SQLAlchemy engine
 engine = create_engine(
-    settings.DATABASE_URL,
+    db_settings.postgres_url,
     poolclass=QueuePool,
-    pool_size=settings.POOL_SIZE,
-    max_overflow=settings.MAX_OVERFLOW,
+    pool_size=db_settings.POOL_SIZE,
+    max_overflow=db_settings.MAX_OVERFLOW,
     pool_pre_ping=True,
-    pool_recycle=settings.POOL_RECYCLE,
-    echo=settings.DEBUG,
+    pool_recycle=db_settings.POOL_RECYCLE,
+    echo=db_settings.DEBUG,
 )
 
 # Create session factory
@@ -40,9 +40,9 @@ def get_redis_client() -> Optional[redis.Redis]:
     if redis_client is None:
         try:
             redis_client = redis.Redis(
-                host=settings.REDIS_HOST,
-                port=settings.REDIS_PORT,
-                db=settings.REDIS_DB,
+                host=db_settings.REDIS_HOST,
+                port=db_settings.REDIS_PORT,
+                db=db_settings.REDIS_DB,
                 decode_responses=True,
                 socket_connect_timeout=5,
                 socket_timeout=5,
