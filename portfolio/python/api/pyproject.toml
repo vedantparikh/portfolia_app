@@ -5,73 +5,85 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "portfolia-api"
 version = "1.0.0"
-description = "Financial portfolio analysis and trading strategy API"
-authors = [
-    {name = "Portfolia Team", email = "team@portfolia.com"}
-]
+description = "Portfolio management and trading strategy API"
 readme = "README.md"
-license = {text = "MIT"}
 requires-python = ">=3.9"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
+    "Intended Audience :: Financial and Insurance Industry",
     "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Office/Business :: Financial :: Investment",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Software Development :: Libraries :: Python Modules",
 ]
-
 dependencies = [
-    "fastapi>=0.104.1",
-    "uvicorn[standard]>=0.24.0",
-    "sqlalchemy>=2.0.23",
-    "alembic>=1.12.1",
+    "fastapi>=0.116.1",
+    "uvicorn[standard]>=0.30.1",
+    "sqlalchemy>=2.0.31",
     "psycopg2-binary>=2.9.9",
-    "redis>=5.0.1",
+    "alembic>=1.13.1",
+    "redis>=5.0.3",
+    "polars>=0.20.1",
+    "numpy>=2.0.0",
+    "pandas>=2.2.2",
+    "yfinance>=0.2.65",
+    "yahooquery>=2.4.1",
+    "requests>=2.32.3",
+    "httpx>=0.27.0",
     "python-jose[cryptography]>=3.3.0",
     "passlib[bcrypt]>=1.7.4",
-    "pandas>=2.1.3",
-    "numpy>=1.25.2",
-    "pydantic>=2.5.0",
-    "pydantic-settings>=2.1.0",
-    "httpx>=0.25.2",
-    "requests>=2.31.0",
-    "python-dotenv>=1.0.0",
-    "structlog>=23.2.0",
+    "pydantic>=2.8.2",
+    "pydantic-settings>=2.3.4",
+    "email-validator>=2.1.0",
+    "python-dotenv>=1.0.1",
+    "python-dateutil>=2.9.0.post0",
+    "environs>=14.3.0",
+    "schedule>=1.2.0",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=7.4.3",
-    "pytest-asyncio>=0.21.1",
-    "pytest-cov>=4.1.0",
-    "black>=23.11.0",
-    "flake8>=6.1.0",
-    "mypy>=1.7.1",
-    "pre-commit>=3.3.3",
+    "pytest>=8.2.2",
+    "pytest-asyncio>=0.23.7",
+    "pytest-cov>=5.0.0",
+    "black>=24.4.2",
+    "flake8>=7.1.0",
+    "mypy>=1.10.1",
+    "pre-commit>=3.7.1",
+    "fakeredis>=2.31.0",
 ]
-
-test = [
-    "pytest>=7.4.3",
-    "pytest-asyncio>=0.21.1",
-    "pytest-cov>=4.1.0",
+docs = [
+    "mkdocs>=1.6.0",
+    "mkdocs-material>=9.5.27",
+    "mkdocstrings[python]>=0.25.1",
 ]
 
 [project.urls]
 Homepage = "https://github.com/portfolia/portfolia-api"
-Documentation = "https://portfolia-api.readthedocs.io"
+Documentation = "https://portfolia-api.readthedocs.io/"
 Repository = "https://github.com/portfolia/portfolia-api.git"
 Issues = "https://github.com/portfolia/portfolia-api/issues"
+Changelog = "https://github.com/portfolia/portfolia-api/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["app*", "api*", "services*", "models*", "utils*"]
+exclude = [
+    "tests*",
+    "docs*",
+    "scripts*",
+]
 
 [tool.black]
 line-length = 88
-target-version = ['py39']
+target-version = ['py39', 'py310', 'py311', 'py312']
 include = '\.pyi?$'
 extend-exclude = '''
 /(
@@ -86,6 +98,20 @@ extend-exclude = '''
   | dist
 )/
 '''
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = ["E203", "W503"]
+exclude = [
+    ".git",
+    "__pycache__",
+    ".venv",
+    "venv",
+    "build",
+    "dist",
+    ".eggs",
+    "*.egg",
+]
 
 [tool.mypy]
 python_version = "3.9"
@@ -103,7 +129,7 @@ warn_unreachable = true
 strict_equality = true
 
 [tool.pytest.ini_options]
-minversion = "7.0"
+minversion = "6.0"
 addopts = "-ra -q --strict-markers --strict-config"
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
@@ -111,6 +137,44 @@ python_classes = ["Test*"]
 python_functions = ["test_*"]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-    "integration: marks tests as integration tests",
     "unit: marks tests as unit tests",
+    "integration: marks tests as integration tests",
+    "e2e: marks tests as end-to-end tests",
 ]
+
+[tool.coverage.run]
+source = ["app", "api", "services", "models", "utils"]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "*/__pycache__/*",
+    "*/venv/*",
+    "*/.venv/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+# Python bytecode generation settings
+[tool.setuptools.package-data]
+"*" = ["*.py"]
+
+# Environment variables to disable bytecode generation
+[tool.setuptools.dynamic]
+version = {attr = "app.__version__"}
+
+# Additional configuration to prevent __pycache__ generation
+[tool.setuptools]
+use_scm_version = false
+zip_safe = false
