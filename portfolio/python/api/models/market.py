@@ -1,18 +1,21 @@
-from pydantic import BaseModel
-from typing import Optional, List
 from datetime import datetime
 from decimal import Decimal
+from typing import Optional
+
+from pydantic import BaseModel
+
 
 class Symbol(BaseModel):
     id: int
     symbol: str
     name: str
     is_active: bool
-    created_at: datetime
+    created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
+
 
 class StockData(BaseModel):
     symbol: str
@@ -26,6 +29,7 @@ class StockData(BaseModel):
     change: Optional[Decimal] = None
     change_percent: Optional[Decimal] = None
 
+
 class MarketData(BaseModel):
     symbol: str
     current_price: Decimal
@@ -35,12 +39,14 @@ class MarketData(BaseModel):
     beta: Optional[Decimal] = None
     timestamp: datetime
 
+
 class MarketIndex(BaseModel):
     name: str
     value: Decimal
     change: Optional[Decimal] = None
     change_percent: Optional[Decimal] = None
     timestamp: datetime
+
 
 class StockQuote(BaseModel):
     symbol: str

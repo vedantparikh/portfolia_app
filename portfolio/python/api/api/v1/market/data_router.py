@@ -1,20 +1,94 @@
 """
 Market Data Router
-API endpoints for market data operations with fallback to local data.
+API endpoints for market data operations with separate endpoints for fresh and local data.
 """
 
-from fastapi import APIRouter, HTTPException, Depends, Query
-from typing import List, Optional, Dict, Any
-from datetime import datetime, timedelta
-import pandas as pd
 import asyncio
+import logging
+from datetime import datetime
+from datetime import timedelta
+from typing import List
+from typing import Optional
 
-from services.market_data_service import market_data_service
-from services.data_scheduler import data_scheduler
-from app.core.database.connection import get_db_session
+from fastapi import APIRouter
+from fastapi import Depends
+from fastapi import HTTPException
+from fastapi import Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.database.connection import get_db_session
+from services.data_scheduler import data_scheduler
+from services.market_data_service import market_data_service
+
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/market-data", tags=["market-data"])
+
+
+@router.get("/ticker/{symbol}/fresh")
+async def get_fresh_ticker_data(
+    symbol: str,
+    period: str = Query(
+        "max",
+        description="Data period (1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max)",
+    ),
+    interval: str = Query(
+        "1d",
+        description="Data interval (1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo)",
+    ),
+    session: AsyncSession = Depends(get_db_session),
+):
+    """
+    Get fresh market data for a specific ticker from yfinance API.
+
+    This endpoint fetches live data from yfinance and stores it locally for future use.
+    Always fetches maximum available data for comprehensive coverage.
+
+    Note: This endpoint may take longer to respond as it fetches fresh data from external API.
+    """
+    try:
+        symbol = symbol.upper()
+
+        # Fetch fresh data from yfinance (always max period for comprehensive coverage)
+        data = await market_data_service.fetch_ticker_data(symbol, "max", "1d")
+
+        if data is None:
+            raise HTTPException(
+                status_code=404, detail=f"No fresh data available for ticker {symbol}"
+            )
+
+        # Store the fresh data locally
+        try:
+            # Convert AsyncSession to regular Session for storage
+            from sqlalchemy.orm import Session
+
+            sync_session = Session(bind=session.bind)
+            await market_data_service.store_market_data(symbol, data, sync_session)
+            sync_session.close()
+            logger.info(f"Fresh data stored locally for {symbol}")
+        except Exception as e:
+            logger.warning(f"Failed to store fresh data locally for {symbol}: {e}")
+            # Continue even if local storage fails
+
+        # Convert DataFrame to JSON-serializable format
+        result = {
+            "symbol": symbol,
+            "period": period,
+            "interval": interval,
+            "source": "yfinance_fresh",
+            "data_points": len(data),
+            "data": data.reset_index().to_dict(orient="records"),
+        }
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error retrieving fresh data for {symbol}: {str(e)}",
+        )
 
 
 @router.get("/ticker/{symbol}")
@@ -34,10 +108,15 @@ async def get_ticker_data(
     session: AsyncSession = Depends(get_db_session),
 ):
     """
-    Get market data for a specific ticker with fallback to local data.
+    Get market data for a specific ticker with intelligent source selection.
 
-    This endpoint first tries to fetch fresh data from yfinance, then falls back
-    to locally stored data if the external API fails.
+    This endpoint intelligently chooses the best data source:
+    - If local data is fresh (< 24 hours old), returns local data for speed
+    - If local data is stale, fetches fresh data from yfinance
+    - Always stores fresh data locally for future use
+
+    For guaranteed fresh data, use /ticker/{symbol}/fresh
+    For guaranteed fast local data, use /ticker/{symbol}/local
     """
     try:
         symbol = symbol.upper()
@@ -257,8 +336,10 @@ async def get_service_status():
 
         # Get recent update logs (last 24 hours)
         async with get_db_session() as session:
+            from sqlalchemy import and_
+            from sqlalchemy import select
+
             from models.market_data import DataUpdateLog
-            from sqlalchemy import select, and_
 
             cutoff_time = datetime.utcnow() - timedelta(hours=24)
             result = await session.execute(
@@ -406,8 +487,9 @@ async def get_ticker_info(symbol: str):
         symbol = symbol.upper()
 
         async with get_db_session() as session:
-            from models.market_data import TickerInfo
             from sqlalchemy import select
+
+            from models.market_data import TickerInfo
 
             result = await session.execute(
                 select(TickerInfo).where(TickerInfo.symbol == symbol)

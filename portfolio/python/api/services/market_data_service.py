@@ -5,13 +5,12 @@ Handles fetching, storing, and serving daily market data with fallback to local 
 
 import asyncio
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 import pandas as pd
 import yfinance as yf
 from sqlalchemy.orm import Session
 from sqlalchemy import select, and_, desc
-from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.database.connection import get_db_session
 from models.market_data import MarketData, TickerInfo
@@ -23,7 +22,7 @@ logger = logging.getLogger(__name__)
 class MarketDataService:
     """Service for managing market data operations."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.max_retries = 3
         self.retry_delay = 5  # seconds
 
@@ -51,16 +50,16 @@ class MarketDataService:
                 ticker = yf.Ticker(symbol)
                 # Always fetch max data for 1d interval to ensure comprehensive coverage
                 # yfinance default returns only ~30 days, max period returns 40+ years
-                data = ticker.history(period="max", interval="1d")
+                data = ticker.history(period=period, interval=interval)
 
-                if data.empty:
+                if not isinstance(data, pd.DataFrame) or data.empty:
                     logger.warning(f"No data returned for {symbol}")
                     return None
 
                 logger.info(
                     f"Successfully fetched {len(data)} records for {symbol} (max period)"
                 )
-                return data
+                return data if isinstance(data, pd.DataFrame) else None
 
             except Exception as e:
                 logger.error(f"Attempt {attempt + 1} failed for {symbol}: {e}")
@@ -170,7 +169,7 @@ class MarketDataService:
             logger.error(f"Error in _get_or_create_ticker for {symbol}: {e}")
             raise
 
-    async def _upsert_market_data(self, records: List[MarketData], session: Session):
+    async def _upsert_market_data(self, records: List[MarketData], session: Session) -> None:
         """Upsert market data records."""
         try:
             for record in records:

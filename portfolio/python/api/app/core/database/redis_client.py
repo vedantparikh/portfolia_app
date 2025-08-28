@@ -5,7 +5,6 @@ import os
 import pickle
 from functools import wraps
 from typing import List
-from unittest.mock import MagicMock
 
 import redis
 from environs import Env

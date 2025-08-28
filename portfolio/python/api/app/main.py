@@ -1,7 +1,6 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging
-import asyncio
 from contextlib import asynccontextmanager
 
 from app.config import settings
@@ -68,9 +67,9 @@ app.include_router(health_router, prefix="/health", tags=["health"])
 
 # Include API v1 routers
 try:
-    from api.v1.test_router import router as test_router
+    from api.v1.health_router import router as health_router
 
-    app.include_router(test_router, prefix="/api/v1", tags=["test"])
+    app.include_router(health_router, prefix="/api/v1", tags=["test"])
     logger.info("Test router included successfully")
 except ImportError as e:
     logger.warning(f"Could not import test router: {e}")
