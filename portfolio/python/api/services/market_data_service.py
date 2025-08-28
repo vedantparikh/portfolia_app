@@ -269,7 +269,6 @@ class MarketDataService:
                     )
 
                 df = pd.DataFrame(data)
-                df.set_index("Date", inplace=True)
 
                 logger.info(f"Retrieved {len(df)} records for {symbol} from database")
                 return df

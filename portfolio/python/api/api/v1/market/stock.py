@@ -10,12 +10,12 @@ from typing import Dict
 from typing import List
 from typing import Optional
 
-from fastapi import APIRouter
-from fastapi import HTTPException
-from fastapi import Query
+from fastapi import APIRouter, HTTPException, Query, Depends, Request
 from yahooquery import search
 
 from services.market_data_service import market_data_service
+from app.core.auth.dependencies import get_optional_current_user, get_client_ip
+from app.core.auth.utils import is_rate_limited, rate_limit_key
 
 logger = logging.getLogger(__name__)
 
@@ -23,13 +23,25 @@ router = APIRouter()
 
 
 @router.get("/symbols")
-async def get_symbols(name: str) -> Optional[List[Dict[str, Any]]]:
+async def get_symbols(
+    name: str, request: Request = None, current_user=Depends(get_optional_current_user)
+) -> Optional[List[Dict[str, Any]]]:
     """
     Get stock symbols matching the search name.
 
-    This endpoint searches for stock symbols using yahooquery and returns
-    matching results with symbol and quote type information.
+    Rate limited for unauthenticated users to prevent abuse.
     """
+    # Rate limiting for unauthenticated users
+    if not current_user:
+        client_ip = get_client_ip(request) if request else "unknown"
+        if is_rate_limited(
+            client_ip, "symbol_search", max_attempts=10, window_seconds=3600
+        ):
+            raise HTTPException(
+                status_code=429,
+                detail="Rate limit exceeded. Please authenticate or try again later.",
+            )
+
     try:
         # Search for symbols
         data = search(name)
@@ -62,15 +74,25 @@ async def get_symbol_data_fresh(
         default="1d",
         description="Data interval (1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo)",
     ),
+    request: Request = None,
+    current_user=Depends(get_optional_current_user),
 ) -> Optional[Dict[str, Any]]:
     """
     Get fresh stock data for a specific symbol from yfinance API.
 
-    This endpoint fetches live data from yfinance and stores it locally for future use.
-    Always fetches maximum available data for comprehensive coverage.
-
-    Note: This endpoint may take longer to respond as it fetches fresh data from external API.
+    Rate limited for unauthenticated users to prevent abuse.
     """
+    # Rate limiting for unauthenticated users
+    if not current_user:
+        client_ip = get_client_ip(request) if request else "unknown"
+        if is_rate_limited(
+            client_ip, "fresh_data", max_attempts=5, window_seconds=3600
+        ):
+            raise HTTPException(
+                status_code=429,
+                detail="Rate limit exceeded. Please authenticate or try again later.",
+            )
+
     try:
         # Fetch fresh data from yfinance (always max period for comprehensive coverage)
         data = await market_data_service.fetch_ticker_data(
@@ -117,15 +139,25 @@ async def get_symbol_data_local(
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     limit: int = Query(100, description="Maximum number of records to return"),
+    request: Request = None,
+    current_user=Depends(get_optional_current_user),
 ) -> Optional[Dict[str, Any]]:
     """
     Get stock data for a specific symbol from local database only.
 
-    This endpoint retrieves data that has been previously stored locally,
-    without attempting to fetch from external sources.
-
-    Note: This endpoint responds quickly but may contain older data.
+    Rate limited for unauthenticated users to prevent abuse.
     """
+    # Rate limiting for unauthenticated users
+    if not current_user:
+        client_ip = get_client_ip(request) if request else "unknown"
+        if is_rate_limited(
+            client_ip, "local_data", max_attempts=20, window_seconds=3600
+        ):
+            raise HTTPException(
+                status_code=429,
+                detail="Rate limit exceeded. Please authenticate or try again later.",
+            )
+
     start_dt = None
     end_dt = None
     if start_date:
@@ -174,18 +206,25 @@ async def get_symbol_data(
         default="1d",
         description="Data interval (1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo)",
     ),
+    request: Request = None,
+    current_user=Depends(get_optional_current_user),
 ) -> Optional[Dict[str, Any]]:
     """
     Get stock data for a specific symbol with intelligent source selection.
 
-    This endpoint intelligently chooses the best data source:
-    - If local data is fresh (< 24 hours old), returns local data for speed
-    - If local data is stale, fetches fresh data from yfinance
-    - Always stores fresh data locally for future use
-
-    For guaranteed fresh data, use /symbol-data/fresh
-    For guaranteed fast local data, use /symbol-data/local
+    Rate limited for unauthenticated users to prevent abuse.
     """
+    # Rate limiting for unauthenticated users
+    if not current_user:
+        client_ip = get_client_ip(request) if request else "unknown"
+        if is_rate_limited(
+            client_ip, "intelligent_data", max_attempts=15, window_seconds=3600
+        ):
+            raise HTTPException(
+                status_code=429,
+                detail="Rate limit exceeded. Please authenticate or try again later.",
+            )
+
     try:
         # Check data quality first
         quality_info = await market_data_service.get_data_quality_info(name)
@@ -201,7 +240,11 @@ async def get_symbol_data(
                 "interval": interval,
                 "source": "local_database_fresh",
                 "data_points": len(data) if data is not None and not data.empty else 0,
-                "data": data.to_dict(orient="records") if data is not None and not data.empty else [],
+                "data": (
+                    data.to_dict(orient="records")
+                    if data is not None and not data.empty
+                    else []
+                ),
                 "data_age_hours": quality_info.get("data_age_days", 0) * 24,
             }
             return result

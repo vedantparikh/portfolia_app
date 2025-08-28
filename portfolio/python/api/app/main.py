@@ -114,6 +114,78 @@ try:
 except ImportError as e:
     logger.warning(f"Could not import statistical indicators router: {e}")
 
+# Include portfolio router
+try:
+    from api.v1.portfolio.router import router as portfolio_router
+
+    app.include_router(portfolio_router, prefix="/api/v1", tags=["portfolios"])
+    logger.info("Portfolio router included successfully")
+except ImportError as e:
+    logger.warning(f"Could not import portfolio router: {e}")
+    logger.error(f"Portfolio router import error details: {e}")
+    import traceback
+
+    logger.error(f"Full traceback: {traceback.format_exc()}")
+except Exception as e:
+    logger.error(f"Unexpected error importing portfolio router: {e}")
+    import traceback
+
+    logger.error(f"Full traceback: {traceback.format_exc()}")
+
+# Include assets router
+try:
+    from api.v1.assets.router import router as assets_router
+
+    app.include_router(assets_router, prefix="/api/v1", tags=["assets"])
+    logger.info("Assets router included successfully")
+except ImportError as e:
+    logger.warning(f"Could not import assets router: {e}")
+    logger.error(f"Assets router import error details: {e}")
+    import traceback
+
+    logger.error(f"Full traceback: {traceback.format_exc()}")
+except Exception as e:
+    logger.error(f"Unexpected error importing assets router: {e}")
+    import traceback
+
+    logger.error(f"Full traceback: {traceback.format_exc()}")
+
+# Include transactions router
+try:
+    from api.v1.transactions.router import router as transactions_router
+
+    app.include_router(transactions_router, prefix="/api/v1", tags=["transactions"])
+    logger.info("Transactions router included successfully")
+except ImportError as e:
+    logger.warning(f"Could not import transactions router: {e}")
+    logger.error(f"Transactions router import error details: {e}")
+    import traceback
+
+    logger.error(f"Full traceback: {traceback.format_exc()}")
+except Exception as e:
+    logger.error(f"Unexpected error importing transactions router: {e}")
+    import traceback
+
+    logger.error(f"Full traceback: {traceback.format_exc()}")
+
+# Include analytics router
+try:
+    from api.v1.analytics.router import router as analytics_router
+
+    app.include_router(analytics_router, prefix="/api/v1", tags=["analytics"])
+    logger.info("Analytics router included successfully")
+except ImportError as e:
+    logger.warning(f"Could not import analytics router: {e}")
+    logger.error(f"Analytics router import error details: {e}")
+    import traceback
+
+    logger.error(f"Full traceback: {traceback.format_exc()}")
+except Exception as e:
+    logger.error(f"Unexpected error importing analytics router: {e}")
+    import traceback
+
+    logger.error(f"Full traceback: {traceback.format_exc()}")
+
 
 @app.get("/")
 async def root():

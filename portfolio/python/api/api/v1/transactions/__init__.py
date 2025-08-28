@@ -1,5 +1,5 @@
 """
-Portfolio management API endpoints.
+Transactions management API endpoints.
 """
 
 from .router import router
