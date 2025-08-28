@@ -4,13 +4,12 @@ API endpoints for stock data operations using the new market data service.
 """
 
 from fastapi import APIRouter, HTTPException, Query
-from typing import List, Optional
-import pandas as pd
+from typing import Optional
 
 from services.market_data_service import market_data_service
 from models.market import Symbol
 
-router = APIRouter(prefix="/stock", tags=["stock-data"])
+router = APIRouter(prefix="/stock")
 
 
 @router.get("/symbols")
@@ -49,18 +48,18 @@ async def get_symbols(name: str):
 
 @router.get("/symbol-data")
 async def get_symbol_data(
-    name: str,
-    period: str = Query(
-        "1y",
-        description="Data period (1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max)",
-    ),
-    interval: str = Query(
-        "1d",
-        description="Data interval (1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo)",
-    ),
-    use_fallback: bool = Query(
-        True, description="Use fallback to local data if yfinance fails"
-    ),
+        name: str,
+        period: str = Query(
+            "1y",
+            description="Data period (1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max)",
+        ),
+        interval: str = Query(
+            "1d",
+            description="Data interval (1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo)",
+        ),
+        use_fallback: bool = Query(
+            True, description="Use fallback to local data if yfinance fails"
+        ),
 ):
     """
     Get stock data for a specific symbol with fallback to local data.
@@ -100,10 +99,10 @@ async def get_symbol_data(
 
 @router.get("/symbol-data/local")
 async def get_symbol_data_local(
-    name: str,
-    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
-    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
-    limit: int = Query(100, description="Maximum number of records to return"),
+        name: str,
+        start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+        end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+        limit: int = Query(100, description="Maximum number of records to return"),
 ):
     """
     Get stock data for a specific symbol from local database only.

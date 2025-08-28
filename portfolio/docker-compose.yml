@@ -35,10 +35,10 @@ services:
     build: 
       context: ./python/api
       dockerfile: Dockerfile
-    ports:
-      - "${API_PORT}:8000"
     env_file:
       - .env.docker
+    ports:
+      - "${API_PORT}:8000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -96,10 +96,8 @@ services:
 
   postgres:
     image: postgres:15
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    env_file:
+      - .env.docker
     ports:
       - "${POSTGRES_PORT}:5432"
     volumes:
@@ -115,6 +113,8 @@ services:
 
   redis:
     image: redis:7-alpine
+    env_file:
+      - .env.docker
     ports:
       - "${REDIS_PORT}:6379"
     volumes:

@@ -1,4 +1,3 @@
-import os
 from sqlalchemy import create_engine, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
@@ -6,10 +5,10 @@ from sqlalchemy.pool import QueuePool
 import redis
 import logging
 from typing import Optional
-import asyncio
 from contextlib import asynccontextmanager
 
 from app.core.database.config import db_settings
+from app.core.database.redis_client import get_redis
 
 logger = logging.getLogger(__name__)
 
@@ -31,29 +30,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 # Redis client
-redis_client: Optional[redis.Redis] = None
-
-
-def get_redis_client() -> Optional[redis.Redis]:
-    """Get Redis client instance."""
-    global redis_client
-    if redis_client is None:
-        try:
-            redis_client = redis.Redis(
-                host=db_settings.REDIS_HOST,
-                port=db_settings.REDIS_PORT,
-                db=db_settings.REDIS_DB,
-                decode_responses=True,
-                socket_connect_timeout=5,
-                socket_timeout=5,
-            )
-            # Test connection
-            redis_client.ping()
-            logger.info("Redis connection established successfully")
-        except Exception as e:
-            logger.error(f"Failed to connect to Redis: {e}")
-            redis_client = None
-    return redis_client
+redis_client: Optional[redis.Redis] = get_redis()
 
 
 def get_db() -> Session:
@@ -106,7 +83,7 @@ async def get_db_health() -> dict:
 
     # Test Redis connection
     try:
-        redis_client = get_redis_client()
+        redis_client = get_redis()
         if redis_client and redis_client.ping():
             redis_status = "healthy"
         else:
