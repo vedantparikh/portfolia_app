@@ -27,7 +27,7 @@ class MarketDataService:
         self.retry_delay = 5  # seconds
 
     async def fetch_ticker_data(
-        self, symbol: str, period: str = "max", interval: str = "1d"
+        self, symbol: str, period: str = "max", interval: str = "1d", start_date: Optional[str] = None, end_date: Optional[str] = None
     ) -> Optional[pd.DataFrame]:
         """
         Fetch ticker data from yfinance with retry logic.
@@ -49,7 +49,7 @@ class MarketDataService:
 
                 ticker = yf.Ticker(symbol)
                 
-                data = ticker.history(period=period, interval=interval)
+                data = ticker.history(period=period, interval=interval, start=start_date, end=end_date)
 
                 if not isinstance(data, pd.DataFrame) or data.empty:
                     logger.warning(f"No data returned for {symbol}")
@@ -72,7 +72,7 @@ class MarketDataService:
                     return None
 
     async def store_market_data(
-        self, symbol: str, data: pd.DataFrame, session: Session
+        self, symbol: str, data: pd.DataFrame, session: Session, append: bool = False
     ) -> bool:
         """
         Store market data in the database.
@@ -81,6 +81,9 @@ class MarketDataService:
             symbol: Stock symbol
             data: DataFrame with market data
             session: Database session
+            append: Whether to append data to existing records. If False, existing records will be updated and new records will be added to the database.
+            If True, only new records will be added to the database. 
+            Schedular, should pass False. api, should pass True for better performance as its likely to be required to be updated.
 
         Returns:
             True if successful, False otherwise
@@ -89,6 +92,14 @@ class MarketDataService:
             # Get or create ticker info
             ticker_info = await self._get_or_create_ticker(symbol, session)
 
+            if append:
+                # Get last recorded date for the ticker from the database
+                last_recorded_date = session.execute(
+                    select(MarketData).where(MarketData.ticker_id == ticker_info.id).order_by(desc(MarketData.date)).limit(1)
+                )
+                last_recorded_date = last_recorded_date.scalar_one_or_none()
+                if last_recorded_date:
+                    data = data[data["Date"] > last_recorded_date.date]
             # Convert DataFrame to database records
             records = []
             for date, row in data.iterrows():
@@ -212,7 +223,6 @@ class MarketDataService:
         symbol: str,
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
-        limit: int = 100,
     ) -> Optional[pd.DataFrame]:
         """
         Get market data from local database.
@@ -246,7 +256,7 @@ class MarketDataService:
                 if end_date:
                     query = query.where(MarketData.date <= end_date.date())
 
-                query = query.order_by(desc(MarketData.date)).limit(limit)
+                query = query.order_by(desc(MarketData.date))
 
                 # Execute query
                 result = session.execute(query)
@@ -298,11 +308,9 @@ class MarketDataService:
         Returns:
             DataFrame with market data or None if not available
         """
-        # ALWAYS try to get fresh data from yfinance first (always max period, 1d interval)
-        # This ensures we get 40+ years of data instead of just ~30 days
         # Priority: yfinance API > local database
-        logger.info(f"Fetching fresh data from yfinance for {symbol} (max period)")
-        fresh_data = await self.fetch_ticker_data(symbol, "max", "1d")
+        logger.info(f"Fetching fresh data from yfinance for {symbol} {period} {interval}")
+        fresh_data = await self.fetch_ticker_data(symbol=symbol, period=period, interval=interval)
 
         if fresh_data is not None:
             # Store the fresh data in database for future fallback

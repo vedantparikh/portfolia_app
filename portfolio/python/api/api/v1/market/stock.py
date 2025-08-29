@@ -168,7 +168,7 @@ async def get_symbol_data_local(
             )
 
     # Get data from local database
-    data = await market_data_service.get_market_data(name, start_dt, end_dt, limit)
+    data = await market_data_service.get_market_data(symbol=name, start_date=start_dt, end_date=end_dt, append=True)
 
     if data is None:
         raise HTTPException(
