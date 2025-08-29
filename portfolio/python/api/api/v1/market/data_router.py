@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/market-data", tags=["market-data"])
 
 
-@router.get("/ticker/{symbol}/fresh")
+@router.get("/ticker/fresh")
 async def get_fresh_ticker_data(
     symbol: str,
     period: str = Query(
@@ -50,7 +50,7 @@ async def get_fresh_ticker_data(
         symbol = symbol.upper()
 
         # Fetch fresh data from yfinance (always max period for comprehensive coverage)
-        data = await market_data_service.fetch_ticker_data(symbol, "max", "1d")
+        data = await market_data_service.fetch_ticker_data(symbol, period, interval)
 
         if data is None:
             raise HTTPException(
@@ -91,7 +91,7 @@ async def get_fresh_ticker_data(
         )
 
 
-@router.get("/ticker/{symbol}")
+@router.get("/ticker/")
 async def get_ticker_data(
     symbol: str,
     period: str = Query(

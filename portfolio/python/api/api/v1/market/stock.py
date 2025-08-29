@@ -74,6 +74,8 @@ async def get_symbol_data_fresh(
         default="1d",
         description="Data interval (1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo)",
     ),
+    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     request: Request = None,
     current_user=Depends(get_optional_current_user),
 ) -> Optional[Dict[str, Any]]:
@@ -96,25 +98,14 @@ async def get_symbol_data_fresh(
     try:
         # Fetch fresh data from yfinance (always max period for comprehensive coverage)
         data = await market_data_service.fetch_ticker_data(
-            symbol=name, period=period, interval=interval
+            symbol=name, period=period, interval=interval, start_date=start_date, end_date=end_date
         )
 
         if data is None:
             raise HTTPException(
                 status_code=404, detail=f"No fresh data available for symbol {name}"
             )
-
-        # Store the fresh data in database for future local access
-        try:
-            from app.core.database.connection import get_db_session
-
-            async with get_db_session() as session:
-                await market_data_service.store_market_data(name, data, session)
-            logger.info(f"Fresh data stored locally for {name}")
-        except Exception as e:
-            logger.warning(f"Failed to store fresh data locally for {name}: {e}")
-            # Continue even if local storage fails
-
+        
         # Convert DataFrame to JSON-serializable format
         result = {
             "symbol": name.upper(),
@@ -122,7 +113,7 @@ async def get_symbol_data_fresh(
             "interval": interval,
             "source": "yfinance_fresh",
             "data_points": len(data),
-            "data": data.reset_index().to_dict(orient="records"),
+            "data": data.to_dict(orient="records"),
         }
 
         return result
@@ -138,7 +129,6 @@ async def get_symbol_data_local(
     name: str,
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
-    limit: int = Query(100, description="Maximum number of records to return"),
     request: Request = None,
     current_user=Depends(get_optional_current_user),
 ) -> Optional[Dict[str, Any]]:

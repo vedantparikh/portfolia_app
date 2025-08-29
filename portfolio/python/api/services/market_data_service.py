@@ -48,8 +48,7 @@ class MarketDataService:
                 logger.info(f"Fetching data for {symbol} (attempt {attempt + 1})")
 
                 ticker = yf.Ticker(symbol)
-                # Always fetch max data for 1d interval to ensure comprehensive coverage
-                # yfinance default returns only ~30 days, max period returns 40+ years
+                
                 data = ticker.history(period=period, interval=interval)
 
                 if not isinstance(data, pd.DataFrame) or data.empty:
@@ -59,7 +58,10 @@ class MarketDataService:
                 logger.info(
                     f"Successfully fetched {len(data)} records for {symbol} (max period)"
                 )
-                return data if isinstance(data, pd.DataFrame) else None
+                data = data.reset_index()
+                data = data.sort_values(by="Date", ascending=False)
+                
+                return data
 
             except Exception as e:
                 logger.error(f"Attempt {attempt + 1} failed for {symbol}: {e}")
@@ -137,6 +139,7 @@ class MarketDataService:
                 ticker.sector = company_info["sector"]
                 ticker.industry = company_info["industry"]
                 ticker.exchange = company_info["exchange"]
+                ticker.currency = company_info["currency"]
                 ticker.updated_at = datetime.now(timezone.utc)
 
                 session.commit()
