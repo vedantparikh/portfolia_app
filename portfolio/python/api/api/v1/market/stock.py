@@ -98,14 +98,18 @@ async def get_symbol_data_fresh(
     try:
         # Fetch fresh data from yfinance (always max period for comprehensive coverage)
         data = await market_data_service.fetch_ticker_data(
-            symbol=name, period=period, interval=interval, start_date=start_date, end_date=end_date
+            symbol=name,
+            period=period,
+            interval=interval,
+            start_date=start_date,
+            end_date=end_date,
         )
 
         if data is None:
             raise HTTPException(
                 status_code=404, detail=f"No fresh data available for symbol {name}"
             )
-        
+
         # Convert DataFrame to JSON-serializable format
         result = {
             "symbol": name.upper(),
@@ -167,8 +171,10 @@ async def get_symbol_data_local(
                 detail=f"Invalid end_date format. Use YYYY-MM-DD: {str(e)}",
             )
 
-    # Get data from local database
-    data = await market_data_service.get_market_data(symbol=name, start_date=start_dt, end_date=end_dt, append=True)
+        # Get data from local database
+        data = await market_data_service.get_market_data(
+            symbol=name, start_date=start_dt, end_date=end_dt
+        )
 
     if data is None:
         raise HTTPException(
@@ -217,80 +223,16 @@ async def get_symbol_data(
 
     try:
         # Check data quality first
-        quality_info = await market_data_service.get_data_quality_info(name)
-
-        # If we have fresh local data (< 24 hours), return it for speed
-        if "error" not in quality_info and quality_info.get("is_fresh", False):
-            logger.info(f"Using fresh local data for {name}")
-            data = await market_data_service.get_market_data(name)
-
-            result = {
-                "symbol": name.upper(),
-                "period": period,
-                "interval": interval,
-                "source": "local_database_fresh",
-                "data_points": len(data) if data is not None and not data.empty else 0,
-                "data": (
-                    data.to_dict(orient="records")
-                    if data is not None and not data.empty
-                    else []
-                ),
-                "data_age_hours": quality_info.get("data_age_days", 0) * 24,
-            }
-            return result
-
-        # If local data is stale or doesn't exist, fetch fresh data
-        logger.info(f"Fetching fresh data for {name} (local data is stale)")
-        fresh_data = await market_data_service.fetch_ticker_data(
-            symbol=name, period=period, interval=interval
-        )
-
-        if fresh_data is None:
-            # Try to fall back to local data even if stale
-            logger.warning(
-                f"Fresh data unavailable for {name}, falling back to local data"
-            )
-            local_data = await market_data_service.get_market_data(name)
-
-            if local_data is None:
-                raise HTTPException(
-                    status_code=404, detail=f"No data available for symbol {name}"
-                )
-
-            result = {
-                "symbol": name.upper(),
-                "period": period,
-                "interval": interval,
-                "source": "local_database_stale",
-                "data_points": len(local_data),
-                "data": local_data.reset_index().to_dict(orient="records"),
-                "data_age_hours": quality_info.get("data_age_days", 0) * 24,
-                "warning": "Using stale local data - fresh data unavailable",
-            }
-            return result
-
-        # Use the fresh data
-        data = fresh_data
-
-        # Store the fresh data locally
-        try:
-            from app.core.database.connection import get_db_session
-
-            async with get_db_session() as session:
-                await market_data_service.store_market_data(name, data, session)
-            logger.info(f"Fresh data stored locally for {name}")
-        except Exception as e:
-            logger.warning(f"Failed to store fresh data locally for {name}: {e}")
+        data = await market_data_service.get_data_with_fallback(symbol=name, period=period, interval=interval)
 
         result = {
             "symbol": name.upper(),
             "period": period,
             "interval": interval,
-            "source": "yfinance_fresh",
-            "data_points": len(data),
-            "data": data.reset_index().to_dict(orient="records"),
+            "source": "local_database_stale",
+            "data_points": len(data) if data else 0,
+            "data": data.to_dict(orient="records") if data else [],
         }
-
         return result
 
     except Exception as e:

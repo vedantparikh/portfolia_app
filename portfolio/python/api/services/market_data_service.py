@@ -81,9 +81,11 @@ class MarketDataService:
             symbol: Stock symbol
             data: DataFrame with market data
             session: Database session
-            append: Whether to append data to existing records. If False, existing records will be updated and new records will be added to the database.
+            append: Whether to append data to existing records. 
+            If False, existing records will be updated and new records will be added to the database.
             If True, only new records will be added to the database. 
-            Schedular, should pass False. api, should pass True for better performance as its likely to be required to be updated.
+            Schedular, should pass False. api, should pass True for better
+            performance as its less likely to be required to be updated.
 
         Returns:
             True if successful, False otherwise
@@ -231,7 +233,6 @@ class MarketDataService:
             symbol: Stock symbol
             start_date: Start date for data range
             end_date: End date for data range
-            limit: Maximum number of records to return
 
         Returns:
             DataFrame with market data or None if not found
@@ -316,7 +317,7 @@ class MarketDataService:
             # Store the fresh data in database for future fallback
             try:
                 async with get_db_session() as session:
-                    await self.store_market_data(symbol, fresh_data, session)
+                    await self.store_market_data(symbol=symbol, data=fresh_data, session=session, append=True)
                 logger.info(
                     f"✅ Fresh data fetched and stored for {symbol} (max period: {len(fresh_data)} records)"
                 )
