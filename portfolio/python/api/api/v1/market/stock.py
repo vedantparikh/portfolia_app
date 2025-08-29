@@ -230,8 +230,8 @@ async def get_symbol_data(
             "period": period,
             "interval": interval,
             "source": "local_database_stale",
-            "data_points": len(data) if data else 0,
-            "data": data.to_dict(orient="records") if data else [],
+            "data_points": len(data) if data is not None else 0,
+            "data": data.to_dict(orient="records") if data is not None else [],
         }
         return result
 
