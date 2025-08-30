@@ -75,6 +75,8 @@ class Settings(BaseSettings):
     EMAIL_HOST_PASSWORD: str = env.str("EMAIL_HOST_PASSWORD", "")
 
     STATIC_DIR: str = env.str("STATIC_DIR", "STATICS")
+    
+    FRONTEND_URL: str = env.str("FRONTEND_URL", "http://localhost:3000")
 
     @property
     def STATIC_FILE_PATH(self) -> Path:

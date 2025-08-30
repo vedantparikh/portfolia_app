@@ -420,7 +420,7 @@ async def forgot_password(
         if store_reset_token(reset_token, user.id, user.email, expires_in_minutes=60):
             # Send email with reset link
             # In production, this would construct the frontend URL
-            reset_url = f"{settings.API_URL}{settings.API_V1_STR}/auth/validate-reset-token?token={reset_token}"
+            reset_url = f"{settings.FRONTEND_URL}/validate-reset-token?token={reset_token}"
 
             # Log password reset request
             log_security_event(
