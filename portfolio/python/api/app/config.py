@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import List, Any
 import os
 
@@ -22,8 +23,9 @@ class Settings(BaseSettings):
 
     # API settings
     API_V1_STR: str = env.str("API_V1_STR", "/api/v1")
-    API_HOST: str = env.str("API_HOST", "0.0.0.0")
+    API_HOST: str = env.str("API_HOST", "localhost")
     API_PORT: int = env.int("API_PORT", 8000)
+    API_URL: str = env.str("API_URL", "http://localhost:8000")
 
     # CORS settings
     ALLOWED_ORIGINS: List[str] = env.list("ALLOWED_ORIGINS", ["*"])
@@ -68,6 +70,18 @@ class Settings(BaseSettings):
     TESTING: bool = env.bool("TESTING", False)
     TEST_DATABASE_URL: str = env.str("TEST_DATABASE_URL", "sqlite:///./test.db")
 
+    # Email settings
+    EMAIL_HOST_USER: str = env.str("EMAIL_HOST_USER", "noreply@portfolia.com")
+    EMAIL_HOST_PASSWORD: str = env.str("EMAIL_HOST_PASSWORD", "")
+
+    STATIC_DIR: str = env.str("STATIC_DIR", "STATICS")
+    
+    FRONTEND_URL: str = env.str("FRONTEND_URL", "http://localhost:3000")
+
+    @property
+    def STATIC_FILE_PATH(self) -> Path:
+        return Path(__file__).parent.parent / self.STATIC_DIR
+
     @property
     def DATABASE_URL(self) -> str:
         """Construct database URL from components."""
@@ -85,6 +99,9 @@ class Settings(BaseSettings):
         case_sensitive = True
 
     def __init__(self, **kwargs: Any) -> None:
+        from dotenv import load_dotenv
+
+        load_dotenv()
         super().__init__(**kwargs)
 
         # Note: DATABASE_URL is a read-only property, so we don't override it here

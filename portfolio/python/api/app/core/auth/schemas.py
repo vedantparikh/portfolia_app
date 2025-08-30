@@ -149,19 +149,21 @@ class EmailVerification(BaseModel):
     token: str
 
 
-class TwoFactorSetup(BaseModel):
-    """Schema for two-factor authentication setup."""
+class TokenValidationResponse(BaseModel):
+    """Schema for token validation response."""
 
-    enable: bool
+    is_valid: bool
+    message: str
+    redirect_url: Optional[str] = None
+    expires_at: Optional[datetime] = None
+    user_email: Optional[str] = None
 
 
-class TwoFactorVerify(BaseModel):
-    """Schema for two-factor authentication verification."""
+class PasswordResetTokenInfo(BaseModel):
+    """Schema for password reset token information."""
 
-    code: str = Field(..., min_length=6, max_length=6)
-
-    @validator("code")
-    def code_valid(cls, v):
-        if not v.isdigit():
-            raise ValueError("Code must contain only digits")
-        return v
+    token: str
+    user_id: int
+    user_email: str
+    expires_at: datetime
+    is_used: bool = False

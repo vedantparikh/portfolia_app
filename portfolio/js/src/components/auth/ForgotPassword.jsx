@@ -47,7 +47,10 @@ const ForgotPassword = () => {
                             </div>
                             <h2 className="text-2xl font-semibold text-gray-100 mb-2">Check Your Email</h2>
                             <p className="text-gray-400">
-                                We've sent a password reset link to your email address. Please check your inbox and follow the instructions to reset your password.
+                                We've sent a password reset link to your email address. Please check your inbox and click the link to reset your password.
+                            </p>
+                            <p className="text-xs text-gray-500 mt-2">
+                                The link will redirect you to our secure password reset form.
                             </p>
                         </div>
 

@@ -227,6 +227,12 @@ class RedisClient(metaclass=SingletonMeta):
                     for i, key in enumerate(keys)
                     if values[i] is not None
                 }
+                
+    def ping(self):
+        """Ping the Redis server."""
+        with self.RedisContextManager(self.connection_pool) as client:
+            if client is not None:
+                return client.ping()
 
 
 def get_redis():

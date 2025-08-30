@@ -106,6 +106,12 @@ export const authAPI = {
         return response.data;
     },
 
+    // Validate reset token
+    validateResetToken: async (token) => {
+        const response = await api.get(`/auth/validate-reset-token/?token=${token}`);
+        return response.data;
+    },
+
     // Change password
     changePassword: async (passwordData) => {
         const response = await api.post('/auth/change-password', passwordData);
