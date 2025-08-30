@@ -1,48 +1,89 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import logging
 from contextlib import asynccontextmanager
+import time
 
 from app.config import settings
-from app.core.database.connection import init_db, create_tables, get_db_health
+from app.core.database.connection import init_db, create_tables
 from app.core.database.init_db import init_database
 from app.health_check import router as health_router
+from app.core.logging_config import get_logger, setup_logging
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Setup comprehensive logging
+setup_logging(
+    log_level=os.getenv("LOG_LEVEL", "INFO"),
+    log_file=os.getenv("LOG_FILE"),
+    log_dir=os.getenv("LOG_DIR", "logs"),
+    enable_console=True,
+    enable_file=True,
+    enable_json=os.getenv("LOG_JSON", "false").lower() == "true",
+)
+
+logger = get_logger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager - runs on startup and shutdown."""
+    startup_time = time.time()
+
     # Startup
-    logger.info("Starting Portfolia API...")
+    logger.info("🚀 Starting Portfolia API...")
+    logger.info(f"Environment: {os.getenv('ENVIRONMENT', 'development')}")
+    logger.info(
+        f"Database URL: {settings.DATABASE_URL.split('@')[1] if '@' in settings.DATABASE_URL else '***'}"
+    )
+    logger.info(
+        f"Redis URL: {settings.REDIS_URL.split('@')[1] if '@' in settings.REDIS_URL else '***'}"
+    )
 
     try:
         # Initialize database connection
-        logger.info("Initializing database connection...")
+        logger.info("🔌 Initializing database connection...")
+        db_start_time = time.time()
         await init_db()
+        db_init_time = time.time() - db_start_time
+        logger.info(
+            f"✅ Database connection initialized successfully in {db_init_time:.3f}s"
+        )
 
         # Run database migrations and create schemas
-        logger.info("Running database migrations and creating schemas...")
+        logger.info("🔄 Running database migrations and creating schemas...")
+        migration_start_time = time.time()
         await create_tables()
+        migration_time = time.time() - migration_start_time
+        logger.info(f"✅ Database migrations completed in {migration_time:.3f}s")
 
         # Initialize database with sample data if needed
-        logger.info("Initializing database with sample data...")
+        logger.info("📊 Initializing database with sample data...")
+        data_start_time = time.time()
         await init_database()
+        data_init_time = time.time() - data_start_time
+        logger.info(f"✅ Sample data initialization completed in {data_init_time:.3f}s")
 
-        logger.info("Database initialization completed successfully!")
+        total_startup_time = time.time() - startup_time
+        logger.info(
+            f"🎉 Database initialization completed successfully in {total_startup_time:.3f}s total!"
+        )
 
     except Exception as e:
-        logger.error(f"Failed to initialize database: {e}")
+        logger.error(f"❌ Failed to initialize database: {e}")
+        logger.error(f"Error type: {type(e).__name__}")
         # Don't fail startup - allow app to run with degraded functionality
-        logger.warning("Application starting with degraded database functionality")
+        logger.warning("⚠️ Application starting with degraded database functionality")
+        logger.warning(f"Startup time so far: {time.time() - startup_time:.3f}s")
 
     yield
 
     # Shutdown
-    logger.info("Shutting down Portfolia API...")
+    shutdown_start_time = time.time()
+    logger.info("🛑 Shutting down Portfolia API...")
+
+    # Log final statistics
+    total_uptime = time.time() - startup_time
+    logger.info(f"📈 Total application uptime: {total_uptime:.3f}s")
+    logger.info("👋 Portfolia API shutdown complete")
 
 
 # Create FastAPI app with lifespan management
@@ -63,39 +104,42 @@ app.add_middleware(
 )
 
 # Include routers
+logger.info("🔗 Including application routers...")
 app.include_router(health_router, prefix="/health", tags=["health"])
+logger.info("✅ Health router included at /health")
 
 # Include API v1 routers
 try:
     from api.v1.health_router import router as health_router
 
     app.include_router(health_router, prefix="/api/v1", tags=["test"])
-    logger.info("Test router included successfully")
+    logger.info("✅ Test router included at /api/v1")
 except ImportError as e:
-    logger.warning(f"Could not import test router: {e}")
+    logger.warning(f"⚠️ Could not import test router: {e}")
 
 # Include authentication router
 try:
-    logger.info("Attempting to import auth router...")
+    logger.info("🔐 Attempting to import auth router...")
     from app.core.auth.router import router as auth_router
 
-    logger.info("Auth router imported successfully")
+    logger.info("✅ Auth router imported successfully")
     app.include_router(auth_router, prefix="/api/v1/auth", tags=["authentication"])
-    logger.info("Auth router included successfully")
+    logger.info("✅ Auth router included at /api/v1/auth")
 except ImportError as e:
-    logger.warning(f"Could not import auth router: {e}")
-    logger.error(f"Auth router import error details: {e}")
+    logger.warning(f"⚠️ Could not import auth router: {e}")
+    logger.error(f"❌ Auth router import error details: {e}")
     import traceback
 
-    logger.error(f"Full traceback: {traceback.format_exc()}")
+    logger.error(f"❌ Full traceback: {traceback.format_exc()}")
 except Exception as e:
-    logger.error(f"Unexpected error importing auth router: {e}")
+    logger.error(f"❌ Unexpected error importing auth router: {e}")
     import traceback
 
-    logger.error(f"Full traceback: {traceback.format_exc()}")
+    logger.error(f"❌ Full traceback: {traceback.format_exc()}")
 
 # Include market router
 try:
+    logger.info("📈 Attempting to import market router...")
     from api.v1.market.routers import router as market_router
 
     app.include_router(market_router, prefix="/api/v1", tags=["market-data"])

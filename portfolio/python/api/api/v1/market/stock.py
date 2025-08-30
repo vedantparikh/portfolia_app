@@ -3,7 +3,7 @@ Stock Router
 API endpoints for stock data operations with separate endpoints for fresh and local data.
 """
 
-import logging
+import time
 from datetime import datetime
 from typing import Any
 from typing import Dict
@@ -15,49 +15,123 @@ from yahooquery import search
 
 from services.market_data_service import market_data_service
 from app.core.auth.dependencies import get_optional_current_user, get_client_ip
-from app.core.auth.utils import is_rate_limited, rate_limit_key
+from app.core.auth.utils import is_rate_limited
+from app.core.logging_config import (
+    get_logger,
+    log_api_request,
+    log_api_response,
+    log_error_with_context,
+)
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 router = APIRouter()
 
 
 @router.get("/symbols")
 async def get_symbols(
-    name: str, request: Request = None, current_user=Depends(get_optional_current_user)
+    name: str,
+    request: Optional[Request] = None,
+    current_user=Depends(get_optional_current_user),
 ) -> Optional[List[Dict[str, Any]]]:
     """
     Get stock symbols matching the search name.
 
     Rate limited for unauthenticated users to prevent abuse.
     """
+    start_time = time.time()
+    client_ip = get_client_ip(request) if request else "unknown"
+    user_id = current_user.get("id") if current_user else None
+
+    # Log API request
+    log_api_request(
+        logger,
+        "GET",
+        f"/symbols?name={name}",
+        str(user_id) if user_id else None,
+        client_ip,
+        symbol=name,
+    )
+
+    logger.info(
+        f"🔍 Symbol search initiated for '{name}' | User: {user_id} | IP: {client_ip}"
+    )
+
     # Rate limiting for unauthenticated users
     if not current_user:
-        client_ip = get_client_ip(request) if request else "unknown"
+        logger.debug(f"Rate limiting check for unauthenticated user | IP: {client_ip}")
         if is_rate_limited(
             client_ip, "symbol_search", max_attempts=10, window_seconds=3600
         ):
+            logger.warning(
+                f"🚫 Rate limit exceeded for symbol search | IP: {client_ip}"
+            )
             raise HTTPException(
                 status_code=429,
                 detail="Rate limit exceeded. Please authenticate or try again later.",
             )
+        logger.debug(f"Rate limit check passed | IP: {client_ip}")
 
     try:
         # Search for symbols
+        logger.debug(f"Searching for symbols with yahooquery | Query: '{name}'")
+        search_start_time = time.time()
         data = search(name)
+        search_time = time.time() - search_start_time
+
+        logger.debug(
+            f"Yahooquery search completed in {search_time:.4f}s | Results: {len(data.get('quotes', [])) if data and 'quotes' in data else 0}"
+        )
 
         if not data or "quotes" not in data or len(data["quotes"]) == 0:
+            logger.info(f"❌ No symbols found for query '{name}'")
             raise HTTPException(status_code=404, detail="No symbols found")
 
         quotes = data.get("quotes", [])
         if not isinstance(quotes, list):
+            logger.error(
+                f"🚨 Malformed response from yahooquery | Expected list, got {type(quotes)}"
+            )
             raise HTTPException(
                 status_code=500, detail="Malformed response from symbol search"
             )
 
+        response_time = time.time() - start_time
+        logger.info(
+            f"✅ Symbol search successful | Query: '{name}' | Results: {len(quotes)} | Time: {response_time:.4f}s"
+        )
+
+        # Log API response
+        log_api_response(
+            logger,
+            "GET",
+            f"/symbols?name={name}",
+            200,
+            response_time,
+            results_count=len(quotes),
+        )
+
         return quotes
 
+    except HTTPException:
+        # Re-raise HTTP exceptions without logging (they're expected)
+        raise
     except Exception as e:
+        response_time = time.time() - start_time
+        logger.error(
+            f"❌ Symbol search failed | Query: '{name}' | Error: {str(e)} | Time: {response_time:.4f}s"
+        )
+
+        # Log error with context
+        log_error_with_context(
+            logger, e, f"Symbol search for '{name}'", user_id=user_id, ip=client_ip
+        )
+
+        # Log API response
+        log_api_response(
+            logger, "GET", f"/symbols?name={name}", 500, response_time, error=str(e)
+        )
+
         raise HTTPException(
             status_code=500, detail=f"Error searching for symbols: {str(e)}"
         )
@@ -76,7 +150,7 @@ async def get_symbol_data_fresh(
     ),
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
-    request: Request = None,
+    request: Optional[Request] = None,
     current_user=Depends(get_optional_current_user),
 ) -> Optional[Dict[str, Any]]:
     """
@@ -133,7 +207,7 @@ async def get_symbol_data_local(
     name: str,
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
-    request: Request = None,
+    request: Optional[Request] = None,
     current_user=Depends(get_optional_current_user),
 ) -> Optional[Dict[str, Any]]:
     """
@@ -202,7 +276,7 @@ async def get_symbol_data(
         default="1d",
         description="Data interval (1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo)",
     ),
-    request: Request = None,
+    request: Optional[Request] = None,
     current_user=Depends(get_optional_current_user),
 ) -> Optional[Dict[str, Any]]:
     """
@@ -223,7 +297,9 @@ async def get_symbol_data(
 
     try:
         # Check data quality first
-        data = await market_data_service.get_data_with_fallback(symbol=name, period=period, interval=interval)
+        data = await market_data_service.get_data_with_fallback(
+            symbol=name, period=period, interval=interval
+        )
 
         result = {
             "symbol": name.upper(),

@@ -151,21 +151,6 @@ def is_rate_limited(
     return False
 
 
-def log_security_event(
-    user_id: Optional[int],
-    event_type: str,
-    details: str,
-    ip_address: Optional[str] = None,
-):
-    """Log security-related events."""
-    # This would typically integrate with a logging system
-    # For now, just print to console
-    timestamp = datetime.utcnow().isoformat()
-    print(
-        f"[SECURITY] {timestamp} - User: {user_id}, Event: {event_type}, Details: {details}, IP: {ip_address}"
-    )
-
-
 def validate_token_expiry(token_exp: Union[int, datetime]) -> bool:
     """Validate if token is expired."""
     if isinstance(token_exp, int):
