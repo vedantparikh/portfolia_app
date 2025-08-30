@@ -54,8 +54,8 @@ class Settings(BaseSettings):
     )
     ALGORITHM: str = env.str("ALGORITHM", "HS256")
     JWT_ALGORITHM: str = env.str("JWT_ALGORITHM", "HS256")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = env.int("ACCESS_TOKEN_EXPIRE_MINUTES", 30)
-    REFRESH_TOKEN_EXPIRE_DAYS: int = env.int("REFRESH_TOKEN_EXPIRE_DAYS", 7)
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = env.int("ACCESS_TOKEN_EXPIRE_MINUTES", 15)
+    REFRESH_TOKEN_EXPIRE_MINUTES: int = env.int("REFRESH_TOKEN_EXPIRE_MINUTES", 30)
 
     # Logging
     LOG_LEVEL: str = env.str("LOG_LEVEL", "info")

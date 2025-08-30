@@ -18,7 +18,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 ALGORITHM = settings.JWT_ALGORITHM
 SECRET_KEY = settings.JWT_SECRET_KEY
 ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
-REFRESH_TOKEN_EXPIRE_DAYS = settings.REFRESH_TOKEN_EXPIRE_DAYS
+REFRESH_TOKEN_EXPIRE_MINUTES = settings.REFRESH_TOKEN_EXPIRE_MINUTES
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -50,7 +50,7 @@ def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) 
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+        expire = datetime.utcnow() + timedelta(minutes=REFRESH_TOKEN_EXPIRE_MINUTES)
 
     to_encode.update({"exp": expire, "type": "refresh"})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
@@ -181,6 +181,6 @@ def get_token_expiry_time(token_type: str = "access") -> datetime:
     if token_type == "access":
         return datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     elif token_type == "refresh":
-        return datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+        return datetime.utcnow() + timedelta(minutes=REFRESH_TOKEN_EXPIRE_MINUTES)
     else:
         raise ValueError(f"Unknown token type: {token_type}")

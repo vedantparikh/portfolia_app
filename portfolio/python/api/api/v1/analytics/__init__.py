@@ -1,5 +1,5 @@
 """
-Portfolio management API endpoints.
+Analytics and reporting API endpoints.
 """
 
 from .router import router

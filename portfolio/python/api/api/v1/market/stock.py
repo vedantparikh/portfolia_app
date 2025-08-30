@@ -10,12 +10,12 @@ from typing import Dict
 from typing import List
 from typing import Optional
 
-from fastapi import APIRouter
-from fastapi import HTTPException
-from fastapi import Query
+from fastapi import APIRouter, HTTPException, Query, Depends, Request
 from yahooquery import search
 
 from services.market_data_service import market_data_service
+from app.core.auth.dependencies import get_optional_current_user, get_client_ip
+from app.core.auth.utils import is_rate_limited, rate_limit_key
 
 logger = logging.getLogger(__name__)
 
@@ -23,13 +23,25 @@ router = APIRouter()
 
 
 @router.get("/symbols")
-async def get_symbols(name: str) -> Optional[List[Dict[str, Any]]]:
+async def get_symbols(
+    name: str, request: Request = None, current_user=Depends(get_optional_current_user)
+) -> Optional[List[Dict[str, Any]]]:
     """
     Get stock symbols matching the search name.
 
-    This endpoint searches for stock symbols using yahooquery and returns
-    matching results with symbol and quote type information.
+    Rate limited for unauthenticated users to prevent abuse.
     """
+    # Rate limiting for unauthenticated users
+    if not current_user:
+        client_ip = get_client_ip(request) if request else "unknown"
+        if is_rate_limited(
+            client_ip, "symbol_search", max_attempts=10, window_seconds=3600
+        ):
+            raise HTTPException(
+                status_code=429,
+                detail="Rate limit exceeded. Please authenticate or try again later.",
+            )
+
     try:
         # Search for symbols
         data = search(name)
@@ -62,36 +74,41 @@ async def get_symbol_data_fresh(
         default="1d",
         description="Data interval (1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo)",
     ),
+    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    request: Request = None,
+    current_user=Depends(get_optional_current_user),
 ) -> Optional[Dict[str, Any]]:
     """
     Get fresh stock data for a specific symbol from yfinance API.
 
-    This endpoint fetches live data from yfinance and stores it locally for future use.
-    Always fetches maximum available data for comprehensive coverage.
-
-    Note: This endpoint may take longer to respond as it fetches fresh data from external API.
+    Rate limited for unauthenticated users to prevent abuse.
     """
+    # Rate limiting for unauthenticated users
+    if not current_user:
+        client_ip = get_client_ip(request) if request else "unknown"
+        if is_rate_limited(
+            client_ip, "fresh_data", max_attempts=5, window_seconds=3600
+        ):
+            raise HTTPException(
+                status_code=429,
+                detail="Rate limit exceeded. Please authenticate or try again later.",
+            )
+
     try:
         # Fetch fresh data from yfinance (always max period for comprehensive coverage)
         data = await market_data_service.fetch_ticker_data(
-            symbol=name, period=period, interval=interval
+            symbol=name,
+            period=period,
+            interval=interval,
+            start_date=start_date,
+            end_date=end_date,
         )
 
         if data is None:
             raise HTTPException(
                 status_code=404, detail=f"No fresh data available for symbol {name}"
             )
-
-        # Store the fresh data in database for future local access
-        try:
-            from app.core.database.connection import get_db_session
-
-            async with get_db_session() as session:
-                await market_data_service.store_market_data(name, data, session)
-            logger.info(f"Fresh data stored locally for {name}")
-        except Exception as e:
-            logger.warning(f"Failed to store fresh data locally for {name}: {e}")
-            # Continue even if local storage fails
 
         # Convert DataFrame to JSON-serializable format
         result = {
@@ -100,7 +117,7 @@ async def get_symbol_data_fresh(
             "interval": interval,
             "source": "yfinance_fresh",
             "data_points": len(data),
-            "data": data.reset_index().to_dict(orient="records"),
+            "data": data.to_dict(orient="records"),
         }
 
         return result
@@ -116,16 +133,25 @@ async def get_symbol_data_local(
     name: str,
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
-    limit: int = Query(100, description="Maximum number of records to return"),
+    request: Request = None,
+    current_user=Depends(get_optional_current_user),
 ) -> Optional[Dict[str, Any]]:
     """
     Get stock data for a specific symbol from local database only.
 
-    This endpoint retrieves data that has been previously stored locally,
-    without attempting to fetch from external sources.
-
-    Note: This endpoint responds quickly but may contain older data.
+    Rate limited for unauthenticated users to prevent abuse.
     """
+    # Rate limiting for unauthenticated users
+    if not current_user:
+        client_ip = get_client_ip(request) if request else "unknown"
+        if is_rate_limited(
+            client_ip, "local_data", max_attempts=20, window_seconds=3600
+        ):
+            raise HTTPException(
+                status_code=429,
+                detail="Rate limit exceeded. Please authenticate or try again later.",
+            )
+
     start_dt = None
     end_dt = None
     if start_date:
@@ -145,8 +171,10 @@ async def get_symbol_data_local(
                 detail=f"Invalid end_date format. Use YYYY-MM-DD: {str(e)}",
             )
 
-    # Get data from local database
-    data = await market_data_service.get_market_data(name, start_dt, end_dt, limit)
+        # Get data from local database
+        data = await market_data_service.get_market_data(
+            symbol=name, start_date=start_dt, end_date=end_dt
+        )
 
     if data is None:
         raise HTTPException(
@@ -174,90 +202,37 @@ async def get_symbol_data(
         default="1d",
         description="Data interval (1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo)",
     ),
+    request: Request = None,
+    current_user=Depends(get_optional_current_user),
 ) -> Optional[Dict[str, Any]]:
     """
     Get stock data for a specific symbol with intelligent source selection.
 
-    This endpoint intelligently chooses the best data source:
-    - If local data is fresh (< 24 hours old), returns local data for speed
-    - If local data is stale, fetches fresh data from yfinance
-    - Always stores fresh data locally for future use
-
-    For guaranteed fresh data, use /symbol-data/fresh
-    For guaranteed fast local data, use /symbol-data/local
+    Rate limited for unauthenticated users to prevent abuse.
     """
+    # Rate limiting for unauthenticated users
+    if not current_user:
+        client_ip = get_client_ip(request) if request else "unknown"
+        if is_rate_limited(
+            client_ip, "intelligent_data", max_attempts=15, window_seconds=3600
+        ):
+            raise HTTPException(
+                status_code=429,
+                detail="Rate limit exceeded. Please authenticate or try again later.",
+            )
+
     try:
         # Check data quality first
-        quality_info = await market_data_service.get_data_quality_info(name)
-
-        # If we have fresh local data (< 24 hours), return it for speed
-        if "error" not in quality_info and quality_info.get("is_fresh", False):
-            logger.info(f"Using fresh local data for {name}")
-            data = await market_data_service.get_market_data(name)
-
-            result = {
-                "symbol": name.upper(),
-                "period": period,
-                "interval": interval,
-                "source": "local_database_fresh",
-                "data_points": len(data) if data is not None and not data.empty else 0,
-                "data": data.to_dict(orient="records") if data is not None and not data.empty else [],
-                "data_age_hours": quality_info.get("data_age_days", 0) * 24,
-            }
-            return result
-
-        # If local data is stale or doesn't exist, fetch fresh data
-        logger.info(f"Fetching fresh data for {name} (local data is stale)")
-        fresh_data = await market_data_service.fetch_ticker_data(
-            symbol=name, period=period, interval=interval
-        )
-
-        if fresh_data is None:
-            # Try to fall back to local data even if stale
-            logger.warning(
-                f"Fresh data unavailable for {name}, falling back to local data"
-            )
-            local_data = await market_data_service.get_market_data(name)
-
-            if local_data is None:
-                raise HTTPException(
-                    status_code=404, detail=f"No data available for symbol {name}"
-                )
-
-            result = {
-                "symbol": name.upper(),
-                "period": period,
-                "interval": interval,
-                "source": "local_database_stale",
-                "data_points": len(local_data),
-                "data": local_data.reset_index().to_dict(orient="records"),
-                "data_age_hours": quality_info.get("data_age_days", 0) * 24,
-                "warning": "Using stale local data - fresh data unavailable",
-            }
-            return result
-
-        # Use the fresh data
-        data = fresh_data
-
-        # Store the fresh data locally
-        try:
-            from app.core.database.connection import get_db_session
-
-            async with get_db_session() as session:
-                await market_data_service.store_market_data(name, data, session)
-            logger.info(f"Fresh data stored locally for {name}")
-        except Exception as e:
-            logger.warning(f"Failed to store fresh data locally for {name}: {e}")
+        data = await market_data_service.get_data_with_fallback(symbol=name, period=period, interval=interval)
 
         result = {
             "symbol": name.upper(),
             "period": period,
             "interval": interval,
-            "source": "yfinance_fresh",
-            "data_points": len(data),
-            "data": data.reset_index().to_dict(orient="records"),
+            "source": "local_database_stale",
+            "data_points": len(data) if data is not None else 0,
+            "data": data.to_dict(orient="records") if data is not None else [],
         }
-
         return result
 
     except Exception as e:

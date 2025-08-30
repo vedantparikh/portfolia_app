@@ -1,0 +1,1066 @@
+{
+    "info": {
+        "name": "Portfolia API",
+        "description": "Complete API collection for Portfolia portfolio management system with authentication",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "auth": {
+        "type": "bearer",
+        "bearer": [
+            {
+                "key": "token",
+                "value": "{{auth_token}}",
+                "type": "string"
+            }
+        ]
+    },
+    "variable": [
+        {
+            "key": "base_url",
+            "value": "http://127.0.0.1:8000",
+            "type": "string"
+        },
+        {
+            "key": "auth_token",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "user_id",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "portfolio_id",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "asset_id",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "transaction_id",
+            "value": "",
+            "type": "string"
+        }
+    ],
+    "item": [
+        {
+            "name": "🔐 Authentication",
+            "item": [
+                {
+                    "name": "Register User",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"email\": \"user@example.com\",\n  \"username\": \"testuser\",\n  \"password\": \"SecurePass123!\",\n  \"confirm_password\": \"SecurePass123!\",\n  \"first_name\": \"John\",\n  \"last_name\": \"Doe\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/auth/register",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "auth",
+                                "register"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "if (pm.response.code === 201) {",
+                                    "    const response = pm.response.json();",
+                                    "    pm.collectionVariables.set('user_id', response.id);",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Login User",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"username\": \"testuser\",\n  \"password\": \"SecurePass123!\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/auth/login",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "auth",
+                                "login"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "if (pm.response.code === 200) {",
+                                    "    const response = pm.response.json();",
+                                    "    pm.collectionVariables.set('auth_token', response.access_token);",
+                                    "    console.log('Token saved:', response.access_token);",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Get Current User",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/auth/me",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "auth",
+                                "me"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Logout User",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/auth/logout",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "auth",
+                                "logout"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "📊 Portfolios",
+            "item": [
+                {
+                    "name": "Create Portfolio",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"name\": \"My Investment Portfolio\",\n  \"description\": \"Long-term growth portfolio\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/portfolios",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "portfolios"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "if (pm.response.code === 201) {",
+                                    "    const response = pm.response.json();",
+                                    "    pm.collectionVariables.set('portfolio_id', response.id);",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Get User Portfolios",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/portfolios",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "portfolios"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Portfolio by ID",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/portfolios/{{portfolio_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "portfolios",
+                                "{{portfolio_id}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Update Portfolio",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"name\": \"Updated Portfolio Name\",\n  \"description\": \"Updated description\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/portfolios/{{portfolio_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "portfolios",
+                                "{{portfolio_id}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Delete Portfolio",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/portfolios/{{portfolio_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "portfolios",
+                                "{{portfolio_id}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Portfolio Summary",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/portfolios/{{portfolio_id}}/summary",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "portfolios",
+                                "{{portfolio_id}}",
+                                "summary"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "💎 Assets",
+            "item": [
+                {
+                    "name": "Create Asset",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"symbol\": \"AAPL\",\n  \"quantity\": 100,\n  \"purchase_price\": 150.00,\n  \"portfolio_id\": 1\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/assets",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "assets"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "if (pm.response.code === 201) {",
+                                    "    const response = pm.response.json();",
+                                    "    pm.collectionVariables.set('asset_id', response.id);",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Get Assets",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/assets?limit=10",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "assets"
+                            ],
+                            "query": [
+                                {
+                                    "key": "limit",
+                                    "value": "10"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Asset by ID",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/assets/{{asset_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "assets",
+                                "{{asset_id}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Update Asset",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"quantity\": 150,\n  \"purchase_price\": 155.00\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/assets/{{asset_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "assets",
+                                "{{asset_id}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Delete Asset",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/assets/{{asset_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "assets",
+                                "{{asset_id}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Search Assets",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/assets/search/AAPL",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "assets",
+                                "search",
+                                "AAPL"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Asset Prices",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/assets/{{asset_id}}/prices?period=1y&interval=1d",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "assets",
+                                "{{asset_id}}",
+                                "prices"
+                            ],
+                            "query": [
+                                {
+                                    "key": "period",
+                                    "value": "1y"
+                                },
+                                {
+                                    "key": "interval",
+                                    "value": "1d"
+                                }
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "📈 Portfolio Assets",
+            "item": [
+                {
+                    "name": "Add Asset to Portfolio",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"asset_id\": 1,\n  \"quantity\": 50,\n  \"purchase_price\": 160.00,\n  \"portfolio_id\": 1\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/portfolios/{{portfolio_id}}/assets",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "portfolios",
+                                "{{portfolio_id}}",
+                                "assets"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Portfolio Assets",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/portfolios/{{portfolio_id}}/assets",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "portfolios",
+                                "{{portfolio_id}}",
+                                "assets"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Update Portfolio Asset",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"quantity\": 75,\n  \"purchase_price\": 165.00\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/portfolios/{{portfolio_id}}/assets/{{asset_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "portfolios",
+                                "{{portfolio_id}}",
+                                "assets",
+                                "{{asset_id}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Remove Asset from Portfolio",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/portfolios/{{portfolio_id}}/assets/{{asset_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "portfolios",
+                                "{{portfolio_id}}",
+                                "assets",
+                                "{{asset_id}}"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "💰 Transactions",
+            "item": [
+                {
+                    "name": "Create Transaction",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"portfolio_id\": 1,\n  \"asset_id\": 1,\n  \"transaction_type\": \"buy\",\n  \"quantity\": 25,\n  \"price\": 170.00,\n  \"fees\": 5.00\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/transactions",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "transactions"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "if (pm.response.code === 201) {",
+                                    "    const response = pm.response.json();",
+                                    "    pm.collectionVariables.set('transaction_id', response.id);",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Get User Transactions",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/transactions?limit=20",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "transactions"
+                            ],
+                            "query": [
+                                {
+                                    "key": "limit",
+                                    "value": "20"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Transaction by ID",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/transactions/{{transaction_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "transactions",
+                                "{{transaction_id}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Update Transaction",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"quantity\": 30,\n  \"price\": 175.00,\n  \"fees\": 7.50\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/transactions/{{transaction_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "transactions",
+                                "{{transaction_id}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Delete Transaction",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/transactions/{{transaction_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "transactions",
+                                "{{transaction_id}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Transaction Summary",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/transactions/{{portfolio_id}}/summary",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "transactions",
+                                "{{portfolio_id}}",
+                                "summary"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "📊 Analytics",
+            "item": [
+                {
+                    "name": "Get Portfolio Performance",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/analytics/performance/{{portfolio_id}}?period=1y",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "analytics",
+                                "performance",
+                                "{{portfolio_id}}"
+                            ],
+                            "query": [
+                                {
+                                    "key": "period",
+                                    "value": "1y"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Portfolio Risk Metrics",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/analytics/risk/{{portfolio_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "analytics",
+                                "risk",
+                                "{{portfolio_id}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Benchmark Comparison",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/analytics/benchmark/{{portfolio_id}}?benchmark_symbol=^GSPC&period=1y",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "analytics",
+                                "benchmark",
+                                "{{portfolio_id}}"
+                            ],
+                            "query": [
+                                {
+                                    "key": "benchmark_symbol",
+                                    "value": "^GSPC"
+                                },
+                                {
+                                    "key": "period",
+                                    "value": "1y"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Daily Portfolio Report",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/analytics/reports/daily/{{portfolio_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "analytics",
+                                "reports",
+                                "daily",
+                                "{{portfolio_id}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get User Portfolios Summary",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/analytics/reports/summary",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "analytics",
+                                "reports",
+                                "summary"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "📈 Market Data",
+            "item": [
+                {
+                    "name": "Search Stock Symbols",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/stock/symbols?name=AAPL",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "stock",
+                                "symbols"
+                            ],
+                            "query": [
+                                {
+                                    "key": "name",
+                                    "value": "AAPL"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Fresh Stock Data",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/stock/symbol-data/fresh?name=AAPL&period=1y&interval=1d",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "stock",
+                                "symbol-data",
+                                "fresh"
+                            ],
+                            "query": [
+                                {
+                                    "key": "name",
+                                    "value": "AAPL"
+                                },
+                                {
+                                    "key": "period",
+                                    "value": "1y"
+                                },
+                                {
+                                    "key": "interval",
+                                    "value": "1d"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Local Stock Data",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/stock/symbol-data/local?name=AAPL&limit=100",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "stock",
+                                "symbol-data",
+                                "local"
+                            ],
+                            "query": [
+                                {
+                                    "key": "name",
+                                    "value": "AAPL"
+                                },
+                                {
+                                    "key": "limit",
+                                    "value": "100"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Intelligent Stock Data",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/stock/symbol-data?name=AAPL&period=1y&interval=1d",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "stock",
+                                "symbol-data"
+                            ],
+                            "query": [
+                                {
+                                    "key": "name",
+                                    "value": "AAPL"
+                                },
+                                {
+                                    "key": "period",
+                                    "value": "1y"
+                                },
+                                {
+                                    "key": "interval",
+                                    "value": "1d"
+                                }
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "📊 Statistical Indicators",
+            "item": [
+                {
+                    "name": "Get RSI Indicator",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/statistical-indicators/momentum-rsi-indicator?name=AAPL&period=max&interval=1d&window=14&fillna=false",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "statistical-indicators",
+                                "momentum-rsi-indicator"
+                            ],
+                            "query": [
+                                {
+                                    "key": "name",
+                                    "value": "AAPL"
+                                },
+                                {
+                                    "key": "period",
+                                    "value": "max"
+                                },
+                                {
+                                    "key": "interval",
+                                    "value": "1d"
+                                },
+                                {
+                                    "key": "window",
+                                    "value": "14"
+                                },
+                                {
+                                    "key": "fillna",
+                                    "value": "false"
+                                }
+                            ]
+                        }
+                    }
+                }
+            ]
+        }
+    ]
+}

@@ -228,7 +228,7 @@ class DataScheduler:
                 start_time = datetime.utcnow()
 
                 # Update the ticker (always max period, 1d interval for comprehensive coverage)
-                success = await market_data_service._update_single_ticker(ticker)
+                success = await market_data_service.update_single_ticker(ticker)
 
                 # Calculate execution time
                 execution_time = (datetime.utcnow() - start_time).total_seconds() * 1000

@@ -7,20 +7,20 @@ import logging
 from typing import Optional
 from contextlib import asynccontextmanager
 
-from app.core.database.config import db_settings
+from app.config import settings
 from app.core.database.redis_client import get_redis
 
 logger = logging.getLogger(__name__)
 
 # Create SQLAlchemy engine
 engine = create_engine(
-    db_settings.postgres_url,
+    settings.DATABASE_URL,
     poolclass=QueuePool,
-    pool_size=db_settings.POOL_SIZE,
-    max_overflow=db_settings.MAX_OVERFLOW,
+    pool_size=settings.POOL_SIZE,
+    max_overflow=settings.MAX_OVERFLOW,
     pool_pre_ping=True,
-    pool_recycle=db_settings.POOL_RECYCLE,
-    echo=db_settings.DEBUG,
+    pool_recycle=settings.POOL_RECYCLE,
+    echo=settings.DEBUG,
 )
 
 # Create session factory

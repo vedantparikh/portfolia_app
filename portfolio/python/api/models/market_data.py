@@ -35,6 +35,7 @@ class TickerInfo(Base):
     industry = Column(String(100), nullable=True)
     exchange = Column(String(20), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
+    currency = Column(String(20), nullable=True)
     created_at = Column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
