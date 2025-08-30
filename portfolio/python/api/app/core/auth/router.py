@@ -420,7 +420,7 @@ async def forgot_password(
         if store_reset_token(reset_token, user.id, user.email, expires_in_minutes=60):
             # Send email with reset link
             # In production, this would construct the frontend URL
-            reset_url = f"{settings.API_URL}{settings.API_V1_STR}/validate-reset-token?token={reset_token}"
+            reset_url = f"{settings.API_URL}{settings.API_V1_STR}/auth/validate-reset-token?token={reset_token}"
 
             # Log password reset request
             log_security_event(
@@ -465,7 +465,7 @@ async def forgot_password(
         return {"message": "If the email exists, a password reset link has been sent"}
 
 
-@router.get("/validate-reset-token/{token}")
+@router.get("/validate-reset-token/")
 async def validate_reset_token_endpoint(
     token: str, request: Request, db: Session = Depends(get_db)
 ):
@@ -511,7 +511,7 @@ async def validate_reset_token_endpoint(
         return TokenValidationResponse(
             is_valid=False,
             message=error_message,
-            redirect_url=f"{settings.FRONTEND_URL}/forgot-password?error=invalid_token",
+            redirect_url=f"{settings.API_URL}{settings.API_V1_STR}/auth/forgot-password?error=invalid_token",
         )
 
 
@@ -573,7 +573,7 @@ async def reset_password(
 
         return {
             "message": "Password reset successful",
-            "redirect_url": f"{settings.FRONTEND_URL}/login?message=password_reset_successful",
+            "redirect_url": f"{settings.API_URL}{settings.API_V1_STR}/auth/login?message=password_reset_successful",
         }
 
     except Exception as e:

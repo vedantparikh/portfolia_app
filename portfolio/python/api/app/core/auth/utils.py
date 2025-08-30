@@ -200,7 +200,7 @@ def store_reset_token(
         token_data = {
             "user_id": user_id,
             "user_email": user_email,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now().isoformat(),
             "is_used": False,
         }
 
@@ -252,8 +252,8 @@ def validate_reset_token(token: str) -> Tuple[bool, Optional[dict], Optional[str
             return False, None, "Token has already been used"
 
         # Check if token is expired (additional safety check)
-        created_at = datetime.fromisoformat(token_data["created_at"])
-        if datetime.now(utc) - created_at > timedelta(hours=24):
+        created_at = datetime.fromisoformat(token_data["created_at"]).replace(tzinfo=utc)
+        if datetime.now(utc) - created_at > timedelta(minutes=60):
             return False, None, "Token has expired"
 
         return True, token_data, None
