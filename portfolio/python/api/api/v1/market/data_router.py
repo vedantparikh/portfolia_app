@@ -11,10 +11,8 @@ from typing import List
 from typing import Optional
 
 from fastapi import APIRouter
-from fastapi import Depends
 from fastapi import HTTPException
 from fastapi import Query
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database.connection import get_db_session
 from services.data_scheduler import data_scheduler
@@ -51,7 +49,7 @@ async def update_ticker_data(
                 }
 
         # Perform the update
-        success = await market_data_service._update_single_ticker(symbol)
+        success = await market_data_service.update_single_ticker(symbol)
 
         if success:
             return {
