@@ -10,7 +10,7 @@ env = Env()
 logger = get_logger(__name__)
 
 
-def send_forgot_password_email(recipient_email: str, token: str):
+def send_forgot_password_email(recipient_email: str, reset_url: str):
     """
     Sends a password reset email with a unique token.
     """
@@ -22,9 +22,6 @@ def send_forgot_password_email(recipient_email: str, token: str):
         msg["From"] = settings.EMAIL_HOST_USER
         msg["To"] = recipient_email
 
-        # Create a password reset link
-        reset_link = f"http://{settings.API_HOST}:{settings.API_PORT}{settings.API_V1_STR}/reset-password?token={token}"
-
         html_template_path = settings.STATIC_FILE_PATH / "password_reset_email.html"
         if not html_template_path.exists():
             print(f"Error: The HTML file {html_template_path} was not found.")
@@ -33,7 +30,7 @@ def send_forgot_password_email(recipient_email: str, token: str):
         html_content = html_template_path.read_text()
         # Simple placeholder replacement. For complex templates,
         # a full templating engine like Jinja2 is recommended.
-        html_content = html_content.replace("{{reset_link}}", reset_link)
+        html_content = html_content.replace("{{reset_link}}", reset_url)
         msg.add_alternative(html_content, subtype="html")
 
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:

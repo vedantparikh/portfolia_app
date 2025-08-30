@@ -44,6 +44,7 @@ from app.core.auth.dependencies import (
     get_client_ip,
     get_user_agent,
 )
+from app.core.email_client import send_forgot_password_email
 from app.core.logging_config import (
     get_logger,
     log_api_request,
@@ -416,12 +417,10 @@ async def forgot_password(
         reset_token = generate_reset_token()
 
         # Store token in Redis with expiration
-        if store_reset_token(reset_token, user.id, user.email, expires_in_hours=24):
+        if store_reset_token(reset_token, user.id, user.email, expires_in_minutes=60):
             # Send email with reset link
             # In production, this would construct the frontend URL
-            frontend_reset_url = (
-                f"{settings.FRONTEND_URL}/reset-password?token={reset_token}"
-            )
+            reset_url = f"{settings.API_URL}{settings.API_V1_STR}/validate-reset-token?token={reset_token}"
 
             # Log password reset request
             log_security_event(
@@ -432,8 +431,7 @@ async def forgot_password(
                 f"Password reset requested from IP: {client_ip}",
             )
 
-            # Send email (implement this function)
-            # send_forgot_password_email(recipient_email=user.email, reset_url=frontend_reset_url)
+            send_forgot_password_email(recipient_email=user.email, reset_url=reset_url)
 
             log_security_event(
                 logger,
@@ -445,7 +443,7 @@ async def forgot_password(
 
             return {
                 "message": "If the email exists, a password reset link has been sent",
-                "reset_url": frontend_reset_url,  # For development/testing
+                "reset_url": reset_url,  # For development/testing
             }
         else:
             logger.error(f"Failed to store reset token for user {user.id}")
@@ -494,7 +492,7 @@ async def validate_reset_token_endpoint(
         return TokenValidationResponse(
             is_valid=True,
             message="Token is valid. You can now reset your password.",
-            redirect_url=f"{settings.FRONTEND_URL}/reset-password?token={token}",
+            redirect_url=f"{settings.API_URL}{settings.API_V1_STR}/reset-password?token={token}",
             expires_at=datetime.fromisoformat(token_data["created_at"])
             + timedelta(hours=24),
             user_email=token_data["user_email"],
