@@ -7,18 +7,7 @@ import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 import ForgotPassword from './components/auth/ForgotPassword';
 import ResetPassword from './components/auth/ResetPassword';
-
-// Placeholder Dashboard component (we'll build this next)
-const Dashboard = () => (
-  <div className="min-h-screen gradient-bg p-8">
-    <div className="max-w-7xl mx-auto">
-      <h1 className="text-4xl font-bold text-gradient mb-8">Dashboard</h1>
-      <div className="card p-6">
-        <p className="text-gray-300">Welcome to your portfolio dashboard! This is where we'll build the TradingView-like interface.</p>
-      </div>
-    </div>
-  </div>
-);
+import Dashboard from './components/dashboard/Dashboard';
 
 function App() {
   return (
