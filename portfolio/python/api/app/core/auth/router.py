@@ -2,10 +2,9 @@
 Authentication router with user registration, login, and management endpoints.
 """
 
+import time
 from datetime import datetime, timedelta
-from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, Request
-from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
@@ -30,13 +29,10 @@ from app.core.auth.utils import (
     verify_password,
     create_tokens,
     create_refresh_token,
-    generate_verification_token,
     generate_reset_token,
-    generate_two_factor_code,
     generate_session_id,
     is_password_strong,
     sanitize_username,
-    log_security_event,
 )
 from app.core.auth.dependencies import (
     get_current_user,
@@ -48,6 +44,13 @@ from app.core.auth.dependencies import (
     get_client_ip,
     get_user_agent,
 )
+from app.core.logging_config import (
+    get_logger,
+    log_api_request,
+    log_security_event,
+)
+
+logger = get_logger(__name__)
 
 router = APIRouter(tags=["authentication"])
 
@@ -59,8 +62,31 @@ async def register_user(
     user_data: UserCreate, request: Request, db: Session = Depends(get_db)
 ):
     """Register a new user."""
+    start_time = time.time()
+    client_ip = get_client_ip(request) if request else "unknown"
+    user_agent = get_user_agent(request) if request else "unknown"
+
+    # Log API request
+    log_api_request(
+        logger,
+        "POST",
+        "/register",
+        None,
+        client_ip,
+        email=user_data.email,
+        username=user_data.username,
+        user_agent=user_agent,
+    )
+
+    logger.info(
+        f"👤 User registration initiated | Email: {user_data.email} | Username: {user_data.username} | IP: {client_ip}"
+    )
+
     try:
         # Check if user already exists
+        logger.debug(
+            f"Checking for existing user | Email: {user_data.email} | Username: {user_data.username}"
+        )
         existing_user = (
             db.query(User)
             .filter(
@@ -71,24 +97,60 @@ async def register_user(
 
         if existing_user:
             if existing_user.email == user_data.email:
+                logger.warning(
+                    f"🚫 Registration failed - Email already registered | Email: {user_data.email} | IP: {client_ip}"
+                )
+                log_security_event(
+                    logger,
+                    "REGISTRATION_ATTEMPT_DUPLICATE_EMAIL",
+                    None,
+                    client_ip,
+                    f"Email: {user_data.email}",
+                )
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Email already registered",
                 )
             else:
+                logger.warning(
+                    f"🚫 Registration failed - Username already taken | Username: {user_data.username} | IP: {client_ip}"
+                )
+                log_security_event(
+                    logger,
+                    "REGISTRATION_ATTEMPT_DUPLICATE_USERNAME",
+                    None,
+                    client_ip,
+                    f"Username: {user_data.username}",
+                )
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Username already taken",
                 )
 
         # Validate password strength
+        logger.debug(
+            f"Validating password strength for user | Username: {user_data.username}"
+        )
         if not is_password_strong(user_data.password):
+            logger.warning(
+                f"🚫 Registration failed - Weak password | Username: {user_data.username} | IP: {client_ip}"
+            )
+            log_security_event(
+                logger,
+                "REGISTRATION_ATTEMPT_WEAK_PASSWORD",
+                None,
+                client_ip,
+                f"Username: {user_data.username}",
+            )
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Password does not meet security requirements",
             )
 
         # Create user
+        logger.debug(
+            f"Creating new user | Username: {user_data.username} | Email: {user_data.email}"
+        )
         hashed_password = get_password_hash(user_data.password)
         sanitized_username = sanitize_username(user_data.username)
 
@@ -121,10 +183,11 @@ async def register_user(
         client_ip = get_client_ip(request)
         user_agent = get_user_agent(request)
         log_security_event(
-            new_user.id,
+            logger,
             "user_registration",
-            f"New user registered from IP: {client_ip}, UA: {user_agent}",
+            str(new_user.id),
             client_ip,
+            f"New user registered from IP: {client_ip}, UA: {user_agent}",
         )
 
         return new_user
@@ -142,7 +205,11 @@ async def login_user(
 ):
     """Authenticate user and return JWT tokens."""
     # Find user by username
-    user = db.query(User).filter(User.username == user_credentials.username.lower()).first()
+    user = (
+        db.query(User)
+        .filter(User.username == user_credentials.username.lower())
+        .first()
+    )
 
     if not user or not verify_password(user_credentials.password, user.password_hash):
         # Log failed login attempt
@@ -318,7 +385,9 @@ async def change_password(
     db.commit()
 
     # Log password change
-    log_security_event(current_user.id, "password_changed", "User changed password")
+    log_security_event(
+        logger, "password_changed", str(current_user.id), None, "User changed password"
+    )
 
     return {"message": "Password changed successfully"}
 
@@ -335,7 +404,11 @@ async def forgot_password(password_reset: PasswordReset, db: Session = Depends(g
 
         # Log password reset request
         log_security_event(
-            user.id, "password_reset_requested", "Password reset requested"
+            logger,
+            "password_reset_requested",
+            str(user.id),
+            None,
+            "Password reset requested",
         )
 
     # Always return success to prevent email enumeration
@@ -439,6 +512,8 @@ async def delete_account(
     db.commit()
 
     # Log account deletion
-    log_security_event(current_user.id, "account_deleted", "User account deleted")
+    log_security_event(
+        logger, "account_deleted", str(current_user.id), None, "User account deleted"
+    )
 
     return {"message": "Account deleted successfully"}

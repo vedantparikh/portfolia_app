@@ -31,7 +31,6 @@ __all__ = [
     "generate_two_factor_code",
     "is_password_strong",
     "sanitize_username",
-    "log_security_event",
     # Dependencies
     "get_current_user",
     "get_current_active_user",
