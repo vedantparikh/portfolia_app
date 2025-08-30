@@ -31,7 +31,7 @@ router = APIRouter()
 @router.get("/symbols")
 async def get_symbols(
     name: str,
-    request: Optional[Request] = None,
+    request: Request,
     current_user=Depends(get_optional_current_user),
 ) -> Optional[List[Dict[str, Any]]]:
     """
@@ -150,7 +150,6 @@ async def get_symbol_data_fresh(
     ),
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
-    request: Optional[Request] = None,
     current_user=Depends(get_optional_current_user),
 ) -> Optional[Dict[str, Any]]:
     """
@@ -207,7 +206,7 @@ async def get_symbol_data_local(
     name: str,
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
-    request: Optional[Request] = None,
+    request: Request = None,
     current_user=Depends(get_optional_current_user),
 ) -> Optional[Dict[str, Any]]:
     """
@@ -276,7 +275,7 @@ async def get_symbol_data(
         default="1d",
         description="Data interval (1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo)",
     ),
-    request: Optional[Request] = None,
+    request: Request = None,
     current_user=Depends(get_optional_current_user),
 ) -> Optional[Dict[str, Any]]:
     """

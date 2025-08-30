@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
-from app.core.database.connection import get_db
+from app.core.database.connection import get_db, validate_token
 from app.core.database.models import User, UserProfile, UserSession
 from app.core.auth.schemas import (
     UserCreate,
@@ -21,8 +21,6 @@ from app.core.auth.schemas import (
     PasswordReset,
     PasswordResetConfirm,
     EmailVerification,
-    TwoFactorSetup,
-    TwoFactorVerify,
 )
 from app.core.auth.utils import (
     get_password_hash,
@@ -44,6 +42,7 @@ from app.core.auth.dependencies import (
     get_client_ip,
     get_user_agent,
 )
+from app.core.email_client import send_forgot_password_email
 from app.core.logging_config import (
     get_logger,
     log_api_request,
@@ -62,7 +61,6 @@ async def register_user(
     user_data: UserCreate, request: Request, db: Session = Depends(get_db)
 ):
     """Register a new user."""
-    start_time = time.time()
     client_ip = get_client_ip(request) if request else "unknown"
     user_agent = get_user_agent(request) if request else "unknown"
 
@@ -215,10 +213,11 @@ async def login_user(
         # Log failed login attempt
         client_ip = get_client_ip(request)
         log_security_event(
-            None,
+            logger,
             "failed_login",
-            f"Failed login attempt for username: {user_credentials.username} from IP: {client_ip}",
+            None,  # No user ID for failed login
             client_ip,
+            f"Failed login attempt for username: {user_credentials.username} from IP: {client_ip}",
         )
 
         raise HTTPException(
@@ -254,9 +253,12 @@ async def login_user(
     # Log successful login
     client_ip = get_client_ip(request)
     log_security_event(
-        user.id, "successful_login", f"User logged in from IP: {client_ip}", client_ip
+        logger,
+        "successful_login",
+        str(user.id),
+        client_ip,
+        f"User logged in from IP: {client_ip}",
     )
-
     return tokens
 
 
@@ -312,10 +314,11 @@ async def logout_user(
     # Log logout event
     client_ip = get_client_ip(request)
     log_security_event(
-        current_user.id,
+        logger,
         "user_logout",
-        f"User logged out from IP: {client_ip}",
+        str(current_user.id),
         client_ip,
+        f"User logged out from IP: {client_ip}",
     )
 
     return {"message": "Successfully logged out"}
@@ -410,9 +413,40 @@ async def forgot_password(password_reset: PasswordReset, db: Session = Depends(g
             None,
             "Password reset requested",
         )
+        send_forgot_password_email(recipient_email=user.email, token=reset_token)
+        log_security_event(
+            logger,
+            "password_reset_sent",
+            str(user.id),
+            None,
+            "Password reset sent",
+        )
+        # Always return success to prevent email enumeration
+        return {"message": "If the email exists, a password reset link has been sent"}
+    else:
+        log_security_event(
+            logger,
+            "password_reset_requested",
+            None,
+            None,
+            "Password reset requested",
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid email"
+        )
 
-    # Always return success to prevent email enumeration
-    return {"message": "If the email exists, a password reset link has been sent"}
+@router.get("/reset-password")
+async def reset_password(token: str, db: Session = Depends(get_db)):
+    """Reset password using reset token."""
+    # Here you would typically validate the token before showing the form.
+    # If the token is invalid, you would return a different response.
+    is_valid = validate_token(token)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail="Invalid or expired token")
+
+    # In a real app, you would render an HTML form here.
+    # For now, we'll return a message.
+    return {"message": "Token is valid. Please use the form to reset your password."}
 
 
 @router.post("/reset-password")
@@ -455,41 +489,6 @@ async def resend_verification(current_user: User = Depends(get_current_user)):
     # and send it via email
 
     return {"message": "Verification email sent"}
-
-
-@router.post("/2fa/setup")
-async def setup_two_factor(
-    two_factor_data: TwoFactorSetup,
-    current_user: User = Depends(get_current_verified_user),
-):
-    """Setup two-factor authentication."""
-    # In production, this would generate a QR code for TOTP apps
-    # and store the secret in the database
-
-    if two_factor_data.enable:
-        # Generate 2FA secret and QR code
-        return {"message": "Two-factor authentication setup initiated"}
-    else:
-        # Disable 2FA
-        return {"message": "Two-factor authentication disabled"}
-
-
-@router.post("/2fa/verify")
-async def verify_two_factor(
-    two_factor_data: TwoFactorVerify,
-    current_user: User = Depends(get_current_verified_user),
-):
-    """Verify two-factor authentication code."""
-    # In production, this would validate the TOTP code
-    # against the stored secret
-
-    # For now, we'll just validate the code format
-    if len(two_factor_data.code) != 6 or not two_factor_data.code.isdigit():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid verification code"
-        )
-
-    return {"message": "Two-factor authentication verified"}
 
 
 @router.delete("/me")

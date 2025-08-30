@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import List, Any
 import os
 
@@ -22,7 +23,7 @@ class Settings(BaseSettings):
 
     # API settings
     API_V1_STR: str = env.str("API_V1_STR", "/api/v1")
-    API_HOST: str = env.str("API_HOST", "0.0.0.0")
+    API_HOST: str = env.str("API_HOST", "localhost")
     API_PORT: int = env.int("API_PORT", 8000)
 
     # CORS settings
@@ -67,6 +68,16 @@ class Settings(BaseSettings):
     # Test settings
     TESTING: bool = env.bool("TESTING", False)
     TEST_DATABASE_URL: str = env.str("TEST_DATABASE_URL", "sqlite:///./test.db")
+
+    # Email settings
+    EMAIL_HOST_USER: str = env.str("EMAIL_HOST_USER", "vedantparikh2909@gmail.com")
+    EMAIL_HOST_PASSWORD: str = env.str("EMAIL_HOST_PASSWORD", "jksmenvkodujxldb")
+
+    STATIC_DIR: str = env.str("STATIC_DIR", "STATICS")
+
+    @property
+    def STATIC_FILE_PATH(self) -> Path:
+        return Path(__file__).parent.parent / self.STATIC_DIR
 
     @property
     def DATABASE_URL(self) -> str:
