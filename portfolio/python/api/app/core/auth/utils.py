@@ -1,15 +1,19 @@
 """
 Authentication utilities for password hashing, JWT tokens, and security.
 """
-
 import secrets
 import string
 from datetime import datetime, timedelta
-from typing import Optional, Union
+from typing import Optional, Union, Tuple
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi import HTTPException, status
+from pytz import utc
 from app.config import settings
+from app.core.logging_config import get_logger
+from app.core.database.redis_client import get_redis
+
+logger = get_logger(__name__)
 
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -169,3 +173,128 @@ def get_token_expiry_time(token_type: str = "access") -> datetime:
         return datetime.utcnow() + timedelta(minutes=REFRESH_TOKEN_EXPIRE_MINUTES)
     else:
         raise ValueError(f"Unknown token type: {token_type}")
+
+
+def store_reset_token(
+    token: str, user_id: int, user_email: str, expires_in_minutes: int = 60
+) -> bool:
+    """
+    Store password reset token in Redis with expiration.
+
+    Args:
+        token: The reset token
+        user_id: User ID
+        user_email: User email
+        expires_in_hours: Token expiration time in hours
+
+    Returns:
+        bool: True if stored successfully, False otherwise
+    """
+    try:
+        redis_client = get_redis()
+
+        if not redis_client:
+            return False
+
+        # Create token data
+        token_data = {
+            "user_id": user_id,
+            "user_email": user_email,
+            "created_at": datetime.utcnow().isoformat(),
+            "is_used": False,
+        }
+
+        # Store in Redis with expiration
+        key = f"reset_token:{token}"
+        redis_client.set(
+            key=key,
+            ex_seconds=expires_in_minutes * 60,  # Convert minutes to seconds
+            value=token_data,
+        )
+
+        return True
+    except Exception as e:
+        logger.error(f"Failed to store reset token: {e}")
+        return False
+
+
+def validate_reset_token(token: str) -> Tuple[bool, Optional[dict], Optional[str]]:
+    """
+    Validate password reset token.
+
+    Args:
+        token: The reset token to validate
+
+    Returns:
+        Tuple[bool, Optional[dict], Optional[str]]:
+        - is_valid: Whether token is valid
+        - token_data: Token data if valid
+        - error_message: Error message if invalid
+    """
+    try:
+        redis_client = get_redis()
+
+        if not redis_client:
+            return False, None, "Redis connection unavailable"
+
+        # Get token from Redis
+        key = f"reset_token:{token}"
+        token_json = redis_client.get(key)
+
+        if not token_json:
+            return False, None, "Token not found or expired"
+
+        # Parse token data
+        token_data = token_json
+
+        # Check if token is already used
+        if token_data.get("is_used", False):
+            return False, None, "Token has already been used"
+
+        # Check if token is expired (additional safety check)
+        created_at = datetime.fromisoformat(token_data["created_at"])
+        if datetime.now(utc) - created_at > timedelta(hours=24):
+            return False, None, "Token has expired"
+
+        return True, token_data, None
+
+    except Exception as e:
+        logger.error(f"Failed to validate reset token: {e}")
+        return False, None, "Token validation failed"
+
+
+def mark_reset_token_used(token: str) -> bool:
+    """
+    Mark a reset token as used.
+
+    Args:
+        token: The reset token to mark as used
+
+    Returns:
+        bool: True if marked successfully, False otherwise
+    """
+    try:
+        redis_client = get_redis()
+
+        if not redis_client:
+            return False
+
+        key = f"reset_token:{token}"
+        token_json = redis_client.get(key)
+
+        if not token_json:
+            return False
+
+        # Update token data
+        token_data = token_json
+        token_data["is_used"] = True
+
+        # Store updated data
+        redis_client.set(
+            key=key, ex_seconds=3600, value=token_data
+        )  # Keep for 1 hour after use
+
+        return True
+    except Exception as e:
+        logger.error(f"Failed to mark reset token as used: {e}")
+        return False

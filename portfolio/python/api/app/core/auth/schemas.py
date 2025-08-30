@@ -147,3 +147,23 @@ class EmailVerification(BaseModel):
     """Schema for email verification."""
 
     token: str
+
+
+class TokenValidationResponse(BaseModel):
+    """Schema for token validation response."""
+
+    is_valid: bool
+    message: str
+    redirect_url: Optional[str] = None
+    expires_at: Optional[datetime] = None
+    user_email: Optional[str] = None
+
+
+class PasswordResetTokenInfo(BaseModel):
+    """Schema for password reset token information."""
+
+    token: str
+    user_id: int
+    user_email: str
+    expires_at: datetime
+    is_used: bool = False

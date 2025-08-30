@@ -4,7 +4,7 @@ services:
     ports:
       - 8501:8501
     env_file:
-      - .env.docker
+      - js/.env.docker
     networks:
       - portfolio_network
     healthcheck:
@@ -21,7 +21,7 @@ services:
     ports:
       - 3000:3000
     env_file:
-      - .env.docker
+      - js/.env.docker
     networks:
       - portfolio_network
     healthcheck:
@@ -36,7 +36,7 @@ services:
       context: ./python/api
       dockerfile: Dockerfile
     env_file:
-      - .env.docker
+      - ./python/api/.env.docker
     ports:
       - "${API_PORT}:8000"
     depends_on:
@@ -71,7 +71,7 @@ services:
       dockerfile: Dockerfile
     command: ["python", "start_data_service.py"]
     env_file:
-      - .env.docker
+      - ./python/api/.env.docker
     depends_on:
       postgres:
         condition: service_healthy
@@ -97,7 +97,7 @@ services:
   postgres:
     image: postgres:15
     env_file:
-      - .env.docker
+      - ./python/api/.env.docker
     ports:
       - "${POSTGRES_PORT}:5432"
     volumes:
@@ -114,7 +114,7 @@ services:
   redis:
     image: redis:7-alpine
     env_file:
-      - .env.docker
+      - ./python/api/.env.docker
     ports:
       - "${REDIS_PORT}:6379"
     volumes:

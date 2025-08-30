@@ -70,8 +70,8 @@ class Settings(BaseSettings):
     TEST_DATABASE_URL: str = env.str("TEST_DATABASE_URL", "sqlite:///./test.db")
 
     # Email settings
-    EMAIL_HOST_USER: str = env.str("EMAIL_HOST_USER", "vedantparikh2909@gmail.com")
-    EMAIL_HOST_PASSWORD: str = env.str("EMAIL_HOST_PASSWORD", "jksmenvkodujxldb")
+    EMAIL_HOST_USER: str = env.str("EMAIL_HOST_USER", "noreply@portfolia.com")
+    EMAIL_HOST_PASSWORD: str = env.str("EMAIL_HOST_PASSWORD", "")
 
     STATIC_DIR: str = env.str("STATIC_DIR", "STATICS")
 
