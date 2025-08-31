@@ -150,7 +150,7 @@ backend_cors_origins: list = ["http://localhost:3000", "http://localhost:8080"]
 pytest
 
 # Run with coverage
-pytest --cov=app --cov=api --cov=services --cov=models --cov=utils
+pytest --cov=app --cov=api --cov=services --cov=schemas --cov=utils
 
 # Run specific test categories
 pytest -m unit          # Unit tests only

@@ -254,7 +254,7 @@ data-service:
       condition: service_healthy
   volumes:
     - ./python/api/app:/app/app:delegated
-    - ./python/api/models:/app/models:delegated
+    - ./python/api/schemas:/app/schemas:delegated
     - ./python/api/services:/app/services:delegated
 ```
 

@@ -6,6 +6,7 @@ from decimal import Decimal
 
 class PortfolioBase(BaseModel):
     name: str
+    currency: str
     description: Optional[str] = None
 
 
@@ -30,6 +31,7 @@ class Portfolio(PortfolioBase):
 
 class PortfolioItem(BaseModel):
     id: int
+    currency: str
     portfolio_id: int
     asset_id: int
     quantity: Decimal
@@ -43,6 +45,7 @@ class PortfolioItem(BaseModel):
 
 class AssetBase(BaseModel):
     symbol: str
+    currency: str
     quantity: Decimal
     purchase_price: Decimal
     portfolio_id: int
@@ -55,6 +58,7 @@ class AssetCreate(AssetBase):
 class AssetUpdate(BaseModel):
     quantity: Optional[Decimal] = None
     purchase_price: Optional[Decimal] = None
+    currency: Optional[str] = None
 
 
 class Asset(AssetBase):
@@ -71,6 +75,7 @@ class TransactionBase(BaseModel):
     transaction_type: str  # 'buy', 'sell', 'dividend'
     quantity: Decimal
     price: Decimal
+    currency: str
     transaction_date: datetime
     fees: Optional[Decimal] = None
 
@@ -84,6 +89,7 @@ class TransactionUpdate(BaseModel):
     price: Optional[Decimal] = None
     transaction_date: Optional[datetime] = None
     fees: Optional[Decimal] = None
+    currency: Optional[str] = None
 
 
 class Transaction(TransactionBase):

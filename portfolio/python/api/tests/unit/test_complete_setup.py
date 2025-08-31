@@ -108,7 +108,7 @@ class TestPortfoliaSetup(unittest.TestCase):
             "api",
             "api/v1",
             "services",
-            "models",
+            "schemas",
             "utils",
             "tests",
             "docs"
