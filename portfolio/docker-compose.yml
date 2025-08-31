@@ -3,8 +3,6 @@ services:
     build: ./python/streamlit
     ports:
       - 8501:8501
-    env_file:
-      - js/.env.docker
     networks:
       - portfolio_network
     healthcheck:
@@ -21,7 +19,7 @@ services:
     ports:
       - 3000:3000
     env_file:
-      - js/.env.docker
+      - ./python/api/.env.docker
     networks:
       - portfolio_network
     healthcheck:
@@ -35,8 +33,6 @@ services:
     build: 
       context: ./python/api
       dockerfile: Dockerfile
-    env_file:
-      - ./python/api/.env.docker
     ports:
       - "${API_PORT}:8000"
     depends_on:
@@ -95,9 +91,9 @@ services:
       start_period: 40s
 
   postgres:
-    image: postgres:15
-    env_file:
-      - ./python/api/.env.docker
+    build:
+      context: ./python/api
+      dockerfile: Dockerfile.postgres
     ports:
       - "${POSTGRES_PORT}:5432"
     volumes:
@@ -112,9 +108,9 @@ services:
       start_period: 30s
 
   redis:
-    image: redis:7-alpine
-    env_file:
-      - ./python/api/.env.docker
+    build:
+      context: ./python/api
+      dockerfile: Dockerfile.redis
     ports:
       - "${REDIS_PORT}:6379"
     volumes:

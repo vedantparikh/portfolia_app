@@ -1,0 +1,15 @@
+FROM redis:7-alpine
+
+# Copy environment file
+COPY .env.docker /tmp/.env.docker
+
+# Install additional tools if needed
+RUN apk add --no-cache \
+    bash \
+    curl
+
+# Expose port
+EXPOSE 6379
+
+# Use default redis entrypoint
+CMD ["redis-server"]
