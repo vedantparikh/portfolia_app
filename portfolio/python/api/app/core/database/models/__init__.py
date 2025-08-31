@@ -1,5 +1,5 @@
 # Database Models
-from ..connection import Base
+from app.core.database.connection import Base
 from .user import User, UserProfile, UserSession
 from .portfolio import Portfolio, PortfolioAsset
 from .asset import Asset, AssetPrice, MarketIndex

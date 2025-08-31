@@ -12,7 +12,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from datetime import datetime, timedelta
 import secrets
-from ..connection import Base
+from app.core.database.connection import Base
 
 
 class User(Base):
