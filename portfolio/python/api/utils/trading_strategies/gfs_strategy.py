@@ -1,7 +1,7 @@
 import polars as pl
 import yfinance as yf
 
-from ..indicators.momentum_indicators import MomentumIndicators
+from utils.indicators.momentum_indicators import MomentumIndicators
 
 
 class GfsStrategy:

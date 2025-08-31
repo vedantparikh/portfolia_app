@@ -7,17 +7,19 @@ Starts the market data service with scheduler for automatic updates.
 import asyncio
 import logging
 import sys
-import os
 from pathlib import Path
+
+
+from sqlalchemy import select
+
+from app.core.database.connection import init_db, get_db_session
+from app.core.database.models.market_data import MarketData
+from services.data_scheduler import data_scheduler
+from services.market_data_service import market_data_service
 
 # Add the project root to Python path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
-
-from app.config import settings
-from app.core.database.connection import init_db, get_db_session
-from services.data_scheduler import data_scheduler
-from services.market_data_service import market_data_service
 
 # Configure logging
 logging.basicConfig(
@@ -88,8 +90,6 @@ async def populate_initial_data():
 
         # Check if we have any data
         async with get_db_session() as session:
-            from models.market_data import MarketData
-            from sqlalchemy import select
 
             result = await session.execute(select(MarketData).limit(1))
             has_data = result.scalar_one_or_none() is not None

@@ -5,8 +5,8 @@ Database utility functions for common operations.
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import text, func
-from .models import User, Portfolio, Asset, Transaction, PortfolioAsset, UserSession
-from .connection import get_db_context
+from app.core.database.models import User, Portfolio, Asset, Transaction, PortfolioAsset, UserSession
+
 import logging
 
 logger = logging.getLogger(__name__)

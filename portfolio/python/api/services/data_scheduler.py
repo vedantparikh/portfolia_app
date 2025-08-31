@@ -6,18 +6,15 @@ Handles scheduled updates of market data for all tracked tickers.
 import asyncio
 import logging
 import schedule
-import time
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
 import traceback
 
 from app.core.database.connection import get_db_session
 from services.market_data_service import market_data_service
-from models.market_data import DataUpdateLog, TickerInfo
+from app.core.database.models.market_data import DataUpdateLog, TickerInfo, MarketData
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import and_
-from models.market_data import MarketData
 
 logger = logging.getLogger(__name__)
 

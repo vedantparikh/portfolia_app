@@ -47,7 +47,7 @@ services:
     volumes:
       # Development: Mount source code for live reload (exclude cache)
       - ./python/api/app:/app/app:delegated
-      - ./python/api/models:/app/models:delegated
+      - ./python/api/schemas:/app/schemas:delegated
       - ./python/api/utils:/app/utils:delegated
       - ./python/api/api:/app/api:delegated
       - ./python/api/alembic:/app/alembic:delegated
@@ -80,7 +80,7 @@ services:
     volumes:
       # Mount source code for live reload
       - ./python/api/app:/app/app:delegated
-      - ./python/api/models:/app/models:delegated
+      - ./python/api/schemas:/app/schemas:delegated
       - ./python/api/services:/app/services:delegated
       - ./python/api/start_data_service.py:/app/start_data_service.py:delegated
       - ./python/api/requirements.txt:/app/requirements.txt:delegated

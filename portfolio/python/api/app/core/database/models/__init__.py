@@ -1,9 +1,11 @@
 # Database Models
-from ..connection import Base
+from app.core.database.connection import Base
 from .user import User, UserProfile, UserSession
 from .portfolio import Portfolio, PortfolioAsset
 from .asset import Asset, AssetPrice, MarketIndex
 from .transaction import Transaction, TransactionType, ManualEntry
+from .market_data import TickerInfo, MarketData, DataUpdateLog
+from .watchlist import Watchlist, WatchlistItem, WatchlistAlert, WatchlistPerformance
 
 __all__ = [
     # Base class
@@ -19,5 +21,12 @@ __all__ = [
     "MarketIndex",
     "Transaction",
     "TransactionType",
-    "ManualEntry"
+    "ManualEntry",
+    "TickerInfo",
+    "MarketData",
+    "DataUpdateLog",
+    "Watchlist",
+    "WatchlistItem",
+    "WatchlistAlert",
+    "WatchlistPerformance",
 ]

@@ -230,6 +230,28 @@ except Exception as e:
 
     logger.error(f"Full traceback: {traceback.format_exc()}")
 
+# Include watchlist router
+try:
+    logger.info("👀 Attempting to import watchlist router...")
+    from app.core.watchlist.router import router as watchlist_router
+
+    logger.info("✅ Watchlist router imported successfully")
+    app.include_router(
+        watchlist_router, prefix="/api/v1/watchlists", tags=["watchlists"]
+    )
+    logger.info("✅ Watchlist router included at /api/v1/watchlists")
+except ImportError as e:
+    logger.warning(f"⚠️ Could not import watchlist router: {e}")
+    logger.error(f"❌ Watchlist router import error details: {e}")
+    import traceback
+
+    logger.error(f"❌ Full traceback: {traceback.format_exc()}")
+except Exception as e:
+    logger.error(f"❌ Unexpected error importing watchlist router: {e}")
+    import traceback
+
+    logger.error(f"❌ Full traceback: {traceback.format_exc()}")
+
 
 @app.get("/")
 async def root():

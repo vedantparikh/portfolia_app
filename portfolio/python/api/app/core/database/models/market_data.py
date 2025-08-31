@@ -3,7 +3,6 @@ Market Data Models
 Database models for storing market data and ticker information.
 """
 
-from datetime import datetime, date
 from sqlalchemy import (
     Column,
     Integer,

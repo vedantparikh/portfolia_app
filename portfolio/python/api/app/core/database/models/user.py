@@ -12,7 +12,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from datetime import datetime, timedelta
 import secrets
-from ..connection import Base
+from app.core.database.connection import Base
 
 
 class User(Base):
@@ -47,6 +47,12 @@ class User(Base):
     )
     manual_entries = relationship(
         "ManualEntry", back_populates="user", cascade="all, delete-orphan"
+    )
+    watchlists = relationship(
+        "Watchlist", back_populates="user", cascade="all, delete-orphan"
+    )
+    watchlist_alerts = relationship(
+        "WatchlistAlert", back_populates="user", cascade="all, delete-orphan"
     )
 
     # Indexes for performance

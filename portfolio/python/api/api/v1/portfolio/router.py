@@ -3,33 +3,31 @@ Portfolio management router with full authentication.
 """
 
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 
 from app.core.database.connection import get_db
-from app.core.database.models import (
-    User,
-    Portfolio as PortfolioModel,
-    PortfolioAsset,
-    Asset,
-)
+from app.core.database.models import User
 from app.core.auth.dependencies import (
     get_current_active_user,
     get_current_verified_user,
 )
-from app.core.auth.schemas import UserResponse
-from models.portfolio import (
+from schemas.portfolio import (
     PortfolioCreate,
     PortfolioUpdate,
     Portfolio,
-    PortfolioItem,
+    PortfolioAsset,
+    PortfolioAssetCreate,
+    PortfolioAssetUpdate,
+    PortfolioAssetWithDetails,
     AssetCreate,
-    AssetUpdate,
-    Asset as AssetSchema,
     TransactionCreate,
-    TransactionUpdate,
     Transaction,
+    PortfolioSummary,
+    PortfolioHolding,
+    PortfolioStatistics,
 )
+from services.portfolio_service import PortfolioService
 
 router = APIRouter(prefix="/portfolios", tags=["portfolios"])
 
@@ -42,35 +40,24 @@ async def create_portfolio(
 ):
     """Create a new portfolio for the authenticated user."""
     # Override user_id to ensure user can only create portfolios for themselves
-    portfolio_data.user_id = current_user.id
+    portfolio_data.user_id = int(current_user.id)
 
-    new_portfolio = PortfolioModel(
-        user_id=portfolio_data.user_id,
-        name=portfolio_data.name,
-        description=portfolio_data.description,
-        currency="USD",  # Default currency
-    )
-
-    db.add(new_portfolio)
-    db.commit()
-    db.refresh(new_portfolio)
-
+    portfolio_service = PortfolioService(db)
+    new_portfolio = portfolio_service.create_portfolio(portfolio_data)
     return new_portfolio
 
 
 @router.get("/", response_model=List[Portfolio])
 async def get_user_portfolios(
-    current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_active_user),
+    include_inactive: bool = Query(False, description="Include inactive portfolios"),
+    db: Session = Depends(get_db),
 ):
     """Get all portfolios for the authenticated user."""
-    portfolios = (
-        db.query(PortfolioModel)
-        .filter(
-            PortfolioModel.user_id == current_user.id, PortfolioModel.is_active == True
-        )
-        .all()
+    portfolio_service = PortfolioService(db)
+    portfolios = portfolio_service.get_user_portfolios(
+        int(current_user.id), include_inactive=include_inactive
     )
-
     return portfolios
 
 
@@ -81,15 +68,8 @@ async def get_portfolio(
     db: Session = Depends(get_db),
 ):
     """Get a specific portfolio by ID (user must own it)."""
-    portfolio = (
-        db.query(PortfolioModel)
-        .filter(
-            PortfolioModel.id == portfolio_id,
-            PortfolioModel.user_id == current_user.id,
-            PortfolioModel.is_active == True,
-        )
-        .first()
-    )
+    portfolio_service = PortfolioService(db)
+    portfolio = portfolio_service.get_portfolio(portfolio_id, int(current_user.id))
 
     if not portfolio:
         raise HTTPException(
@@ -107,28 +87,15 @@ async def update_portfolio(
     db: Session = Depends(get_db),
 ):
     """Update a portfolio (user must own it)."""
-    portfolio = (
-        db.query(PortfolioModel)
-        .filter(
-            PortfolioModel.id == portfolio_id,
-            PortfolioModel.user_id == current_user.id,
-            PortfolioModel.is_active == True,
-        )
-        .first()
+    portfolio_service = PortfolioService(db)
+    portfolio = portfolio_service.update_portfolio(
+        portfolio_id, portfolio_update, int(current_user.id)
     )
 
     if not portfolio:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
         )
-
-    # Update only provided fields
-    update_data = portfolio_update.dict(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(portfolio, field, value)
-
-    db.commit()
-    db.refresh(portfolio)
 
     return portfolio
 
@@ -140,176 +107,106 @@ async def delete_portfolio(
     db: Session = Depends(get_db),
 ):
     """Delete a portfolio (user must own it)."""
-    portfolio = (
-        db.query(PortfolioModel)
-        .filter(
-            PortfolioModel.id == portfolio_id,
-            PortfolioModel.user_id == current_user.id,
-            PortfolioModel.is_active == True,
-        )
-        .first()
-    )
+    portfolio_service = PortfolioService(db)
+    success = portfolio_service.delete_portfolio(portfolio_id, int(current_user.id))
 
-    if not portfolio:
+    if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
         )
 
-    # Soft delete by marking as inactive
-    portfolio.is_active = False
-    db.commit()
+    return None
+
+
+@router.delete("/{portfolio_id}/hard", status_code=status.HTTP_204_NO_CONTENT)
+async def hard_delete_portfolio(
+    portfolio_id: int,
+    current_user: User = Depends(get_current_verified_user),
+    db: Session = Depends(get_db),
+):
+    """Permanently delete a portfolio and all associated data (user must own it)."""
+    portfolio_service = PortfolioService(db)
+    success = portfolio_service.hard_delete_portfolio(portfolio_id, current_user.id)
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
+        )
 
     return None
 
 
 @router.post(
     "/{portfolio_id}/assets",
-    response_model=PortfolioItem,
+    response_model=PortfolioAsset,
     status_code=status.HTTP_201_CREATED,
 )
 async def add_asset_to_portfolio(
     portfolio_id: int,
-    asset_data: AssetCreate,
+    asset_data: PortfolioAssetCreate,
     current_user: User = Depends(get_current_verified_user),
     db: Session = Depends(get_db),
 ):
     """Add an asset to a portfolio (user must own the portfolio)."""
-    # Verify portfolio ownership
-    portfolio = (
-        db.query(PortfolioModel)
-        .filter(
-            PortfolioModel.id == portfolio_id,
-            PortfolioModel.user_id == current_user.id,
-            PortfolioModel.is_active == True,
-        )
-        .first()
+    portfolio_service = PortfolioService(db)
+    portfolio_asset = portfolio_service.add_asset_to_portfolio(
+        portfolio_id, asset_data, current_user.id
     )
 
-    if not portfolio:
+    if not portfolio_asset:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
         )
 
-    # Override portfolio_id to ensure asset goes to correct portfolio
-    asset_data.portfolio_id = portfolio_id
-
-    # Check if asset already exists in portfolio
-    existing_asset = (
-        db.query(PortfolioAsset)
-        .filter(
-            PortfolioAsset.portfolio_id == portfolio_id,
-            PortfolioAsset.asset_id == asset_data.asset_id,
-        )
-        .first()
-    )
-
-    if existing_asset:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Asset already exists in portfolio",
-        )
-
-    # Create portfolio asset
-    portfolio_asset = PortfolioAsset(
-        portfolio_id=portfolio_id,
-        asset_id=asset_data.asset_id,
-        quantity=asset_data.quantity,
-        cost_basis=asset_data.purchase_price,
-        cost_basis_total=asset_data.quantity * asset_data.purchase_price,
-    )
-
-    db.add(portfolio_asset)
-    db.commit()
-    db.refresh(portfolio_asset)
-
     return portfolio_asset
 
 
-@router.get("/{portfolio_id}/assets", response_model=List[PortfolioItem])
+@router.get("/{portfolio_id}/assets", response_model=List[PortfolioAsset])
 async def get_portfolio_assets(
     portfolio_id: int,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     """Get all assets in a portfolio (user must own the portfolio)."""
-    # Verify portfolio ownership
-    portfolio = (
-        db.query(PortfolioModel)
-        .filter(
-            PortfolioModel.id == portfolio_id,
-            PortfolioModel.user_id == current_user.id,
-            PortfolioModel.is_active == True,
-        )
-        .first()
-    )
-
-    if not portfolio:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
-        )
-
-    assets = (
-        db.query(PortfolioAsset)
-        .filter(PortfolioAsset.portfolio_id == portfolio_id)
-        .all()
-    )
-
+    portfolio_service = PortfolioService(db)
+    assets = portfolio_service.get_portfolio_assets(portfolio_id, current_user.id)
     return assets
 
 
-@router.put("/{portfolio_id}/assets/{asset_id}", response_model=PortfolioItem)
+@router.get(
+    "/{portfolio_id}/assets/details", response_model=List[PortfolioAssetWithDetails]
+)
+async def get_portfolio_assets_with_details(
+    portfolio_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """Get portfolio assets with detailed information including current values and P&L."""
+    portfolio_service = PortfolioService(db)
+    assets = portfolio_service.get_portfolio_assets_with_details(
+        portfolio_id, current_user.id
+    )
+    return assets
+
+
+@router.put("/{portfolio_id}/assets/{asset_id}", response_model=PortfolioAsset)
 async def update_portfolio_asset(
     portfolio_id: int,
     asset_id: int,
-    asset_update: AssetUpdate,
+    asset_update: PortfolioAssetUpdate,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     """Update an asset in a portfolio (user must own the portfolio)."""
-    # Verify portfolio ownership
-    portfolio = (
-        db.query(PortfolioModel)
-        .filter(
-            PortfolioModel.id == portfolio_id,
-            PortfolioModel.user_id == current_user.id,
-            PortfolioModel.is_active == True,
-        )
-        .first()
-    )
-
-    if not portfolio:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
-        )
-
-    # Find the portfolio asset
-    portfolio_asset = (
-        db.query(PortfolioAsset)
-        .filter(
-            PortfolioAsset.portfolio_id == portfolio_id,
-            PortfolioAsset.asset_id == asset_id,
-        )
-        .first()
+    portfolio_service = PortfolioService(db)
+    portfolio_asset = portfolio_service.update_portfolio_asset(
+        portfolio_id, asset_id, asset_update, current_user.id
     )
 
     if not portfolio_asset:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found in portfolio"
         )
-
-    # Update only provided fields
-    update_data = asset_update.dict(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(portfolio_asset, field, value)
-
-    # Recalculate cost basis total if quantity or purchase price changed
-    if "quantity" in update_data or "purchase_price" in update_data:
-        portfolio_asset.cost_basis_total = (
-            portfolio_asset.quantity * portfolio_asset.cost_basis
-        )
-
-    db.commit()
-    db.refresh(portfolio_asset)
 
     return portfolio_asset
 
@@ -324,91 +221,203 @@ async def remove_asset_from_portfolio(
     db: Session = Depends(get_db),
 ):
     """Remove an asset from a portfolio (user must own the portfolio)."""
-    # Verify portfolio ownership
-    portfolio = (
-        db.query(PortfolioModel)
-        .filter(
-            PortfolioModel.id == portfolio_id,
-            PortfolioModel.user_id == current_user.id,
-            PortfolioModel.is_active == True,
-        )
-        .first()
+    portfolio_service = PortfolioService(db)
+    success = portfolio_service.remove_asset_from_portfolio(
+        portfolio_id, asset_id, current_user.id
     )
 
-    if not portfolio:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
-        )
-
-    # Find and delete the portfolio asset
-    portfolio_asset = (
-        db.query(PortfolioAsset)
-        .filter(
-            PortfolioAsset.portfolio_id == portfolio_id,
-            PortfolioAsset.asset_id == asset_id,
-        )
-        .first()
-    )
-
-    if not portfolio_asset:
+    if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found in portfolio"
         )
 
-    db.delete(portfolio_asset)
-    db.commit()
-
     return None
 
 
-@router.get("/{portfolio_id}/summary")
+@router.post(
+    "/{portfolio_id}/transactions",
+    response_model=Transaction,
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_transaction(
+    portfolio_id: int,
+    transaction_data: TransactionCreate,
+    current_user: User = Depends(get_current_verified_user),
+    db: Session = Depends(get_db),
+):
+    """Add a transaction to a portfolio (user must own the portfolio)."""
+    portfolio_service = PortfolioService(db)
+    transaction = portfolio_service.add_transaction(
+        portfolio_id, transaction_data, current_user.id
+    )
+
+    if not transaction:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
+        )
+
+    return transaction
+
+
+@router.get("/{portfolio_id}/transactions", response_model=List[Transaction])
+async def get_portfolio_transactions(
+    portfolio_id: int,
+    current_user: User = Depends(get_current_active_user),
+    limit: int = Query(
+        100, ge=1, le=1000, description="Number of transactions to return"
+    ),
+    offset: int = Query(0, ge=0, description="Number of transactions to skip"),
+    db: Session = Depends(get_db),
+):
+    """Get transactions for a portfolio (user must own the portfolio)."""
+    portfolio_service = PortfolioService(db)
+    transactions = portfolio_service.get_portfolio_transactions(
+        portfolio_id, current_user.id, limit=limit, offset=offset
+    )
+    return transactions
+
+
+@router.get("/{portfolio_id}/summary", response_model=PortfolioSummary)
 async def get_portfolio_summary(
     portfolio_id: int,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     """Get portfolio summary with total value and performance metrics."""
-    # Verify portfolio ownership
-    portfolio = (
-        db.query(PortfolioModel)
-        .filter(
-            PortfolioModel.id == portfolio_id,
-            PortfolioModel.user_id == current_user.id,
-            PortfolioModel.is_active == True,
-        )
-        .first()
-    )
+    portfolio_service = PortfolioService(db)
+    summary = portfolio_service.get_portfolio_summary(portfolio_id, current_user.id)
 
-    if not portfolio:
+    if not summary.portfolio_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
         )
 
-    # Get portfolio assets
-    assets = (
-        db.query(PortfolioAsset)
-        .filter(PortfolioAsset.portfolio_id == portfolio_id)
-        .all()
+    return summary
+
+
+@router.get("/{portfolio_id}/holdings", response_model=List[PortfolioHolding])
+async def get_portfolio_holdings(
+    portfolio_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """Get detailed portfolio holdings with current values and P&L."""
+    portfolio_service = PortfolioService(db)
+    holdings = portfolio_service.get_portfolio_holdings(portfolio_id, current_user.id)
+    return holdings
+
+
+@router.get("/{portfolio_id}/performance")
+async def get_portfolio_performance(
+    portfolio_id: int,
+    days: int = Query(
+        30, ge=1, le=365, description="Number of days for performance calculation"
+    ),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """Get portfolio performance metrics over a specified period."""
+    portfolio_service = PortfolioService(db)
+    performance = portfolio_service.get_portfolio_performance(
+        portfolio_id, current_user.id, days=days
     )
 
-    # Calculate summary metrics
-    total_cost_basis = sum(float(asset.cost_basis_total) for asset in assets)
-    total_current_value = sum(
-        float(asset.current_value or asset.cost_basis_total) for asset in assets
+    if not performance:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
+        )
+
+    return performance
+
+
+@router.post("/{portfolio_id}/refresh", status_code=status.HTTP_200_OK)
+async def refresh_portfolio_values(
+    portfolio_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """Refresh current values and P&L for all assets in a portfolio."""
+    portfolio_service = PortfolioService(db)
+    success = portfolio_service.refresh_portfolio_values(portfolio_id, current_user.id)
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
+        )
+
+    return {"message": "Portfolio values refreshed successfully"}
+
+
+@router.get("/search", response_model=List[Portfolio])
+async def search_portfolios(
+    search_term: Optional[str] = Query(
+        None, description="Search term for portfolio names"
+    ),
+    currency: Optional[str] = Query(None, description="Filter by currency"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """Search portfolios with filters."""
+    portfolio_service = PortfolioService(db)
+    portfolios = portfolio_service.search_portfolios(
+        current_user.id, search_term=search_term, currency=currency
     )
-    total_unrealized_pnl = total_current_value - total_cost_basis
-    total_unrealized_pnl_percent = (
-        (total_unrealized_pnl / total_cost_basis * 100) if total_cost_basis > 0 else 0
+    return portfolios
+
+
+@router.get("/statistics/overview", response_model=PortfolioStatistics)
+async def get_portfolio_statistics(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """Get overall portfolio statistics for the authenticated user."""
+    portfolio_service = PortfolioService(db)
+    statistics = portfolio_service.get_portfolio_statistics(current_user.id)
+    return statistics
+
+
+@router.get("/public/discover", response_model=List[Portfolio])
+async def discover_public_portfolios(
+    limit: int = Query(50, ge=1, le=100, description="Number of portfolios to return"),
+    offset: int = Query(0, ge=0, description="Number of portfolios to skip"),
+    db: Session = Depends(get_db),
+):
+    """Discover public portfolios (no authentication required)."""
+    portfolio_service = PortfolioService(db)
+    portfolios = portfolio_service.get_public_portfolios(limit=limit, offset=offset)
+    return portfolios
+
+
+# Legacy endpoints for backward compatibility
+@router.post(
+    "/{portfolio_id}/assets/legacy",
+    response_model=PortfolioAsset,
+    status_code=status.HTTP_201_CREATED,
+    deprecated=True,
+)
+async def add_asset_to_portfolio_legacy(
+    portfolio_id: int,
+    asset_data: AssetCreate,
+    current_user: User = Depends(get_current_verified_user),
+    db: Session = Depends(get_db),
+):
+    """Legacy endpoint: Add an asset to a portfolio using old schema."""
+    # Convert AssetCreate to PortfolioAssetCreate
+    portfolio_asset_data = PortfolioAssetCreate(
+        portfolio_id=portfolio_id,
+        asset_id=asset_data.asset_id,
+        quantity=asset_data.quantity,
+        cost_basis=asset_data.purchase_price,
     )
 
-    return {
-        "portfolio_id": portfolio_id,
-        "portfolio_name": portfolio.name,
-        "currency": portfolio.currency,
-        "total_assets": len(assets),
-        "total_cost_basis": round(total_cost_basis, 2),
-        "total_current_value": round(total_current_value, 2),
-        "total_unrealized_pnl": round(total_unrealized_pnl, 2),
-        "total_unrealized_pnl_percent": round(total_unrealized_pnl_percent, 2),
-        "last_updated": portfolio.updated_at,
-    }
+    portfolio_service = PortfolioService(db)
+    portfolio_asset = portfolio_service.add_asset_to_portfolio(
+        portfolio_id, portfolio_asset_data, current_user.id
+    )
+
+    if not portfolio_asset:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
+        )
+
+    return portfolio_asset

@@ -6,14 +6,13 @@ from sqlalchemy import (
     DateTime,
     Numeric,
     ForeignKey,
-    Boolean,
     Index,
     Enum,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
-from ..connection import Base
+from app.core.database.connection import Base
 
 
 class TransactionType(enum.Enum):

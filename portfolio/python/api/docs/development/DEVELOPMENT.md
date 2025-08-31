@@ -346,7 +346,7 @@ def verify_token(token: str):
 #### 1. Define Pydantic Schemas
 
 ```python
-# models/new_feature.py
+# schemas/new_feature.py
 from pydantic import BaseModel
 from typing import Optional
 
