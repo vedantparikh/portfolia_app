@@ -48,6 +48,12 @@ class User(Base):
     manual_entries = relationship(
         "ManualEntry", back_populates="user", cascade="all, delete-orphan"
     )
+    watchlists = relationship(
+        "Watchlist", back_populates="user", cascade="all, delete-orphan"
+    )
+    watchlist_alerts = relationship(
+        "WatchlistAlert", back_populates="user", cascade="all, delete-orphan"
+    )
 
     # Indexes for performance
     __table_args__ = (

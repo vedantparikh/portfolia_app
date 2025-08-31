@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select, and_, desc
 
 from app.core.database.connection import get_db_session
-from models.market_data import MarketData, TickerInfo
+from app.core.database.models.market_data import MarketData, TickerInfo
 
 logger = logging.getLogger(__name__)
 

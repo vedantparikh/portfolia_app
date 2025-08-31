@@ -5,6 +5,7 @@ from .portfolio import Portfolio, PortfolioAsset
 from .asset import Asset, AssetPrice, MarketIndex
 from .transaction import Transaction, TransactionType, ManualEntry
 from .market_data import TickerInfo, MarketData, DataUpdateLog
+from .watchlist import Watchlist, WatchlistItem, WatchlistAlert, WatchlistPerformance
 
 __all__ = [
     # Base class
@@ -23,5 +24,9 @@ __all__ = [
     "ManualEntry",
     "TickerInfo",
     "MarketData",
-    "DataUpdateLog"
+    "DataUpdateLog",
+    "Watchlist",
+    "WatchlistItem",
+    "WatchlistAlert",
+    "WatchlistPerformance",
 ]

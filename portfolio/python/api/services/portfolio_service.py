@@ -1,7 +1,7 @@
 from typing import List, Optional
 from sqlalchemy.orm import Session
 from app.core.database.models import Portfolio, Asset, Transaction
-from models.portfolio import PortfolioCreate, PortfolioUpdate
+from schemas.portfolio import PortfolioCreate, PortfolioUpdate
 
 class PortfolioService:
     """Service for portfolio operations."""
