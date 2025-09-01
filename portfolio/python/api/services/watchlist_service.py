@@ -1,24 +1,27 @@
-from typing import List, Optional, Dict, Any
-from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import and_, desc, func
-from datetime import datetime, timezone
+from datetime import datetime
+from datetime import timezone
 from decimal import Decimal
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
 
-from app.core.database.models.watchlist import (
-    Watchlist,
-    WatchlistItem,
-    WatchlistAlert,
-    WatchlistPerformance,
-)
-from schemas.watchlist import (
-    WatchlistCreate,
-    WatchlistUpdate,
-    WatchlistItemCreate,
-    WatchlistItemUpdate,
-    WatchlistAlertCreate,
-)
-from services.market_data_service import MarketDataService
+from app.core.database.models.watchlist import Watchlist
+from app.core.database.models.watchlist import WatchlistAlert
+from app.core.database.models.watchlist import WatchlistItem
+from app.core.database.models.watchlist import WatchlistPerformance
 from app.core.logging_config import get_logger
+from schemas.watchlist import WatchlistAlertCreate
+from schemas.watchlist import WatchlistCreate
+from schemas.watchlist import WatchlistItemCreate
+from schemas.watchlist import WatchlistItemUpdate
+from schemas.watchlist import WatchlistUpdate
+from services.market_data_service import MarketDataService
+from sqlalchemy import and_
+from sqlalchemy import desc
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import joinedload
 
 logger = get_logger(__name__)
 
@@ -102,6 +105,7 @@ class WatchlistService:
                 .filter(
                     and_(Watchlist.id == watchlist_id, Watchlist.user_id == user_id)
                 )
+                .options(joinedload(Watchlist.items))  # Add this line to load items
                 .first()
             )
 
@@ -212,9 +216,7 @@ class WatchlistService:
                     symbol=item_data.symbol.upper()
                 )
                 if price_info:
-                    current_price = Decimal(
-                        str(price_info)
-                    )
+                    current_price = Decimal(str(price_info))
             except Exception as e:
                 logger.warning(
                     f"Failed to get initial price for {item_data.symbol}: {e}"
@@ -357,7 +359,7 @@ class WatchlistService:
             logger.error(f"Failed to reorder watchlist items: {e}")
             raise
 
-    def update_watchlist_item_prices(self, symbol: str) -> bool:
+    async def update_watchlist_item_prices(self, symbol: str) -> bool:
         """Update current prices for all watchlist items with a given symbol."""
         try:
             # Get all watchlist items with this symbol
@@ -372,7 +374,7 @@ class WatchlistService:
 
             # Get current market price
             try:
-                market_data = self.market_data_service.get_market_data(
+                market_data = await self.market_data_service.get_market_data(
                     symbol=symbol.upper()
                 )
                 if not market_data or symbol.upper() not in market_data:
@@ -613,7 +615,16 @@ class WatchlistService:
     ) -> Optional[Watchlist]:
         """Get watchlist with real-time stock data and performance metrics."""
         try:
-            watchlist = self.get_watchlist(watchlist_id, user_id)
+            # Get watchlist with items loaded
+            watchlist = (
+                self.db.query(Watchlist)
+                .filter(
+                    and_(Watchlist.id == watchlist_id, Watchlist.user_id == user_id)
+                )
+                .options(joinedload(Watchlist.items))
+                .first()
+            )
+
             if not watchlist:
                 return None
 
@@ -630,6 +641,9 @@ class WatchlistService:
                 if item.added_date:
                     days_since = (datetime.now(timezone.utc) - item.added_date).days
                     item.days_since_added = days_since
+
+            # Add item count for the watchlist
+            watchlist.item_count = len(watchlist.items)
 
             return watchlist
 
@@ -698,7 +712,7 @@ class WatchlistService:
                 self.db.query(WatchlistItem)
                 .join(Watchlist)
                 .filter(Watchlist.user_id == user_id)
-                .order_by(desc(WatchlistItem.added_at))
+                .order_by(desc(WatchlistItem.added_date))
                 .limit(10)
                 .all()
             )

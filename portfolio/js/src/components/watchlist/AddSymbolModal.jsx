@@ -1,8 +1,8 @@
 import { Search, TrendingUp, X } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { marketAPI, authUtils } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { authUtils, marketAPI } from '../../services/api';
 
 const AddSymbolModal = ({ isOpen, onClose, onAdd }) => {
     const { isAuthenticated } = useAuth();
@@ -12,12 +12,22 @@ const AddSymbolModal = ({ isOpen, onClose, onAdd }) => {
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [error, setError] = useState('');
     const [searching, setSearching] = useState(false);
+    const debounceTimeoutRef = useRef(null);
 
     // Popular symbols for quick access
     const popularSymbols = [
         'AAPL', 'GOOGL', 'MSFT', 'AMZN', 'TSLA', 'META', 'NVDA', 'NFLX',
         'SPY', 'QQQ', 'IWM', 'VTI', 'VOO', 'ARKK', 'BTC', 'ETH'
     ];
+
+    // Cleanup debounce timeout on unmount
+    useEffect(() => {
+        return () => {
+            if (debounceTimeoutRef.current) {
+                clearTimeout(debounceTimeoutRef.current);
+            }
+        };
+    }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -52,6 +62,11 @@ const AddSymbolModal = ({ isOpen, onClose, onAdd }) => {
     };
 
     const handleClose = () => {
+        // Clear debounce timeout
+        if (debounceTimeoutRef.current) {
+            clearTimeout(debounceTimeoutRef.current);
+        }
+        
         setSymbol('');
         setLoading(false);
         setSuggestions([]);
@@ -60,65 +75,104 @@ const AddSymbolModal = ({ isOpen, onClose, onAdd }) => {
         onClose();
     };
 
-    const handleSymbolChange = async (value) => {
+    const handleSymbolChange = (value) => {
         setSymbol(value);
         setError(''); // Clear error when user types
         
-        if (value.trim().length >= 2) {
-            setSearching(true);
-            try {
-                // Check authentication before making API call
-                if (!authUtils.isAuthenticated()) {
-                    console.warn('[AddSymbolModal] User not authenticated for symbol search');
-                    toast.error('Please log in to search for symbols');
-                    setError('Authentication required');
-                    setSuggestions([]);
-                    setShowSuggestions(false);
-                    return;
-                }
-
-                const results = await marketAPI.searchSymbols(value.trim());
-                setSuggestions(results);
-                setShowSuggestions(true);
-            } catch (error) {
-                console.error('Failed to search symbols:', error);
-                
-                // Handle authentication errors
-                if (error.response?.status === 401) {
-                    toast.error('Session expired. Please log in again.');
-                    setError('Authentication required');
-                    setSuggestions([]);
-                    setShowSuggestions(false);
-                } else {
-                    // Fallback to popular symbols if API fails
-                    const filtered = popularSymbols.filter(s => 
-                        s.toLowerCase().includes(value.toLowerCase())
-                    );
-                    setSuggestions(filtered);
-                    setShowSuggestions(true);
-                    toast.error('Search failed. Using popular symbols instead.');
-                }
-            } finally {
-                setSearching(false);
-            }
-        } else if (value.trim()) {
-            // For single character, just filter popular symbols
+        // Clear existing timeout
+        if (debounceTimeoutRef.current) {
+            clearTimeout(debounceTimeoutRef.current);
+        }
+        
+        // Set new timeout for debounced search
+        debounceTimeoutRef.current = setTimeout(async () => {
+            await performSearch(value);
+        }, 400);
+        
+        // For immediate feedback, show popular symbols for short inputs
+        if (value.trim().length === 1) {
             const filtered = popularSymbols.filter(s => 
                 s.toLowerCase().includes(value.toLowerCase())
             );
             setSuggestions(filtered);
             setShowSuggestions(true);
-        } else {
+        } else if (!value.trim()) {
             setSuggestions([]);
             setShowSuggestions(false);
         }
     };
 
-    const handleSuggestionClick = (suggestion) => {
+    const performSearch = async (value) => {
+        if (value.trim().length < 2) {
+            if (value.trim()) {
+                // For single character, just filter popular symbols
+                const filtered = popularSymbols.filter(s => 
+                    s.toLowerCase().includes(value.toLowerCase())
+                );
+                setSuggestions(filtered);
+                setShowSuggestions(true);
+            } else {
+                setSuggestions([]);
+                setShowSuggestions(false);
+            }
+            return;
+        }
+
+        setSearching(true);
+        try {
+            // Check authentication before making API call
+            if (!authUtils.isAuthenticated()) {
+                console.warn('[AddSymbolModal] User not authenticated for symbol search');
+                toast.error('Please log in to search for symbols');
+                setError('Authentication required');
+                setSuggestions([]);
+                setShowSuggestions(false);
+                return;
+            }
+
+            const results = await marketAPI.searchSymbols(value.trim());
+            setSuggestions(results);
+            setShowSuggestions(true);
+        } catch (error) {
+            console.error('Failed to search symbols:', error);
+            
+            // Handle authentication errors
+            if (error.response?.status === 401) {
+                toast.error('Session expired. Please log in again.');
+                setError('Authentication required');
+                setSuggestions([]);
+                setShowSuggestions(false);
+            } else {
+                // Fallback to popular symbols if API fails
+                const filtered = popularSymbols.filter(s => 
+                    s.toLowerCase().includes(value.toLowerCase())
+                );
+                setSuggestions(filtered);
+                setShowSuggestions(true);
+                toast.error('Search failed. Using popular symbols instead.');
+            }
+        } finally {
+            setSearching(false);
+        }
+    };
+
+    const handleSuggestionClick = async (suggestion) => {
         const symbolValue = typeof suggestion === 'string' ? suggestion : suggestion.symbol || suggestion.name;
         setSymbol(symbolValue);
         setShowSuggestions(false);
         setError('');
+        
+        // Automatically add the symbol to watchlist when clicked
+        try {
+            await onAdd(symbolValue);
+            handleClose();
+            toast.success(`Added ${symbolValue} to watchlist`);
+        } catch (error) {
+            console.error('Failed to add symbol:', error);
+            const errorMessage = error.response?.data?.message || error.message || 'Failed to add symbol';
+            setError(errorMessage);
+            toast.error(errorMessage);
+        }
     };
 
     const handleKeyDown = (e) => {
