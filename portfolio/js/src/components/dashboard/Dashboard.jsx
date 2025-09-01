@@ -1,17 +1,18 @@
-import React, { useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
 import {
-    User,
-    LogOut,
     BarChart3,
-    TrendingUp,
-    Wallet,
-    Settings,
     Bell,
+    Bookmark,
+    LogOut,
     Menu,
+    Settings,
+    TrendingUp,
+    User,
+    Wallet,
     X
 } from 'lucide-react';
+import React, { useState } from 'react';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../contexts/AuthContext';
 
 const Dashboard = () => {
     const { user, logout } = useAuth();
@@ -99,7 +100,13 @@ const Dashboard = () => {
                         <Wallet size={18} />
                         <span>Assets</span>
                     </a>
-
+                    <a
+                        href="#assets"
+                        className="flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-300 hover:bg-dark-800 transition-colors"
+                    >
+                        <Bookmark size={18} />
+                        <span>Watchlist</span>
+                    </a>
                     <a
                         href="#settings"
                         className="flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-300 hover:bg-dark-800 transition-colors"
