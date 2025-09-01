@@ -188,5 +188,84 @@ export const analyticsAPI = {
     },
 };
 
+// Watchlist API methods
+export const watchlistAPI = {
+    // Get all user watchlists
+    getWatchlists: async (includeItems = false) => {
+        const response = await api.get('/watchlists', { 
+            params: { include_items: includeItems } 
+        });
+        return response.data;
+    },
+
+    // Get specific watchlist
+    getWatchlist: async (watchlistId, includeRealTimeData = false) => {
+        const response = await api.get(`/watchlists/${watchlistId}`, {
+            params: { include_real_time_data: includeRealTimeData }
+        });
+        return response.data;
+    },
+
+    // Create new watchlist
+    createWatchlist: async (watchlistData) => {
+        const response = await api.post('/watchlists', watchlistData);
+        return response.data;
+    },
+
+    // Update watchlist
+    updateWatchlist: async (watchlistId, updateData) => {
+        const response = await api.put(`/watchlists/${watchlistId}`, updateData);
+        return response.data;
+    },
+
+    // Delete watchlist
+    deleteWatchlist: async (watchlistId) => {
+        const response = await api.delete(`/watchlists/${watchlistId}`);
+        return response.data;
+    },
+
+    // Add item to watchlist
+    addItemToWatchlist: async (watchlistId, itemData) => {
+        const response = await api.post(`/watchlists/${watchlistId}/items`, itemData);
+        return response.data;
+    },
+
+    // Bulk add items to watchlist
+    bulkAddItemsToWatchlist: async (watchlistId, symbols) => {
+        const response = await api.post(`/watchlists/${watchlistId}/items/bulk`, { symbols });
+        return response.data;
+    },
+
+    // Update watchlist item
+    updateWatchlistItem: async (watchlistId, itemId, updateData) => {
+        const response = await api.put(`/watchlists/${watchlistId}/items/${itemId}`, updateData);
+        return response.data;
+    },
+
+    // Remove item from watchlist
+    removeItemFromWatchlist: async (watchlistId, itemId) => {
+        const response = await api.delete(`/watchlists/${watchlistId}/items/${itemId}`);
+        return response.data;
+    },
+
+    // Reorder watchlist items
+    reorderWatchlistItems: async (watchlistId, itemIds) => {
+        const response = await api.post(`/watchlists/${watchlistId}/reorder`, { item_ids: itemIds });
+        return response.data;
+    },
+
+    // Get public watchlists
+    getPublicWatchlists: async (limit = 20) => {
+        const response = await api.get('/watchlists/public', { params: { limit } });
+        return response.data;
+    },
+
+    // Get watchlist statistics
+    getWatchlistStats: async () => {
+        const response = await api.get('/watchlists/stats');
+        return response.data;
+    },
+};
+
 export default api;
 

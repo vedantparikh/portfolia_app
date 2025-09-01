@@ -101,7 +101,7 @@ const Dashboard = () => {
                         <span>Assets</span>
                     </a>
                     <a
-                        href="#assets"
+                        href="/watchlist"
                         className="flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-300 hover:bg-dark-800 transition-colors"
                     >
                         <Bookmark size={18} />

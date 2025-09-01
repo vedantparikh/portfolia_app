@@ -1,7 +1,9 @@
-from pydantic import BaseModel, Field
-from typing import Optional
 from datetime import datetime
 from decimal import Decimal
+from typing import Optional
+
+from pydantic import BaseModel
+from pydantic import Field
 
 
 class PortfolioBase(BaseModel):
@@ -37,27 +39,27 @@ class Portfolio(PortfolioBase):
 class PortfolioAssetBase(BaseModel):
     portfolio_id: int
     asset_id: int
-    quantity: Decimal = Field(..., decimal_places=8)
-    cost_basis: Decimal = Field(..., decimal_places=4)
-    cost_basis_total: Decimal = Field(..., decimal_places=4)
-    current_value: Optional[Decimal] = Field(None, decimal_places=4)
-    unrealized_pnl: Optional[Decimal] = Field(None, decimal_places=4)
-    unrealized_pnl_percent: Optional[Decimal] = Field(None, decimal_places=4)
+    quantity: Decimal = Field(...)
+    cost_basis: Decimal = Field(...)
+    cost_basis_total: Decimal = Field(...)
+    current_value: Optional[Decimal] = Field(None)
+    unrealized_pnl: Optional[Decimal] = Field(None)
+    unrealized_pnl_percent: Optional[Decimal] = Field(None)
 
 
 class PortfolioAssetCreate(BaseModel):
     portfolio_id: int
     asset_id: int
-    quantity: Decimal = Field(..., decimal_places=8)
-    cost_basis: Decimal = Field(..., decimal_places=4)
+    quantity: Decimal = Field(...)
+    cost_basis: Decimal = Field(...)
 
 
 class PortfolioAssetUpdate(BaseModel):
-    quantity: Optional[Decimal] = Field(None, decimal_places=8)
-    cost_basis: Optional[Decimal] = Field(None, decimal_places=4)
-    current_value: Optional[Decimal] = Field(None, decimal_places=4)
-    unrealized_pnl: Optional[Decimal] = Field(None, decimal_places=4)
-    unrealized_pnl_percent: Optional[Decimal] = Field(None, decimal_places=4)
+    quantity: Optional[Decimal] = Field(None)
+    cost_basis: Optional[Decimal] = Field(None)
+    current_value: Optional[Decimal] = Field(None)
+    unrealized_pnl: Optional[Decimal] = Field(None)
+    unrealized_pnl_percent: Optional[Decimal] = Field(None)
 
 
 class PortfolioAsset(PortfolioAssetBase):
@@ -81,8 +83,8 @@ class PortfolioAssetWithDetails(PortfolioAsset):
 class AssetBase(BaseModel):
     symbol: str
     currency: str
-    quantity: Decimal = Field(..., decimal_places=8)
-    purchase_price: Decimal = Field(..., decimal_places=4)
+    quantity: Decimal = Field(...)
+    purchase_price: Decimal = Field(...)
     portfolio_id: int
 
 
@@ -91,8 +93,8 @@ class AssetCreate(AssetBase):
 
 
 class AssetUpdate(BaseModel):
-    quantity: Optional[Decimal] = Field(None, decimal_places=8)
-    purchase_price: Optional[Decimal] = Field(None, decimal_places=4)
+    quantity: Optional[Decimal] = Field(None)
+    purchase_price: Optional[Decimal] = Field(None)
     currency: Optional[str] = None
 
 
@@ -109,12 +111,12 @@ class TransactionBase(BaseModel):
     portfolio_id: int
     asset_id: int
     transaction_type: str = Field(..., description="'buy', 'sell', 'dividend'")
-    quantity: Decimal = Field(..., decimal_places=8)
-    price: Decimal = Field(..., decimal_places=4)
+    quantity: Decimal = Field(...)
+    price: Decimal = Field(...)
     currency: str
     transaction_date: datetime
-    fees: Optional[Decimal] = Field(0, decimal_places=4)
-    total_amount: Optional[Decimal] = Field(None, decimal_places=4)
+    fees: Optional[Decimal] = Field(0)
+    total_amount: Optional[Decimal] = Field(None)
 
 
 class TransactionCreate(TransactionBase):
@@ -122,10 +124,10 @@ class TransactionCreate(TransactionBase):
 
 
 class TransactionUpdate(BaseModel):
-    quantity: Optional[Decimal] = Field(None, decimal_places=8)
-    price: Optional[Decimal] = Field(None, decimal_places=4)
+    quantity: Optional[Decimal] = Field(None)
+    price: Optional[Decimal] = Field(None)
     transaction_date: Optional[datetime] = None
-    fees: Optional[Decimal] = Field(None, decimal_places=4)
+    fees: Optional[Decimal] = Field(None)
     currency: Optional[str] = None
 
 

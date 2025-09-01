@@ -1,14 +1,15 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import { AuthProvider } from './contexts/AuthContext';
-import ProtectedRoute from './components/auth/ProtectedRoute';
-import Login from './components/auth/Login';
-import Register from './components/auth/Register';
+import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import ForgotPassword from './components/auth/ForgotPassword';
+import Login from './components/auth/Login';
+import ProtectedRoute from './components/auth/ProtectedRoute';
+import Register from './components/auth/Register';
 import ResetPassword from './components/auth/ResetPassword';
-import Dashboard from './components/dashboard/Dashboard';
 import ValidateResetToken from './components/auth/ValidateResetToken';
+import Dashboard from './components/dashboard/Dashboard';
+import { Watchlist } from './components/watchlist';
+import { AuthProvider } from './contexts/AuthContext';
 
 function App() {
   return (
@@ -23,14 +24,22 @@ function App() {
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/validate-reset-token" element={<ValidateResetToken />} />
 
-            {/* Protected routes */}
+                        {/* Protected routes */}
             <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
+                path="/dashboard"
+                element={
+                    <ProtectedRoute>
+                        <Dashboard />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/watchlist"
+                element={
+                    <ProtectedRoute>
+                        <Watchlist />
+                    </ProtectedRoute>
+                }
             />
 
             {/* Redirect root to dashboard if authenticated, otherwise to login */}
