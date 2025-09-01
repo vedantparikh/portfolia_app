@@ -35,6 +35,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "${API_PORT}:8000"
+    env_file:
+      - ./python/api/.env.docker
     depends_on:
       postgres:
         condition: service_healthy
