@@ -1,6 +1,7 @@
-import { Bookmark, Plus } from 'lucide-react';
+import { ArrowLeft, Bookmark, Plus } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 import { watchlistAPI } from '../../services/api';
 import AddSymbolModal from './AddSymbolModal';
 import CreateWatchlistModal from './CreateWatchlistModal';
@@ -8,6 +9,7 @@ import WatchlistContent from './WatchlistContent';
 import WatchlistSidebar from './WatchlistSidebar';
 
 const Watchlist = () => {
+    const navigate = useNavigate();
     const [watchlists, setWatchlists] = useState([]);
     const [selectedWatchlist, setSelectedWatchlist] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -96,8 +98,8 @@ const Watchlist = () => {
 
     const handleAddSymbol = async (symbol) => {
         if (!selectedWatchlist) {
-            toast.error('Please select a watchlist first');
-            return;
+            const error = new Error('Please select a watchlist first');
+            throw error;
         }
 
         try {
@@ -113,7 +115,24 @@ const Watchlist = () => {
             toast.success(`${symbol} added to watchlist`);
         } catch (error) {
             console.error('Failed to add symbol:', error);
-            toast.error('Failed to add symbol to watchlist');
+            
+            // Provide more specific error messages
+            let errorMessage = 'Failed to add symbol to watchlist';
+            
+            if (error.response?.status === 400) {
+                errorMessage = error.response.data?.message || 'Invalid symbol or symbol already exists';
+            } else if (error.response?.status === 404) {
+                errorMessage = 'Watchlist not found';
+            } else if (error.response?.status === 401) {
+                errorMessage = 'Please log in again';
+            } else if (error.response?.status >= 500) {
+                errorMessage = 'Server error. Please try again later';
+            } else if (error.message === 'Please select a watchlist first') {
+                errorMessage = error.message;
+            }
+            
+            toast.error(errorMessage);
+            throw error; // Re-throw to let the modal handle it
         }
     };
 
@@ -202,6 +221,14 @@ const Watchlist = () => {
                 <header className="bg-dark-900/80 backdrop-blur-sm border-b border-dark-700 px-6 py-4">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
+                            <button
+                                onClick={() => navigate('/dashboard')}
+                                className="flex items-center space-x-2 px-3 py-2 text-gray-400 hover:text-gray-100 hover:bg-dark-800 rounded-lg transition-colors"
+                            >
+                                <ArrowLeft size={20} />
+                                <span>Back to Dashboard</span>
+                            </button>
+                            <div className="w-px h-6 bg-dark-600"></div>
                             <Bookmark size={24} className="text-primary-400" />
                             <div>
                                 <h1 className="text-xl font-semibold text-gray-100">Watchlists</h1>
