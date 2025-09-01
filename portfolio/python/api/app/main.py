@@ -233,7 +233,7 @@ except Exception as e:
 # Include watchlist router
 try:
     logger.info("👀 Attempting to import watchlist router...")
-    from app.core.watchlist.router import router as watchlist_router
+    from api.v1.watchlist.router import router as watchlist_router
 
     logger.info("✅ Watchlist router imported successfully")
     app.include_router(

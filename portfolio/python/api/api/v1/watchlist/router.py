@@ -1,12 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List
+import time
 
 from app.core.database.connection import get_db
 from app.core.auth.dependencies import get_current_user
 from app.core.database.models import User
-from app.core.watchlist.service import WatchlistService
-from app.core.watchlist.schemas import (
+from services.watchlist_service import WatchlistService
+from schemas.watchlist import (
     WatchlistCreate,
     WatchlistUpdate,
     WatchlistResponse,
@@ -22,7 +23,7 @@ from app.core.logging_config import get_logger, log_api_request, log_api_respons
 
 logger = get_logger(__name__)
 
-router = APIRouter(prefix="/watchlists", tags=["watchlists"])
+router = APIRouter(tags=["watchlists"])
 
 
 @router.post("/", response_model=WatchlistResponse)
@@ -39,7 +40,7 @@ async def create_watchlist(
         current_user.id,
         f"Creating watchlist: {watchlist_data.name}",
     )
-
+    start_time = time.time()
     try:
         service = WatchlistService(db)
         watchlist = service.create_watchlist(current_user.id, watchlist_data)
@@ -58,7 +59,8 @@ async def create_watchlist(
             updated_at=watchlist.updated_at,
         )
 
-        log_api_response(logger, "POST", "/watchlists", current_user.id, "Success")
+        response_time = time.time() - start_time
+        log_api_response(logger, "POST", "/watchlists", 200, response_time)
         return response
 
     except Exception as e:
@@ -83,12 +85,14 @@ async def get_user_watchlists(
         current_user.id,
         f"Getting watchlists (include_items: {include_items})",
     )
+    start_time = time.time()
 
     try:
         service = WatchlistService(db)
         watchlists = service.get_user_watchlists(current_user.id, include_items)
 
-        log_api_response(logger, "GET", "/watchlists", current_user.id, "Success")
+        response_time = time.time() - start_time
+        log_api_response(logger, "GET", "/watchlists", 200, response_time, data_size=len(watchlists))
         return watchlists
 
     except Exception as e:
@@ -116,7 +120,7 @@ async def get_watchlist(
         current_user.id,
         f"Getting watchlist (real-time: {include_real_time_data})",
     )
-
+    start_time = time.time()
     try:
         service = WatchlistService(db)
 
@@ -132,8 +136,9 @@ async def get_watchlist(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Watchlist not found"
             )
 
+        response_time = time.time() - start_time
         log_api_response(
-            logger, "GET", f"/watchlists/{watchlist_id}", current_user.id, "Success"
+            logger, "GET", f"/watchlists/{watchlist_id}", 200, response_time
         )
         return watchlist
 
@@ -162,7 +167,7 @@ async def update_watchlist(
         current_user.id,
         f"Updating watchlist: {update_data.dict(exclude_unset=True)}",
     )
-
+    start_time = time.time()
     try:
         service = WatchlistService(db)
         watchlist = service.update_watchlist(watchlist_id, current_user.id, update_data)
@@ -185,9 +190,9 @@ async def update_watchlist(
             created_at=watchlist.created_at,
             updated_at=watchlist.updated_at,
         )
-
+        response_time = time.time() - start_time
         log_api_response(
-            logger, "PUT", f"/watchlists/{watchlist_id}", current_user.id, "Success"
+            logger, "PUT", f"/watchlists/{watchlist_id}", 200, response_time
         )
         return response
 
@@ -215,7 +220,7 @@ async def delete_watchlist(
         current_user.id,
         "Deleting watchlist",
     )
-
+    start_time = time.time()
     try:
         service = WatchlistService(db)
         success = service.delete_watchlist(watchlist_id, current_user.id)
@@ -224,9 +229,10 @@ async def delete_watchlist(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Watchlist not found"
             )
+        response_time = time.time() - start_time
 
         log_api_response(
-            logger, "DELETE", f"/watchlists/{watchlist_id}", current_user.id, "Success"
+            logger, "DELETE", f"/watchlists/{watchlist_id}", 200, response_time
         )
         return {"message": "Watchlist deleted successfully"}
 
@@ -257,7 +263,7 @@ async def add_item_to_watchlist(
         current_user.id,
         f"Adding symbol: {item_data.symbol}",
     )
-
+    start_time = time.time()
     try:
         service = WatchlistService(db)
         item = service.add_item_to_watchlist(watchlist_id, current_user.id, item_data)
@@ -280,11 +286,13 @@ async def add_item_to_watchlist(
             updated_at=item.updated_at,
         )
 
+        response_time = time.time() - start_time
         log_api_response(
             logger,
             "POST",
             f"/watchlists/{watchlist_id}/items",
-            current_user.id,
+            200,
+            response_time,
             "Success",
         )
         return response
@@ -316,7 +324,7 @@ async def bulk_add_items_to_watchlist(
         current_user.id,
         f"Adding {len(bulk_data.symbols)} symbols",
     )
-
+    start_time = time.time()
     try:
         service = WatchlistService(db)
         added_items = []
@@ -341,11 +349,13 @@ async def bulk_add_items_to_watchlist(
             "failed": len(failed_symbols),
         }
 
+        response_time = time.time() - start_time
         log_api_response(
             logger,
             "POST",
             f"/watchlists/{watchlist_id}/items/bulk",
-            current_user.id,
+            200,
+            response_time,
             "Success",
         )
         return result
@@ -374,7 +384,7 @@ async def update_watchlist_item(
         current_user.id,
         f"Updating item: {update_data.dict(exclude_unset=True)}",
     )
-
+    start_time = time.time()
     try:
         service = WatchlistService(db)
         item = service.update_watchlist_item(item_id, current_user.id, update_data)
@@ -397,11 +407,13 @@ async def update_watchlist_item(
             updated_at=item.updated_at,
         )
 
+        response_time = time.time() - start_time
         log_api_response(
             logger,
             "PUT",
             f"/watchlists/{watchlist_id}/items/{item_id}",
-            current_user.id,
+            200,
+            response_time,
             "Success",
         )
         return response
@@ -431,7 +443,7 @@ async def remove_item_from_watchlist(
         current_user.id,
         "Removing item from watchlist",
     )
-
+    start_time = time.time()
     try:
         service = WatchlistService(db)
         success = service.remove_item_from_watchlist(item_id, current_user.id)
@@ -441,11 +453,13 @@ async def remove_item_from_watchlist(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Watchlist item not found"
             )
 
+        response_time = time.time() - start_time
         log_api_response(
             logger,
             "DELETE",
             f"/watchlists/{watchlist_id}/items/{item_id}",
-            current_user.id,
+            200,
+            response_time,
             "Success",
         )
         return {"message": "Item removed from watchlist successfully"}
@@ -477,7 +491,7 @@ async def reorder_watchlist_items(
         current_user.id,
         f"Reordering {len(reorder_data.item_ids)} items",
     )
-
+    start_time = time.time()
     try:
         service = WatchlistService(db)
         success = service.reorder_watchlist_items(
@@ -489,11 +503,13 @@ async def reorder_watchlist_items(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Watchlist not found"
             )
 
+        response_time = time.time() - start_time
         log_api_response(
             logger,
             "POST",
             f"/watchlists/{watchlist_id}/reorder",
-            current_user.id,
+            200,
+            response_time,
             "Success",
         )
         return {"message": "Watchlist items reordered successfully"}
@@ -525,12 +541,13 @@ async def get_public_watchlists(
         None,
         f"Getting public watchlists (limit: {limit})",
     )
-
+    start_time = time.time()
     try:
         service = WatchlistService(db)
         watchlists = service.get_public_watchlists(limit)
 
-        log_api_response(logger, "GET", "/watchlists/public", None, "Success")
+        response_time = time.time() - start_time
+        log_api_response(logger, "GET", "/watchlists/public", 200, response_time)
         return watchlists
 
     except Exception as e:
@@ -554,12 +571,13 @@ async def get_watchlist_statistics(
         current_user.id,
         "Getting watchlist statistics",
     )
-
+    start_time = time.time()
     try:
         service = WatchlistService(db)
         stats = service.get_watchlist_statistics(current_user.id)
 
-        log_api_response(logger, "GET", "/watchlists/stats", current_user.id, "Success")
+        response_time = time.time() - start_time
+        log_api_response(logger, "GET", "/watchlists/stats", 200, response_time)
         return stats
 
     except Exception as e:

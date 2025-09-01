@@ -18,7 +18,7 @@ class WatchlistBase(BaseModel):
     )
     is_public: bool = Field(False, description="Whether the watchlist is public")
     color: Optional[str] = Field(
-        None, regex=r"^#[0-9A-Fa-f]{6}$", description="Hex color code"
+        None, pattern=r"^#[0-9A-Fa-f]{6}$", description="Hex color code"
     )
 
 
@@ -34,7 +34,7 @@ class WatchlistUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     description: Optional[str] = Field(None, max_length=500)
     is_public: Optional[bool] = None
-    color: Optional[str] = Field(None, regex=r"^#[0-9A-Fa-f]{6}$")
+    color: Optional[str] = Field(None, pattern=r"^#[0-9A-Fa-f]{6}$")
     sort_order: Optional[int] = Field(None, ge=0)
 
 

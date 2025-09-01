@@ -18,7 +18,7 @@ from app.core.auth.dependencies import (
     get_current_active_user,
     get_current_verified_user,
 )
-from models.portfolio import (
+from schemas.portfolio import (
     TransactionCreate,
     TransactionUpdate,
     Transaction as TransactionSchema,
