@@ -48,7 +48,13 @@ const AddSymbolModal = ({ isOpen, onClose, onAdd }) => {
         setError('');
         
         try {
-            await onAdd(symbol.trim().toUpperCase());
+            // For manual form submission, create a basic symbol object
+            const symbolData = {
+                symbol: symbol.trim().toUpperCase(),
+                name: symbol.trim().toUpperCase() // Use symbol as name if no company name available
+            };
+            
+            await onAdd(symbolData);
             handleClose();
             toast.success(`Added ${symbol.trim().toUpperCase()} to watchlist`);
         } catch (error) {
@@ -164,7 +170,8 @@ const AddSymbolModal = ({ isOpen, onClose, onAdd }) => {
         
         // Automatically add the symbol to watchlist when clicked
         try {
-            await onAdd(symbolValue);
+            // Pass the complete suggestion object to preserve all symbol information
+            await onAdd(suggestion);
             handleClose();
             toast.success(`Added ${symbolValue} to watchlist`);
         } catch (error) {

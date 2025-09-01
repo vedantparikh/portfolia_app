@@ -105,14 +105,19 @@ const Watchlist = () => {
         }
     };
 
-    const handleAddSymbol = async (symbol) => {
+    const handleAddSymbol = async (symbolData) => {
         if (!selectedWatchlist) {
             const error = new Error('Please select a watchlist first');
             throw error;
         }
 
         try {
-            const newItem = await watchlistAPI.addItemToWatchlist(selectedWatchlist.id, { symbol });
+            // Extract symbol string for display purposes
+            const symbolString = typeof symbolData === 'string' ? symbolData : symbolData.symbol || symbolData.name;
+            symbolData.company_name = symbolData.shortname || symbolData.name;
+            
+            // Pass the complete symbol data to the API
+            const newItem = await watchlistAPI.addItemToWatchlist(selectedWatchlist.id, symbolData);
             
             // Update the selected watchlist with the new item
             setSelectedWatchlist(prev => ({
@@ -121,7 +126,7 @@ const Watchlist = () => {
             }));
             
             setShowAddSymbolModal(false);
-            toast.success(`${symbol} added to watchlist`);
+            toast.success(`${symbolString} added to watchlist`);
         } catch (error) {
             console.error('Failed to add symbol:', error);
             
