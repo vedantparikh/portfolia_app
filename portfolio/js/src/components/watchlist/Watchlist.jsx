@@ -32,7 +32,16 @@ const Watchlist = () => {
             // Select the first watchlist or default watchlist
             if (data.length > 0) {
                 const defaultWatchlist = data.find(w => w.is_default) || data[0];
-                setSelectedWatchlist(defaultWatchlist);
+                
+                // Load the full watchlist with items
+                try {
+                    const fullWatchlist = await watchlistAPI.getWatchlist(defaultWatchlist.id, true);
+                    setSelectedWatchlist(fullWatchlist);
+                } catch (error) {
+                    console.error('Failed to load watchlist items:', error);
+                    // Fallback to the basic watchlist data
+                    setSelectedWatchlist(defaultWatchlist);
+                }
             }
         } catch (error) {
             console.error('Failed to load watchlists:', error);
@@ -176,6 +185,19 @@ const Watchlist = () => {
         }
     };
 
+    const handleSelectWatchlist = async (watchlist) => {
+        try {
+            // Load the full watchlist with items
+            const fullWatchlist = await watchlistAPI.getWatchlist(watchlist.id, true);
+            setSelectedWatchlist(fullWatchlist);
+        } catch (error) {
+            console.error('Failed to load watchlist items:', error);
+            // Fallback to the basic watchlist data
+            setSelectedWatchlist(watchlist);
+            toast.error('Failed to load watchlist items');
+        }
+    };
+
     const filteredWatchlists = watchlists.filter(watchlist => {
         const matchesSearch = watchlist.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                             watchlist.description?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -205,7 +227,7 @@ const Watchlist = () => {
             <WatchlistSidebar
                 watchlists={filteredWatchlists}
                 selectedWatchlist={selectedWatchlist}
-                onSelectWatchlist={setSelectedWatchlist}
+                onSelectWatchlist={handleSelectWatchlist}
                 onCreateWatchlist={() => setShowCreateModal(true)}
                 onUpdateWatchlist={handleUpdateWatchlist}
                 onDeleteWatchlist={handleDeleteWatchlist}
