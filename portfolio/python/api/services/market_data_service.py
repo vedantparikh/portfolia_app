@@ -25,6 +25,15 @@ class MarketDataService:
         self.max_retries = 3
         self.retry_delay = 5  # seconds
 
+    async def get_current_price(self, symbol: str) -> Optional[float]:
+        """Get current price of a ticker."""
+        try:
+            ticker = yf.Ticker(symbol)
+            return ticker.info.get('currentPrice', None) or ticker.info.get("regularMarketPrice", None)
+        except Exception as e:
+            logger.error(f"Error getting current price for {symbol}: {e}")
+            return None
+
     async def fetch_ticker_data(
         self,
         symbol: str,

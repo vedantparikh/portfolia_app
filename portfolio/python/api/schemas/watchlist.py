@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any
 from typing import Dict
@@ -121,6 +121,15 @@ class WatchlistItemResponse(WatchlistItemBase):
 
     class Config:
         from_attributes = True
+
+    def calculate_days_since_added(self):
+        """Calculates the number of days since the item was added."""
+        if self.added_date:
+            # Calculate the time difference between now and the added date
+            time_difference = datetime.now(timezone.utc) - self.added_date
+            
+            # The .days attribute of a timedelta object gives the number of full days
+            self.days_since_added = time_difference.days
 
 
 class WatchlistWithItemsResponse(WatchlistResponse):

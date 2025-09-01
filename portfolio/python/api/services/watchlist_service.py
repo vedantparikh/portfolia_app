@@ -1,7 +1,7 @@
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, desc, func
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 
 from app.core.database.models.watchlist import (
@@ -170,7 +170,7 @@ class WatchlistService:
             logger.error(f"Failed to delete watchlist {watchlist_id}: {e}")
             raise
 
-    def add_item_to_watchlist(
+    async def add_item_to_watchlist(
         self, watchlist_id: int, user_id: int, item_data: WatchlistItemCreate
     ) -> Optional[WatchlistItem]:
         """Add a stock symbol to a watchlist with initial price tracking."""
@@ -208,12 +208,12 @@ class WatchlistService:
             # Try to get current market price
             current_price = None
             try:
-                market_data = self.market_data_service.get_market_data(
-                    symbols=[item_data.symbol.upper()]
+                price_info = await self.market_data_service.get_current_price(
+                    symbol=item_data.symbol.upper()
                 )
-                if market_data and item_data.symbol.upper() in market_data:
+                if price_info:
                     current_price = Decimal(
-                        str(market_data[item_data.symbol.upper()].get("price", 0) / 100)
+                        str(price_info)
                     )
             except Exception as e:
                 logger.warning(
@@ -373,7 +373,7 @@ class WatchlistService:
             # Get current market price
             try:
                 market_data = self.market_data_service.get_market_data(
-                    symbols=[symbol.upper()]
+                    symbol=symbol.upper()
                 )
                 if not market_data or symbol.upper() not in market_data:
                     return False
@@ -608,7 +608,7 @@ class WatchlistService:
             logger.error(f"Failed to get performance summary: {e}")
             raise
 
-    def get_watchlist_with_real_time_data(
+    async def get_watchlist_with_real_time_data(
         self, watchlist_id: int, user_id: int
     ) -> Optional[Watchlist]:
         """Get watchlist with real-time stock data and performance metrics."""
@@ -620,7 +620,7 @@ class WatchlistService:
             # Update prices for all symbols in the watchlist
             symbols = list(set([item.symbol for item in watchlist.items]))
             for symbol in symbols:
-                self.update_watchlist_item_prices(symbol)
+                await self.update_watchlist_item_prices(symbol)
 
             # Refresh the watchlist to get updated data
             self.db.refresh(watchlist)
@@ -628,7 +628,7 @@ class WatchlistService:
             # Calculate days since added for each item
             for item in watchlist.items:
                 if item.added_date:
-                    days_since = (datetime.utcnow() - item.added_date).days
+                    days_since = (datetime.now(timezone.utc) - item.added_date).days
                     item.days_since_added = days_since
 
             return watchlist

@@ -125,7 +125,7 @@ async def get_watchlist(
         service = WatchlistService(db)
 
         if include_real_time_data:
-            watchlist = service.get_watchlist_with_real_time_data(
+            watchlist = await service.get_watchlist_with_real_time_data(
                 watchlist_id, current_user.id
             )
         else:
@@ -266,7 +266,7 @@ async def add_item_to_watchlist(
     start_time = time.time()
     try:
         service = WatchlistService(db)
-        item = service.add_item_to_watchlist(watchlist_id, current_user.id, item_data)
+        item = await service.add_item_to_watchlist(watchlist_id, current_user.id, item_data)
 
         if not item:
             raise HTTPException(
@@ -276,14 +276,23 @@ async def add_item_to_watchlist(
         response = WatchlistItemResponse(
             id=item.id,
             watchlist_id=item.watchlist_id,
+            sort_order=item.sort_order,
+            added_date=item.added_date,
+            updated_at=item.updated_at,
+            added_price=item.added_price,
+            current_price=item.current_price,
+            price_change_since_added=item.price_change_since_added,
+            price_change_percent_since_added=item.price_change_percent_since_added,
             symbol=item.symbol,
             company_name=item.company_name,
             notes=item.notes,
+            personal_rating=item.personal_rating,
+            investment_thesis=item.investment_thesis,
+            tags=item.tags,
+            alerts_enabled=item.alerts_enabled,
             alert_price_high=item.alert_price_high,
             alert_price_low=item.alert_price_low,
-            sort_order=item.sort_order,
-            added_at=item.added_at,
-            updated_at=item.updated_at,
+            alert_price_change_percent=item.alert_price_change_percent,
         )
 
         response_time = time.time() - start_time
@@ -293,7 +302,6 @@ async def add_item_to_watchlist(
             f"/watchlists/{watchlist_id}/items",
             200,
             response_time,
-            "Success",
         )
         return response
 
