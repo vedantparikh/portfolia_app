@@ -15,38 +15,51 @@ api.interceptors.request.use(
         const token = localStorage.getItem('access_token');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
+            console.log(`[API] Adding auth token to request: ${config.method?.toUpperCase()} ${config.url}`);
+        } else {
+            console.log(`[API] No auth token found for request: ${config.method?.toUpperCase()} ${config.url}`);
         }
         return config;
     },
     (error) => {
+        console.error('[API] Request interceptor error:', error);
         return Promise.reject(error);
     }
 );
 
 // Response interceptor to handle token refresh and errors
 api.interceptors.response.use(
-    (response) => response,
+    (response) => {
+        console.log(`[API] Response received: ${response.config.method?.toUpperCase()} ${response.config.url} - ${response.status}`);
+        return response;
+    },
     async (error) => {
+        console.error(`[API] Response error: ${error.config?.method?.toUpperCase()} ${error.config?.url} - ${error.response?.status}: ${error.response?.data?.detail || error.message}`);
+        
         const originalRequest = error.config;
 
         if (error.response?.status === 401 && !originalRequest._retry) {
+            console.log('[API] Attempting token refresh...');
             originalRequest._retry = true;
 
             try {
                 const refreshToken = localStorage.getItem('refresh_token');
                 if (refreshToken) {
-                    const response = await axios.post('/api/v1/auth/refresh', {
-                        refresh_token: refreshToken,
-                    });
+                    console.log('[API] Refresh token found, attempting refresh...');
+                    const response = await authAPI.refreshToken(refreshToken);
 
-                    const { access_token, refresh_token } = response.data;
+                    const { access_token, refresh_token } = response;
                     localStorage.setItem('access_token', access_token);
                     localStorage.setItem('refresh_token', refresh_token);
+                    console.log('[API] Token refresh successful');
 
                     originalRequest.headers.Authorization = `Bearer ${access_token}`;
                     return api(originalRequest);
+                } else {
+                    console.log('[API] No refresh token found');
                 }
             } catch (refreshError) {
+                console.error('[API] Token refresh failed:', refreshError.response?.data || refreshError.message);
                 // Refresh failed, redirect to login
                 localStorage.removeItem('access_token');
                 localStorage.removeItem('refresh_token');
@@ -77,6 +90,14 @@ export const authAPI = {
     // Get current user
     getCurrentUser: async () => {
         const response = await api.get('/auth/me');
+        return response.data;
+    },
+
+    // Refresh token
+    refreshToken: async (refreshToken) => {
+        const response = await axios.post('http://localhost:8000/api/v1/auth/refresh', {
+            refresh_token: refreshToken,
+        });
         return response.data;
     },
 
@@ -177,6 +198,14 @@ export const marketAPI = {
         const response = await api.get(`/assets/${id}/prices`, { params });
         return response.data;
     },
+
+    // Search stock symbols
+    searchSymbols: async (query) => {
+        const response = await api.get('/stock/symbols', { 
+            params: { name: query } 
+        });
+        return response.data;
+    },
 };
 
 // Analytics API methods
@@ -265,6 +294,44 @@ export const watchlistAPI = {
         const response = await api.get('/watchlists/stats');
         return response.data;
     },
+};
+
+// Utility functions
+export const authUtils = {
+    // Check if user is authenticated
+    isAuthenticated: () => {
+        const token = localStorage.getItem('access_token');
+        return !!token;
+    },
+
+    // Get current access token
+    getAccessToken: () => {
+        return localStorage.getItem('access_token');
+    },
+
+    // Get current refresh token
+    getRefreshToken: () => {
+        return localStorage.getItem('refresh_token');
+    },
+
+    // Clear all auth data
+    clearAuth: () => {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('user');
+    },
+
+    // Check if token is expired (basic check)
+    isTokenExpired: (token) => {
+        if (!token) return true;
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            return payload.exp * 1000 < Date.now();
+        } catch (error) {
+            console.error('Error parsing token:', error);
+            return true;
+        }
+    }
 };
 
 export default api;

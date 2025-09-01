@@ -1,15 +1,19 @@
 import { Search, TrendingUp, X } from 'lucide-react';
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
+import { marketAPI, authUtils } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 const AddSymbolModal = ({ isOpen, onClose, onAdd }) => {
+    const { isAuthenticated } = useAuth();
     const [symbol, setSymbol] = useState('');
     const [loading, setLoading] = useState(false);
     const [suggestions, setSuggestions] = useState([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [error, setError] = useState('');
+    const [searching, setSearching] = useState(false);
 
-    // Mock popular symbols - in a real app, this would come from an API
+    // Popular symbols for quick access
     const popularSymbols = [
         'AAPL', 'GOOGL', 'MSFT', 'AMZN', 'TSLA', 'META', 'NVDA', 'NFLX',
         'SPY', 'QQQ', 'IWM', 'VTI', 'VOO', 'ARKK', 'BTC', 'ETH'
@@ -56,12 +60,49 @@ const AddSymbolModal = ({ isOpen, onClose, onAdd }) => {
         onClose();
     };
 
-    const handleSymbolChange = (value) => {
+    const handleSymbolChange = async (value) => {
         setSymbol(value);
         setError(''); // Clear error when user types
         
-        if (value.trim()) {
-            // Filter popular symbols based on input
+        if (value.trim().length >= 2) {
+            setSearching(true);
+            try {
+                // Check authentication before making API call
+                if (!authUtils.isAuthenticated()) {
+                    console.warn('[AddSymbolModal] User not authenticated for symbol search');
+                    toast.error('Please log in to search for symbols');
+                    setError('Authentication required');
+                    setSuggestions([]);
+                    setShowSuggestions(false);
+                    return;
+                }
+
+                const results = await marketAPI.searchSymbols(value.trim());
+                setSuggestions(results);
+                setShowSuggestions(true);
+            } catch (error) {
+                console.error('Failed to search symbols:', error);
+                
+                // Handle authentication errors
+                if (error.response?.status === 401) {
+                    toast.error('Session expired. Please log in again.');
+                    setError('Authentication required');
+                    setSuggestions([]);
+                    setShowSuggestions(false);
+                } else {
+                    // Fallback to popular symbols if API fails
+                    const filtered = popularSymbols.filter(s => 
+                        s.toLowerCase().includes(value.toLowerCase())
+                    );
+                    setSuggestions(filtered);
+                    setShowSuggestions(true);
+                    toast.error('Search failed. Using popular symbols instead.');
+                }
+            } finally {
+                setSearching(false);
+            }
+        } else if (value.trim()) {
+            // For single character, just filter popular symbols
             const filtered = popularSymbols.filter(s => 
                 s.toLowerCase().includes(value.toLowerCase())
             );
@@ -74,7 +115,8 @@ const AddSymbolModal = ({ isOpen, onClose, onAdd }) => {
     };
 
     const handleSuggestionClick = (suggestion) => {
-        setSymbol(suggestion);
+        const symbolValue = typeof suggestion === 'string' ? suggestion : suggestion.symbol || suggestion.name;
+        setSymbol(symbolValue);
         setShowSuggestions(false);
         setError('');
     };
@@ -103,6 +145,15 @@ const AddSymbolModal = ({ isOpen, onClose, onAdd }) => {
 
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                    {/* Authentication Status */}
+                    {!isAuthenticated && (
+                        <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-3">
+                            <p className="text-red-400 text-sm">
+                                ⚠️ You need to be logged in to search for symbols. Popular symbols are still available.
+                            </p>
+                        </div>
+                    )}
+                    
                     {/* Symbol Input */}
                     <div className="relative">
                         <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -130,6 +181,12 @@ const AddSymbolModal = ({ isOpen, onClose, onAdd }) => {
                         {/* Suggestions */}
                         {showSuggestions && suggestions.length > 0 && (
                             <div className="absolute top-full left-0 right-0 mt-1 bg-dark-800 border border-dark-600 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
+                                {searching && (
+                                    <div className="px-4 py-3 text-gray-400 text-sm flex items-center space-x-2">
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-500"></div>
+                                        <span>Searching...</span>
+                                    </div>
+                                )}
                                 {suggestions.map((suggestion, index) => (
                                     <button
                                         key={index}
@@ -138,7 +195,14 @@ const AddSymbolModal = ({ isOpen, onClose, onAdd }) => {
                                         className="w-full flex items-center space-x-3 px-4 py-3 text-left text-gray-300 hover:bg-dark-700 transition-colors"
                                     >
                                         <TrendingUp size={16} className="text-primary-400" />
-                                        <span className="font-mono">{suggestion}</span>
+                                        <span className="font-mono">
+                                            {typeof suggestion === 'string' ? suggestion : suggestion.symbol || suggestion.name}
+                                        </span>
+                                        {typeof suggestion === 'object' && suggestion.name && (
+                                            <span className="text-sm text-gray-500 truncate">
+                                                {suggestion.name}
+                                            </span>
+                                        )}
                                     </button>
                                 ))}
                             </div>

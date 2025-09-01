@@ -239,21 +239,6 @@ const Watchlist = () => {
                         </div>
 
                         <div className="flex items-center space-x-3">
-                            <button
-                                onClick={() => {
-                                    console.log('Testing API connection...');
-                                    watchlistAPI.getWatchlists().then(data => {
-                                        console.log('API test successful:', data);
-                                        toast.success('API connection working!');
-                                    }).catch(error => {
-                                        console.error('API test failed:', error);
-                                        toast.error('API connection failed');
-                                    });
-                                }}
-                                className="px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors text-sm"
-                            >
-                                Test API
-                            </button>
                             {selectedWatchlist && (
                                 <button
                                     onClick={() => setShowAddSymbolModal(true)}

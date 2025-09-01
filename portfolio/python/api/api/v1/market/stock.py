@@ -41,7 +41,7 @@ async def get_symbols(
     """
     start_time = time.time()
     client_ip = get_client_ip(request) if request else "unknown"
-    user_id = current_user.get("id") if current_user else None
+    user_id = current_user.id if current_user else None
 
     # Log API request
     log_api_request(
@@ -140,6 +140,7 @@ async def get_symbols(
 @router.get("/symbol-data/fresh")
 async def get_symbol_data_fresh(
     name: str,
+    request: Request,
     period: str = Query(
         default="max",
         description="Data period (1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max)",
@@ -204,9 +205,9 @@ async def get_symbol_data_fresh(
 @router.get("/symbol-data/local")
 async def get_symbol_data_local(
     name: str,
+    request: Request,
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
-    request: Request = None,
     current_user=Depends(get_optional_current_user),
 ) -> Optional[Dict[str, Any]]:
     """
@@ -267,6 +268,7 @@ async def get_symbol_data_local(
 @router.get("/symbol-data")
 async def get_symbol_data(
     name: str,
+    request: Request,
     period: str = Query(
         default="max",
         description="Data period (1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max)",
@@ -275,7 +277,6 @@ async def get_symbol_data(
         default="1d",
         description="Data interval (1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo)",
     ),
-    request: Request = None,
     current_user=Depends(get_optional_current_user),
 ) -> Optional[Dict[str, Any]]:
     """
