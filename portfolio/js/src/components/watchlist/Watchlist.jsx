@@ -28,11 +28,11 @@ const Watchlist = () => {
             setLoading(true);
             const data = await watchlistAPI.getWatchlists(true);
             setWatchlists(data);
-            
+
             // Select the first watchlist or default watchlist
             if (data.length > 0) {
                 const defaultWatchlist = data.find(w => w.is_default) || data[0];
-                
+
                 // Load the full watchlist with items
                 try {
                     const fullWatchlist = await watchlistAPI.getWatchlist(defaultWatchlist.id, true);
@@ -71,7 +71,7 @@ const Watchlist = () => {
     const handleUpdateWatchlist = async (watchlistId, updateData) => {
         try {
             const updatedWatchlist = await watchlistAPI.updateWatchlist(watchlistId, updateData);
-            setWatchlists(prev => 
+            setWatchlists(prev =>
                 prev.map(w => w.id === watchlistId ? updatedWatchlist : w)
             );
             if (selectedWatchlist?.id === watchlistId) {
@@ -88,7 +88,7 @@ const Watchlist = () => {
         try {
             await watchlistAPI.deleteWatchlist(watchlistId);
             setWatchlists(prev => prev.filter(w => w.id !== watchlistId));
-            
+
             // If deleted watchlist was selected, select another one
             if (selectedWatchlist?.id === watchlistId) {
                 const remainingWatchlists = watchlists.filter(w => w.id !== watchlistId);
@@ -115,24 +115,24 @@ const Watchlist = () => {
             // Extract symbol string for display purposes
             const symbolString = typeof symbolData === 'string' ? symbolData : symbolData.symbol || symbolData.name;
             symbolData.company_name = symbolData.shortname || symbolData.name;
-            
+
             // Pass the complete symbol data to the API
             const newItem = await watchlistAPI.addItemToWatchlist(selectedWatchlist.id, symbolData);
-            
+
             // Update the selected watchlist with the new item
             setSelectedWatchlist(prev => ({
                 ...prev,
                 items: [...(prev.items || []), newItem]
             }));
-            
+
             setShowAddSymbolModal(false);
             toast.success(`${symbolString} added to watchlist`);
         } catch (error) {
             console.error('Failed to add symbol:', error);
-            
+
             // Provide more specific error messages
             let errorMessage = 'Failed to add symbol to watchlist';
-            
+
             if (error.response?.status === 400) {
                 errorMessage = error.response.data?.message || 'Invalid symbol or symbol already exists';
             } else if (error.response?.status === 404) {
@@ -144,7 +144,7 @@ const Watchlist = () => {
             } else if (error.message === 'Please select a watchlist first') {
                 errorMessage = error.message;
             }
-            
+
             toast.error(errorMessage);
             throw error; // Re-throw to let the modal handle it
         }
@@ -155,13 +155,13 @@ const Watchlist = () => {
 
         try {
             await watchlistAPI.removeItemFromWatchlist(selectedWatchlist.id, itemId);
-            
+
             // Update the selected watchlist by removing the item
             setSelectedWatchlist(prev => ({
                 ...prev,
                 items: prev.items.filter(item => item.id !== itemId)
             }));
-            
+
             toast.success('Symbol removed from watchlist');
         } catch (error) {
             console.error('Failed to remove symbol:', error);
@@ -174,12 +174,12 @@ const Watchlist = () => {
 
         try {
             await watchlistAPI.reorderWatchlistItems(selectedWatchlist.id, itemIds);
-            
+
             // Update the selected watchlist with reordered items
-            const reorderedItems = itemIds.map(id => 
+            const reorderedItems = itemIds.map(id =>
                 selectedWatchlist.items.find(item => item.id === id)
             ).filter(Boolean);
-            
+
             setSelectedWatchlist(prev => ({
                 ...prev,
                 items: reorderedItems
@@ -203,15 +203,25 @@ const Watchlist = () => {
         }
     };
 
+    const handleUpdateWatchlistItem = (updatedItem) => {
+        // Update the selected watchlist with the updated item
+        setSelectedWatchlist(prev => ({
+            ...prev,
+            items: prev.items.map(item =>
+                item.id === updatedItem.id ? updatedItem : item
+            )
+        }));
+    };
+
     const filteredWatchlists = watchlists.filter(watchlist => {
         const matchesSearch = watchlist.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            watchlist.description?.toLowerCase().includes(searchTerm.toLowerCase());
-        
+            watchlist.description?.toLowerCase().includes(searchTerm.toLowerCase());
+
         if (filterType === 'all') return matchesSearch;
         if (filterType === 'default') return matchesSearch && watchlist.is_default;
         if (filterType === 'public') return matchesSearch && watchlist.is_public;
         if (filterType === 'private') return matchesSearch && !watchlist.is_public;
-        
+
         return matchesSearch;
     });
 
@@ -284,6 +294,7 @@ const Watchlist = () => {
                     watchlist={selectedWatchlist}
                     onRemoveSymbol={handleRemoveSymbol}
                     onReorderItems={handleReorderItems}
+                    onUpdateWatchlist={handleUpdateWatchlistItem}
                 />
             </div>
 

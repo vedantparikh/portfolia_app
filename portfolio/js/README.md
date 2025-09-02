@@ -5,29 +5,6 @@ This project was bootstrapped with [Create React App](https://github.com/faceboo
 ## Available Scripts
 
 In the project directory, you can run:
-{
-            "symbol": "AAPL",
-            "company_name": null,
-            "notes": null,
-            "personal_rating": null,
-            "investment_thesis": null,
-            "tags": [],
-            "id": 30,
-            "watchlist_id": 1,
-            "sort_order": 3,
-            "added_date": "2025-09-01T19:45:32.728918Z",
-            "updated_at": "2025-09-02T21:04:02.070595Z",
-            "added_price": "232.14",
-            "current_price": "229.72",
-            "price_change_since_added": null,
-            "price_change_percent_since_added": null,
-            "days_since_added": 1,
-            "alerts_enabled": true,
-            "alert_price_high": null,
-            "alert_price_low": null,
-            "alert_price_change_percent": null
-        },
-        {
 
 ### `npm start`
 

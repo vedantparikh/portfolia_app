@@ -408,11 +408,20 @@ async def update_watchlist_item(
             symbol=item.symbol,
             company_name=item.company_name,
             notes=item.notes,
+            personal_rating=item.personal_rating,
+            investment_thesis=item.investment_thesis,
+            tags=item.tags,
+            alerts_enabled=item.alerts_enabled,
             alert_price_high=item.alert_price_high,
             alert_price_low=item.alert_price_low,
+            alert_price_change_percent=item.alert_price_change_percent,
             sort_order=item.sort_order,
-            added_at=item.added_at,
+            added_date=item.added_date,
             updated_at=item.updated_at,
+            added_price=item.added_price,
+            current_price=item.current_price,
+            price_change_since_added=item.price_change_since_added,
+            price_change_percent_since_added=item.price_change_percent_since_added,
         )
 
         response_time = time.time() - start_time
@@ -422,7 +431,6 @@ async def update_watchlist_item(
             f"/watchlists/{watchlist_id}/items/{item_id}",
             200,
             response_time,
-            "Success",
         )
         return response
 
