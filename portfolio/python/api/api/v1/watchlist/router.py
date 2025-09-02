@@ -6,8 +6,8 @@ import time
 from app.core.database.connection import get_db
 from app.core.auth.dependencies import get_current_user
 from app.core.database.models import User
-from services.watchlist_service import WatchlistService
-from schemas.watchlist import (
+from app.core.services.watchlist_service import WatchlistService
+from app.core.schemas.watchlist import (
     WatchlistCreate,
     WatchlistUpdate,
     WatchlistResponse,

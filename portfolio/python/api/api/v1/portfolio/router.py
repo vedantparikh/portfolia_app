@@ -12,7 +12,7 @@ from app.core.auth.dependencies import (
     get_current_active_user,
     get_current_verified_user,
 )
-from schemas.portfolio import (
+from app.core.schemas.portfolio import (
     PortfolioCreate,
     PortfolioUpdate,
     Portfolio,
@@ -27,7 +27,7 @@ from schemas.portfolio import (
     PortfolioHolding,
     PortfolioStatistics,
 )
-from services.portfolio_service import PortfolioService
+from app.core.services.portfolio_service import PortfolioService
 
 router = APIRouter(prefix="/portfolios", tags=["portfolios"])
 
