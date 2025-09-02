@@ -64,6 +64,7 @@ api.interceptors.response.use(
                 localStorage.removeItem('access_token');
                 localStorage.removeItem('refresh_token');
                 localStorage.removeItem('user');
+                localStorage.removeItem('profile');
                 window.location.href = '/login';
                 return Promise.reject(refreshError);
             }
@@ -84,6 +85,12 @@ export const authAPI = {
     // User login
     login: async (credentials) => {
         const response = await api.post('/auth/login', credentials);
+        return response.data;
+    },
+
+    // User Profile
+    getUserProfile: async () => {
+        const response = await api.get('/auth/me/profile');
         return response.data;
     },
 
@@ -319,6 +326,7 @@ export const authUtils = {
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
         localStorage.removeItem('user');
+        localStorage.removeItem('profile');
     },
 
     // Check if token is expired (basic check)

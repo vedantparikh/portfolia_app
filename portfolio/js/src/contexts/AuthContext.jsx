@@ -11,6 +11,7 @@ const AUTH_ACTIONS = {
     REGISTER_SUCCESS: 'REGISTER_SUCCESS',
     REGISTER_FAILURE: 'REGISTER_FAILURE',
     SET_USER: 'SET_USER',
+    SET_PROFILE: 'SET_PROFILE',
     CLEAR_ERROR: 'CLEAR_ERROR',
 };
 
@@ -80,6 +81,13 @@ const authReducer = (state, action) => {
                 isAuthenticated: !!action.payload,
                 isInitialized: true,
             };
+        case AUTH_ACTIONS.SET_PROFILE:
+            return {
+                ...state,
+                profile: action.payload,
+                isAuthenticated: !!action.payload,
+                isInitialized: true,
+            };
         case AUTH_ACTIONS.CLEAR_ERROR:
             return {
                 ...state,
@@ -104,7 +112,9 @@ export const AuthProvider = ({ children }) => {
                 const token = localStorage.getItem('access_token');
                 if (token) {
                     const user = await authAPI.getCurrentUser();
+                    const profile = await authAPI.getUserProfile();
                     dispatch({ type: AUTH_ACTIONS.SET_USER, payload: user });
+                    dispatch({ type: AUTH_ACTIONS.SET_PROFILE, payload: profile });
                 } else {
                     dispatch({ type: AUTH_ACTIONS.SET_USER, payload: null });
                 }
@@ -113,6 +123,7 @@ export const AuthProvider = ({ children }) => {
                 localStorage.removeItem('access_token');
                 localStorage.removeItem('refresh_token');
                 dispatch({ type: AUTH_ACTIONS.SET_USER, payload: null });
+                dispatch({ type: AUTH_ACTIONS.SET_PROFILE, payload: null });
             }
         };
 
@@ -132,8 +143,10 @@ export const AuthProvider = ({ children }) => {
 
             // Get user data
             const user = await authAPI.getCurrentUser();
+            const profile = await authAPI.getUserProfile();
 
-            dispatch({ type: AUTH_ACTIONS.LOGIN_SUCCESS, payload: { user } });
+            dispatch({ type: AUTH_ACTIONS.SET_USER, payload: user });
+            dispatch({ type: AUTH_ACTIONS.SET_PROFILE, payload: profile });
             return { success: true };
         } catch (error) {
             const errorMessage = error.response?.data?.detail || 'Login failed';
