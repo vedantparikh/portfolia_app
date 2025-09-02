@@ -33,7 +33,7 @@ const WatchlistContent = ({ watchlist, onRemoveSymbol, onReorderItems }) => {
 
     const loadRealTimeData = async () => {
         if (!watchlist?.id) return;
-        
+
         try {
             const data = await watchlistAPI.getWatchlist(watchlist.id, true);
             if (data.items) {
@@ -41,12 +41,18 @@ const WatchlistContent = ({ watchlist, onRemoveSymbol, onReorderItems }) => {
                 data.items.forEach(item => {
                     priceData[item.symbol] = {
                         price: item.current_price?.toString() || '0.00',
-                        change: item.day_change?.toString() || '0.00',
-                        changePercent: item.day_change_percent?.toString() || '0.00',
-                        volume: item.volume || 0,
-                        marketCap: item.market_cap?.toString() || '0',
-                        high: item.high?.toString() || '0.00',
-                        low: item.low?.toString() || '0.00'
+                        lastUpdated: new Intl.DateTimeFormat('en-GB', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit'
+                          }).format(new Date(item.last_updated)),
+                        addedPrice: item.added_price?.toString() || '0.00',
+                        change: item.price_change_since_added?.toString() || '0.00',
+                        changePercent: item.price_change_percent_since_added?.toString() || '0.00',
+    
                     };
                 });
                 setRealTimeData(priceData);
@@ -98,7 +104,7 @@ const WatchlistContent = ({ watchlist, onRemoveSymbol, onReorderItems }) => {
 
         // Filter by search term
         if (searchTerm) {
-            items = items.filter(item => 
+            items = items.filter(item =>
                 item.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 item.company_name?.toLowerCase().includes(searchTerm.toLowerCase())
             );
@@ -245,9 +251,8 @@ const WatchlistContent = ({ watchlist, onRemoveSymbol, onReorderItems }) => {
                                                     <div
                                                         ref={provided.innerRef}
                                                         {...provided.draggableProps}
-                                                        className={`group hover:bg-dark-800/50 transition-colors ${
-                                                            snapshot.isDragging ? 'bg-dark-800' : ''
-                                                        }`}
+                                                        className={`group hover:bg-dark-800/50 transition-colors ${snapshot.isDragging ? 'bg-dark-800' : ''
+                                                            }`}
                                                     >
                                                         <div className="flex items-center px-4 py-3">
                                                             {/* Drag Handle */}
@@ -276,19 +281,23 @@ const WatchlistContent = ({ watchlist, onRemoveSymbol, onReorderItems }) => {
                                                             <div className="flex items-center space-x-6 text-sm">
                                                                 <div className="text-right">
                                                                     <div className="text-gray-100 font-medium">
-                                                                        ${data.price || '0.00'}
+                                                                        {data.currency} {item.added_price || '0.00'}
                                                                     </div>
                                                                     <div className="text-xs text-gray-400">
-                                                                        H: ${data.high || '0.00'} L: ${data.low || '0.00'}
+                                                                        on: {new Intl.DateTimeFormat('en-GB', {
+                                                                            day: '2-digit',
+                                                                            month: '2-digit',
+                                                                            year: 'numeric'
+                                                                        }).format(new Date(item.added_date))}
                                                                     </div>
                                                                 </div>
 
                                                                 <div className="text-right">
-                                                                    <div className={`font-medium ${getChangeColor(data.changePercent)}`}>
-                                                                        {isPositive ? '+' : ''}{data.changePercent || '0.00'}%
+                                                                    <div className={`font-medium ${getChangeColor(item.price_change_percent_since_added)}`}>
+                                                                        {isPositive ? '+' : ''}{item.price_change_percent_since_added || '0.00'}%
                                                                     </div>
-                                                                    <div className={`text-xs ${getChangeColor(data.change)}`}>
-                                                                        {isPositive ? '+' : ''}{data.change || '0.00'}
+                                                                    <div className={`text-xs ${getChangeColor(item.price_change_since_added)}`}>
+                                                                        {isPositive ? '+' : ''}{item.price_change_since_added || '0.00'}
                                                                     </div>
                                                                 </div>
 

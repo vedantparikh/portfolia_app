@@ -107,12 +107,6 @@ class WatchlistItemResponse(WatchlistItemBase):
     price_change_percent_since_added: Optional[Decimal] = None
     days_since_added: Optional[int] = None
 
-    # Real-time data (optional, populated when requested)
-    volume: Optional[int] = None
-    market_cap: Optional[Decimal] = None
-    day_change: Optional[Decimal] = None
-    day_change_percent: Optional[Decimal] = None
-
     # Alert settings
     alerts_enabled: bool
     alert_price_high: Optional[Decimal] = None

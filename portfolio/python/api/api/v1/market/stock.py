@@ -13,8 +13,13 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Query, Depends, Request
 from yahooquery import search
 
-from services.market_data_service import market_data_service
-from app.core.auth.dependencies import get_optional_current_user, get_client_ip
+from app.core.services.market_data_service import market_data_service
+from app.core.auth.dependencies import (
+    get_optional_current_user,
+    get_client_ip,
+    get_current_user,
+)
+from app.core.schemas.market import MarketData
 from app.core.auth.utils import is_rate_limited
 from app.core.logging_config import (
     get_logger,
@@ -315,3 +320,34 @@ async def get_symbol_data(
         raise HTTPException(
             status_code=500, detail=f"Error retrieving data for {name}: {str(e)}"
         )
+
+
+@router.get("/stock-latest-data", response_model=List[MarketData])
+async def get_stock_latest_data(
+    symbols: List[str],
+    request: Request,
+    current_user=Depends(get_current_user),
+) -> List[Optional[MarketData]]:
+    """
+    Get the latest stock data for a specific symbol.
+    
+    """
+    log_api_request(
+        logger,
+        "GET",
+        f"/stock-latest-data",
+        current_user.id,
+        f"Fetching tickers: {symbols}",
+    )
+    start_time = time.time()
+    try:
+        data = await market_data_service.get_stock_latest_data(symbols)
+        response_time = time.time() - start_time
+        log_api_response(logger, "GET", f"/stock-latest-data", 200, response_time)
+        return data
+    except Exception as e:
+        logger.error(f"Error retrieving latest data for {symbols}: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error retrieving latest data for {symbols}: {str(e)}"
+        )
+ 

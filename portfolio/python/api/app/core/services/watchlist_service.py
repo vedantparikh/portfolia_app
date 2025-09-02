@@ -624,9 +624,31 @@ class WatchlistService:
 
             # Update prices for all symbols in the watchlist
             symbols = list(set([item.symbol for item in watchlist.items]))
-            for symbol in symbols:
-                await self.update_watchlist_item_prices(symbol)
 
+            latest_data = await self.market_data_service.get_stock_latest_data(symbols=symbols)
+            for item in watchlist.items:
+                for i, data in enumerate(latest_data):
+                    if data.symbol == item.symbol:
+                        item.current_price = data.latest_price
+                        item.company_name = data.name
+                        item.latest_date = data.latest_date
+                        item.market_cap = data.market_cap
+                        item.pe_ratio = data.pe_ratio
+                        item.beta = data.beta
+                        item.currency = data.currency
+                        item.exchange = data.exchange
+                        item.price_change_since_added = data.latest_price - item.added_price
+                        item.price_change_percent_since_added = (item.price_change_since_added / item.added_price) * 100
+                        item.updated_at = datetime.utcnow()
+
+                        logger.info(f"Updated watchlist item {item.symbol} with real-time data")
+                        
+                        latest_data.remove(data)
+                        self.db.add(item)
+                        break
+            self.db.commit()
+
+                        
             # Refresh the watchlist to get updated data
             self.db.refresh(watchlist)
 

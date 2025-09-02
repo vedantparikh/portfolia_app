@@ -32,13 +32,15 @@ class StockData(BaseModel):
 
 class MarketData(BaseModel):
     symbol: str
-    current_price: Decimal
+    name: str
+    latest_price: Decimal
+    latest_date: Optional[datetime] = None
     market_cap: Optional[int] = None
     pe_ratio: Optional[Decimal] = None
+    currency: Optional[str] = None
+    exchange: Optional[str] = None
     dividend_yield: Optional[Decimal] = None
     beta: Optional[Decimal] = None
-    timestamp: datetime
-
 
 class MarketIndex(BaseModel):
     name: str
