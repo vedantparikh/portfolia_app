@@ -7,6 +7,7 @@ import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
+
 import pandas as pd
 import yfinance as yf
 from sqlalchemy.orm import Session

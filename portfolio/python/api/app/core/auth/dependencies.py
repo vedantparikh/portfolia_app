@@ -11,7 +11,7 @@ from jose import JWTError, jwt
 from app.core.database.connection import get_db
 from app.core.database.models import User, UserProfile
 from app.core.auth.utils import verify_token, SECRET_KEY, ALGORITHM
-from app.core.auth.schemas import TokenData
+from app.core.schemas.auth import TokenData
 
 # Security scheme for Bearer token authentication
 security = HTTPBearer()

@@ -1,19 +1,27 @@
 # Pydantic Schemas
-from .auth import UserCreate, UserLogin, Token, TokenData
+from .auth import UserCreate, UserLogin, UserUpdate, UserResponse, UserProfileResponse, PasswordReset, PasswordResetConfirm, PasswordChange, PasswordResetTokenInfo, Token, TokenData, TokenValidationResponse, EmailVerification
 from .market import StockData, MarketData, MarketIndex, StockQuote
 from .portfolio import PortfolioCreate, PortfolioUpdate, AssetCreate, TransactionCreate
 
 # Database Models
-from .auth import User, UserSession
 from .market import Symbol
 from .portfolio import Portfolio, PortfolioItem
 
 __all__ = [
     # Pydantic Schemas
     "UserCreate",
+    "UserUpdate",
     "UserLogin",
+    "UserResponse",
+    "UserProfileResponse",
+    "PasswordReset",
+    "PasswordResetConfirm",
+    "PasswordChange",
+    "PasswordResetTokenInfo",
     "Token",
     "TokenData",
+    "TokenValidationResponse",
+    "EmailVerification",
     "StockData",
     "MarketData",
     "MarketIndex",
@@ -22,8 +30,6 @@ __all__ = [
     "PortfolioUpdate",
     "AssetCreate",
     "TransactionCreate",
-    "User",
-    "UserSession",
     "Symbol",
     "Portfolio",
     "PortfolioItem",

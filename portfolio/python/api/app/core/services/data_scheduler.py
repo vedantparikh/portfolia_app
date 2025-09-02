@@ -7,14 +7,16 @@ import asyncio
 import logging
 import schedule
 from datetime import datetime, timedelta
-from typing import List, Dict, Any
+from typing import List, Dict
 import traceback
 
-from app.core.database.connection import get_db_session
-from services.market_data_service import market_data_service
-from app.core.database.models.market_data import DataUpdateLog, TickerInfo, MarketData
 from sqlalchemy import select
 from sqlalchemy import and_
+
+from app.core.database.connection import get_db_session
+from app.core.services.market_data_service import market_data_service
+from app.core.database.models.market_data import DataUpdateLog, TickerInfo, MarketData
+
 
 logger = logging.getLogger(__name__)
 
