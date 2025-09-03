@@ -5,10 +5,7 @@ API endpoints for stock data operations with separate endpoints for fresh and lo
 
 import time
 from datetime import datetime
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Query, Depends, Request
 from yahooquery import search

@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
-from api.v1.market.stock import router as stock_router
-from api.v1.market.data_router import router as data_router
+from .stock import router as stock_router
+from .data_router import router as data_router
 
 router = APIRouter()
 

@@ -15,8 +15,8 @@ from fastapi import HTTPException
 from fastapi import Query
 
 from app.core.database.connection import get_db_session
-from services.data_scheduler import data_scheduler
-from services.market_data_service import market_data_service
+from app.core.services.data_scheduler import data_scheduler
+from app.core.services.market_data_service import market_data_service
 
 logger = logging.getLogger(__name__)
 

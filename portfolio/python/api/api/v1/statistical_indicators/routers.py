@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Request, HTTPException, status
 
-from .momentum_indicators import MomentumIndicators
-from api.v1.market.stock import get_symbol_df
+from utils.indicators.momentum_indicators import MomentumIndicators
+from app.core.services.market_data_service import MarketDataService
 from app.core.auth.dependencies import get_optional_current_user, get_client_ip
 from app.core.auth.utils import is_rate_limited
 
@@ -35,7 +35,8 @@ async def rsi_indicator(
             )
 
     try:
-        df = get_symbol_df(name=name, period=period, interval=interval)
+        market_data_service = MarketDataService()
+        df = await market_data_service.get_market_data(symbol=name)
         rsi_df = MomentumIndicators(df=df).rsi_indicator(window=window, fillna=fillna)
 
         return rsi_df

@@ -612,7 +612,7 @@ class MarketDataService:
                     beta=info.get("beta", None),
                     currency=info.get("currency", None),
                     exchange=info.get("exchange", None),
-                    dividend_yield=info.get("dividendYield", None), # Corrected key
+                    dividend_yield=info.get("dividendYield", 0.0), # Corrected key
                 )
             )
 

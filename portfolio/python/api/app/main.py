@@ -149,7 +149,7 @@ except ImportError as e:
 
 # Include statistical indicators router
 try:
-    from utils.indicators.routers import router as indicators_router
+    from api.v1.statistical_indicators.routers import router as indicators_router
 
     app.include_router(
         indicators_router, prefix="/api/v1", tags=["statistical-indicators"]
