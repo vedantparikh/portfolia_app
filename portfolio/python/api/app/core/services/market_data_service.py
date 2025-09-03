@@ -7,6 +7,7 @@ import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
+
 import pandas as pd
 import yfinance as yf
 from sqlalchemy.orm import Session
@@ -14,6 +15,7 @@ from sqlalchemy import select, and_, desc
 
 from app.core.database.connection import get_db_session
 from app.core.database.models.market_data import MarketData, TickerInfo
+from app.core.schemas.market import MarketData as MarketDataSchema
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +26,17 @@ class MarketDataService:
     def __init__(self) -> None:
         self.max_retries = 3
         self.retry_delay = 5  # seconds
+
+    async def get_current_price(self, symbol: str) -> Optional[float]:
+        """Get current price of a ticker."""
+        try:
+            ticker = yf.Ticker(symbol)
+            return ticker.info.get("currentPrice", None) or ticker.info.get(
+                "regularMarketPrice", None
+            )
+        except Exception as e:
+            logger.error(f"Error getting current price for {symbol}: {e}")
+            return None
 
     async def fetch_ticker_data(
         self,
@@ -574,6 +587,37 @@ class MarketDataService:
         except Exception as e:
             logger.error(f"Error refreshing all ticker info: {e}")
             return {}
+
+    async def get_stock_latest_data(self, symbols: List[str]) -> List[MarketData]:
+        """
+        Get the latest stock data for a specific symbols using yfinance.
+        args:
+            symbols: List[str]
+        return:
+            List[Dict[str, Any]]
+
+        """
+        tickers = yf.Tickers(tickers=symbols)
+        tickers_info = []
+        for ticker_symbol, ticker in tickers.tickers.items():
+            info = ticker.info
+            tickers_info.append(
+                MarketDataSchema(
+                    symbol=info.get("symbol", ticker_symbol),
+                    name=info.get("longName", "N/A"),
+                    latest_price=info.get("currentPrice", 0.0),
+                    latest_date=info.get("regularMarketTime", None),
+                    market_cap=info.get("marketCap", None),
+                    pe_ratio=info.get("trailingPE", None),
+                    beta=info.get("beta", None),
+                    currency=info.get("currency", None),
+                    exchange=info.get("exchange", None),
+                    dividend_yield=info.get("dividendYield", 0.0), # Corrected key
+                )
+            )
+
+        logger.info(f"Fetched {len(tickers_info)} records for {symbols}")
+        return tickers_info
 
 
 # Global instance

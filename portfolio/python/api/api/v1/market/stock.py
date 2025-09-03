@@ -5,16 +5,18 @@ API endpoints for stock data operations with separate endpoints for fresh and lo
 
 import time
 from datetime import datetime
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Query, Depends, Request
 from yahooquery import search
 
-from services.market_data_service import market_data_service
-from app.core.auth.dependencies import get_optional_current_user, get_client_ip
+from app.core.services.market_data_service import market_data_service
+from app.core.auth.dependencies import (
+    get_optional_current_user,
+    get_client_ip,
+    get_current_user,
+)
+from app.core.schemas.market import MarketData
 from app.core.auth.utils import is_rate_limited
 from app.core.logging_config import (
     get_logger,
@@ -41,7 +43,7 @@ async def get_symbols(
     """
     start_time = time.time()
     client_ip = get_client_ip(request) if request else "unknown"
-    user_id = current_user.get("id") if current_user else None
+    user_id = current_user.id if current_user else None
 
     # Log API request
     log_api_request(
@@ -140,6 +142,7 @@ async def get_symbols(
 @router.get("/symbol-data/fresh")
 async def get_symbol_data_fresh(
     name: str,
+    request: Request,
     period: str = Query(
         default="max",
         description="Data period (1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max)",
@@ -204,9 +207,9 @@ async def get_symbol_data_fresh(
 @router.get("/symbol-data/local")
 async def get_symbol_data_local(
     name: str,
+    request: Request,
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
-    request: Request = None,
     current_user=Depends(get_optional_current_user),
 ) -> Optional[Dict[str, Any]]:
     """
@@ -267,6 +270,7 @@ async def get_symbol_data_local(
 @router.get("/symbol-data")
 async def get_symbol_data(
     name: str,
+    request: Request,
     period: str = Query(
         default="max",
         description="Data period (1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max)",
@@ -275,7 +279,6 @@ async def get_symbol_data(
         default="1d",
         description="Data interval (1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo)",
     ),
-    request: Request = None,
     current_user=Depends(get_optional_current_user),
 ) -> Optional[Dict[str, Any]]:
     """
@@ -314,3 +317,34 @@ async def get_symbol_data(
         raise HTTPException(
             status_code=500, detail=f"Error retrieving data for {name}: {str(e)}"
         )
+
+
+@router.get("/stock-latest-data", response_model=List[MarketData])
+async def get_stock_latest_data(
+    symbols: List[str],
+    request: Request,
+    current_user=Depends(get_current_user),
+) -> List[Optional[MarketData]]:
+    """
+    Get the latest stock data for a specific symbol.
+    
+    """
+    log_api_request(
+        logger,
+        "GET",
+        f"/stock-latest-data",
+        current_user.id,
+        f"Fetching tickers: {symbols}",
+    )
+    start_time = time.time()
+    try:
+        data = await market_data_service.get_stock_latest_data(symbols)
+        response_time = time.time() - start_time
+        log_api_response(logger, "GET", f"/stock-latest-data", 200, response_time)
+        return data
+    except Exception as e:
+        logger.error(f"Error retrieving latest data for {symbols}: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error retrieving latest data for {symbols}: {str(e)}"
+        )
+ 

@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.core.database.connection import get_db
 from app.core.database.models import User, UserProfile, UserSession
-from app.core.auth.schemas import (
+from app.core.schemas.auth import (
     UserCreate,
     UserLogin,
     UserUpdate,

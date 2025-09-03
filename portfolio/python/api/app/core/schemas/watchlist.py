@@ -1,7 +1,12 @@
-from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
+
+from pydantic import BaseModel
+from pydantic import Field
 
 
 class WatchlistBase(BaseModel):
@@ -13,7 +18,7 @@ class WatchlistBase(BaseModel):
     )
     is_public: bool = Field(False, description="Whether the watchlist is public")
     color: Optional[str] = Field(
-        None, regex=r"^#[0-9A-Fa-f]{6}$", description="Hex color code"
+        None, pattern=r"^#[0-9A-Fa-f]{6}$", description="Hex color code"
     )
 
 
@@ -29,7 +34,7 @@ class WatchlistUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     description: Optional[str] = Field(None, max_length=500)
     is_public: Optional[bool] = None
-    color: Optional[str] = Field(None, regex=r"^#[0-9A-Fa-f]{6}$")
+    color: Optional[str] = Field(None, pattern=r"^#[0-9A-Fa-f]{6}$")
     sort_order: Optional[int] = Field(None, ge=0)
 
 
@@ -102,12 +107,6 @@ class WatchlistItemResponse(WatchlistItemBase):
     price_change_percent_since_added: Optional[Decimal] = None
     days_since_added: Optional[int] = None
 
-    # Real-time data (optional, populated when requested)
-    volume: Optional[int] = None
-    market_cap: Optional[Decimal] = None
-    day_change: Optional[Decimal] = None
-    day_change_percent: Optional[Decimal] = None
-
     # Alert settings
     alerts_enabled: bool
     alert_price_high: Optional[Decimal] = None
@@ -116,6 +115,15 @@ class WatchlistItemResponse(WatchlistItemBase):
 
     class Config:
         from_attributes = True
+
+    def calculate_days_since_added(self):
+        """Calculates the number of days since the item was added."""
+        if self.added_date:
+            # Calculate the time difference between now and the added date
+            time_difference = datetime.now(timezone.utc) - self.added_date
+            
+            # The .days attribute of a timedelta object gives the number of full days
+            self.days_since_added = time_difference.days
 
 
 class WatchlistWithItemsResponse(WatchlistResponse):

@@ -14,8 +14,8 @@ from sqlalchemy import select
 
 from app.core.database.connection import init_db, get_db_session
 from app.core.database.models.market_data import MarketData
-from services.data_scheduler import data_scheduler
-from services.market_data_service import market_data_service
+from api.app.core.services.data_scheduler import data_scheduler
+from api.app.core.services.market_data_service import market_data_service
 
 # Add the project root to Python path
 project_root = Path(__file__).parent

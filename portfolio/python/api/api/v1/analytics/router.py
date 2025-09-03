@@ -2,17 +2,14 @@
 Analytics and reporting router with authentication.
 """
 
-from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
-from decimal import Decimal
+from datetime import datetime
 
 from app.core.database.connection import get_db
 from app.core.database.models import User, Portfolio, PortfolioAsset, Transaction
 from app.core.auth.dependencies import (
     get_current_active_user,
-    get_current_verified_user,
 )
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])

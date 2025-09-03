@@ -3,25 +3,11 @@ Authentication package for Portfolia application.
 """
 
 from .router import router as auth_router
-from .schemas import *
 from .utils import *
 from .dependencies import *
 
 __all__ = [
     "auth_router",
-    # Schemas
-    "UserCreate",
-    "UserLogin",
-    "UserUpdate",
-    "UserResponse",
-    "UserProfileResponse",
-    "Token",
-    "PasswordChange",
-    "PasswordReset",
-    "PasswordResetConfirm",
-    "EmailVerification",
-    "TwoFactorSetup",
-    "TwoFactorVerify",
     # Utils
     "verify_password",
     "get_password_hash",

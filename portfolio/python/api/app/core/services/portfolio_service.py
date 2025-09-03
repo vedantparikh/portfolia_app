@@ -1,7 +1,9 @@
 from typing import List, Optional, Dict, Any
 from decimal import Decimal
+
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, desc
+
 from app.core.database.models import (
     Portfolio,
     PortfolioAsset,
@@ -10,7 +12,7 @@ from app.core.database.models import (
     TransactionType,
     AssetPrice,
 )
-from schemas.portfolio import (
+from app.core.schemas.portfolio import (
     PortfolioCreate,
     PortfolioUpdate,
     PortfolioAssetCreate,

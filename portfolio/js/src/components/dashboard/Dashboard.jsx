@@ -1,20 +1,22 @@
-import React, { useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
 import {
-    User,
-    LogOut,
     BarChart3,
-    TrendingUp,
-    Wallet,
-    Settings,
     Bell,
+    Bookmark,
+    LogOut,
     Menu,
+    Settings,
+    TrendingUp,
+    User,
+    Wallet,
     X
 } from 'lucide-react';
+import React, { useState } from 'react';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../contexts/AuthContext';
 
 const Dashboard = () => {
     const { user, logout } = useAuth();
+    const { profile } = useAuth();
     const [sidebarOpen, setSidebarOpen] = useState(true);
 
     const handleLogout = async () => {
@@ -65,7 +67,7 @@ const Dashboard = () => {
                         </div>
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-gray-100 truncate">
-                                {user?.first_name} {user?.last_name}
+                                {profile?.first_name} {profile?.last_name}
                             </p>
                             <p className="text-xs text-gray-400 truncate">
                                 @{user?.username}
@@ -99,7 +101,13 @@ const Dashboard = () => {
                         <Wallet size={18} />
                         <span>Assets</span>
                     </a>
-
+                    <a
+                        href="/watchlist"
+                        className="flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-300 hover:bg-dark-800 transition-colors"
+                    >
+                        <Bookmark size={18} />
+                        <span>Watchlist</span>
+                    </a>
                     <a
                         href="#settings"
                         className="flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-300 hover:bg-dark-800 transition-colors"
@@ -147,7 +155,7 @@ const Dashboard = () => {
                                     <User size={16} className="text-white" />
                                 </div>
                                 <span className="text-sm text-gray-300 hidden md:block">
-                                    {user?.first_name} {user?.last_name}
+                                    {profile?.first_name} {profile?.last_name}
                                 </span>
                             </div>
                         </div>
@@ -160,7 +168,7 @@ const Dashboard = () => {
                         {/* Welcome Section */}
                         <div className="mb-8">
                             <h1 className="text-3xl font-bold text-gray-100 mb-2">
-                                Welcome back, {user?.first_name}! 👋
+                                Welcome back, {profile?.first_name}! 👋
                             </h1>
                             <p className="text-gray-400">
                                 Here's what's happening with your portfolio today.

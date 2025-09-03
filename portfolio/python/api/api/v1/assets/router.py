@@ -12,7 +12,7 @@ from app.core.auth.dependencies import (
     get_current_active_user,
     get_current_verified_user,
 )
-from models.portfolio import AssetCreate, AssetUpdate, Asset as AssetSchema
+from app.core.schemas.portfolio import AssetCreate, AssetUpdate, Asset as AssetSchema
 
 router = APIRouter(prefix="/assets", tags=["assets"])
 

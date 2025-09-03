@@ -149,7 +149,7 @@ except ImportError as e:
 
 # Include statistical indicators router
 try:
-    from utils.indicators.routers import router as indicators_router
+    from api.v1.statistical_indicators.routers import router as indicators_router
 
     app.include_router(
         indicators_router, prefix="/api/v1", tags=["statistical-indicators"]
@@ -233,7 +233,7 @@ except Exception as e:
 # Include watchlist router
 try:
     logger.info("👀 Attempting to import watchlist router...")
-    from app.core.watchlist.router import router as watchlist_router
+    from api.v1.watchlist.router import router as watchlist_router
 
     logger.info("✅ Watchlist router imported successfully")
     app.include_router(
