@@ -34,24 +34,22 @@ router = APIRouter(prefix="/portfolios", tags=["portfolios"])
 
 @router.post("/", response_model=Portfolio, status_code=status.HTTP_201_CREATED)
 async def create_portfolio(
-    portfolio_data: PortfolioCreate,
-    current_user: User = Depends(get_current_verified_user),
-    db: Session = Depends(get_db),
+        portfolio_data: PortfolioCreate,
+        current_user: User = Depends(get_current_verified_user),
+        db: Session = Depends(get_db),
 ):
     """Create a new portfolio for the authenticated user."""
-    # Override user_id to ensure user can only create portfolios for themselves
-    portfolio_data.user_id = int(current_user.id)
 
     portfolio_service = PortfolioService(db)
-    new_portfolio = portfolio_service.create_portfolio(portfolio_data)
+    new_portfolio = portfolio_service.create_portfolio(portfolio_data, user_id=current_user.id)
     return new_portfolio
 
 
 @router.get("/", response_model=List[Portfolio])
 async def get_user_portfolios(
-    current_user: User = Depends(get_current_active_user),
-    include_inactive: bool = Query(False, description="Include inactive portfolios"),
-    db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_active_user),
+        include_inactive: bool = Query(False, description="Include inactive portfolios"),
+        db: Session = Depends(get_db),
 ):
     """Get all portfolios for the authenticated user."""
     portfolio_service = PortfolioService(db)
@@ -63,9 +61,9 @@ async def get_user_portfolios(
 
 @router.get("/{portfolio_id}", response_model=Portfolio)
 async def get_portfolio(
-    portfolio_id: int,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
+        portfolio_id: int,
+        current_user: User = Depends(get_current_active_user),
+        db: Session = Depends(get_db),
 ):
     """Get a specific portfolio by ID (user must own it)."""
     portfolio_service = PortfolioService(db)
@@ -81,10 +79,10 @@ async def get_portfolio(
 
 @router.put("/{portfolio_id}", response_model=Portfolio)
 async def update_portfolio(
-    portfolio_id: int,
-    portfolio_update: PortfolioUpdate,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
+        portfolio_id: int,
+        portfolio_update: PortfolioUpdate,
+        current_user: User = Depends(get_current_active_user),
+        db: Session = Depends(get_db),
 ):
     """Update a portfolio (user must own it)."""
     portfolio_service = PortfolioService(db)
@@ -102,9 +100,9 @@ async def update_portfolio(
 
 @router.delete("/{portfolio_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_portfolio(
-    portfolio_id: int,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
+        portfolio_id: int,
+        current_user: User = Depends(get_current_active_user),
+        db: Session = Depends(get_db),
 ):
     """Delete a portfolio (user must own it)."""
     portfolio_service = PortfolioService(db)
@@ -120,9 +118,9 @@ async def delete_portfolio(
 
 @router.delete("/{portfolio_id}/hard", status_code=status.HTTP_204_NO_CONTENT)
 async def hard_delete_portfolio(
-    portfolio_id: int,
-    current_user: User = Depends(get_current_verified_user),
-    db: Session = Depends(get_db),
+        portfolio_id: int,
+        current_user: User = Depends(get_current_verified_user),
+        db: Session = Depends(get_db),
 ):
     """Permanently delete a portfolio and all associated data (user must own it)."""
     portfolio_service = PortfolioService(db)
@@ -142,10 +140,10 @@ async def hard_delete_portfolio(
     status_code=status.HTTP_201_CREATED,
 )
 async def add_asset_to_portfolio(
-    portfolio_id: int,
-    asset_data: PortfolioAssetCreate,
-    current_user: User = Depends(get_current_verified_user),
-    db: Session = Depends(get_db),
+        portfolio_id: int,
+        asset_data: PortfolioAssetCreate,
+        current_user: User = Depends(get_current_verified_user),
+        db: Session = Depends(get_db),
 ):
     """Add an asset to a portfolio (user must own the portfolio)."""
     portfolio_service = PortfolioService(db)
@@ -163,9 +161,9 @@ async def add_asset_to_portfolio(
 
 @router.get("/{portfolio_id}/assets", response_model=List[PortfolioAsset])
 async def get_portfolio_assets(
-    portfolio_id: int,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
+        portfolio_id: int,
+        current_user: User = Depends(get_current_active_user),
+        db: Session = Depends(get_db),
 ):
     """Get all assets in a portfolio (user must own the portfolio)."""
     portfolio_service = PortfolioService(db)
@@ -177,9 +175,9 @@ async def get_portfolio_assets(
     "/{portfolio_id}/assets/details", response_model=List[PortfolioAssetWithDetails]
 )
 async def get_portfolio_assets_with_details(
-    portfolio_id: int,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
+        portfolio_id: int,
+        current_user: User = Depends(get_current_active_user),
+        db: Session = Depends(get_db),
 ):
     """Get portfolio assets with detailed information including current values and P&L."""
     portfolio_service = PortfolioService(db)
@@ -191,11 +189,11 @@ async def get_portfolio_assets_with_details(
 
 @router.put("/{portfolio_id}/assets/{asset_id}", response_model=PortfolioAsset)
 async def update_portfolio_asset(
-    portfolio_id: int,
-    asset_id: int,
-    asset_update: PortfolioAssetUpdate,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
+        portfolio_id: int,
+        asset_id: int,
+        asset_update: PortfolioAssetUpdate,
+        current_user: User = Depends(get_current_active_user),
+        db: Session = Depends(get_db),
 ):
     """Update an asset in a portfolio (user must own the portfolio)."""
     portfolio_service = PortfolioService(db)
@@ -215,10 +213,10 @@ async def update_portfolio_asset(
     "/{portfolio_id}/assets/{asset_id}", status_code=status.HTTP_204_NO_CONTENT
 )
 async def remove_asset_from_portfolio(
-    portfolio_id: int,
-    asset_id: int,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
+        portfolio_id: int,
+        asset_id: int,
+        current_user: User = Depends(get_current_active_user),
+        db: Session = Depends(get_db),
 ):
     """Remove an asset from a portfolio (user must own the portfolio)."""
     portfolio_service = PortfolioService(db)
@@ -240,10 +238,10 @@ async def remove_asset_from_portfolio(
     status_code=status.HTTP_201_CREATED,
 )
 async def add_transaction(
-    portfolio_id: int,
-    transaction_data: TransactionCreate,
-    current_user: User = Depends(get_current_verified_user),
-    db: Session = Depends(get_db),
+        portfolio_id: int,
+        transaction_data: TransactionCreate,
+        current_user: User = Depends(get_current_verified_user),
+        db: Session = Depends(get_db),
 ):
     """Add a transaction to a portfolio (user must own the portfolio)."""
     portfolio_service = PortfolioService(db)
@@ -261,13 +259,13 @@ async def add_transaction(
 
 @router.get("/{portfolio_id}/transactions", response_model=List[Transaction])
 async def get_portfolio_transactions(
-    portfolio_id: int,
-    current_user: User = Depends(get_current_active_user),
-    limit: int = Query(
-        100, ge=1, le=1000, description="Number of transactions to return"
-    ),
-    offset: int = Query(0, ge=0, description="Number of transactions to skip"),
-    db: Session = Depends(get_db),
+        portfolio_id: int,
+        current_user: User = Depends(get_current_active_user),
+        limit: int = Query(
+            100, ge=1, le=1000, description="Number of transactions to return"
+        ),
+        offset: int = Query(0, ge=0, description="Number of transactions to skip"),
+        db: Session = Depends(get_db),
 ):
     """Get transactions for a portfolio (user must own the portfolio)."""
     portfolio_service = PortfolioService(db)
@@ -279,9 +277,9 @@ async def get_portfolio_transactions(
 
 @router.get("/{portfolio_id}/summary", response_model=PortfolioSummary)
 async def get_portfolio_summary(
-    portfolio_id: int,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
+        portfolio_id: int,
+        current_user: User = Depends(get_current_active_user),
+        db: Session = Depends(get_db),
 ):
     """Get portfolio summary with total value and performance metrics."""
     portfolio_service = PortfolioService(db)
@@ -297,9 +295,9 @@ async def get_portfolio_summary(
 
 @router.get("/{portfolio_id}/holdings", response_model=List[PortfolioHolding])
 async def get_portfolio_holdings(
-    portfolio_id: int,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
+        portfolio_id: int,
+        current_user: User = Depends(get_current_active_user),
+        db: Session = Depends(get_db),
 ):
     """Get detailed portfolio holdings with current values and P&L."""
     portfolio_service = PortfolioService(db)
@@ -309,12 +307,12 @@ async def get_portfolio_holdings(
 
 @router.get("/{portfolio_id}/performance")
 async def get_portfolio_performance(
-    portfolio_id: int,
-    days: int = Query(
-        30, ge=1, le=365, description="Number of days for performance calculation"
-    ),
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
+        portfolio_id: int,
+        days: int = Query(
+            30, ge=1, le=365, description="Number of days for performance calculation"
+        ),
+        current_user: User = Depends(get_current_active_user),
+        db: Session = Depends(get_db),
 ):
     """Get portfolio performance metrics over a specified period."""
     portfolio_service = PortfolioService(db)
@@ -332,9 +330,9 @@ async def get_portfolio_performance(
 
 @router.post("/{portfolio_id}/refresh", status_code=status.HTTP_200_OK)
 async def refresh_portfolio_values(
-    portfolio_id: int,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
+        portfolio_id: int,
+        current_user: User = Depends(get_current_active_user),
+        db: Session = Depends(get_db),
 ):
     """Refresh current values and P&L for all assets in a portfolio."""
     portfolio_service = PortfolioService(db)
@@ -350,12 +348,12 @@ async def refresh_portfolio_values(
 
 @router.get("/search", response_model=List[Portfolio])
 async def search_portfolios(
-    search_term: Optional[str] = Query(
-        None, description="Search term for portfolio names"
-    ),
-    currency: Optional[str] = Query(None, description="Filter by currency"),
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
+        search_term: Optional[str] = Query(
+            None, description="Search term for portfolio names"
+        ),
+        currency: Optional[str] = Query(None, description="Filter by currency"),
+        current_user: User = Depends(get_current_active_user),
+        db: Session = Depends(get_db),
 ):
     """Search portfolios with filters."""
     portfolio_service = PortfolioService(db)
@@ -367,8 +365,8 @@ async def search_portfolios(
 
 @router.get("/statistics/overview", response_model=PortfolioStatistics)
 async def get_portfolio_statistics(
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_active_user),
+        db: Session = Depends(get_db),
 ):
     """Get overall portfolio statistics for the authenticated user."""
     portfolio_service = PortfolioService(db)
@@ -378,9 +376,9 @@ async def get_portfolio_statistics(
 
 @router.get("/public/discover", response_model=List[Portfolio])
 async def discover_public_portfolios(
-    limit: int = Query(50, ge=1, le=100, description="Number of portfolios to return"),
-    offset: int = Query(0, ge=0, description="Number of portfolios to skip"),
-    db: Session = Depends(get_db),
+        limit: int = Query(50, ge=1, le=100, description="Number of portfolios to return"),
+        offset: int = Query(0, ge=0, description="Number of portfolios to skip"),
+        db: Session = Depends(get_db),
 ):
     """Discover public portfolios (no authentication required)."""
     portfolio_service = PortfolioService(db)
@@ -396,10 +394,10 @@ async def discover_public_portfolios(
     deprecated=True,
 )
 async def add_asset_to_portfolio_legacy(
-    portfolio_id: int,
-    asset_data: AssetCreate,
-    current_user: User = Depends(get_current_verified_user),
-    db: Session = Depends(get_db),
+        portfolio_id: int,
+        asset_data: AssetCreate,
+        current_user: User = Depends(get_current_verified_user),
+        db: Session = Depends(get_db),
 ):
     """Legacy endpoint: Add an asset to a portfolio using old schema."""
     # Convert AssetCreate to PortfolioAssetCreate
