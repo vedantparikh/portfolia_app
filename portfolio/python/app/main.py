@@ -112,8 +112,8 @@ logger.info("✅ Health router included at /health")
 try:
     from api.v1.health_router import router as health_router
 
-    app.include_router(health_router, prefix="/app/v1", tags=["test"])
-    logger.info("✅ Test router included at /app/v1")
+    app.include_router(health_router, prefix="/api/v1", tags=["test"])
+    logger.info("✅ Test router included at /api/v1")
 except ImportError as e:
     logger.warning(f"⚠️ Could not import test router: {e}")
 
@@ -123,8 +123,8 @@ try:
     from api.v1.auth.router import router as auth_router
 
     logger.info("✅ Auth router imported successfully")
-    app.include_router(auth_router, prefix="/app/v1/auth", tags=["authentication"])
-    logger.info("✅ Auth router included at /app/v1/auth")
+    app.include_router(auth_router, prefix="/api/v1/auth", tags=["authentication"])
+    logger.info("✅ Auth router included at /api/v1/auth")
 except ImportError as e:
     logger.warning(f"⚠️ Could not import auth router: {e}")
     logger.error(f"❌ Auth router import error details: {e}")
@@ -142,7 +142,7 @@ try:
     logger.info("📈 Attempting to import market router...")
     from api.v1.market.routers import router as market_router
 
-    app.include_router(market_router, prefix="/app/v1", tags=["market-data"])
+    app.include_router(market_router, prefix="/api/v1", tags=["market-data"])
     logger.info("Market router included successfully")
 except ImportError as e:
     logger.warning(f"Could not import market router: {e}")
@@ -152,7 +152,7 @@ try:
     from api.v1.statistical_indicators.routers import router as indicators_router
 
     app.include_router(
-        indicators_router, prefix="/app/v1", tags=["statistical-indicators"]
+        indicators_router, prefix="/api/v1", tags=["statistical-indicators"]
     )
     logger.info("Statistical indicators router included successfully")
 except ImportError as e:
@@ -162,7 +162,7 @@ except ImportError as e:
 try:
     from api.v1.portfolio.router import router as portfolio_router
 
-    app.include_router(portfolio_router, prefix="/app/v1", tags=["portfolios"])
+    app.include_router(portfolio_router, prefix="/api/v1", tags=["portfolios"])
     logger.info("Portfolio router included successfully")
 except ImportError as e:
     logger.warning(f"Could not import portfolio router: {e}")
@@ -180,7 +180,7 @@ except Exception as e:
 try:
     from api.v1.assets.router import router as assets_router
 
-    app.include_router(assets_router, prefix="/app/v1", tags=["assets"])
+    app.include_router(assets_router, prefix="/api/v1", tags=["assets"])
     logger.info("Assets router included successfully")
 except ImportError as e:
     logger.warning(f"Could not import assets router: {e}")
@@ -198,7 +198,7 @@ except Exception as e:
 try:
     from api.v1.transactions.router import router as transactions_router
 
-    app.include_router(transactions_router, prefix="/app/v1", tags=["transactions"])
+    app.include_router(transactions_router, prefix="/api/v1", tags=["transactions"])
     logger.info("Transactions router included successfully")
 except ImportError as e:
     logger.warning(f"Could not import transactions router: {e}")
@@ -216,7 +216,7 @@ except Exception as e:
 try:
     from api.v1.analytics.router import router as analytics_router
 
-    app.include_router(analytics_router, prefix="/app/v1", tags=["analytics"])
+    app.include_router(analytics_router, prefix="/api/v1", tags=["analytics"])
     logger.info("Analytics router included successfully")
 except ImportError as e:
     logger.warning(f"Could not import analytics router: {e}")
@@ -237,9 +237,9 @@ try:
 
     logger.info("✅ Watchlist router imported successfully")
     app.include_router(
-        watchlist_router, prefix="/app/v1/watchlists", tags=["watchlists"]
+        watchlist_router, prefix="/api/v1/watchlists", tags=["watchlists"]
     )
-    logger.info("✅ Watchlist router included at /app/v1/watchlists")
+    logger.info("✅ Watchlist router included at /api/v1/watchlists")
 except ImportError as e:
     logger.warning(f"⚠️ Could not import watchlist router: {e}")
     logger.error(f"❌ Watchlist router import error details: {e}")
@@ -264,12 +264,12 @@ async def root():
     }
 
 
-@app.get("/app/v1/")
+@app.get("/api/v1/")
 async def api_root():
     """API root endpoint."""
     return {
         "message": "Portfolia API v1",
-        "endpoints": {"health": "/health", "test": "/app/v1/test", "docs": "/docs"},
+        "endpoints": {"health": "/health", "test": "/api/v1/test", "docs": "/docs"},
     }
 
 
