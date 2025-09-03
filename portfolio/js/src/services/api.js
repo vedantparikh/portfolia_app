@@ -227,6 +227,57 @@ export const marketAPI = {
     },
 };
 
+// Transaction API methods
+export const transactionAPI = {
+    // Get all transactions
+    getTransactions: async (params = {}) => {
+        const response = await api.get('/transactions', { params });
+        return response.data;
+    },
+
+    // Get transactions by portfolio
+    getPortfolioTransactions: async (portfolioId, params = {}) => {
+        const response = await api.get(`/portfolios/${portfolioId}/transactions`, { params });
+        return response.data;
+    },
+
+    // Create buy transaction
+    createBuyTransaction: async (transactionData) => {
+        const response = await api.post('/transactions/buy', transactionData);
+        return response.data;
+    },
+
+    // Create sell transaction
+    createSellTransaction: async (transactionData) => {
+        const response = await api.post('/transactions/sell', transactionData);
+        return response.data;
+    },
+
+    // Get transaction by ID
+    getTransaction: async (id) => {
+        const response = await api.get(`/transactions/${id}`);
+        return response.data;
+    },
+
+    // Update transaction
+    updateTransaction: async (id, transactionData) => {
+        const response = await api.put(`/transactions/${id}`, transactionData);
+        return response.data;
+    },
+
+    // Delete transaction
+    deleteTransaction: async (id) => {
+        const response = await api.delete(`/transactions/${id}`);
+        return response.data;
+    },
+
+    // Get transaction history
+    getTransactionHistory: async (params = {}) => {
+        const response = await api.get('/transactions/history', { params });
+        return response.data;
+    },
+};
+
 // Analytics API methods
 export const analyticsAPI = {
     // Get portfolio performance
