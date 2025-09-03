@@ -1,5 +1,5 @@
-import { ArrowLeft, Bookmark, Plus } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import { ArrowLeft, Bookmark, Plus, RefreshCw } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { watchlistAPI } from '../../services/api';
@@ -17,11 +17,42 @@ const Watchlist = () => {
     const [showAddSymbolModal, setShowAddSymbolModal] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterType, setFilterType] = useState('all');
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
+    const [refreshInterval, setRefreshInterval] = useState(30000); // 30 seconds default
+    
+    // useRef to store the interval ID so we can clear it later
+    const refreshIntervalRef = useRef(null);
 
     // Load watchlists on component mount
     useEffect(() => {
         loadWatchlists();
     }, []);
+
+    // Set up automatic refresh when component mounts and selectedWatchlist changes
+    useEffect(() => {
+        // Clear any existing interval
+        if (refreshIntervalRef.current) {
+            clearInterval(refreshIntervalRef.current);
+        }
+
+        // Only start auto-refresh if we have a selected watchlist and auto-refresh is enabled
+        if (selectedWatchlist && autoRefreshEnabled) {
+            console.log(`[Watchlist] Starting auto-refresh every ${refreshInterval}ms for watchlist ${selectedWatchlist.id}`);
+            
+            refreshIntervalRef.current = setInterval(() => {
+                refreshSelectedWatchlist();
+            }, refreshInterval);
+        }
+
+        // Cleanup function - this runs when component unmounts or dependencies change
+        return () => {
+            if (refreshIntervalRef.current) {
+                console.log('[Watchlist] Clearing auto-refresh interval');
+                clearInterval(refreshIntervalRef.current);
+            }
+        };
+    }, [selectedWatchlist, autoRefreshEnabled, refreshInterval]); // Dependencies: re-run when these change
 
     const loadWatchlists = async () => {
         try {
@@ -50,6 +81,36 @@ const Watchlist = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    // Function to refresh the currently selected watchlist data
+    const refreshSelectedWatchlist = async () => {
+        if (!selectedWatchlist) return;
+
+        try {
+            console.log(`[Watchlist] Refreshing watchlist ${selectedWatchlist.id} with real-time data`);
+            setIsRefreshing(true);
+            
+            // Fetch the latest data with real-time prices
+            const updatedWatchlist = await watchlistAPI.getWatchlist(selectedWatchlist.id, true);
+            setSelectedWatchlist(updatedWatchlist);
+            
+            console.log('[Watchlist] Watchlist data refreshed successfully');
+        } catch (error) {
+            console.error('Failed to refresh watchlist data:', error);
+            // Don't show toast for background refresh failures to avoid spam
+            if (!autoRefreshEnabled) {
+                toast.error('Failed to refresh watchlist data');
+            }
+        } finally {
+            setIsRefreshing(false);
+        }
+    };
+
+    // Manual refresh function (called when user clicks refresh button)
+    const handleManualRefresh = async () => {
+        await refreshSelectedWatchlist();
+        toast.success('Watchlist data refreshed');
     };
 
     const handleCreateWatchlist = async (watchlistData) => {
@@ -277,13 +338,57 @@ const Watchlist = () => {
 
                         <div className="flex items-center space-x-3">
                             {selectedWatchlist && (
-                                <button
-                                    onClick={() => setShowAddSymbolModal(true)}
-                                    className="flex items-center space-x-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors"
-                                >
-                                    <Plus size={16} />
-                                    <span>Add Symbol</span>
-                                </button>
+                                <>
+                                    {/* Auto-refresh toggle */}
+                                    <div className="flex items-center space-x-2">
+                                        <label className="flex items-center space-x-2 text-sm text-gray-400">
+                                            <input
+                                                type="checkbox"
+                                                checked={autoRefreshEnabled}
+                                                onChange={(e) => setAutoRefreshEnabled(e.target.checked)}
+                                                className="rounded border-dark-600 bg-dark-800 text-primary-600 focus:ring-primary-500"
+                                            />
+                                            <span>Auto-refresh</span>
+                                        </label>
+                                        
+                                        {/* Refresh interval selector */}
+                                        {autoRefreshEnabled && (
+                                            <select
+                                                value={refreshInterval}
+                                                onChange={(e) => setRefreshInterval(Number(e.target.value))}
+                                                className="px-2 py-1 bg-dark-800 border border-dark-600 rounded text-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                            >
+                                                <option value={10000}>10s</option>
+                                                <option value={30000}>30s</option>
+                                                <option value={60000}>1m</option>
+                                                <option value={300000}>5m</option>
+                                            </select>
+                                        )}
+                                    </div>
+
+                                    {/* Manual refresh button */}
+                                    <button
+                                        onClick={handleManualRefresh}
+                                        disabled={isRefreshing}
+                                        className="flex items-center space-x-2 px-3 py-2 bg-dark-800 hover:bg-dark-700 text-gray-300 rounded-lg transition-colors disabled:opacity-50"
+                                        title="Refresh watchlist data"
+                                    >
+                                        <RefreshCw 
+                                            size={16} 
+                                            className={isRefreshing ? 'animate-spin' : ''} 
+                                        />
+                                        <span>{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
+                                    </button>
+
+                                    {/* Add Symbol button */}
+                                    <button
+                                        onClick={() => setShowAddSymbolModal(true)}
+                                        className="flex items-center space-x-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors"
+                                    >
+                                        <Plus size={16} />
+                                        <span>Add Symbol</span>
+                                    </button>
+                                </>
                             )}
                         </div>
                     </div>

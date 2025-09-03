@@ -48,11 +48,9 @@ const AddSymbolModal = ({ isOpen, onClose, onAdd }) => {
         setError('');
         
         try {
-            // For manual form submission, create a basic symbol object
-            const symbolData = {
-                symbol: symbol.trim().toUpperCase(),
-                name: symbol.trim().toUpperCase() // Use symbol as name if no company name available
-            };
+            // For manual form submission, try to fetch complete symbol data
+            console.log(`[AddSymbolModal] Fetching data for manually entered symbol: ${symbol.trim()}`);
+            const symbolData = await fetchSymbolData(symbol.trim().toUpperCase());
             
             await onAdd(symbolData);
             handleClose();
@@ -162,6 +160,46 @@ const AddSymbolModal = ({ isOpen, onClose, onAdd }) => {
         }
     };
 
+    // Function to fetch symbol data for popular symbols
+    const fetchSymbolData = async (symbolString) => {
+        try {
+            // Check authentication before making API call
+            if (!authUtils.isAuthenticated()) {
+                console.warn('[AddSymbolModal] User not authenticated for symbol search');
+                throw new Error('Please log in to search for symbols');
+            }
+
+            // Search for the symbol to get complete data
+            const results = await marketAPI.searchSymbols(symbolString);
+            
+            // Find exact match or return first result
+            const exactMatch = results.find(result => 
+                result.symbol?.toUpperCase() === symbolString.toUpperCase()
+            );
+            
+            if (exactMatch) {
+                return exactMatch;
+            } else if (results.length > 0) {
+                return results[0];
+            } else {
+                // Fallback: create basic symbol object
+                return {
+                    symbol: symbolString.toUpperCase(),
+                    name: symbolString.toUpperCase(),
+                    shortname: symbolString.toUpperCase()
+                };
+            }
+        } catch (error) {
+            console.error('Failed to fetch symbol data:', error);
+            // Fallback: create basic symbol object
+            return {
+                symbol: symbolString.toUpperCase(),
+                name: symbolString.toUpperCase(),
+                shortname: symbolString.toUpperCase()
+            };
+        }
+    };
+
     const handleSuggestionClick = async (suggestion) => {
         const symbolValue = typeof suggestion === 'string' ? suggestion : suggestion.symbol || suggestion.name;
         setSymbol(symbolValue);
@@ -170,8 +208,19 @@ const AddSymbolModal = ({ isOpen, onClose, onAdd }) => {
         
         // Automatically add the symbol to watchlist when clicked
         try {
-            // Pass the complete suggestion object to preserve all symbol information
-            await onAdd(suggestion);
+            let symbolData;
+            
+            // If suggestion is a string (popular symbol), fetch complete data
+            if (typeof suggestion === 'string') {
+                console.log(`[AddSymbolModal] Fetching data for popular symbol: ${suggestion}`);
+                symbolData = await fetchSymbolData(suggestion);
+            } else {
+                // If suggestion is already an object, use it directly
+                symbolData = suggestion;
+            }
+            
+            // Pass the complete symbol data to preserve all symbol information
+            await onAdd(symbolData);
             handleClose();
             toast.success(`Added ${symbolValue} to watchlist`);
         } catch (error) {
