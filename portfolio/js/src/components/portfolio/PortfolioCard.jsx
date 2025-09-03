@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import React from 'react';
 
-const PortfolioCard = ({ portfolio, stats, onDelete }) => {
+const PortfolioCard = ({ portfolio, stats, onEdit, onDelete }) => {
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('en-US', {
             style: 'currency',
@@ -49,7 +49,11 @@ const PortfolioCard = ({ portfolio, stats, onDelete }) => {
                     <p className="text-sm text-gray-400">{portfolio.description || 'No description'}</p>
                 </div>
                 <div className="flex items-center space-x-2">
-                    <button className="p-2 rounded-lg hover:bg-dark-800 transition-colors">
+                    <button
+                        onClick={() => onEdit && onEdit(portfolio)}
+                        className="p-2 rounded-lg hover:bg-dark-800 transition-colors"
+                        title="Edit portfolio"
+                    >
                         <Edit size={16} className="text-gray-400" />
                     </button>
                     <button className="p-2 rounded-lg hover:bg-dark-800 transition-colors">
@@ -58,6 +62,7 @@ const PortfolioCard = ({ portfolio, stats, onDelete }) => {
                     <button
                         onClick={handleDelete}
                         className="p-2 rounded-lg hover:bg-danger-600/20 transition-colors"
+                        title="Delete portfolio"
                     >
                         <Trash2 size={16} className="text-danger-400" />
                     </button>

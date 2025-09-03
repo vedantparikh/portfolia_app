@@ -16,6 +16,7 @@ import { marketAPI } from '../../services/api';
 import AssetCard from './AssetCard';
 import AssetFilters from './AssetFilters';
 import AssetModal from './AssetModal';
+import AssetsTest from './AssetsTest';
 
 const Assets = () => {
     const [assets, setAssets] = useState([]);
@@ -341,12 +342,17 @@ const Assets = () => {
 
                 {/* Assets Grid/List */}
                 {filteredAssets.length === 0 ? (
-                    <div className="card p-12 text-center">
-                        <BarChart3 className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                        <h3 className="text-xl font-semibold text-gray-300 mb-2">No assets found</h3>
-                        <p className="text-gray-500">
-                            {searchQuery ? 'Try adjusting your search criteria' : 'No assets available at the moment'}
-                        </p>
+                    <div className="space-y-6">
+                        <div className="card p-12 text-center">
+                            <BarChart3 className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                            <h3 className="text-xl font-semibold text-gray-300 mb-2">No assets found</h3>
+                            <p className="text-gray-500">
+                                {searchQuery ? 'Try adjusting your search criteria' : 'No assets available at the moment'}
+                            </p>
+                        </div>
+
+                        {/* Debug Test Component */}
+                        <AssetsTest />
                     </div>
                 ) : (
                     <div className={

@@ -14,15 +14,19 @@ import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { portfolioAPI, transactionAPI } from '../../services/api';
 import CreatePortfolioModal from './CreatePortfolioModal';
+import EditPortfolioModal from './EditPortfolioModal';
 import PortfolioCard from './PortfolioCard';
 import PortfolioChart from './PortfolioChart';
 import PortfolioDetail from './PortfolioDetail';
+import PortfolioTest from './PortfolioTest';
 
 const Portfolio = () => {
     const [portfolios, setPortfolios] = useState([]);
     const [selectedPortfolio, setSelectedPortfolio] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [editingPortfolio, setEditingPortfolio] = useState(null);
     const [viewMode, setViewMode] = useState('overview'); // overview, detail, chart
     const [portfolioStats, setPortfolioStats] = useState(null);
     const [transactions, setTransactions] = useState([]);
@@ -42,16 +46,36 @@ const Portfolio = () => {
     const loadPortfolios = async () => {
         try {
             setLoading(true);
+            console.log('[Portfolio] Loading portfolios...');
             const response = await portfolioAPI.getPortfolios();
-            setPortfolios(response.portfolios || []);
+            console.log('[Portfolio] Portfolios response:', response);
+
+            // Handle different response formats
+            let portfolios = [];
+            if (response.portfolios) {
+                portfolios = response.portfolios;
+            } else if (Array.isArray(response)) {
+                portfolios = response;
+            } else if (response.data && Array.isArray(response.data)) {
+                portfolios = response.data;
+            }
+
+            console.log('[Portfolio] Processed portfolios:', portfolios);
+            setPortfolios(portfolios);
 
             // Select first portfolio by default
-            if (response.portfolios && response.portfolios.length > 0) {
-                setSelectedPortfolio(response.portfolios[0]);
+            if (portfolios.length > 0) {
+                console.log('[Portfolio] Selecting first portfolio:', portfolios[0]);
+                setSelectedPortfolio(portfolios[0]);
+            } else {
+                console.log('[Portfolio] No portfolios found');
+                setSelectedPortfolio(null);
             }
         } catch (error) {
             console.error('Failed to load portfolios:', error);
             toast.error('Failed to load portfolios');
+            setPortfolios([]);
+            setSelectedPortfolio(null);
         } finally {
             setLoading(false);
         }
@@ -59,33 +83,96 @@ const Portfolio = () => {
 
     const loadPortfolioDetails = async (portfolioId) => {
         try {
+            console.log('[Portfolio] Loading details for portfolio:', portfolioId);
+
             // Load portfolio summary
             const summaryResponse = await portfolioAPI.getPortfolioSummary(portfolioId);
+            console.log('[Portfolio] Summary response:', summaryResponse);
             setPortfolioStats(summaryResponse);
 
             // Load recent transactions
-            const transactionsResponse = await transactionAPI.getPortfolioTransactions(portfolioId, {
-                limit: 10,
-                order_by: 'created_at',
-                order: 'desc'
-            });
-            setTransactions(transactionsResponse.transactions || []);
+            try {
+                const transactionsResponse = await transactionAPI.getPortfolioTransactions(portfolioId, {
+                    limit: 10,
+                    order_by: 'created_at',
+                    order: 'desc'
+                });
+                console.log('[Portfolio] Transactions response:', transactionsResponse);
+
+                // Handle different response formats for transactions
+                let transactions = [];
+                if (transactionsResponse.transactions) {
+                    transactions = transactionsResponse.transactions;
+                } else if (Array.isArray(transactionsResponse)) {
+                    transactions = transactionsResponse;
+                } else if (transactionsResponse.data && Array.isArray(transactionsResponse.data)) {
+                    transactions = transactionsResponse.data;
+                }
+
+                setTransactions(transactions);
+            } catch (transactionError) {
+                console.warn('Failed to load transactions:', transactionError);
+                setTransactions([]);
+            }
         } catch (error) {
             console.error('Failed to load portfolio details:', error);
             toast.error('Failed to load portfolio details');
+            setPortfolioStats(null);
+            setTransactions([]);
         }
     };
 
     const handleCreatePortfolio = async (portfolioData) => {
         try {
+            console.log('[Portfolio] Creating portfolio with data:', portfolioData);
             const response = await portfolioAPI.createPortfolio(portfolioData);
-            setPortfolios(prev => [...prev, response]);
-            setSelectedPortfolio(response);
+            console.log('[Portfolio] Create response:', response);
+
+            // Handle different response formats
+            let newPortfolio = response;
+            if (response.portfolio) {
+                newPortfolio = response.portfolio;
+            } else if (response.data) {
+                newPortfolio = response.data;
+            }
+
+            setPortfolios(prev => [...prev, newPortfolio]);
+            setSelectedPortfolio(newPortfolio);
             setShowCreateModal(false);
             toast.success('Portfolio created successfully');
         } catch (error) {
             console.error('Failed to create portfolio:', error);
             toast.error('Failed to create portfolio');
+        }
+    };
+
+    const handleUpdatePortfolio = async (portfolioId, portfolioData) => {
+        try {
+            console.log('[Portfolio] Updating portfolio with data:', portfolioData);
+            const response = await portfolioAPI.updatePortfolio(portfolioId, portfolioData);
+            console.log('[Portfolio] Update response:', response);
+
+            // Handle different response formats
+            let updatedPortfolio = response;
+            if (response.portfolio) {
+                updatedPortfolio = response.portfolio;
+            } else if (response.data) {
+                updatedPortfolio = response.data;
+            }
+
+            setPortfolios(prev => prev.map(p => p.id === portfolioId ? updatedPortfolio : p));
+
+            // Update selected portfolio if it's the one being edited
+            if (selectedPortfolio && selectedPortfolio.id === portfolioId) {
+                setSelectedPortfolio(updatedPortfolio);
+            }
+
+            setShowEditModal(false);
+            setEditingPortfolio(null);
+            toast.success('Portfolio updated successfully');
+        } catch (error) {
+            console.error('Failed to update portfolio:', error);
+            toast.error('Failed to update portfolio');
         }
     };
 
@@ -105,6 +192,11 @@ const Portfolio = () => {
             console.error('Failed to delete portfolio:', error);
             toast.error('Failed to delete portfolio');
         }
+    };
+
+    const handleEditPortfolio = (portfolio) => {
+        setEditingPortfolio(portfolio);
+        setShowEditModal(true);
     };
 
     const handleRefresh = () => {
@@ -212,19 +304,36 @@ const Portfolio = () => {
 
                 {portfolios.length === 0 ? (
                     /* Empty State */
-                    <div className="card p-12 text-center">
-                        <Wallet className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                        <h3 className="text-xl font-semibold text-gray-300 mb-2">No portfolios yet</h3>
-                        <p className="text-gray-500 mb-6">
-                            Create your first portfolio to start tracking your investments
-                        </p>
-                        <button
-                            onClick={() => setShowCreateModal(true)}
-                            className="btn-primary flex items-center space-x-2 mx-auto"
-                        >
-                            <Plus size={16} />
-                            <span>Create Portfolio</span>
-                        </button>
+                    <div className="space-y-6">
+                        <div className="card p-12 text-center">
+                            <Wallet className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                            <h3 className="text-xl font-semibold text-gray-300 mb-2">No portfolios yet</h3>
+                            <p className="text-gray-500 mb-6">
+                                Create your first portfolio to start tracking your investments
+                            </p>
+                            <button
+                                onClick={() => setShowCreateModal(true)}
+                                className="btn-primary flex items-center space-x-2 mx-auto"
+                            >
+                                <Plus size={16} />
+                                <span>Create Portfolio</span>
+                            </button>
+                        </div>
+
+                        {/* Debug Test Component */}
+                        <PortfolioTest />
+
+                        {/* Debug Info */}
+                        <div className="card p-6">
+                            <h3 className="text-lg font-semibold text-gray-100 mb-4">Debug Info</h3>
+                            <div className="space-y-2 text-sm">
+                                <div>Loading: {loading ? 'true' : 'false'}</div>
+                                <div>Portfolios count: {portfolios.length}</div>
+                                <div>Selected portfolio: {selectedPortfolio ? selectedPortfolio.name : 'none'}</div>
+                                <div>Portfolio stats: {portfolioStats ? 'loaded' : 'not loaded'}</div>
+                                <div>Transactions count: {transactions.length}</div>
+                            </div>
+                        </div>
                     </div>
                 ) : (
                     <>
@@ -350,6 +459,7 @@ const Portfolio = () => {
                                         <PortfolioCard
                                             portfolio={selectedPortfolio}
                                             stats={stats}
+                                            onEdit={handleEditPortfolio}
                                             onDelete={handleDeletePortfolio}
                                         />
                                         <div className="card p-6">
@@ -409,6 +519,19 @@ const Portfolio = () => {
                     <CreatePortfolioModal
                         onClose={() => setShowCreateModal(false)}
                         onCreate={handleCreatePortfolio}
+                    />
+                )}
+
+                {/* Edit Portfolio Modal */}
+                {showEditModal && editingPortfolio && (
+                    <EditPortfolioModal
+                        isOpen={showEditModal}
+                        onClose={() => {
+                            setShowEditModal(false);
+                            setEditingPortfolio(null);
+                        }}
+                        portfolio={editingPortfolio}
+                        onUpdate={handleUpdatePortfolio}
                     />
                 )}
             </div>

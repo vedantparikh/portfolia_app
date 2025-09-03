@@ -14,8 +14,10 @@ import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { portfolioAPI, transactionAPI } from '../../services/api';
 import CreateTransactionModal from './CreateTransactionModal';
+import EditTransactionModal from './EditTransactionModal';
 import TransactionCard from './TransactionCard';
 import TransactionFilters from './TransactionFilters';
+import TransactionsTest from './TransactionsTest';
 
 const Transactions = () => {
     const [transactions, setTransactions] = useState([]);
@@ -24,6 +26,8 @@ const Transactions = () => {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [editingTransaction, setEditingTransaction] = useState(null);
     const [showFilters, setShowFilters] = useState(false);
     const [selectedTransaction, setSelectedTransaction] = useState(null);
     const [filters, setFilters] = useState({
@@ -160,6 +164,30 @@ const Transactions = () => {
         }
     };
 
+    const handleUpdateTransaction = async (transactionId, transactionData) => {
+        try {
+            console.log('[Transactions] Updating transaction with data:', transactionData);
+            const response = await transactionAPI.updateTransaction(transactionId, transactionData);
+            console.log('[Transactions] Update response:', response);
+
+            // Handle different response formats
+            let updatedTransaction = response;
+            if (response.transaction) {
+                updatedTransaction = response.transaction;
+            } else if (response.data) {
+                updatedTransaction = response.data;
+            }
+
+            setTransactions(prev => prev.map(t => t.id === transactionId ? updatedTransaction : t));
+            setShowEditModal(false);
+            setEditingTransaction(null);
+            toast.success('Transaction updated successfully');
+        } catch (error) {
+            console.error('Failed to update transaction:', error);
+            toast.error('Failed to update transaction');
+        }
+    };
+
     const handleDeleteTransaction = async (transactionId) => {
         try {
             await transactionAPI.deleteTransaction(transactionId);
@@ -169,6 +197,11 @@ const Transactions = () => {
             console.error('Failed to delete transaction:', error);
             toast.error('Failed to delete transaction');
         }
+    };
+
+    const handleEditTransaction = (transaction) => {
+        setEditingTransaction(transaction);
+        setShowEditModal(true);
     };
 
     const handleRefresh = () => {
@@ -350,19 +383,24 @@ const Transactions = () => {
 
                 {/* Transactions List */}
                 {filteredTransactions.length === 0 ? (
-                    <div className="card p-12 text-center">
-                        <Activity className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                        <h3 className="text-xl font-semibold text-gray-300 mb-2">No transactions found</h3>
-                        <p className="text-gray-500 mb-6">
-                            {searchQuery ? 'Try adjusting your search criteria' : 'Start by creating your first transaction'}
-                        </p>
-                        <button
-                            onClick={() => setShowCreateModal(true)}
-                            className="btn-primary flex items-center space-x-2 mx-auto"
-                        >
-                            <Plus size={16} />
-                            <span>Create Transaction</span>
-                        </button>
+                    <div className="space-y-6">
+                        <div className="card p-12 text-center">
+                            <Activity className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                            <h3 className="text-xl font-semibold text-gray-300 mb-2">No transactions found</h3>
+                            <p className="text-gray-500 mb-6">
+                                {searchQuery ? 'Try adjusting your search criteria' : 'Start by creating your first transaction'}
+                            </p>
+                            <button
+                                onClick={() => setShowCreateModal(true)}
+                                className="btn-primary flex items-center space-x-2 mx-auto"
+                            >
+                                <Plus size={16} />
+                                <span>Create Transaction</span>
+                            </button>
+                        </div>
+
+                        {/* Debug Test Component */}
+                        <TransactionsTest />
                     </div>
                 ) : (
                     <div className="space-y-4">
@@ -370,7 +408,7 @@ const Transactions = () => {
                             <TransactionCard
                                 key={transaction.id}
                                 transaction={transaction}
-                                onEdit={() => setSelectedTransaction(transaction)}
+                                onEdit={() => handleEditTransaction(transaction)}
                                 onDelete={() => handleDeleteTransaction(transaction.id)}
                             />
                         ))}
@@ -383,6 +421,20 @@ const Transactions = () => {
                         portfolios={portfolios}
                         onClose={() => setShowCreateModal(false)}
                         onCreate={handleCreateTransaction}
+                    />
+                )}
+
+                {/* Edit Transaction Modal */}
+                {showEditModal && editingTransaction && (
+                    <EditTransactionModal
+                        isOpen={showEditModal}
+                        onClose={() => {
+                            setShowEditModal(false);
+                            setEditingTransaction(null);
+                        }}
+                        transaction={editingTransaction}
+                        portfolios={portfolios}
+                        onUpdate={handleUpdateTransaction}
                     />
                 )}
             </div>

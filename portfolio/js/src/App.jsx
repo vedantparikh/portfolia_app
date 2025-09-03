@@ -1,6 +1,8 @@
 import React from 'react';
 import { Toaster } from 'react-hot-toast';
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
+import ComprehensiveTest from './components/ComprehensiveTest';
+import ComprehensiveTestWithAuth from './components/ComprehensiveTestWithAuth';
 import Assets from './components/assets/Assets';
 import EmailVerification from './components/auth/EmailVerification';
 import ForgotPassword from './components/auth/ForgotPassword';
@@ -67,6 +69,22 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Transactions />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/test"
+              element={
+                <ProtectedRoute>
+                  <ComprehensiveTest />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/test-auth"
+              element={
+                <ProtectedRoute>
+                  <ComprehensiveTestWithAuth />
                 </ProtectedRoute>
               }
             />

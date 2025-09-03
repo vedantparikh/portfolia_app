@@ -1,8 +1,8 @@
-import { DollarSign, Plus, Target, X } from 'lucide-react';
-import React, { useState } from 'react';
+import { DollarSign, Edit, Target, X } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 
-const CreatePortfolioModal = ({ onClose, onCreate }) => {
+const EditPortfolioModal = ({ isOpen, onClose, portfolio, onUpdate }) => {
     const [formData, setFormData] = useState({
         name: '',
         description: '',
@@ -12,6 +12,19 @@ const CreatePortfolioModal = ({ onClose, onCreate }) => {
         is_public: false
     });
     const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (portfolio) {
+            setFormData({
+                name: portfolio.name || '',
+                description: portfolio.description || '',
+                initial_cash: portfolio.initial_cash || '',
+                target_return: portfolio.target_return || '',
+                risk_tolerance: portfolio.risk_tolerance || 'moderate',
+                is_public: portfolio.is_public || false
+            });
+        }
+    }, [portfolio]);
 
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -41,9 +54,10 @@ const CreatePortfolioModal = ({ onClose, onCreate }) => {
                 is_public: formData.is_public
             };
 
-            await onCreate(portfolioData);
+            await onUpdate(portfolio.id, portfolioData);
+            onClose();
         } catch (error) {
-            console.error('Error creating portfolio:', error);
+            console.error('Error updating portfolio:', error);
         } finally {
             setLoading(false);
         }
@@ -55,6 +69,8 @@ const CreatePortfolioModal = ({ onClose, onCreate }) => {
         { value: 'aggressive', label: 'Aggressive', description: 'High risk, high potential returns' }
     ];
 
+    if (!isOpen || !portfolio) return null;
+
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-dark-900 rounded-xl border border-dark-700 w-full max-w-2xl max-h-[95vh] overflow-hidden flex flex-col">
@@ -62,11 +78,11 @@ const CreatePortfolioModal = ({ onClose, onCreate }) => {
                 <div className="flex items-center justify-between p-6 border-b border-dark-700 flex-shrink-0">
                     <div className="flex items-center space-x-3">
                         <div className="w-10 h-10 bg-primary-600/20 rounded-lg flex items-center justify-center">
-                            <Plus size={20} className="text-primary-400" />
+                            <Edit size={20} className="text-primary-400" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-bold text-gray-100">Create New Portfolio</h2>
-                            <p className="text-sm text-gray-400">Set up your investment portfolio</p>
+                            <h2 className="text-xl font-bold text-gray-100">Edit Portfolio</h2>
+                            <p className="text-sm text-gray-400">Update your portfolio settings</p>
                         </div>
                     </div>
                     <button
@@ -225,12 +241,12 @@ const CreatePortfolioModal = ({ onClose, onCreate }) => {
                         {loading ? (
                             <>
                                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                <span>Creating...</span>
+                                <span>Updating...</span>
                             </>
                         ) : (
                             <>
-                                <Plus size={16} />
-                                <span>Create Portfolio</span>
+                                <Edit size={16} />
+                                <span>Update Portfolio</span>
                             </>
                         )}
                     </button>
@@ -240,4 +256,4 @@ const CreatePortfolioModal = ({ onClose, onCreate }) => {
     );
 };
 
-export default CreatePortfolioModal;
+export default EditPortfolioModal;
