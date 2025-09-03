@@ -619,6 +619,15 @@ class MarketDataService:
         logger.info(f"Fetched {len(tickers_info)} records for {symbols}")
         return tickers_info
 
+    async def get_ticker_info(self, symbol: str) -> Optional[Dict[str, Any]]:
+        """
+        Get ticker info for a specific symbol.
+        """
+        try:
+            return yf.Ticker(symbol).get_info()
+        except Exception as e:
+            logger.error(f"Error getting ticker info for {symbol}: {e}")
+            return None
 
 # Global instance
 market_data_service = MarketDataService()

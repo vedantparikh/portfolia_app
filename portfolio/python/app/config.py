@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     PORT: int = env.int("PORT", 8000)
 
     # API settings
-    API_V1_STR: str = env.str("API_V1_STR", "/app/v1")
+    API_V1_STR: str = env.str("API_V1_STR", "/api/v1")
     API_HOST: str = env.str("API_HOST", "localhost")
     API_PORT: int = env.int("API_PORT", 8000)
     API_URL: str = env.str("API_URL", "http://localhost:8000")

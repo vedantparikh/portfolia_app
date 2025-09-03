@@ -4,17 +4,17 @@ Database initialization script for Portfolia application.
 This script creates all database tables and initializes the database.
 """
 
-import sys
-import os
 import asyncio
+import sys
 from pathlib import Path
 
 # Add the parent directory to the Python path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from app.core.database.connection import init_db, get_db_health
-from app.core.database.models import *  # Import all models to register them
 import logging
+
+from app.core.database.connection import get_db_health
+from app.core.database.models import *  # Import all models to register them
 
 # Configure logging
 logging.basicConfig(
@@ -45,6 +45,7 @@ async def init_database():
         # Initialize database tables
         logger.info("Creating database tables...")
         from app.core.database.connection import create_tables
+
         if not await create_tables():
             logger.error("Failed to create database tables")
             return False

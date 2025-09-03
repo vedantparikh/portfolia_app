@@ -3,22 +3,20 @@ Market Data Models
 Database models for storing market data and ticker information.
 """
 
-from sqlalchemy import (
-    Column,
-    Integer,
-    BigInteger,
-    String,
-    Float,
-    Date,
-    DateTime,
-    Boolean,
-    ForeignKey,
-    Index,
-)
+from sqlalchemy import BigInteger
+from sqlalchemy import Boolean
+from sqlalchemy import Column
+from sqlalchemy import Date
+from sqlalchemy import DateTime
+from sqlalchemy import Float
+from sqlalchemy import ForeignKey
+from sqlalchemy import Index
+from sqlalchemy import Integer
+from sqlalchemy import String
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
-from app.core.database.models import Base
+from app.core.database.connection import Base
 
 
 class TickerInfo(Base):

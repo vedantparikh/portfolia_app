@@ -8,11 +8,13 @@ from sqlalchemy.orm import Session
 
 from app.core.database.connection import get_db
 from app.core.database.models import User, Asset as AssetModel
+from app.core.database.models.asset import AssetType
 from app.core.auth.dependencies import (
     get_current_active_user,
     get_current_verified_user,
 )
 from app.core.schemas.portfolio import AssetCreate, AssetUpdate, Asset as AssetSchema
+from app.core.services.market_data_service import market_data_service
 
 router = APIRouter(prefix="/assets", tags=["assets"])
 
@@ -36,11 +38,24 @@ async def create_asset(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Asset with this symbol already exists",
         )
-
+    ticker_data = await market_data_service.get_ticker_info(asset_data.symbol.upper())
     new_asset = AssetModel(
         symbol=asset_data.symbol.upper(),
-        name=asset_data.symbol.upper(),  # Default name from symbol
-        asset_type="stock",  # Default type
+        name=ticker_data.get("longName") or ticker_data.get("shortName"),
+        asset_type=(
+            AssetType[ticker_data.get("quoteType").upper()]
+            if ticker_data.get("quoteType")
+            else AssetType.OTHER
+        ),
+        currency=ticker_data.get("currency"),
+        exchange=ticker_data.get("exchange"),
+        isin=ticker_data.get("isin"),
+        cusip=ticker_data.get("cusip"),
+        sector=ticker_data.get("sector"),
+        industry=ticker_data.get("industry"),
+        country=ticker_data.get("country"),
+        description=ticker_data.get("longDescription"),
+        # Default name from symbol
         is_active=True,
     )
 

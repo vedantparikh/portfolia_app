@@ -19,14 +19,19 @@ from app.core.database.connection import Base
 class AssetType(enum.Enum):
     """Asset type enumeration."""
 
-    STOCK = "stock"
-    BOND = "bond"
-    ETF = "etf"
-    MUTUAL_FUND = "mutual_fund"
-    COMMODITY = "commodity"
-    CRYPTO = "crypto"
-    REAL_ESTATE = "real_estate"
-    OTHER = "other"
+    EQUITY = "EQUITY"
+    ETF = "ETF"
+    BOND = "BOND"
+    INDEX = "INDEX"
+    CASH = "CASH"
+    MUTUAL_FUND = "MUTUALFUND"
+    COMMODITY = "COMMODITY"
+    CRYPTO = "CRYPTOCURRENCY"
+    REAL_ESTATE = "REAL_ESTATE"
+    OTHER = "OTHER"
+    FUTURE = "FUTURE"
+    OPTION = "OPTION"
+    WARRANT = "WARRANT"
 
 
 class Asset(Base):
