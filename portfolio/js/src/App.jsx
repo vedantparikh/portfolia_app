@@ -1,6 +1,7 @@
 import React from 'react';
 import { Toaster } from 'react-hot-toast';
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
+import EmailVerification from './components/auth/EmailVerification';
 import ForgotPassword from './components/auth/ForgotPassword';
 import Login from './components/auth/Login';
 import ProtectedRoute from './components/auth/ProtectedRoute';
@@ -23,6 +24,7 @@ function App() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/validate-reset-token" element={<ValidateResetToken />} />
+            <Route path="/verify-email" element={<EmailVerification />} />
 
                         {/* Protected routes */}
             <Route

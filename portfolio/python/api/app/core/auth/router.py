@@ -2,55 +2,63 @@
 Authentication router with user registration, login, and management endpoints.
 """
 
-from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, HTTPException, status, Request
-from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
+from datetime import datetime
+from datetime import timedelta
 
-from app.core.database.connection import get_db
-from app.core.database.models import User, UserProfile, UserSession
-from app.core.schemas.auth import (
-    UserCreate,
-    UserLogin,
-    UserUpdate,
-    UserResponse,
-    UserProfileResponse,
-    Token,
-    PasswordChange,
-    PasswordReset,
-    PasswordResetConfirm,
-    EmailVerification,
-    TokenValidationResponse,
+from app.config import settings
+from app.core.auth.dependencies import (
+    get_client_ip, 
+    get_current_active_user, 
+    get_current_user, 
+    get_current_user_profile, 
+    get_token_data, 
+    get_user_agent, 
+    validate_refresh_token,
 )
 from app.core.auth.utils import (
-    get_password_hash,
-    verify_password,
-    create_tokens,
-    create_refresh_token,
-    generate_reset_token,
-    generate_session_id,
+    create_refresh_token, 
+    create_tokens, 
+    generate_reset_token, 
+    generate_session_id, 
+    generate_verification_token, 
+    get_password_hash, 
     is_password_strong,
-    sanitize_username,
-    store_reset_token,
-    validate_reset_token,
-    mark_reset_token_used,
-)
-from app.core.auth.dependencies import (
-    get_current_user,
-    get_current_active_user,
-    get_current_user_profile,
-    get_token_data,
-    validate_refresh_token,
-    get_client_ip,
-    get_user_agent,
-)
+    mark_reset_token_used, 
+    mark_verification_token_used, 
+    sanitize_username, 
+    store_reset_token, 
+    store_verification_token, 
+    validate_reset_token, 
+    validate_verification_token, 
+    verify_password,
+    )
+from app.core.database.connection import get_db
+from app.core.database.models import User
+from app.core.database.models import UserProfile
+from app.core.database.models import UserSession
 from app.core.email_client import send_forgot_password_email
-from app.core.logging_config import (
-    get_logger,
-    log_api_request,
-    log_security_event,
-)
-from app.config import settings
+from app.core.email_client import send_verification_email
+from app.core.logging_config import get_logger
+from app.core.logging_config import log_api_request
+from app.core.logging_config import log_security_event
+from app.core.schemas.auth import EmailVerification
+from app.core.schemas.auth import PasswordChange
+from app.core.schemas.auth import PasswordReset
+from app.core.schemas.auth import PasswordResetConfirm
+from app.core.schemas.auth import Token
+from app.core.schemas.auth import TokenValidationResponse
+from app.core.schemas.auth import UserCreate
+from app.core.schemas.auth import UserLogin
+from app.core.schemas.auth import UserProfileResponse
+from app.core.schemas.auth import UserResponse
+from app.core.schemas.auth import UserUpdate
+from fastapi import APIRouter
+from fastapi import Depends
+from fastapi import HTTPException
+from fastapi import Request
+from fastapi import status
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
 logger = get_logger(__name__)
 
@@ -180,6 +188,31 @@ async def register_user(
         db.commit()
         db.refresh(new_user)
 
+        # Generate and send verification email
+        try:
+            verification_token = generate_verification_token()
+            store_verification_token(
+                token=verification_token,
+                user_id=new_user.id,
+                user_email=new_user.email,
+                expires_in_hours=24,
+            )
+
+            # Create verification URL
+            verification_url = (
+                f"{settings.FRONTEND_URL}/verify-email?token={verification_token}"
+            )
+            send_verification_email(new_user.email, verification_url)
+
+            logger.info(
+                f"✅ Verification email sent | User ID: {new_user.id} | Email: {new_user.email}"
+            )
+        except Exception as e:
+            logger.error(
+                f"❌ Failed to send verification email | User ID: {new_user.id} | Error: {e}"
+            )
+            # Don't fail registration if email sending fails
+
         # Log security event
         client_ip = get_client_ip(request)
         user_agent = get_user_agent(request)
@@ -193,11 +226,11 @@ async def register_user(
 
         return new_user
 
-    except IntegrityError:
+    except IntegrityError as exc:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="User registration failed"
-        )
+        ) from exc
 
 
 @router.post("/login", response_model=Token)
@@ -420,7 +453,9 @@ async def forgot_password(
         if store_reset_token(reset_token, user.id, user.email, expires_in_minutes=60):
             # Send email with reset link
             # In production, this would construct the frontend URL
-            reset_url = f"{settings.FRONTEND_URL}/validate-reset-token?token={reset_token}"
+            reset_url = (
+                f"{settings.FRONTEND_URL}/validate-reset-token?token={reset_token}"
+            )
 
             # Log password reset request
             log_security_event(
@@ -591,30 +626,143 @@ async def reset_password(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to reset password",
-        )
+        ) from e
 
 
 @router.post("/verify-email")
 async def verify_email(verification: EmailVerification, db: Session = Depends(get_db)):
     """Verify user email address."""
-    # In production, this would validate the verification token
-    # and mark the user as verified
+    logger.info(f"Email verification attempt | Token: {verification.token[:10]}...")
 
-    return {"message": "Email verification successful"}
+    try:
+        # Validate the verification token
+        is_valid, token_data, error_message = validate_verification_token(
+            verification.token
+        )
+
+        if not is_valid:
+            logger.warning(f"❌ Invalid verification token | Error: {error_message}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=error_message or "Invalid or expired verification token",
+            )
+
+        # Get user from token data
+        user_id = token_data.get("user_id")
+        user_email = token_data.get("user_email")
+
+        if not user_id or not user_email:
+            logger.error("❌ Invalid token data - missing user information")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid verification token",
+            )
+
+        # Find user in database
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            logger.error(f"❌ User not found | User ID: {user_id}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+            )
+
+        # Check if user is already verified
+        if user.is_verified:
+            logger.info(f"✅ User already verified | User ID: {user_id}")
+            return {"message": "Email already verified"}
+
+        # Verify the email matches
+        if user.email != user_email:
+            logger.error(
+                f"❌ Email mismatch | User ID: {user_id} | Token email: {user_email} | User email: {user.email}"
+            )
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email verification failed",
+            )
+
+        # Mark user as verified
+        user.is_verified = True
+        db.commit()
+
+        # Mark token as used
+        mark_verification_token_used(verification.token)
+
+        # Log security event
+        log_security_event(
+            logger,
+            "email_verification_success",
+            str(user_id),
+            None,
+            f"Email verified for user: {user.email}",
+        )
+
+        logger.info(
+            f"✅ Email verification successful | User ID: {user_id} | Email: {user.email}"
+        )
+        return {"message": "Email verification successful"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Email verification failed | Error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Email verification failed",
+        )
 
 
 @router.post("/resend-verification")
 async def resend_verification(current_user: User = Depends(get_current_user)):
     """Resend email verification."""
+    logger.info(
+        f"Resend verification request | User ID: {current_user.id} | Email: {current_user.email}"
+    )
+
     if current_user.is_verified:
+        logger.info(f"✅ User already verified | User ID: {current_user.id}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Email already verified"
         )
 
-    # In production, this would generate a new verification token
-    # and send it via email
+    try:
+        # Generate new verification token
+        verification_token = generate_verification_token()
+        store_verification_token(
+            token=verification_token,
+            user_id=current_user.id,
+            user_email=current_user.email,
+            expires_in_hours=24,
+        )
 
-    return {"message": "Verification email sent"}
+        # Create verification URL
+        verification_url = (
+            f"{settings.FRONTEND_URL}/verify-email?token={verification_token}"
+        )
+        send_verification_email(current_user.email, verification_url)
+
+        # Log security event
+        log_security_event(
+            logger,
+            "verification_email_resent",
+            str(current_user.id),
+            None,
+            f"Verification email resent for user: {current_user.email}",
+        )
+
+        logger.info(
+            f"✅ Verification email resent | User ID: {current_user.id} | Email: {current_user.email}"
+        )
+        return {"message": "Verification email sent"}
+
+    except Exception as e:
+        logger.error(
+            f"❌ Failed to resend verification email | User ID: {current_user.id} | Error: {e}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to send verification email",
+        )
 
 
 @router.delete("/me")

@@ -2,7 +2,9 @@ import { ArrowLeft, Bookmark, Plus, RefreshCw } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import { watchlistAPI } from '../../services/api';
+import EmailVerificationPrompt from '../auth/EmailVerificationPrompt';
 import AddSymbolModal from './AddSymbolModal';
 import CreateWatchlistModal from './CreateWatchlistModal';
 import WatchlistContent from './WatchlistContent';
@@ -10,6 +12,7 @@ import WatchlistSidebar from './WatchlistSidebar';
 
 const Watchlist = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [watchlists, setWatchlists] = useState([]);
     const [selectedWatchlist, setSelectedWatchlist] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -315,6 +318,13 @@ const Watchlist = () => {
 
             {/* Main Content */}
             <div className="flex-1 flex flex-col">
+                {/* Email Verification Prompt */}
+                {user && !user.is_verified && (
+                    <div className="px-6 pt-6">
+                        <EmailVerificationPrompt user={user} />
+                    </div>
+                )}
+
                 {/* Header */}
                 <header className="bg-dark-900/80 backdrop-blur-sm border-b border-dark-700 px-6 py-4">
                     <div className="flex items-center justify-between">

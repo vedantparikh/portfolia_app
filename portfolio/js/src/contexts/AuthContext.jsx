@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import React, { createContext, useContext, useEffect, useReducer } from 'react';
 import { authAPI } from '../services/api';
 
 // Action types
@@ -13,6 +13,8 @@ const AUTH_ACTIONS = {
     SET_USER: 'SET_USER',
     SET_PROFILE: 'SET_PROFILE',
     CLEAR_ERROR: 'CLEAR_ERROR',
+    VERIFY_EMAIL_SUCCESS: 'VERIFY_EMAIL_SUCCESS',
+    RESEND_VERIFICATION_SUCCESS: 'RESEND_VERIFICATION_SUCCESS',
 };
 
 // Initial state
@@ -92,6 +94,16 @@ const authReducer = (state, action) => {
             return {
                 ...state,
                 error: null,
+            };
+        case AUTH_ACTIONS.VERIFY_EMAIL_SUCCESS:
+            return {
+                ...state,
+                user: state.user ? { ...state.user, is_verified: true } : null,
+            };
+        case AUTH_ACTIONS.RESEND_VERIFICATION_SUCCESS:
+            return {
+                ...state,
+                // No state change needed for resend, just success feedback
             };
         default:
             return state;
@@ -187,6 +199,30 @@ export const AuthProvider = ({ children }) => {
         dispatch({ type: AUTH_ACTIONS.CLEAR_ERROR });
     };
 
+    // Verify email function
+    const verifyEmail = async (token) => {
+        try {
+            const response = await authAPI.verifyEmail(token);
+            dispatch({ type: AUTH_ACTIONS.VERIFY_EMAIL_SUCCESS });
+            return { success: true, message: response.message };
+        } catch (error) {
+            const errorMessage = error.response?.data?.detail || 'Email verification failed';
+            return { success: false, error: errorMessage };
+        }
+    };
+
+    // Resend verification function
+    const resendVerification = async () => {
+        try {
+            const response = await authAPI.resendVerification();
+            dispatch({ type: AUTH_ACTIONS.RESEND_VERIFICATION_SUCCESS });
+            return { success: true, message: response.message };
+        } catch (error) {
+            const errorMessage = error.response?.data?.detail || 'Failed to resend verification email';
+            return { success: false, error: errorMessage };
+        }
+    };
+
     // Context value
     const value = {
         ...state,
@@ -194,6 +230,8 @@ export const AuthProvider = ({ children }) => {
         register,
         logout,
         clearError,
+        verifyEmail,
+        resendVerification,
     };
 
     return (

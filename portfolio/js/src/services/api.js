@@ -145,6 +145,18 @@ export const authAPI = {
         const response = await api.post('/auth/change-password', passwordData);
         return response.data;
     },
+
+    // Verify email
+    verifyEmail: async (token) => {
+        const response = await api.post('/auth/verify-email', { token });
+        return response.data;
+    },
+
+    // Resend email verification
+    resendVerification: async () => {
+        const response = await api.post('/auth/resend-verification');
+        return response.data;
+    },
 };
 
 // Portfolio API methods
