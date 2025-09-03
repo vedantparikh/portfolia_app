@@ -1,6 +1,7 @@
 import React from 'react';
 import { Toaster } from 'react-hot-toast';
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
+import Assets from './components/assets/Assets';
 import EmailVerification from './components/auth/EmailVerification';
 import ForgotPassword from './components/auth/ForgotPassword';
 import Login from './components/auth/Login';
@@ -9,6 +10,8 @@ import Register from './components/auth/Register';
 import ResetPassword from './components/auth/ResetPassword';
 import ValidateResetToken from './components/auth/ValidateResetToken';
 import Dashboard from './components/dashboard/Dashboard';
+import Portfolio from './components/portfolio/Portfolio';
+import Transactions from './components/transactions/Transactions';
 import { Watchlist } from './components/watchlist';
 import { AuthProvider } from './contexts/AuthContext';
 
@@ -26,22 +29,46 @@ function App() {
             <Route path="/validate-reset-token" element={<ValidateResetToken />} />
             <Route path="/verify-email" element={<EmailVerification />} />
 
-                        {/* Protected routes */}
+            {/* Protected routes */}
             <Route
-                path="/dashboard"
-                element={
-                    <ProtectedRoute>
-                        <Dashboard />
-                    </ProtectedRoute>
-                }
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
             />
             <Route
-                path="/watchlist"
-                element={
-                    <ProtectedRoute>
-                        <Watchlist />
-                    </ProtectedRoute>
-                }
+              path="/watchlist"
+              element={
+                <ProtectedRoute>
+                  <Watchlist />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/assets"
+              element={
+                <ProtectedRoute>
+                  <Assets />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/portfolio"
+              element={
+                <ProtectedRoute>
+                  <Portfolio />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/transactions"
+              element={
+                <ProtectedRoute>
+                  <Transactions />
+                </ProtectedRoute>
+              }
             />
 
             {/* Redirect root to dashboard if authenticated, otherwise to login */}
