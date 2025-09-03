@@ -34,10 +34,10 @@ class PortfolioService:
         self.db = db
 
     # Portfolio CRUD Operations
-    def create_portfolio(self, portfolio_data: PortfolioCreate) -> Portfolio:
+    def create_portfolio(self, portfolio_data: PortfolioCreate, user_id: int) -> Portfolio:
         """Create a new portfolio."""
         portfolio = Portfolio(
-            user_id=portfolio_data.user_id,
+            user_id=user_id,
             name=portfolio_data.name,
             description=portfolio_data.description,
             currency=portfolio_data.currency,

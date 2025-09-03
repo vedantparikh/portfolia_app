@@ -1,17 +1,24 @@
 """
 Authentication utilities for password hashing, JWT tokens, and security.
 """
+
 import secrets
 import string
-from datetime import datetime, timedelta
-from typing import Optional, Union, Tuple
-from jose import JWTError, jwt
-from passlib.context import CryptContext
-from fastapi import HTTPException, status
-from pytz import utc
+from datetime import datetime
+from datetime import timedelta
+from typing import Optional
+from typing import Tuple
+from typing import Union
+
 from app.config import settings
-from app.core.logging_config import get_logger
 from app.core.database.redis_client import get_redis
+from app.core.logging_config import get_logger
+from fastapi import HTTPException
+from fastapi import status
+from jose import JWTError
+from jose import jwt
+from passlib.context import CryptContext
+from pytz import utc
 
 logger = get_logger(__name__)
 
@@ -252,7 +259,9 @@ def validate_reset_token(token: str) -> Tuple[bool, Optional[dict], Optional[str
             return False, None, "Token has already been used"
 
         # Check if token is expired (additional safety check)
-        created_at = datetime.fromisoformat(token_data["created_at"]).replace(tzinfo=utc)
+        created_at = datetime.fromisoformat(token_data["created_at"]).replace(
+            tzinfo=utc
+        )
         if datetime.now(utc) - created_at > timedelta(minutes=60):
             return False, None, "Token has expired"
 
@@ -297,4 +306,133 @@ def mark_reset_token_used(token: str) -> bool:
         return True
     except Exception as e:
         logger.error(f"Failed to mark reset token as used: {e}")
+        return False
+
+
+def store_verification_token(
+    token: str, user_id: int, user_email: str, expires_in_hours: int = 24
+) -> bool:
+    """
+    Store email verification token in Redis with expiration.
+
+    Args:
+        token: The verification token
+        user_id: User ID
+        user_email: User email
+        expires_in_hours: Token expiration time in hours
+
+    Returns:
+        bool: True if stored successfully, False otherwise
+    """
+    try:
+        redis_client = get_redis()
+
+        if not redis_client:
+            return False
+
+        # Create token data
+        token_data = {
+            "user_id": user_id,
+            "user_email": user_email,
+            "created_at": datetime.now().isoformat(),
+            "is_used": False,
+        }
+
+        # Store in Redis with expiration
+        key = f"verification_token:{token}"
+        redis_client.set(
+            key=key,
+            ex_seconds=expires_in_hours * 3600,  # Convert hours to seconds
+            value=token_data,
+        )
+
+        return True
+    except Exception as e:
+        logger.error(f"Failed to store verification token: {e}")
+        return False
+
+
+def validate_verification_token(
+    token: str,
+) -> Tuple[bool, Optional[dict], Optional[str]]:
+    """
+    Validate email verification token.
+
+    Args:
+        token: The verification token to validate
+
+    Returns:
+        Tuple[bool, Optional[dict], Optional[str]]:
+        - is_valid: Whether token is valid
+        - token_data: Token data if valid
+        - error_message: Error message if invalid
+    """
+    try:
+        redis_client = get_redis()
+
+        if not redis_client:
+            return False, None, "Redis connection unavailable"
+
+        # Get token from Redis
+        key = f"verification_token:{token}"
+        token_json = redis_client.get(key)
+
+        if not token_json:
+            return False, None, "Token not found or expired"
+
+        # Parse token data
+        token_data = token_json
+
+        # Check if token is already used
+        if token_data.get("is_used", False):
+            return False, None, "Token has already been used"
+
+        # Check if token is expired (additional safety check)
+        created_at = datetime.fromisoformat(token_data["created_at"]).replace(
+            tzinfo=utc
+        )
+        if datetime.now(utc) - created_at > timedelta(hours=24):
+            return False, None, "Token has expired"
+
+        return True, token_data, None
+
+    except Exception as e:
+        logger.error(f"Failed to validate verification token: {e}")
+        return False, None, "Token validation failed"
+
+
+def mark_verification_token_used(token: str) -> bool:
+    """
+    Mark a verification token as used.
+
+    Args:
+        token: The verification token to mark as used
+
+    Returns:
+        bool: True if marked successfully, False otherwise
+    """
+    try:
+        redis_client = get_redis()
+
+        if not redis_client:
+            return False
+
+        key = f"verification_token:{token}"
+        token_json = redis_client.get(key)
+
+        if not token_json:
+            return False
+
+        # Update token data
+        token_data = token_json
+        token_data["is_used"] = True
+
+        # Store updated data
+        redis_client.set(
+            key=key, ex_seconds=86400, value=token_data
+        )  # Keep for 24 hours after use
+
+        return True
+    except Exception as e:
+        logger.error(f"Failed to mark verification token as used: {e}")
         return False

@@ -15,7 +15,7 @@ class PortfolioBase(BaseModel):
 
 
 class PortfolioCreate(PortfolioBase):
-    user_id: int
+    pass
 
 
 class PortfolioUpdate(BaseModel):

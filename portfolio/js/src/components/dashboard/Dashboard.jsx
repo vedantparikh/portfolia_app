@@ -13,6 +13,7 @@ import {
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
+import EmailVerificationPrompt from '../auth/EmailVerificationPrompt';
 
 const Dashboard = () => {
     const { user, logout } = useAuth();
@@ -165,6 +166,11 @@ const Dashboard = () => {
                 {/* Main Dashboard Content */}
                 <main className="flex-1 p-6 overflow-auto">
                     <div className="max-w-7xl mx-auto">
+                        {/* Email Verification Prompt */}
+                        {user && !user.is_verified && (
+                            <EmailVerificationPrompt user={user} />
+                        )}
+
                         {/* Welcome Section */}
                         <div className="mb-8">
                             <h1 className="text-3xl font-bold text-gray-100 mb-2">
