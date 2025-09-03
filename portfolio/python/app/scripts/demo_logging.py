@@ -89,14 +89,14 @@ def demo_api_logging():
     user_id = "user123"
 
     # Log request
-    log_api_request(logger, "GET", "/api/users", user_id, client_ip, query="profile")
+    log_api_request(logger, "GET", "/app/users", user_id, client_ip, query="profile")
 
     # Simulate processing
     time.sleep(0.05)
 
     # Log response
     response_time = time.time() - start_time
-    log_api_response(logger, "GET", "/api/users", 200, response_time, data_size=1024)
+    log_api_response(logger, "GET", "/app/users", 200, response_time, data_size=1024)
 
 
 def demo_security_logging():
@@ -108,7 +108,7 @@ def demo_security_logging():
         logger, "LOGIN_ATTEMPT", "user123", "192.168.1.100", "Successful login"
     )
     log_security_event(
-        logger, "RATE_LIMIT_EXCEEDED", None, "192.168.1.101", "API endpoint /api/data"
+        logger, "RATE_LIMIT_EXCEEDED", None, "192.168.1.101", "API endpoint /app/data"
     )
     log_security_event(
         logger,
@@ -128,7 +128,7 @@ def demo_performance_logging():
         logger, "database_query_time", 0.125, "seconds", table="users"
     )
     log_performance_metric(
-        logger, "api_response_time", 45.2, "milliseconds", endpoint="/api/users"
+        logger, "api_response_time", 45.2, "milliseconds", endpoint="/app/users"
     )
     log_performance_metric(
         logger, "memory_usage", 128.5, "MB", component="data_processor"

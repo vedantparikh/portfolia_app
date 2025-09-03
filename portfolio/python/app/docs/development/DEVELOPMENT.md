@@ -13,42 +13,48 @@
 ### Development Environment Setup
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/portfolia/portfolia-api.git
    cd portfolia-api
    ```
 
 2. **Create virtual environment**
+
    ```bash
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
 3. **Install dependencies**
+
    ```bash
    # Install in development mode
    pip install -e ".[dev]"
-   
+
    # Or install requirements directly
    pip install -r requirements.txt
    ```
 
 4. **Set up pre-commit hooks**
+
    ```bash
    pre-commit install
    ```
 
 5. **Configure environment**
+
    ```bash
    cp app/config.env.example app/.env
    # Edit .env with your local configuration
    ```
 
 6. **Set up database**
+
    ```bash
    # Create database
    createdb portfolia_dev
-   
+
    # Run migrations
    alembic upgrade head
    ```
@@ -97,23 +103,27 @@ api/
 ### 1. Feature Development
 
 1. **Create feature branch**
+
    ```bash
    git checkout -b feature/your-feature-name
    ```
 
 2. **Implement feature**
+
    - Follow coding standards
    - Write tests for new functionality
    - Update documentation
 
 3. **Test your changes**
+
    ```bash
    pytest tests/unit/  # Unit tests
    pytest tests/integration/  # Integration tests
-   pytest --cov=app --cov=api --cov=services  # With coverage
+   pytest --cov=app --cov=app --cov=services  # With coverage
    ```
 
 4. **Code quality checks**
+
    ```bash
    black .  # Code formatting
    flake8 .  # Linting
@@ -121,6 +131,7 @@ api/
    ```
 
 5. **Commit changes**
+
    ```bash
    git add .
    git commit -m "feat: add your feature description"
@@ -159,7 +170,7 @@ pytest
 pytest tests/unit/test_services.py
 
 # Run with coverage
-pytest --cov=app --cov=api --cov=services --cov-report=html
+pytest --cov=app --cov=app --cov=services --cov-report=html
 
 # Run specific test
 pytest tests/unit/test_services.py::test_create_portfolio
@@ -182,14 +193,14 @@ class TestPortfolioService:
     def setup_method(self):
         self.mock_db = Mock()
         self.service = PortfolioService(self.mock_db)
-    
+
     def test_create_portfolio_success(self):
         # Arrange
         portfolio_data = {"name": "Test Portfolio", "user_id": 1}
-        
+
         # Act
         result = self.service.create_portfolio(portfolio_data)
-        
+
         # Assert
         assert result is not None
         self.mock_db.add.assert_called_once()
@@ -284,11 +295,11 @@ from app.core.database.connection import Base
 
 class NewModel(Base):
     __tablename__ = "new_models"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    
+
     # Relationships
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     user = relationship("User", back_populates="new_models")
@@ -319,7 +330,7 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
         expire = datetime.utcnow() + expires_delta
     else:
         expire = datetime.utcnow() + timedelta(minutes=15)
-    
+
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
     return encoded_jwt
@@ -358,7 +369,7 @@ class NewFeatureResponse(BaseModel):
     id: int
     name: str
     description: Optional[str] = None
-    
+
     class Config:
         from_attributes = True
 ```
@@ -375,7 +386,7 @@ from models.new_feature import NewFeatureCreate
 class NewFeatureService:
     def __init__(self, db: Session):
         self.db = db
-    
+
     def create_feature(self, feature_data: NewFeatureCreate) -> NewFeature:
         feature = NewFeature(**feature_data.dict())
         self.db.add(feature)
@@ -480,7 +491,7 @@ def client(db):
             yield db
         finally:
             db.close()
-    
+
     app.dependency_overrides[get_db] = override_get_db
     with TestClient(app) as c:
         yield c
@@ -498,7 +509,7 @@ from app.core.database.models import User, Portfolio
 class UserFactory(factory.Factory):
     class Meta:
         model = User
-    
+
     email = factory.Sequence(lambda n: f"user{n}@example.com")
     username = factory.Sequence(lambda n: f"user{n}")
     password_hash = factory.LazyFunction(lambda: "hashed_password")
@@ -508,7 +519,7 @@ class UserFactory(factory.Factory):
 class PortfolioFactory(factory.Factory):
     class Meta:
         model = Portfolio
-    
+
     name = factory.Sequence(lambda n: f"Portfolio {n}")
     description = factory.Faker("text")
     user_id = factory.SubFactory(UserFactory)
@@ -547,7 +558,7 @@ logger = structlog.get_logger()
 
 def some_function():
     logger.info("Processing request", user_id=123, action="create")
-    
+
     try:
         # Some operation
         result = perform_operation()
@@ -581,7 +592,7 @@ import pdb
 def complex_function():
     # Set breakpoint
     pdb.set_trace()
-    
+
     # Your code here
     result = some_calculation()
     return result
@@ -655,10 +666,10 @@ def get_cached_data(key: str):
     cached = redis_client.get(key)
     if cached:
         return cached
-    
+
     # Fetch from database
     data = fetch_from_database()
-    
+
     # Cache for 1 hour
     redis_client.setex(key, 3600, data)
     return data
@@ -674,18 +685,18 @@ def get_cached_data(key: str):
 def calculate_portfolio_value(portfolio_id: int, db: Session) -> float:
     """
     Calculate the total value of a portfolio.
-    
+
     Args:
         portfolio_id: The ID of the portfolio to calculate
         db: Database session for queries
-        
+
     Returns:
         float: The total portfolio value in USD
-        
+
     Raises:
         ValueError: If portfolio_id is invalid
         DatabaseError: If database query fails
-        
+
     Example:
         >>> value = calculate_portfolio_value(123, db_session)
         >>> print(f"Portfolio value: ${value:,.2f}")
@@ -706,17 +717,17 @@ def process_transactions(
 ) -> Union[Decimal, None]:
     """
     Process a list of transactions and return total value.
-    
+
     Args:
         transactions: List of transaction objects
         currency: Currency code for conversion
-        
+
     Returns:
         Total value in specified currency, or None if no transactions
     """
     if not transactions:
         return None
-    
+
     total = sum(t.amount for t in transactions)
     return convert_currency(total, "USD", currency)
 ```
@@ -739,11 +750,11 @@ app = FastAPI(
 
 class PortfolioResponse(BaseModel):
     """Portfolio information response model."""
-    
+
     id: int = Field(..., description="Unique portfolio identifier")
     name: str = Field(..., description="Portfolio name")
     description: Optional[str] = Field(None, description="Portfolio description")
-    
+
     class Config:
         schema_extra = {
             "example": {
@@ -767,7 +778,7 @@ from typing import Optional
 class PortfolioCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = Field(None, max_length=1000)
-    
+
     @validator('name')
     def name_must_be_valid(cls, v):
         if not v.strip():
@@ -814,11 +825,11 @@ def test_protected_endpoint_with_valid_token(client, valid_token):
 # app/config.py
 class Settings(BaseSettings):
     environment: str = "development"
-    
+
     @property
     def is_production(self) -> bool:
         return self.environment == "production"
-    
+
     @property
     def cors_origins(self) -> List[str]:
         if self.is_production:
@@ -847,7 +858,7 @@ async def detailed_health_check(db: Session = Depends(get_db)):
         db_status = "healthy"
     except Exception:
         db_status = "unhealthy"
-    
+
     return {
         "status": "healthy" if db_status == "healthy" else "unhealthy",
         "database": db_status,
@@ -894,7 +905,7 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 #### Docker Compose
 
 ```yaml
-version: '3.8'
+version: "3.8"
 
 services:
   api:
@@ -910,7 +921,7 @@ services:
     volumes:
       - .:/app
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-  
+
   db:
     image: postgres:13
     environment:
@@ -919,7 +930,7 @@ services:
       - POSTGRES_PASSWORD=password
     volumes:
       - postgres_data:/var/lib/postgresql/data
-  
+
   redis:
     image: redis:6-alpine
     ports:

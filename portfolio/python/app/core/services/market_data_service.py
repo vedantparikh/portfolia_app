@@ -103,7 +103,7 @@ class MarketDataService:
             append: Whether to append data to existing records.
             If False, existing records will be updated and new records will be added to the database.
             If True, only new records will be added to the database.
-            Schedular, should pass False. api, should pass True for better
+            Schedular, should pass False. app, should pass True for better
             performance as its less likely to be required to be updated.
 
         Returns:

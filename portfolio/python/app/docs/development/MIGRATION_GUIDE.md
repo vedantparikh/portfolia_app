@@ -122,8 +122,9 @@ from auth.utils import create_access_token
 ```
 
 **New:**
+
 ```python
-from app.core.auth.router import auth_router
+from api.v1.auth.router import auth_router
 from app.core.auth.utils import create_access_token
 ```
 

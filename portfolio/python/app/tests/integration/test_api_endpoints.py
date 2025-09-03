@@ -32,7 +32,7 @@ class TestCoreAPIEndpoints:
     
     def test_api_v1_root(self, client: TestClient):
         """Test API v1 root endpoint."""
-        response = client.get("/api/v1/")
+        response = client.get("/app/v1/")
         assert response.status_code == 200
         
         data = response.json()
@@ -52,7 +52,7 @@ class TestAuthenticationEndpoints:
             "confirm_password": "TestPass123!"
         }
         
-        response = client.post("/api/v1/auth/register", json=user_data)
+        response = client.post("/app/v1/auth/register", json=user_data)
         assert response.status_code == 201
         
         data = response.json()
@@ -73,7 +73,7 @@ class TestAuthenticationEndpoints:
             "password": "TestPass123!",
             "confirm_password": "TestPass123!"
         }
-        response = client.post("/api/v1/auth/register", json=user_data)
+        response = client.post("/app/v1/auth/register", json=user_data)
         assert response.status_code == 201
         
         # Second registration with same username
@@ -83,7 +83,7 @@ class TestAuthenticationEndpoints:
             "password": "TestPass123!",
             "confirm_password": "TestPass123!"
         }
-        response2 = client.post("/api/v1/auth/register", json=user_data2)
+        response2 = client.post("/app/v1/auth/register", json=user_data2)
         assert response2.status_code == 400
         assert "Username already taken" in response2.json()["detail"]
     
@@ -96,7 +96,7 @@ class TestAuthenticationEndpoints:
             "password": "TestPass123!",
             "confirm_password": "TestPass123!"
         }
-        response = client.post("/api/v1/auth/register", json=user_data)
+        response = client.post("/app/v1/auth/register", json=user_data)
         assert response.status_code == 201
         
         # Second registration with same email
@@ -106,7 +106,7 @@ class TestAuthenticationEndpoints:
             "password": "TestPass123!",
             "confirm_password": "TestPass123!"
         }
-        response2 = client.post("/api/v1/auth/register", json=user_data2)
+        response2 = client.post("/app/v1/auth/register", json=user_data2)
         assert response2.status_code == 400
         assert "Email already registered" in response2.json()["detail"]
     
@@ -118,7 +118,7 @@ class TestAuthenticationEndpoints:
             "password": "TestPass123!"
         }
         
-        response = client.post("/api/v1/auth/register", json=user_data)
+        response = client.post("/app/v1/auth/register", json=user_data)
         assert response.status_code == 422
         
         data = response.json()
@@ -133,7 +133,7 @@ class TestAuthenticationEndpoints:
             "password": "TestPass123!",
             "confirm_password": "TestPass123!"
         }
-        client.post("/api/v1/auth/register", json=user_data)
+        client.post("/app/v1/auth/register", json=user_data)
         
         # Then login with username
         login_data = {
@@ -141,7 +141,7 @@ class TestAuthenticationEndpoints:
             "password": "TestPass123!"
         }
         
-        response = client.post("/api/v1/auth/login", json=login_data)
+        response = client.post("/app/v1/auth/login", json=login_data)
         assert response.status_code == 200
         
         data = response.json()
@@ -157,7 +157,7 @@ class TestAuthenticationEndpoints:
             "password": "TestPass123!"
         }
         
-        response = client.post("/api/v1/auth/login", json=login_data)
+        response = client.post("/app/v1/auth/login", json=login_data)
         assert response.status_code == 422
         
         data = response.json()
@@ -170,7 +170,7 @@ class TestAuthenticationEndpoints:
             "password": "wrongpassword"
         }
         
-        response = client.post("/api/v1/auth/login", json=login_data)
+        response = client.post("/app/v1/auth/login", json=login_data)
         assert response.status_code == 401
         assert "Incorrect username or password" in response.json()["detail"]
     
@@ -183,18 +183,18 @@ class TestAuthenticationEndpoints:
             "password": "TestPass123!",
             "confirm_password": "TestPass123!"
         }
-        client.post("/api/v1/auth/register", json=user_data)
+        client.post("/app/v1/auth/register", json=user_data)
         
         login_data = {
             "username": "protected_test_user",
             "password": "TestPass123!"
         }
-        login_response = client.post("/api/v1/auth/login", json=login_data)
+        login_response = client.post("/app/v1/auth/login", json=login_data)
         token = login_response.json()["access_token"]
         
         # Test protected endpoint
         headers = {"Authorization": f"Bearer {token}"}
-        response = client.get("/api/v1/auth/me", headers=headers)
+        response = client.get("/app/v1/auth/me", headers=headers)
         assert response.status_code == 200
         
         data = response.json()
@@ -203,13 +203,13 @@ class TestAuthenticationEndpoints:
     
     def test_protected_endpoint_without_token(self, client: TestClient):
         """Test accessing protected endpoint without token fails."""
-        response = client.get("/api/v1/auth/me")
+        response = client.get("/app/v1/auth/me")
         assert response.status_code == 401
     
     def test_forgot_password_endpoint(self, client: TestClient):
         """Test forgot password endpoint."""
         response = client.post(
-            "/api/v1/auth/forgot-password",
+            "/app/v1/auth/forgot-password",
             json={"email": "test@example.com"}
         )
         assert response.status_code == 200
@@ -226,18 +226,18 @@ class TestAuthenticationEndpoints:
             "password": "TestPass123!",
             "confirm_password": "TestPass123!"
         }
-        client.post("/api/v1/auth/register", json=user_data)
+        client.post("/app/v1/auth/register", json=user_data)
         
         login_data = {
             "username": "logout_test_user",
             "password": "TestPass123!"
         }
-        login_response = client.post("/api/v1/auth/login", json=login_data)
+        login_response = client.post("/app/v1/auth/login", json=login_data)
         token = login_response.json()["access_token"]
         
         # Test logout
         headers = {"Authorization": f"Bearer {token}"}
-        response = client.post("/api/v1/auth/logout", headers=headers)
+        response = client.post("/app/v1/auth/logout", headers=headers)
         assert response.status_code == 200
         
         data = response.json()
@@ -249,7 +249,7 @@ class TestMarketDataEndpoints:
     
     def test_market_symbols_endpoint(self, client: TestClient):
         """Test market symbols endpoint."""
-        response = client.get("/api/v1/market/symbols?name=AAPL")
+        response = client.get("/app/v1/market/symbols?name=AAPL")
         assert response.status_code == 200
         
         data = response.json()
@@ -263,7 +263,7 @@ class TestMarketDataEndpoints:
     
     def test_market_symbols_missing_name_parameter(self, client: TestClient):
         """Test market symbols endpoint fails without name parameter."""
-        response = client.get("/api/v1/market/symbols")
+        response = client.get("/app/v1/market/symbols")
         assert response.status_code == 422
         
         data = response.json()
@@ -272,7 +272,7 @@ class TestMarketDataEndpoints:
     def test_market_symbol_data_endpoint_available(self, client: TestClient):
         """Test market symbol data endpoint is available."""
         # This endpoint might require more complex setup, so just check it exists
-        response = client.get("/api/v1/market/symbol-data?name=AAPL&period=1d")
+        response = client.get("/app/v1/market/symbol-data?name=AAPL&period=1d")
         # Should either return data or a specific error, but not 404
         assert response.status_code != 404
 
@@ -282,13 +282,13 @@ class TestStatisticalIndicatorsEndpoints:
     
     def test_rsi_indicator_endpoint_available(self, client: TestClient):
         """Test RSI indicator endpoint is available."""
-        response = client.get("/api/v1/statistical-indicators/momentum-rsi-indicator?name=AAPL&period=14")
+        response = client.get("/app/v1/statistical-indicators/momentum-rsi-indicator?name=AAPL&period=14")
         # Should either return data or a specific error, but not 404
         assert response.status_code != 404
     
     def test_rsi_indicator_missing_parameters(self, client: TestClient):
         """Test RSI indicator endpoint fails without required parameters."""
-        response = client.get("/api/v1/statistical-indicators/momentum-rsi-indicator")
+        response = client.get("/app/v1/statistical-indicators/momentum-rsi-indicator")
         assert response.status_code == 422
 
 
@@ -298,21 +298,21 @@ class TestAPIEndpointsComprehensive:
     def test_all_auth_endpoints_available(self, client: TestClient):
         """Test that all authentication endpoints are available."""
         auth_endpoints = [
-            "/api/v1/auth/register",
-            "/api/v1/auth/login",
-            "/api/v1/auth/logout",
-            "/api/v1/auth/me",
-            "/api/v1/auth/forgot-password",
-            "/api/v1/auth/2fa/setup",
-            "/api/v1/auth/2fa/verify",
-            "/api/v1/auth/change-password",
-            "/api/v1/auth/verify-email",
-            "/api/v1/auth/reset-password",
+            "/app/v1/auth/register",
+            "/app/v1/auth/login",
+            "/app/v1/auth/logout",
+            "/app/v1/auth/me",
+            "/app/v1/auth/forgot-password",
+            "/app/v1/auth/2fa/setup",
+            "/app/v1/auth/2fa/verify",
+            "/app/v1/auth/change-password",
+            "/app/v1/auth/verify-email",
+            "/app/v1/auth/reset-password",
         ]
         
         for endpoint in auth_endpoints:
             # Try to access each endpoint (some will require auth, but shouldn't be 404)
-            response = client.get(endpoint) if endpoint != "/api/v1/auth/register" else client.post(endpoint, json={})
+            response = client.get(endpoint) if endpoint != "/app/v1/auth/register" else client.post(endpoint, json={})
             assert response.status_code != 404, f"Endpoint {endpoint} not found"
     
     def test_api_documentation_available(self, client: TestClient):
@@ -339,15 +339,15 @@ class TestAPIEndpointsComprehensive:
     def test_endpoint_parameter_validation(self, client: TestClient):
         """Test that endpoints properly validate required parameters."""
         # Test registration without required fields
-        response = client.post("/api/v1/auth/register", json={})
+        response = client.post("/app/v1/auth/register", json={})
         assert response.status_code == 422
         
         # Test login without required fields
-        response = client.post("/api/v1/auth/login", json={})
+        response = client.post("/app/v1/auth/login", json={})
         assert response.status_code == 422
         
         # Test market symbols without required parameter
-        response = client.get("/api/v1/market/symbols")
+        response = client.get("/app/v1/market/symbols")
         assert response.status_code == 422
 
 
@@ -363,7 +363,7 @@ class TestSecurityFeatures:
             "confirm_password": "123"
         }
         
-        response = client.post("/api/v1/auth/register", json=user_data)
+        response = client.post("/app/v1/auth/register", json=user_data)
         assert response.status_code == 422
         
         data = response.json()
@@ -378,7 +378,7 @@ class TestSecurityFeatures:
             "confirm_password": "TestPass123!"
         }
         
-        response = client.post("/api/v1/auth/register", json=user_data)
+        response = client.post("/app/v1/auth/register", json=user_data)
         assert response.status_code == 422
         
         data = response.json()
@@ -393,13 +393,13 @@ class TestSecurityFeatures:
             "password": "TestPass123!",
             "confirm_password": "TestPass123!"
         }
-        client.post("/api/v1/auth/register", json=user_data)
+        client.post("/app/v1/auth/register", json=user_data)
         
         login_data = {
             "username": "token_test_user",
             "password": "TestPass123!"
         }
-        login_response = client.post("/api/v1/auth/login", json=login_data)
+        login_response = client.post("/app/v1/auth/login", json=login_data)
         token_data = login_response.json()
         
         # Check token structure

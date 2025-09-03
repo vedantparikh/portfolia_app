@@ -102,7 +102,7 @@ def client(test_db) -> Generator:
     
     # Also override any other database-related dependencies
     try:
-        from app.core.database.init_db import init_db
+        from core.database.init_db import init_db
         app.dependency_overrides[init_db] = lambda: None
     except ImportError:
         pass

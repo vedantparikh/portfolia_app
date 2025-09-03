@@ -3,11 +3,9 @@ Authentication package for Portfolia application.
 """
 
 from .dependencies import *
-from .router import router as auth_router
 from .utils import *
 
 __all__ = [
-    "auth_router",
     # Utils
     "verify_password",
     "get_password_hash",

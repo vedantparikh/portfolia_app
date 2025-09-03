@@ -7,51 +7,55 @@ from datetime import timedelta
 
 from app.config import settings
 from app.core.auth.dependencies import (
-    get_client_ip, 
-    get_current_active_user, 
-    get_current_user, 
-    get_current_user_profile, 
-    get_token_data, 
-    get_user_agent, 
+    get_client_ip,
+    get_current_active_user,
+    get_current_user,
+    get_current_user_profile,
+    get_token_data,
+    get_user_agent,
     validate_refresh_token,
 )
 from app.core.auth.utils import (
-    create_refresh_token, 
-    create_tokens, 
-    generate_reset_token, 
-    generate_session_id, 
-    generate_verification_token, 
-    get_password_hash, 
+    create_refresh_token,
+    create_tokens,
+    generate_reset_token,
+    generate_session_id,
+    generate_verification_token,
+    get_password_hash,
     is_password_strong,
-    mark_reset_token_used, 
-    mark_verification_token_used, 
-    sanitize_username, 
-    store_reset_token, 
-    store_verification_token, 
-    validate_reset_token, 
-    validate_verification_token, 
+    mark_reset_token_used,
+    mark_verification_token_used,
+    sanitize_username,
+    store_reset_token,
+    store_verification_token,
+    validate_reset_token,
+    validate_verification_token,
     verify_password,
-    )
+)
 from app.core.database.connection import get_db
-from app.core.database.models import User
-from app.core.database.models import UserProfile
-from app.core.database.models import UserSession
-from app.core.email_client import send_forgot_password_email
-from app.core.email_client import send_verification_email
-from app.core.logging_config import get_logger
-from app.core.logging_config import log_api_request
-from app.core.logging_config import log_security_event
-from app.core.schemas.auth import EmailVerification
-from app.core.schemas.auth import PasswordChange
-from app.core.schemas.auth import PasswordReset
-from app.core.schemas.auth import PasswordResetConfirm
-from app.core.schemas.auth import Token
-from app.core.schemas.auth import TokenValidationResponse
-from app.core.schemas.auth import UserCreate
-from app.core.schemas.auth import UserLogin
-from app.core.schemas.auth import UserProfileResponse
-from app.core.schemas.auth import UserResponse
-from app.core.schemas.auth import UserUpdate
+from app.core.database.models import User, UserProfile, UserSession
+from app.core.email_client import (
+    send_forgot_password_email,
+    send_verification_email,
+)
+from app.core.logging_config import (
+    get_logger,
+    log_api_request,
+    log_security_event,
+)
+from app.core.schemas.auth import (
+    EmailVerification,
+    PasswordChange,
+    PasswordReset,
+    PasswordResetConfirm,
+    Token,
+    TokenValidationResponse,
+    UserCreate,
+    UserLogin,
+    UserProfileResponse,
+    UserResponse,
+    UserUpdate,
+)
 from fastapi import APIRouter
 from fastapi import Depends
 from fastapi import HTTPException
@@ -69,7 +73,7 @@ router = APIRouter(tags=["authentication"])
     "/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED
 )
 async def register_user(
-    user_data: UserCreate, request: Request, db: Session = Depends(get_db)
+        user_data: UserCreate, request: Request, db: Session = Depends(get_db)
 ):
     """Register a new user."""
     client_ip = get_client_ip(request) if request else "unknown"
@@ -122,7 +126,8 @@ async def register_user(
                 )
             else:
                 logger.warning(
-                    f"🚫 Registration failed - Username already taken | Username: {user_data.username} | IP: {client_ip}"
+                    f"🚫 Registration failed - Username already taken | Username: {user_data.username} | IP: "
+                    f"{client_ip}"
                 )
                 log_security_event(
                     logger,
@@ -235,7 +240,7 @@ async def register_user(
 
 @router.post("/login", response_model=Token)
 async def login_user(
-    user_credentials: UserLogin, request: Request, db: Session = Depends(get_db)
+        user_credentials: UserLogin, request: Request, db: Session = Depends(get_db)
 ):
     """Authenticate user and return JWT tokens."""
     # Find user by username
@@ -300,8 +305,8 @@ async def login_user(
 
 @router.post("/refresh", response_model=Token)
 async def refresh_access_token(
-    refresh_token_data: dict = Depends(validate_refresh_token),
-    db: Session = Depends(get_db),
+        refresh_token_data: dict = Depends(validate_refresh_token),
+        db: Session = Depends(get_db),
 ):
     """Refresh access token using refresh token."""
     user_id = int(refresh_token_data.get("sub"))
@@ -320,9 +325,9 @@ async def refresh_access_token(
 
 @router.post("/logout")
 async def logout_user(
-    request: Request,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+        request: Request,
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db),
 ):
     """Logout user and invalidate session."""
     # Invalidate current session
@@ -368,7 +373,7 @@ async def get_current_user_info(current_user: User = Depends(get_current_active_
 
 @router.get("/me/profile", response_model=UserProfileResponse)
 async def get_current_user_profile_info(
-    current_user_profile: UserProfile = Depends(get_current_user_profile),
+        current_user_profile: UserProfile = Depends(get_current_user_profile),
 ):
     """Get current user's profile information."""
     return current_user_profile
@@ -376,9 +381,9 @@ async def get_current_user_profile_info(
 
 @router.put("/me", response_model=UserResponse)
 async def update_current_user(
-    user_update: UserUpdate,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
+        user_update: UserUpdate,
+        current_user: User = Depends(get_current_active_user),
+        db: Session = Depends(get_db),
 ):
     """Update current user's profile."""
     # Update user profile
@@ -398,9 +403,9 @@ async def update_current_user(
 
 @router.post("/change-password")
 async def change_password(
-    password_data: PasswordChange,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
+        password_data: PasswordChange,
+        current_user: User = Depends(get_current_active_user),
+        db: Session = Depends(get_db),
 ):
     """Change user password."""
     # Verify current password
@@ -433,7 +438,7 @@ async def change_password(
 
 @router.post("/forgot-password")
 async def forgot_password(
-    password_reset: PasswordReset, request: Request, db: Session = Depends(get_db)
+        password_reset: PasswordReset, request: Request, db: Session = Depends(get_db)
 ):
     """Request password reset."""
     client_ip = get_client_ip(request) if request else "unknown"
@@ -502,7 +507,7 @@ async def forgot_password(
 
 @router.get("/validate-reset-token/")
 async def validate_reset_token_endpoint(
-    token: str, request: Request, db: Session = Depends(get_db)
+        token: str, request: Request, db: Session = Depends(get_db)
 ):
     """Validate password reset token and return information for frontend redirection."""
     client_ip = get_client_ip(request) if request else "unknown"
@@ -529,7 +534,7 @@ async def validate_reset_token_endpoint(
             message="Token is valid. You can now reset your password.",
             redirect_url=f"{settings.API_URL}{settings.API_V1_STR}/reset-password?token={token}",
             expires_at=datetime.fromisoformat(token_data["created_at"])
-            + timedelta(hours=24),
+                       + timedelta(hours=24),
             user_email=token_data["user_email"],
         )
     else:
@@ -552,9 +557,9 @@ async def validate_reset_token_endpoint(
 
 @router.post("/reset-password")
 async def reset_password(
-    password_reset: PasswordResetConfirm,
-    request: Request,
-    db: Session = Depends(get_db),
+        password_reset: PasswordResetConfirm,
+        request: Request,
+        db: Session = Depends(get_db),
 ):
     """Reset password using reset token."""
     client_ip = get_client_ip(request) if request else "unknown"
@@ -767,7 +772,7 @@ async def resend_verification(current_user: User = Depends(get_current_user)):
 
 @router.delete("/me")
 async def delete_account(
-    current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
+        current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ):
     """Delete current user account."""
     # In production, this would require additional confirmation

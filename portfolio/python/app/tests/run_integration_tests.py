@@ -22,7 +22,7 @@ def main():
     
     # Check if we're in the right directory
     if not (project_root / "app").exists():
-        print("❌ Error: Please run this script from the portfolio/python/api directory")
+        print("❌ Error: Please run this script from the portfolio/python/app directory")
         print(f"   Current directory: {os.getcwd()}")
         print(f"   Expected to find: {project_root / 'app'}")
         sys.exit(1)

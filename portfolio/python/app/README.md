@@ -40,18 +40,21 @@ api/
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/portfolia/portfolia-api.git
    cd portfolia-api
    ```
 
 2. **Create virtual environment**
+
    ```bash
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
 3. **Install dependencies**
+
    ```bash
    pip install -e .
    # Or for development:
@@ -59,12 +62,14 @@ api/
    ```
 
 4. **Set up environment variables**
+
    ```bash
    cp app/config.env.example app/.env
    # Edit .env with your configuration
    ```
 
 5. **Set up database**
+
    ```bash
    # Run database migrations
    alembic upgrade head

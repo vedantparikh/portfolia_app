@@ -16,9 +16,9 @@ from pathlib import Path
 # Add the current directory to Python path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from app.config import settings
+from config import settings
 from app.core.database.connection import init_db, create_tables
-from app.core.database.init_db import init_database
+from core.database.init_db import init_database
 
 # Configure logging
 logging.basicConfig(

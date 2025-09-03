@@ -46,7 +46,7 @@ def test_health_detailed_endpoint():
 
 def test_test_router_endpoint():
     """Test the test router endpoint."""
-    response = client.get("/api/v1/test/")
+    response = client.get("/app/v1/test/")
     assert response.status_code == 200
     data = response.json()
     assert data["message"] == "Test endpoint working!"
@@ -56,7 +56,7 @@ def test_test_router_endpoint():
 
 def test_test_router_health():
     """Test the test router health endpoint."""
-    response = client.get("/api/v1/test/health")
+    response = client.get("/app/v1/test/health")
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "healthy"
@@ -71,7 +71,7 @@ def test_openapi_docs():
 
 def test_openapi_schema():
     """Test that OpenAPI schema is available."""
-    response = client.get("/api/v1/openapi.json")
+    response = client.get("/app/v1/openapi.json")
     assert response.status_code == 200
     data = response.json()
     assert "openapi" in data

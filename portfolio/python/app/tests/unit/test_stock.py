@@ -121,9 +121,9 @@ class TestStockRouter:
     def test_get_symbols_success_authenticated(self, client, sample_quotes_data):
         """Test successful symbol search for authenticated user."""
         # Setup mocks
-        with patch("api.v1.market.stock.search", return_value=sample_quotes_data):
+        with patch("app.v1.market.stock.search", return_value=sample_quotes_data):
             with patch(
-                "api.v1.market.stock.get_optional_current_user",
+                "app.v1.market.stock.get_optional_current_user",
                 return_value={"id": 1, "username": "testuser"},
             ):
                 # Make request
@@ -139,15 +139,15 @@ class TestStockRouter:
     def test_get_symbols_success_unauthenticated(self, client, sample_quotes_data):
         """Test successful symbol search for unauthenticated user."""
         # Setup mocks
-        with patch("api.v1.market.stock.search", return_value=sample_quotes_data):
+        with patch("app.v1.market.stock.search", return_value=sample_quotes_data):
             with patch(
-                "api.v1.market.stock.get_optional_current_user", return_value=None
+                "app.v1.market.stock.get_optional_current_user", return_value=None
             ):
                 with patch(
-                    "api.v1.market.stock.get_client_ip", return_value="127.0.0.1"
+                    "app.v1.market.stock.get_client_ip", return_value="127.0.0.1"
                 ):
                     with patch(
-                        "api.v1.market.stock.is_rate_limited", return_value=False
+                        "app.v1.market.stock.is_rate_limited", return_value=False
                     ):
                         # Make request
                         response = client.get("/market/symbols?name=AAPL")
@@ -160,9 +160,9 @@ class TestStockRouter:
     def test_get_symbols_rate_limited(self, client):
         """Test rate limiting for unauthenticated user."""
         # Setup mocks
-        with patch("api.v1.market.stock.get_optional_current_user", return_value=None):
-            with patch("api.v1.market.stock.get_client_ip", return_value="127.0.0.1"):
-                with patch("api.v1.market.stock.is_rate_limited", return_value=True):
+        with patch("app.v1.market.stock.get_optional_current_user", return_value=None):
+            with patch("app.v1.market.stock.get_client_ip", return_value="127.0.0.1"):
+                with patch("app.v1.market.stock.is_rate_limited", return_value=True):
                     # Make request
                     response = client.get("/market/symbols?name=AAPL")
 
@@ -177,11 +177,11 @@ class TestStockRouter:
         """Test successful fresh data retrieval for authenticated user."""
         # Setup mocks
         with patch(
-            "api.v1.market.stock.market_data_service.fetch_ticker_data",
+            "app.v1.market.stock.market_data_service.fetch_ticker_data",
             return_value=sample_market_data,
         ):
             with patch(
-                "api.v1.market.stock.get_optional_current_user",
+                "app.v1.market.stock.get_optional_current_user",
                 return_value={"id": 1, "username": "testuser"},
             ):
                 # Make request
@@ -201,9 +201,9 @@ class TestStockRouter:
     def test_get_symbol_data_fresh_rate_limited(self, client):
         """Test rate limiting for fresh data endpoint."""
         # Setup mocks
-        with patch("api.v1.market.stock.get_optional_current_user", return_value=None):
-            with patch("api.v1.market.stock.get_client_ip", return_value="127.0.0.1"):
-                with patch("api.v1.market.stock.is_rate_limited", return_value=True):
+        with patch("app.v1.market.stock.get_optional_current_user", return_value=None):
+            with patch("app.v1.market.stock.get_client_ip", return_value="127.0.0.1"):
+                with patch("app.v1.market.stock.is_rate_limited", return_value=True):
                     # Make request
                     response = client.get("/market/symbol-data/fresh?name=AAPL")
 
@@ -215,11 +215,11 @@ class TestStockRouter:
         """Test fresh data endpoint with exception."""
         # Setup mocks
         with patch(
-            "api.v1.market.stock.market_data_service.fetch_ticker_data",
+            "app.v1.market.stock.market_data_service.fetch_ticker_data",
             side_effect=Exception("Service Error"),
         ):
             with patch(
-                "api.v1.market.stock.get_optional_current_user",
+                "app.v1.market.stock.get_optional_current_user",
                 return_value={"id": 1, "username": "testuser"},
             ):
                 # Make request
@@ -237,10 +237,10 @@ class TestStockRouter:
         # Setup mocks - mock the method to accept any arguments including append
         mock_get_data = AsyncMock(return_value=sample_market_data)
         with patch(
-            "api.v1.market.stock.market_data_service.get_market_data", mock_get_data
+            "app.v1.market.stock.market_data_service.get_market_data", mock_get_data
         ):
             with patch(
-                "api.v1.market.stock.get_optional_current_user",
+                "app.v1.market.stock.get_optional_current_user",
                 return_value={"id": 1, "username": "testuser"},
             ):
                 # Make request - must include both start_date and end_date to avoid UnboundLocalError
@@ -263,10 +263,10 @@ class TestStockRouter:
         # Setup mocks - mock the method to accept any arguments including append
         mock_get_data = AsyncMock(return_value=sample_market_data)
         with patch(
-            "api.v1.market.stock.market_data_service.get_market_data", mock_get_data
+            "app.v1.market.stock.market_data_service.get_market_data", mock_get_data
         ):
             with patch(
-                "api.v1.market.stock.get_optional_current_user",
+                "app.v1.market.stock.get_optional_current_user",
                 return_value={"id": 1, "username": "testuser"},
             ):
                 # Make request with dates
@@ -306,11 +306,11 @@ class TestStockRouter:
         """Test local data endpoint with no data available."""
         # Setup mocks
         with patch(
-            "api.v1.market.stock.market_data_service.get_market_data",
+            "app.v1.market.stock.market_data_service.get_market_data",
             AsyncMock(return_value=None),
         ):
             with patch(
-                "api.v1.market.stock.get_optional_current_user",
+                "app.v1.market.stock.get_optional_current_user",
                 return_value={"id": 1, "username": "testuser"},
             ):
                 # Make request - must include both start_date and end_date to avoid UnboundLocalError
@@ -329,11 +329,11 @@ class TestStockRouter:
         """Test intelligent data selection with fresh local data."""
         # Setup mocks - mock the method that's actually called by the endpoint
         with patch(
-            "api.v1.market.stock.market_data_service.get_data_with_fallback",
+            "app.v1.market.stock.market_data_service.get_data_with_fallback",
             AsyncMock(return_value=None),
         ):
             with patch(
-                "api.v1.market.stock.get_optional_current_user",
+                "app.v1.market.stock.get_optional_current_user",
                 return_value={"id": 1, "username": "testuser"},
             ):
                 # Make request
@@ -355,11 +355,11 @@ class TestStockRouter:
         """Test intelligent data selection fetching fresh data."""
         # Setup mocks - mock the method that's actually called by the endpoint
         with patch(
-            "api.v1.market.stock.market_data_service.get_data_with_fallback",
+            "app.v1.market.stock.market_data_service.get_data_with_fallback",
             AsyncMock(return_value=None),
         ):
             with patch(
-                "api.v1.market.stock.get_optional_current_user",
+                "app.v1.market.stock.get_optional_current_user",
                 return_value={"id": 1, "username": "testuser"},
             ):
                 # Make request
@@ -381,11 +381,11 @@ class TestStockRouter:
         """Test intelligent data selection falling back to local data."""
         # Setup mocks - mock the method that's actually called by the endpoint
         with patch(
-            "api.v1.market.stock.market_data_service.get_data_with_fallback",
+            "app.v1.market.stock.market_data_service.get_data_with_fallback",
             AsyncMock(return_value=None),
         ):
             with patch(
-                "api.v1.market.stock.get_optional_current_user",
+                "app.v1.market.stock.get_optional_current_user",
                 return_value={"id": 1, "username": "testuser"},
             ):
                 # Make request
@@ -407,11 +407,11 @@ class TestStockRouter:
         """Test intelligent data selection with no data available."""
         # Setup mocks - mock the method that's actually called by the endpoint
         with patch(
-            "api.v1.market.stock.market_data_service.get_data_with_fallback",
+            "app.v1.market.stock.market_data_service.get_data_with_fallback",
             return_value=None,
         ):
             with patch(
-                "api.v1.market.stock.get_optional_current_user",
+                "app.v1.market.stock.get_optional_current_user",
                 return_value={"id": 1, "username": "testuser"},
             ):
                 # Make request
@@ -428,11 +428,11 @@ class TestStockRouter:
         """Test intelligent data selection with exception."""
         # Setup mocks - mock the method that's actually called by the endpoint
         with patch(
-            "api.v1.market.stock.market_data_service.get_data_with_fallback",
+            "app.v1.market.stock.market_data_service.get_data_with_fallback",
             side_effect=Exception("Service Error"),
         ):
             with patch(
-                "api.v1.market.stock.get_optional_current_user",
+                "app.v1.market.stock.get_optional_current_user",
                 return_value={"id": 1, "username": "testuser"},
             ):
                 # Make request
@@ -446,9 +446,9 @@ class TestStockRouter:
     def test_rate_limiting_different_endpoints(self, client):
         """Test rate limiting across different endpoints."""
         # Setup mocks
-        with patch("api.v1.market.stock.get_optional_current_user", return_value=None):
-            with patch("api.v1.market.stock.get_client_ip", return_value="127.0.0.1"):
-                with patch("api.v1.market.stock.is_rate_limited", return_value=False):
+        with patch("app.v1.market.stock.get_optional_current_user", return_value=None):
+            with patch("app.v1.market.stock.get_client_ip", return_value="127.0.0.1"):
+                with patch("app.v1.market.stock.is_rate_limited", return_value=False):
                     # Test different rate limit configurations
                     endpoints_and_limits = [
                         ("/market/symbols?name=AAPL", "symbol_search", 10, 3600),
@@ -524,7 +524,7 @@ class TestStockRouter:
         """Test that authenticated users are not rate limited."""
         # Setup mock
         with patch(
-            "api.v1.market.stock.get_optional_current_user",
+            "app.v1.market.stock.get_optional_current_user",
             return_value={"id": 1, "username": "testuser"},
         ):
             # Test all endpoints
@@ -545,11 +545,11 @@ class TestStockRouter:
         """Test that DataFrame data is properly transformed to JSON."""
         # Setup mocks
         with patch(
-            "api.v1.market.stock.market_data_service.fetch_ticker_data",
+            "app.v1.market.stock.market_data_service.fetch_ticker_data",
             return_value=sample_market_data,
         ):
             with patch(
-                "api.v1.market.stock.get_optional_current_user",
+                "app.v1.market.stock.get_optional_current_user",
                 return_value={"id": 1, "username": "testuser"},
             ):
                 # Make request
@@ -577,7 +577,7 @@ class TestStockRouter:
         """Test handling of various yahooquery API failure scenarios."""
         # Setup mocks
         with patch(
-            "api.v1.market.stock.get_optional_current_user",
+            "app.v1.market.stock.get_optional_current_user",
             return_value={"id": 1, "username": "testuser"},
         ):
             # Test different failure scenarios
@@ -589,7 +589,7 @@ class TestStockRouter:
             ]
 
             for response_data, description in failure_scenarios:
-                with patch("api.v1.market.stock.search", return_value=response_data):
+                with patch("app.v1.market.stock.search", return_value=response_data):
                     # Make request
                     response = client.get("/market/symbols?name=AAPL")
 
@@ -634,15 +634,15 @@ class TestStockRouter:
         """Test that data is consistent across different endpoints."""
         # Setup mocks
         with patch(
-            "api.v1.market.stock.market_data_service.fetch_ticker_data",
+            "app.v1.market.stock.market_data_service.fetch_ticker_data",
             return_value=sample_market_data,
         ):
             with patch(
-                "api.v1.market.stock.market_data_service.get_data_with_fallback",
+                "app.v1.market.stock.market_data_service.get_data_with_fallback",
                 AsyncMock(return_value=None),
             ):
                 with patch(
-                    "api.v1.market.stock.get_optional_current_user",
+                    "app.v1.market.stock.get_optional_current_user",
                     return_value={"id": 1, "username": "testuser"},
                 ):
                     # Test fresh data endpoint
@@ -670,9 +670,9 @@ class TestStockRouter:
         import time
 
         # Setup mocks
-        with patch("api.v1.market.stock.search", return_value=sample_quotes_data):
+        with patch("app.v1.market.stock.search", return_value=sample_quotes_data):
             with patch(
-                "api.v1.market.stock.get_optional_current_user",
+                "app.v1.market.stock.get_optional_current_user",
                 return_value={"id": 1, "username": "testuser"},
             ):
                 results = []

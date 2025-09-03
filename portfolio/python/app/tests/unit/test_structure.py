@@ -32,9 +32,9 @@ class TestPortfoliaStructure(unittest.TestCase):
     def test_api_v1_prefix(self):
         """Test that API v1 endpoints exist."""
         routes = [route.path for route in app.routes]
-        assert "/api/v1/" in routes
+        assert "/app/v1/" in routes
         # Check for test router endpoints
-        assert "/api/v1/health" in routes
+        assert "/app/v1/health" in routes
 
 
 if __name__ == "__main__":
