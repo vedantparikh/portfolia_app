@@ -1,19 +1,24 @@
 import { Calculator, Plus, TrendingDown, TrendingUp, X } from 'lucide-react';
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../contexts/AuthContext';
+import { authUtils, portfolioAPI } from '../../services/api';
 
 const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
-    const [formData, setFormData] = useState({
+    const { isAuthenticated } = useAuth();  // Get the authentication status
+    const [formData, setFormData] = useState({  // State for form data
         portfolio_id: '',
-        type: 'buy',
-        symbol: '',
+        transaction_type: 'buy',
+        asset_id: '',
+        currency: '',
         quantity: '',
         price: '',
-        fees: '',
+        fees: '', 
         notes: '',
         date: new Date().toISOString().split('T')[0]
     });
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(false);  // Loading state
+    const [assets, setAssets] = useState([]);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -38,7 +43,7 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
             return;
         }
 
-        if (!formData.symbol.trim()) {
+        if (!formData.asset_id.trim()) {
             toast.error('Symbol is required');
             return;
         }
@@ -58,8 +63,9 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
 
             const transactionData = {
                 portfolio_id: parseInt(formData.portfolio_id),
-                type: formData.type,
-                symbol: formData.symbol.trim().toUpperCase(),
+                transaction_type: formData.transaction_type,
+                asset_id: formData.asset_id.trim().toUpperCase(),
+                currency: formData.currency,
                 quantity: parseFloat(formData.quantity),
                 price: parseFloat(formData.price),
                 fees: parseFloat(formData.fees) || 0,
@@ -84,7 +90,7 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
                 <div className="flex items-center justify-between p-6 border-b border-dark-700">
                     <div className="flex items-center space-x-3">
                         <div className="w-10 h-10 bg-primary-600/20 rounded-lg flex items-center justify-center">
-                            {formData.type === 'buy' ? (
+                            {formData.transaction_type === 'buy' ? (
                                 <TrendingUp size={20} className="text-success-400" />
                             ) : (
                                 <TrendingDown size={20} className="text-danger-400" />
@@ -105,6 +111,14 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
 
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="p-6 space-y-6 flex-1 overflow-y-auto">
+                    {/* Authentication Status */}
+                    {!isAuthenticated && (
+                        <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-3">
+                            <p className="text-red-400 text-sm">
+                                ⚠️ You need to be logged in to add transactions.
+                            </p>
+                        </div>
+                    )}
                     {/* Transaction Type */}
                     <div>
                         <label className="block text-sm font-medium text-gray-300 mb-3">
@@ -113,8 +127,8 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
                         <div className="grid grid-cols-2 gap-3">
                             <button
                                 type="button"
-                                onClick={() => setFormData(prev => ({ ...prev, type: 'buy' }))}
-                                className={`p-4 rounded-lg border-2 transition-colors ${formData.type === 'buy'
+                                onClick={() => setFormData(prev => ({ ...prev, transaction_type: 'buy' }))}
+                                className={`p-4 rounded-lg border-2 transition-colors ${formData.transaction_type === 'buy'
                                     ? 'border-success-400 bg-success-400/10 text-success-400'
                                     : 'border-dark-600 bg-dark-800 text-gray-300 hover:border-dark-500'
                                     }`}

@@ -55,7 +55,7 @@ const Transactions = () => {
 
             // Load portfolios
             const portfoliosResponse = await portfolioAPI.getPortfolios();
-            setPortfolios(portfoliosResponse.portfolios || []);
+            setPortfolios(portfoliosResponse || []);
 
             // Load transactions
             const transactionsResponse = await transactionAPI.getTransactions({
@@ -155,8 +155,9 @@ const Transactions = () => {
 
     const handleCreateTransaction = async (transactionData) => {
         try {
-            const response = await transactionAPI.createBuyTransaction(transactionData);
-            setTransactions(prev => [response, ...prev]);
+            console.log('[Transactions] Creating transaction with data:', transactionData);
+            const newTransaction = await transactionAPI.createTransaction(transactionData);
+            setTransactions(prev => [newTransaction, ...prev]);
             setShowCreateModal(false);
             toast.success('Transaction created successfully');
         } catch (error) {

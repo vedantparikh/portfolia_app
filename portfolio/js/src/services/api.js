@@ -405,22 +405,12 @@ export const transactionAPI = {
     },
 
     /* 
-      CREATE BUY TRANSACTION - Record a stock purchase
-      Parameters: transactionData (object with portfolio_id, symbol, quantity, price, etc.)
+      CREATE TRANSACTION - Record a stock purchase or sell
+      Parameters: transactionData (object with portfolio_id, transaction_type, symbol, quantity, price, etc.)
       Returns: Server response with created transaction data
     */
-    createBuyTransaction: async (transactionData) => {
-        const response = await api.post('/transactions/buy', transactionData);
-        return response.data;
-    },
-
-    /* 
-      CREATE SELL TRANSACTION - Record a stock sale
-      Parameters: transactionData (object with portfolio_id, symbol, quantity, price, etc.)
-      Returns: Server response with created transaction data
-    */
-    createSellTransaction: async (transactionData) => {
-        const response = await api.post('/transactions/sell', transactionData);
+    createTransaction: async (transactionData) => {
+        const response = await api.post('/transactions/', transactionData);
         return response.data;
     },
 
