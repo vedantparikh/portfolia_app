@@ -19,7 +19,7 @@ services:
     ports:
       - 3000:3000
     env_file:
-      - ./python/api/.env.docker
+      - ./python/app/.env.docker
     networks:
       - portfolio_network
     healthcheck:
@@ -31,12 +31,12 @@ services:
       
   api:
     build: 
-      context: ./python/api
+      context: ./python/app
       dockerfile: Dockerfile
     ports:
       - "${API_PORT}:8000"
     env_file:
-      - ./python/api/.env.docker
+      - ./python/app/.env.docker
     depends_on:
       postgres:
         condition: service_healthy
@@ -44,15 +44,15 @@ services:
         condition: service_healthy
     volumes:
       # Development: Mount source code for live reload (exclude cache)
-      - ./python/api/app:/app/app:delegated
-      - ./python/api/schemas:/app/schemas:delegated
-      - ./python/api/utils:/app/utils:delegated
-      - ./python/api/api:/app/api:delegated
-      - ./python/api/alembic:/app/alembic:delegated
-      - ./python/api/services:/app/services:delegated
-      - ./python/api/start_api.py:/app/start_api.py:delegated
-      - ./python/api/start_api.sh:/app/start_api.sh:delegated
-      - ./python/api/requirements.txt:/app/requirements.txt:delegated
+      - ./python/app/app:/app/app:delegated
+      - ./python/app/schemas:/app/schemas:delegated
+      - ./python/app/utils:/app/utils:delegated
+      - ./python/app/api:/app/api:delegated
+      - ./python/app/alembic:/app/alembic:delegated
+      - ./python/app/services:/app/services:delegated
+      - ./python/app/start_api.py:/app/start_api.py:delegated
+      - ./python/app/start_api.sh:/app/start_api.sh:delegated
+      - ./python/app/requirements.txt:/app/requirements.txt:delegated
     networks:
       - portfolio_network
     restart: unless-stopped
@@ -65,11 +65,11 @@ services:
 
   data-service:
     build: 
-      context: ./python/api
+      context: ./python/app
       dockerfile: Dockerfile
     command: ["python", "start_data_service.py"]
     env_file:
-      - ./python/api/.env.docker
+      - ./python/app/.env.docker
     depends_on:
       postgres:
         condition: service_healthy
@@ -77,11 +77,11 @@ services:
         condition: service_healthy
     volumes:
       # Mount source code for live reload
-      - ./python/api/app:/app/app:delegated
-      - ./python/api/schemas:/app/schemas:delegated
-      - ./python/api/services:/app/services:delegated
-      - ./python/api/start_data_service.py:/app/start_data_service.py:delegated
-      - ./python/api/requirements.txt:/app/requirements.txt:delegated
+      - ./python/app/app:/app/app:delegated
+      - ./python/app/schemas:/app/schemas:delegated
+      - ./python/app/services:/app/services:delegated
+      - ./python/app/start_data_service.py:/app/start_data_service.py:delegated
+      - ./python/app/requirements.txt:/app/requirements.txt:delegated
     networks:
       - portfolio_network
     restart: unless-stopped
@@ -94,7 +94,7 @@ services:
 
   postgres:
     build:
-      context: ./python/api
+      context: ./python/app
       dockerfile: Dockerfile.postgres
     ports:
       - "${POSTGRES_PORT}:5432"
@@ -111,7 +111,7 @@ services:
 
   redis:
     build:
-      context: ./python/api
+      context: ./python/app
       dockerfile: Dockerfile.redis
     ports:
       - "${REDIS_PORT}:6379"
