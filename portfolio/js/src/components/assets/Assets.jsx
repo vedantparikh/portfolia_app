@@ -13,6 +13,7 @@ import {
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { marketAPI } from '../../services/api';
+import { Sidebar } from '../shared';
 import AssetCard from './AssetCard';
 import AssetFilters from './AssetFilters';
 import AssetModal from './AssetModal';
@@ -157,6 +158,16 @@ const Assets = () => {
         setFilters(prev => ({ ...prev, ...newFilters }));
     };
 
+    const handleQuickAction = (action) => {
+        switch (action) {
+            case 'refresh':
+                handleRefresh();
+                break;
+            default:
+                break;
+        }
+    };
+
     const getTotalStats = () => {
         const totalMarketCap = filteredAssets.reduce((sum, asset) => sum + (asset.market_cap || 0), 0);
         const totalVolume = filteredAssets.reduce((sum, asset) => sum + (asset.total_volume || 0), 0);
@@ -186,8 +197,19 @@ const Assets = () => {
     }
 
     return (
-        <div className="min-h-screen gradient-bg">
-            <div className="max-w-7xl mx-auto p-6">
+        <div className="min-h-screen gradient-bg flex">
+            <Sidebar
+                currentView="assets"
+                onRefresh={handleRefresh}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                showFilters={showFilters}
+                onToggleFilters={() => setShowFilters(!showFilters)}
+                stats={stats}
+                onQuickAction={handleQuickAction}
+            />
+            <div className="flex-1 overflow-y-auto">
+                <div className="max-w-7xl mx-auto p-6">
                 {/* Header */}
                 <div className="mb-8">
                     <div className="flex items-center justify-between mb-4">
@@ -381,6 +403,7 @@ const Assets = () => {
                         }}
                     />
                 )}
+                </div>
             </div>
         </div>
     );

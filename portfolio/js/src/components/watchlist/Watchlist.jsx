@@ -1,14 +1,15 @@
-import { ArrowLeft, Bookmark, Plus, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Bookmark, Edit3, MoreVertical, Plus, RefreshCw, Star, Trash2 } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { watchlistAPI } from '../../services/api';
 import EmailVerificationPrompt from '../auth/EmailVerificationPrompt';
+import { Sidebar } from '../shared';
 import AddSymbolModal from './AddSymbolModal';
 import CreateWatchlistModal from './CreateWatchlistModal';
+import EditWatchlistModal from './EditWatchlistModal';
 import WatchlistContent from './WatchlistContent';
-import WatchlistSidebar from './WatchlistSidebar';
 
 const Watchlist = () => {
     const navigate = useNavigate();
@@ -23,6 +24,12 @@ const Watchlist = () => {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
     const [refreshInterval, setRefreshInterval] = useState(30000); // 30 seconds default
+    const [isMobile, setIsMobile] = useState(false);
+    const [sidebarOpen, setSidebarOpen] = useState(true);
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [editingWatchlist, setEditingWatchlist] = useState(null);
+    const [showDropdown, setShowDropdown] = useState(null);
+    const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'content'
     
     // useRef to store the interval ID so we can clear it later
     const refreshIntervalRef = useRef(null);
@@ -30,6 +37,17 @@ const Watchlist = () => {
     // Load watchlists on component mount
     useEffect(() => {
         loadWatchlists();
+    }, []);
+
+    // Check for mobile screen size
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+        
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
     // Set up automatic refresh when component mounts and selectedWatchlist changes
@@ -116,6 +134,61 @@ const Watchlist = () => {
         toast.success('Watchlist data refreshed');
     };
 
+    const handleQuickAction = (action) => {
+        switch (action) {
+            case 'create-portfolio':
+                navigate('/portfolio');
+                break;
+            case 'create-transaction':
+                navigate('/transactions');
+                break;
+            case 'refresh':
+                handleManualRefresh();
+                break;
+            default:
+                break;
+        }
+    };
+
+    const handleEditWatchlist = (watchlist) => {
+        setEditingWatchlist(watchlist);
+        setShowEditModal(true);
+        setShowDropdown(null);
+    };
+
+    const handleDeleteWatchlist = (watchlist) => {
+        if (window.confirm(`Are you sure you want to delete "${watchlist.name}"? This action cannot be undone.`)) {
+            deleteWatchlist(watchlist.id);
+        }
+        setShowDropdown(null);
+    };
+
+    const getWatchlistColor = (watchlist) => {
+        if (watchlist.color) {
+            return watchlist.color;
+        }
+        // Fallback colors based on watchlist ID for consistency
+        const fallbackColors = [
+            '#3B82F6', // blue
+            '#10B981', // emerald
+            '#F59E0B', // amber
+            '#EF4444', // red
+            '#8B5CF6', // violet
+            '#06B6D4', // cyan
+            '#84CC16', // lime
+            '#F97316', // orange
+        ];
+        return fallbackColors[watchlist.id % fallbackColors.length];
+    };
+
+    const sortedWatchlists = [...watchlists].sort((a, b) => {
+        // Default watchlist first
+        if (a.is_default && !b.is_default) return -1;
+        if (!a.is_default && b.is_default) return 1;
+        // Then by name
+        return a.name.localeCompare(b.name);
+    });
+
     const handleCreateWatchlist = async (watchlistData) => {
         try {
             console.log('Creating watchlist with data:', watchlistData);
@@ -148,7 +221,7 @@ const Watchlist = () => {
         }
     };
 
-    const handleDeleteWatchlist = async (watchlistId) => {
+    const deleteWatchlist = async (watchlistId) => {
         try {
             await watchlistAPI.deleteWatchlist(watchlistId);
             setWatchlists(prev => prev.filter(w => w.id !== watchlistId));
@@ -259,10 +332,12 @@ const Watchlist = () => {
             // Load the full watchlist with items
             const fullWatchlist = await watchlistAPI.getWatchlist(watchlist.id, true);
             setSelectedWatchlist(fullWatchlist);
+            setViewMode('content');
         } catch (error) {
             console.error('Failed to load watchlist items:', error);
             // Fallback to the basic watchlist data
             setSelectedWatchlist(watchlist);
+            setViewMode('content');
             toast.error('Failed to load watchlist items');
         }
     };
@@ -275,6 +350,11 @@ const Watchlist = () => {
                 item.id === updatedItem.id ? updatedItem : item
             )
         }));
+    };
+
+    const handleBackToGrid = () => {
+        setViewMode('grid');
+        setSelectedWatchlist(null);
     };
 
     const filteredWatchlists = watchlists.filter(watchlist => {
@@ -302,22 +382,41 @@ const Watchlist = () => {
 
     return (
         <div className="min-h-screen gradient-bg flex">
-            {/* Watchlist Sidebar */}
-            <WatchlistSidebar
-                watchlists={filteredWatchlists}
-                selectedWatchlist={selectedWatchlist}
-                onSelectWatchlist={handleSelectWatchlist}
-                onCreateWatchlist={() => setShowCreateModal(true)}
-                onUpdateWatchlist={handleUpdateWatchlist}
-                onDeleteWatchlist={handleDeleteWatchlist}
-                searchTerm={searchTerm}
-                onSearchChange={setSearchTerm}
-                filterType={filterType}
-                onFilterChange={setFilterType}
+            {/* Mobile sidebar overlay */}
+            {isMobile && sidebarOpen && (
+                <div
+                    className="fixed inset-0 bg-black bg-opacity-50 z-40"
+                    onClick={() => setSidebarOpen(false)}
+                />
+            )}
+
+            {/* Shared Sidebar */}
+            <Sidebar
+                currentView="watchlist"
+                onRefresh={handleManualRefresh}
+                onQuickAction={handleQuickAction}
+                isMobile={isMobile}
+                isOpen={sidebarOpen}
+                onClose={() => setSidebarOpen(false)}
+                onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
             />
 
             {/* Main Content */}
             <div className="flex-1 flex flex-col">
+                {/* Mobile Header */}
+                {isMobile && (
+                    <div className="bg-dark-900 border-b border-dark-700 p-4 flex items-center justify-between">
+                        <button
+                            onClick={() => setSidebarOpen(true)}
+                            className="p-2 rounded-lg hover:bg-dark-800 transition-colors"
+                        >
+                            <Bookmark size={20} className="text-gray-400" />
+                        </button>
+                        <h1 className="text-lg font-semibold text-gray-100">Watchlists</h1>
+                        <div className="w-10" /> {/* Spacer for centering */}
+                    </div>
+                )}
+
                 {/* Email Verification Prompt */}
                 {user && !user.is_verified && (
                     <div className="px-6 pt-6">
@@ -329,54 +428,52 @@ const Watchlist = () => {
                 <header className="bg-dark-900/80 backdrop-blur-sm border-b border-dark-700 px-6 py-4">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
-                            <button
-                                onClick={() => navigate('/dashboard')}
-                                className="flex items-center space-x-2 px-3 py-2 text-gray-400 hover:text-gray-100 hover:bg-dark-800 rounded-lg transition-colors"
-                            >
-                                <ArrowLeft size={20} />
-                                <span>Back to Dashboard</span>
-                            </button>
-                            <div className="w-px h-6 bg-dark-600"></div>
-                            <Bookmark size={24} className="text-primary-400" />
-                            <div>
-                                <h1 className="text-xl font-semibold text-gray-100">Watchlists</h1>
-                                <p className="text-sm text-gray-400">
-                                    {selectedWatchlist ? `${selectedWatchlist.name} • ${selectedWatchlist.items?.length || 0} symbols` : 'Select a watchlist'}
-                                </p>
-                            </div>
+                            {viewMode === 'content' ? (
+                                /* Content View Header */
+                                <>
+                                    <button
+                                        onClick={handleBackToGrid}
+                                        className="flex items-center space-x-2 px-3 py-2 text-gray-400 hover:text-gray-100 hover:bg-dark-800 rounded-lg transition-colors"
+                                    >
+                                        <ArrowLeft size={20} />
+                                        <span>Back to Watchlists</span>
+                                    </button>
+                                    <div className="w-px h-6 bg-dark-600"></div>
+                                    <Bookmark size={24} className="text-primary-400" />
+                                    <div>
+                                        <h1 className="text-xl font-semibold text-gray-100">
+                                            {selectedWatchlist?.name || 'Watchlist'}
+                                        </h1>
+                                        <p className="text-sm text-gray-400">
+                                            {selectedWatchlist?.items?.length || 0} symbols • {selectedWatchlist?.is_public ? 'Public' : 'Private'}
+                                        </p>
+                                    </div>
+                                </>
+                            ) : (
+                                /* Grid View Header */
+                                <>
+                                    <button
+                                        onClick={() => navigate('/dashboard')}
+                                        className="flex items-center space-x-2 px-3 py-2 text-gray-400 hover:text-gray-100 hover:bg-dark-800 rounded-lg transition-colors"
+                                    >
+                                        <ArrowLeft size={20} />
+                                        <span>Back to Dashboard</span>
+                                    </button>
+                                    <div className="w-px h-6 bg-dark-600"></div>
+                                    <Bookmark size={24} className="text-primary-400" />
+                                    <div>
+                                        <h1 className="text-xl font-semibold text-gray-100">Watchlists</h1>
+                                        <p className="text-sm text-gray-400">
+                                            Manage your watchlists and track market symbols
+                                        </p>
+                                    </div>
+                                </>
+                            )}
                         </div>
 
                         <div className="flex items-center space-x-3">
-                            {selectedWatchlist && (
+                            {viewMode === 'grid' && (
                                 <>
-                                    {/* Auto-refresh toggle */}
-                                    <div className="flex items-center space-x-2">
-                                        <label className="flex items-center space-x-2 text-sm text-gray-400">
-                                            <input
-                                                type="checkbox"
-                                                checked={autoRefreshEnabled}
-                                                onChange={(e) => setAutoRefreshEnabled(e.target.checked)}
-                                                className="rounded border-dark-600 bg-dark-800 text-primary-600 focus:ring-primary-500"
-                                            />
-                                            <span>Auto-refresh</span>
-                                        </label>
-                                        
-                                        {/* Refresh interval selector */}
-                                        {autoRefreshEnabled && (
-                                            <select
-                                                value={refreshInterval}
-                                                onChange={(e) => setRefreshInterval(Number(e.target.value))}
-                                                className="px-2 py-1 bg-dark-800 border border-dark-600 rounded text-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                            >
-                                                <option value={10000}>10s</option>
-                                                <option value={30000}>30s</option>
-                                                <option value={60000}>1m</option>
-                                                <option value={300000}>5m</option>
-                                            </select>
-                                        )}
-                                    </div>
-
-                                    {/* Manual refresh button */}
                                     <button
                                         onClick={handleManualRefresh}
                                         disabled={isRefreshing}
@@ -390,13 +487,12 @@ const Watchlist = () => {
                                         <span>{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
                                     </button>
 
-                                    {/* Add Symbol button */}
                                     <button
-                                        onClick={() => setShowAddSymbolModal(true)}
+                                        onClick={() => setShowCreateModal(true)}
                                         className="flex items-center space-x-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors"
                                     >
                                         <Plus size={16} />
-                                        <span>Add Symbol</span>
+                                        <span>New Watchlist</span>
                                     </button>
                                 </>
                             )}
@@ -404,13 +500,163 @@ const Watchlist = () => {
                     </div>
                 </header>
 
-                {/* Watchlist Content */}
-                <WatchlistContent
-                    watchlist={selectedWatchlist}
-                    onRemoveSymbol={handleRemoveSymbol}
-                    onReorderItems={handleReorderItems}
-                    onUpdateWatchlist={handleUpdateWatchlistItem}
-                />
+                {/* Main Content Area */}
+                <main className="flex-1 p-6 overflow-auto">
+                    <div className="max-w-7xl mx-auto">
+                        {viewMode === 'content' && selectedWatchlist ? (
+                            /* Watchlist Content View */
+                            <div>
+                                {/* Watchlist Content with inline refresh controls */}
+                                <WatchlistContent
+                                    watchlist={selectedWatchlist}
+                                    onRemoveSymbol={handleRemoveSymbol}
+                                    onReorderItems={handleReorderItems}
+                                    onUpdateWatchlist={handleUpdateWatchlistItem}
+                                    // Pass refresh controls as props to WatchlistContent
+                                    autoRefreshEnabled={autoRefreshEnabled}
+                                    setAutoRefreshEnabled={setAutoRefreshEnabled}
+                                    refreshInterval={refreshInterval}
+                                    setRefreshInterval={setRefreshInterval}
+                                    isRefreshing={isRefreshing}
+                                    onManualRefresh={handleManualRefresh}
+                                    onAddSymbol={() => setShowAddSymbolModal(true)}
+                                />
+                            </div>
+                        ) : (
+                            /* Watchlists Grid View */
+                            <>
+                                {loading ? (
+                                    <div className="flex items-center justify-center py-12">
+                                        <RefreshCw className="w-8 h-8 text-primary-400 animate-spin" />
+                                        <span className="ml-3 text-gray-400">Loading watchlists...</span>
+                                    </div>
+                                ) : sortedWatchlists.length === 0 ? (
+                                    <div className="text-center py-12">
+                                        <Bookmark className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                                        <h3 className="text-xl font-semibold text-gray-300 mb-2">No watchlists yet</h3>
+                                        <p className="text-gray-500 mb-6">Create your first watchlist to start tracking market symbols</p>
+                                        <button
+                                            onClick={() => setShowCreateModal(true)}
+                                            className="btn-primary flex items-center space-x-2 mx-auto"
+                                        >
+                                            <Plus size={16} />
+                                            <span>Create Watchlist</span>
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                        {/* Watchlist Cards */}
+                                        {sortedWatchlists.map((watchlist) => {
+                                            const color = getWatchlistColor(watchlist);
+                                            return (
+                                                <div
+                                                    key={watchlist.id}
+                                                    className="group relative p-6 bg-dark-800 rounded-xl hover:bg-dark-700 transition-all duration-200 cursor-pointer border border-dark-700 hover:border-dark-600"
+                                                    onClick={() => handleSelectWatchlist(watchlist)}
+                                                >
+                                                    {/* Color indicator */}
+                                                    <div 
+                                                        className="absolute top-0 left-0 right-0 h-1 rounded-t-xl"
+                                                        style={{ backgroundColor: color }}
+                                                    />
+
+                                                    {/* Header */}
+                                                    <div className="flex items-start justify-between mb-4">
+                                                        <div className="flex items-center space-x-2">
+                                                            <Bookmark 
+                                                                size={20} 
+                                                                className={watchlist.is_default ? 'text-yellow-400' : 'text-gray-400'} 
+                                                            />
+                                                            {watchlist.is_default && (
+                                                                <Star size={16} className="text-yellow-400" />
+                                                            )}
+                                                        </div>
+                                                        
+                                                        {/* Actions Dropdown */}
+                                                        <div className="relative">
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setShowDropdown(showDropdown === watchlist.id ? null : watchlist.id);
+                                                                }}
+                                                                className="p-1 rounded hover:bg-dark-600 transition-colors opacity-0 group-hover:opacity-100"
+                                                            >
+                                                                <MoreVertical size={16} className="text-gray-400" />
+                                                            </button>
+
+                                                            {showDropdown === watchlist.id && (
+                                                                <div className="absolute right-0 top-8 w-48 bg-dark-800 border border-dark-600 rounded-lg shadow-lg z-10">
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleEditWatchlist(watchlist);
+                                                                        }}
+                                                                        className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:bg-dark-700 transition-colors"
+                                                                    >
+                                                                        <Edit3 size={14} />
+                                                                        <span>Edit</span>
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleDeleteWatchlist(watchlist);
+                                                                        }}
+                                                                        className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                                                                    >
+                                                                        <Trash2 size={14} />
+                                                                        <span>Delete</span>
+                                                                    </button>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Watchlist Info */}
+                                                    <div className="mb-4">
+                                                        <h3 className="text-lg font-semibold text-gray-100 mb-2 truncate">
+                                                            {watchlist.name}
+                                                        </h3>
+                                                        <p className="text-sm text-gray-400 line-clamp-2">
+                                                            {watchlist.description || 'No description'}
+                                                        </p>
+                                                    </div>
+
+                                                    {/* Stats */}
+                                                    <div className="flex items-center justify-between text-sm">
+                                                        <div className="flex items-center space-x-4">
+                                                            <span className="text-gray-400">
+                                                                {watchlist.items?.length || 0} symbols
+                                                            </span>
+                                                            <div 
+                                                                className="w-3 h-3 rounded-full"
+                                                                style={{ backgroundColor: color }}
+                                                            />
+                                                        </div>
+                                                        <div className="text-gray-500">
+                                                            {watchlist.is_public ? 'Public' : 'Private'}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+
+                                        {/* Create New Watchlist Card - Now at the end */}
+                                        <div
+                                            onClick={() => setShowCreateModal(true)}
+                                            className="group cursor-pointer p-6 bg-dark-800 border-2 border-dashed border-gray-600 rounded-xl hover:border-primary-500 hover:bg-dark-700 transition-all duration-200 flex flex-col items-center justify-center min-h-[200px]"
+                                        >
+                                            <div className="w-12 h-12 bg-primary-600/20 rounded-full flex items-center justify-center mb-4 group-hover:bg-primary-600/30 transition-colors">
+                                                <Plus size={24} className="text-primary-400" />
+                                            </div>
+                                            <h3 className="text-lg font-semibold text-gray-100 mb-2">Create New Watchlist</h3>
+                                            <p className="text-sm text-gray-400 text-center">Start tracking your favorite symbols</p>
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </div>
+                </main>
             </div>
 
             {/* Modals */}
@@ -418,6 +664,16 @@ const Watchlist = () => {
                 isOpen={showCreateModal}
                 onClose={() => setShowCreateModal(false)}
                 onCreate={handleCreateWatchlist}
+            />
+
+            <EditWatchlistModal
+                isOpen={showEditModal}
+                onClose={() => {
+                    setShowEditModal(false);
+                    setEditingWatchlist(null);
+                }}
+                watchlist={editingWatchlist}
+                onUpdate={handleUpdateWatchlist}
             />
 
             <AddSymbolModal

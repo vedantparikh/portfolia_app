@@ -4,29 +4,28 @@ import {
     Bell,
     Bookmark,
     DollarSign,
-    LogOut,
     Menu,
     Plus,
     RefreshCw,
-    Settings,
     TrendingDown,
     TrendingUp,
     User,
-    Wallet,
-    X
+    Wallet
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { marketAPI, portfolioAPI, transactionAPI, watchlistAPI } from '../../services/api';
 import EmailVerificationPrompt from '../auth/EmailVerificationPrompt';
+import { Sidebar } from '../shared';
 import MarketInsights from './MarketInsights';
 import PortfolioPerformance from './PortfolioPerformance';
 
 const Dashboard = () => {
-    const { user, logout } = useAuth();
+    const { user } = useAuth();
     const { profile } = useAuth();
     const [sidebarOpen, setSidebarOpen] = useState(true);
+    const [isMobile, setIsMobile] = useState(false);
     const [dashboardData, setDashboardData] = useState({
         portfolios: [],
         recentTransactions: [],
@@ -36,22 +35,20 @@ const Dashboard = () => {
         loading: true
     });
 
-    const handleLogout = async () => {
-        try {
-            await logout();
-            toast.success('Logged out successfully');
-        } catch (error) {
-            toast.error('Logout failed');
-        }
-    };
-
-    const toggleSidebar = () => {
-        setSidebarOpen(!sidebarOpen);
-    };
-
     // Load dashboard data
     useEffect(() => {
         loadDashboardData();
+    }, []);
+
+    // Check for mobile screen size
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+        
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
     const loadDashboardData = async () => {
@@ -146,110 +143,45 @@ const Dashboard = () => {
         toast.success('Dashboard data refreshed');
     };
 
+    const handleQuickAction = (action) => {
+        switch (action) {
+            case 'create-portfolio':
+                // Navigate to portfolio page or open modal
+                window.location.href = '/portfolio';
+                break;
+            case 'create-transaction':
+                // Navigate to transactions page or open modal
+                window.location.href = '/transactions';
+                break;
+            case 'refresh':
+                handleRefresh();
+                break;
+            default:
+                break;
+        }
+    };
+
     return (
         <div className="min-h-screen gradient-bg flex">
             {/* Mobile sidebar overlay */}
-            {sidebarOpen && (
+            {isMobile && sidebarOpen && (
                 <div
-                    className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-                    onClick={toggleSidebar}
+                    className="fixed inset-0 bg-black bg-opacity-50 z-40"
+                    onClick={() => setSidebarOpen(false)}
                 />
             )}
 
-            {/* Left Sidebar */}
-            <div className={`
-        fixed lg:static inset-y-0 left-0 z-50 w-64 bg-dark-900 border-r border-dark-700 
-        transform transition-transform duration-300 ease-in-out lg:translate-x-0
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
-                {/* Sidebar Header */}
-                <div className="flex items-center justify-between p-6 border-b border-dark-700">
-                    <h1 className="text-2xl font-bold text-gradient">Portfolia</h1>
-                    <button
-                        onClick={toggleSidebar}
-                        className="lg:hidden p-2 rounded-lg hover:bg-dark-800 transition-colors"
-                    >
-                        <X size={20} className="text-gray-400" />
-                    </button>
-                </div>
-
-                {/* User Profile Section */}
-                <div className="p-6 border-b border-dark-700">
-                    <div className="flex items-center space-x-3">
-                        <div className="w-12 h-12 bg-primary-600 rounded-full flex items-center justify-center">
-                            <User size={20} className="text-white" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-100 truncate">
-                                {profile?.first_name} {profile?.last_name}
-                            </p>
-                            <p className="text-xs text-gray-400 truncate">
-                                @{user?.username}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Navigation Menu */}
-                <nav className="flex-1 p-4 space-y-2">
-                    <a
-                        href="#dashboard"
-                        className="flex items-center space-x-3 px-3 py-2 rounded-lg bg-primary-600/20 text-primary-400 hover:bg-primary-600/30 transition-colors"
-                    >
-                        <BarChart3 size={18} />
-                        <span>Dashboard</span>
-                    </a>
-
-                    <a
-                        href="/portfolio"
-                        className="flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-300 hover:bg-dark-800 transition-colors"
-                    >
-                        <TrendingUp size={18} />
-                        <span>Portfolio</span>
-                    </a>
-
-                    <a
-                        href="/assets"
-                        className="flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-300 hover:bg-dark-800 transition-colors"
-                    >
-                        <Wallet size={18} />
-                        <span>Assets</span>
-                    </a>
-
-                    <a
-                        href="/transactions"
-                        className="flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-300 hover:bg-dark-800 transition-colors"
-                    >
-                        <Activity size={18} />
-                        <span>Transactions</span>
-                    </a>
-                    <a
-                        href="/watchlist"
-                        className="flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-300 hover:bg-dark-800 transition-colors"
-                    >
-                        <Bookmark size={18} />
-                        <span>Watchlist</span>
-                    </a>
-                    <a
-                        href="#settings"
-                        className="flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-300 hover:bg-dark-800 transition-colors"
-                    >
-                        <Settings size={18} />
-                        <span>Settings</span>
-                    </a>
-                </nav>
-
-                {/* Logout Button */}
-                <div className="p-4 border-t border-dark-700">
-                    <button
-                        onClick={handleLogout}
-                        className="w-full flex items-center justify-center space-x-3 px-4 py-2 rounded-lg bg-danger-600/20 text-danger-400 hover:bg-danger-600/30 transition-colors"
-                    >
-                        <LogOut size={18} />
-                        <span>Logout</span>
-                    </button>
-                </div>
-            </div>
+            {/* Shared Sidebar */}
+            <Sidebar
+                currentView="dashboard"
+                portfolios={dashboardData.portfolios}
+                onRefresh={handleRefresh}
+                onQuickAction={handleQuickAction}
+                isMobile={isMobile}
+                isOpen={sidebarOpen}
+                onClose={() => setSidebarOpen(false)}
+                onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+            />
 
             {/* Main Content */}
             <div className="flex-1 flex flex-col">
@@ -258,7 +190,7 @@ const Dashboard = () => {
                     <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
                             <button
-                                onClick={toggleSidebar}
+                                onClick={() => setSidebarOpen(!sidebarOpen)}
                                 className="lg:hidden p-2 rounded-lg hover:bg-dark-800 transition-colors"
                             >
                                 <Menu size={20} className="text-gray-400" />

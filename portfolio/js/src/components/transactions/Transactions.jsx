@@ -13,6 +13,7 @@ import {
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { portfolioAPI, transactionAPI } from '../../services/api';
+import { Sidebar } from '../shared';
 import CreateTransactionModal from './CreateTransactionModal';
 import EditTransactionModal from './EditTransactionModal';
 import TransactionCard from './TransactionCard';
@@ -209,6 +210,19 @@ const Transactions = () => {
         toast.success('Transaction data refreshed');
     };
 
+    const handleQuickAction = (action) => {
+        switch (action) {
+            case 'create-transaction':
+                setShowCreateModal(true);
+                break;
+            case 'refresh':
+                handleRefresh();
+                break;
+            default:
+                break;
+        }
+    };
+
     const getTransactionStats = () => {
         const totalTransactions = filteredTransactions.length;
         const buyTransactions = filteredTransactions.filter(t => t.type === 'buy').length;
@@ -245,8 +259,23 @@ const Transactions = () => {
     }
 
     return (
-        <div className="min-h-screen gradient-bg">
-            <div className="max-w-7xl mx-auto p-6">
+        <div className="min-h-screen gradient-bg flex">
+            <Sidebar
+                currentView="transactions"
+                portfolios={portfolios}
+                selectedPortfolio={portfolios.find(p => p.id === parseInt(filters.portfolio)) || null}
+                onPortfolioChange={(portfolio) => setFilters(prev => ({ ...prev, portfolio: portfolio?.id || 'all' }))}
+                onRefresh={handleRefresh}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                showFilters={showFilters}
+                onToggleFilters={() => setShowFilters(!showFilters)}
+                stats={stats}
+                recentTransactions={filteredTransactions.slice(0, 5)}
+                onQuickAction={handleQuickAction}
+            />
+            <div className="flex-1 overflow-y-auto">
+                <div className="max-w-7xl mx-auto p-6">
                 {/* Header */}
                 <div className="mb-8">
                     <div className="flex items-center justify-between mb-4">
@@ -437,6 +466,7 @@ const Transactions = () => {
                         onUpdate={handleUpdateTransaction}
                     />
                 )}
+                </div>
             </div>
         </div>
     );

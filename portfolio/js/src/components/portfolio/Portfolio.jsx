@@ -13,6 +13,7 @@ import {
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { portfolioAPI, transactionAPI } from '../../services/api';
+import { Sidebar } from '../shared';
 import CreatePortfolioModal from './CreatePortfolioModal';
 import EditPortfolioModal from './EditPortfolioModal';
 import PortfolioCard from './PortfolioCard';
@@ -30,6 +31,10 @@ const Portfolio = () => {
     const [viewMode, setViewMode] = useState('overview'); // overview, detail, chart
     const [portfolioStats, setPortfolioStats] = useState(null);
     const [transactions, setTransactions] = useState([]);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [showFilters, setShowFilters] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
+    const [sidebarOpen, setSidebarOpen] = useState(false);
 
     // Load portfolios on component mount
     useEffect(() => {
@@ -42,6 +47,17 @@ const Portfolio = () => {
             loadPortfolioDetails(selectedPortfolio.id);
         }
     }, [selectedPortfolio]);
+
+    // Check for mobile screen size
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+        
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
     const loadPortfolios = async () => {
         try {
@@ -207,6 +223,19 @@ const Portfolio = () => {
         toast.success('Portfolio data refreshed');
     };
 
+    const handleQuickAction = (action) => {
+        switch (action) {
+            case 'create-portfolio':
+                setShowCreateModal(true);
+                break;
+            case 'refresh':
+                handleRefresh();
+                break;
+            default:
+                break;
+        }
+    };
+
     const getTotalStats = () => {
         if (!portfolioStats) return null;
 
@@ -243,8 +272,46 @@ const Portfolio = () => {
     }
 
     return (
-        <div className="min-h-screen gradient-bg">
-            <div className="max-w-7xl mx-auto p-6">
+        <div className="min-h-screen gradient-bg flex">
+            <Sidebar
+                currentView="portfolio"
+                portfolios={portfolios}
+                selectedPortfolio={selectedPortfolio}
+                onPortfolioChange={setSelectedPortfolio}
+                onRefresh={handleRefresh}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                showFilters={showFilters}
+                onToggleFilters={() => setShowFilters(!showFilters)}
+                stats={stats}
+                recentTransactions={transactions.slice(0, 5)}
+                onQuickAction={handleQuickAction}
+                isMobile={isMobile}
+                isOpen={sidebarOpen}
+                onClose={() => setSidebarOpen(false)}
+            />
+            {/* Mobile Overlay */}
+            {isMobile && sidebarOpen && (
+                <div 
+                    className="fixed inset-0 bg-black bg-opacity-50 z-40"
+                    onClick={() => setSidebarOpen(false)}
+                />
+            )}
+            <div className="flex-1 overflow-y-auto">
+                {/* Mobile Header */}
+                {isMobile && (
+                    <div className="bg-dark-900 border-b border-dark-700 p-4 flex items-center justify-between">
+                        <button
+                            onClick={() => setSidebarOpen(true)}
+                            className="p-2 rounded-lg hover:bg-dark-800 transition-colors"
+                        >
+                            <BarChart3 size={20} className="text-gray-400" />
+                        </button>
+                        <h1 className="text-lg font-semibold text-gray-100">Portfolio</h1>
+                        <div className="w-10" /> {/* Spacer for centering */}
+                    </div>
+                )}
+                <div className="max-w-7xl mx-auto p-6">
                 {/* Header */}
                 <div className="mb-8">
                     <div className="flex items-center justify-between mb-4">
@@ -534,6 +601,7 @@ const Portfolio = () => {
                         onUpdate={handleUpdatePortfolio}
                     />
                 )}
+                </div>
             </div>
         </div>
     );
