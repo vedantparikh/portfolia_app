@@ -8,7 +8,9 @@ const AssetFilters = ({ filters, onFilterChange }) => {
         { value: 'stock', label: 'Stocks' },
         { value: 'commodity', label: 'Commodities' },
         { value: 'forex', label: 'Forex' },
-        { value: 'etf', label: 'ETFs' }
+        { value: 'etf', label: 'ETFs' },
+        { value: 'bond', label: 'Bonds' },
+        { value: 'real_estate', label: 'Real Estate' }
     ];
 
     const priceRanges = [
@@ -20,6 +22,14 @@ const AssetFilters = ({ filters, onFilterChange }) => {
         { value: '1000-', label: 'Over $1,000' }
     ];
 
+    const valueRanges = [
+        { value: 'all', label: 'All Values' },
+        { value: '0-100', label: 'Under $100' },
+        { value: '100-1000', label: '$100 - $1,000' },
+        { value: '1000-10000', label: '$1,000 - $10,000' },
+        { value: '10000-', label: 'Over $10,000' }
+    ];
+
     const changeRanges = [
         { value: 'all', label: 'All Changes' },
         { value: 'positive', label: 'Gainers' },
@@ -28,11 +38,13 @@ const AssetFilters = ({ filters, onFilterChange }) => {
     ];
 
     const sortOptions = [
-        { value: 'market_cap', label: 'Market Cap' },
-        { value: 'price', label: 'Price' },
-        { value: 'change', label: '24h Change' },
-        { value: 'volume', label: 'Volume' },
-        { value: 'name', label: 'Name' }
+        { value: 'symbol', label: 'Symbol' },
+        { value: 'name', label: 'Name' },
+        { value: 'quantity', label: 'Quantity' },
+        { value: 'purchase_price', label: 'Purchase Price' },
+        { value: 'current_price', label: 'Current Price' },
+        { value: 'total_value', label: 'Total Value' },
+        { value: 'purchase_date', label: 'Purchase Date' }
     ];
 
     const sortOrders = [
@@ -48,18 +60,20 @@ const AssetFilters = ({ filters, onFilterChange }) => {
         onFilterChange({
             category: 'all',
             priceRange: 'all',
+            valueRange: 'all',
             changeRange: 'all',
-            sortBy: 'market_cap',
-            sortOrder: 'desc'
+            sortBy: 'symbol',
+            sortOrder: 'asc'
         });
     };
 
     const hasActiveFilters = () => {
         return filters.category !== 'all' ||
             filters.priceRange !== 'all' ||
+            filters.valueRange !== 'all' ||
             filters.changeRange !== 'all' ||
-            filters.sortBy !== 'market_cap' ||
-            filters.sortOrder !== 'desc';
+            filters.sortBy !== 'symbol' ||
+            filters.sortOrder !== 'asc';
     };
 
     return (
@@ -80,7 +94,7 @@ const AssetFilters = ({ filters, onFilterChange }) => {
                 )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
                 {/* Category Filter */}
                 <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -110,6 +124,24 @@ const AssetFilters = ({ filters, onFilterChange }) => {
                         className="input-field w-full"
                     >
                         {priceRanges.map((range) => (
+                            <option key={range.value} value={range.value}>
+                                {range.label}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* Value Range Filter */}
+                <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Total Value
+                    </label>
+                    <select
+                        value={filters.valueRange || 'all'}
+                        onChange={(e) => handleFilterChange('valueRange', e.target.value)}
+                        className="input-field w-full"
+                    >
+                        {valueRanges.map((range) => (
                             <option key={range.value} value={range.value}>
                                 {range.label}
                             </option>

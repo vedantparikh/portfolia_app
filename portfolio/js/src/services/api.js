@@ -380,6 +380,81 @@ export const marketAPI = {
 };
 
 /* 
+  USER ASSETS API METHODS - User asset management
+  These methods handle all user asset-related API calls for CRUD operations
+*/
+export const userAssetsAPI = {
+    /* 
+      GET USER ASSETS - Get all assets owned by the current user
+      Parameters: params (object with query parameters like limit, category)
+      Returns: Server response with array of user asset objects
+    */
+    getUserAssets: async (params = {}) => {
+        const response = await api.get('/assets', { params });
+        return response.data;
+    },
+
+    /* 
+      CREATE USER ASSET - Add a new asset to user's portfolio
+      Parameters: assetData (object with symbol, quantity, purchase_price, etc.)
+      Returns: Server response with created asset data
+    */
+    createUserAsset: async (assetData) => {
+        const response = await api.post('/assets', assetData);
+        return response.data;
+    },
+
+    /* 
+      GET USER ASSET - Get a specific user asset by ID
+      Parameters: id (string or number)
+      Returns: Server response with user asset details
+    */
+    getUserAsset: async (id) => {
+        const response = await api.get(`/assets/${id}`);
+        return response.data;
+    },
+
+    /* 
+      UPDATE USER ASSET - Update an existing user asset
+      Parameters: id (string or number), assetData (object with updated information)
+      Returns: Server response with updated asset data
+    */
+    updateUserAsset: async (id, assetData) => {
+        const response = await api.put(`/assets/${id}`, assetData);
+        return response.data;
+    },
+
+    /* 
+      DELETE USER ASSET - Remove an asset from user's portfolio
+      Parameters: id (string or number)
+      Returns: Server response confirming deletion
+    */
+    deleteUserAsset: async (id) => {
+        const response = await api.delete(`/assets/${id}`);
+        return response.data;
+    },
+
+    /* 
+      GET USER ASSET SUMMARY - Get summary statistics for user's assets
+      Returns: Server response with asset summary data
+    */
+    getUserAssetSummary: async () => {
+        const response = await api.get('/assets/summary');
+        return response.data;
+    },
+
+    /* 
+      BULK UPDATE USER ASSETS - Update multiple assets at once
+      Parameters: updates (array of asset update objects)
+      Returns: Server response with updated assets data
+    */
+    bulkUpdateUserAssets: async (updates) => {
+        const response = await api.put('/assets/bulk', { updates });
+        return response.data;
+    },
+};
+
+/* 
   TRANSACTION API METHODS - Buy/sell transaction management
   These methods handle all transaction-related API calls
 */
