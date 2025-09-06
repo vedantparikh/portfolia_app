@@ -11,8 +11,7 @@ from pathlib import Path
 
 from sqlalchemy import select
 
-from app.core.database.connection import get_db_session
-from app.core.database.connection import init_db
+from app.core.database.connection import get_db_session, init_db
 from app.core.database.models.market_data import MarketData
 from app.core.services.data_scheduler import data_scheduler
 from app.core.services.market_data_service import market_data_service

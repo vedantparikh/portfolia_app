@@ -17,8 +17,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from app.config import settings
-from app.core.database.connection import create_tables
-from app.core.database.connection import init_db
+from app.core.database.connection import create_tables, init_db
 from app.core.database.init_db import init_database
 
 # Configure logging

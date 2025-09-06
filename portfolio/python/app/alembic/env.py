@@ -1,19 +1,15 @@
 """Alembic environment configuration for Portfolia API."""
 
-import os
 import sys
 from logging.config import fileConfig
 from pathlib import Path
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
-from sqlalchemy.engine import Connection
+from sqlalchemy import engine_from_config, pool
 
 # Add the parent directory to Python path so we can import 'app' module
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from alembic import context
-
 from app.config import settings
 from app.core.database.connection import Base
 
