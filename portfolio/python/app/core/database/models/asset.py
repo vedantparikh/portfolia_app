@@ -26,9 +26,9 @@ class AssetType(enum.Enum):
     BOND = "BOND"
     INDEX = "INDEX"
     CASH = "CASH"
-    MUTUAL_FUND = "MUTUALFUND"
+    MUTUALFUND = "MUTUALFUND"
     COMMODITY = "COMMODITY"
-    CRYPTO = "CRYPTOCURRENCY"
+    CRYPTOCURRENCY = "CRYPTOCURRENCY"
     REAL_ESTATE = "REAL_ESTATE"
     OTHER = "OTHER"
     FUTURE = "FUTURE"
@@ -77,6 +77,21 @@ class Asset(Base):
     )
     transactions = relationship(
         "Transaction", back_populates="asset", cascade="all, delete-orphan"
+    )
+    performance_metrics = relationship(
+        "AssetPerformanceMetrics", back_populates="asset", cascade="all, delete-orphan"
+    )
+    portfolio_allocations = relationship(
+        "PortfolioAllocation", back_populates="asset", cascade="all, delete-orphan"
+    )
+    benchmark_portfolios = relationship(
+        "PortfolioBenchmark", back_populates="benchmark_asset", cascade="all, delete-orphan"
+    )
+    correlations_as_asset1 = relationship(
+        "AssetCorrelation", foreign_keys="AssetCorrelation.asset1_id", cascade="all, delete-orphan"
+    )
+    correlations_as_asset2 = relationship(
+        "AssetCorrelation", foreign_keys="AssetCorrelation.asset2_id", cascade="all, delete-orphan"
     )
 
     # Indexes for performance

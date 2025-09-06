@@ -4,6 +4,8 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
+from app.core.database.models.asset import AssetType
+
 
 class PortfolioBase(BaseModel):
     name: str = Field(..., max_length=255)
@@ -81,10 +83,18 @@ class PortfolioAssetWithDetails(PortfolioAsset):
 
 class AssetBase(BaseModel):
     symbol: str
-    currency: str
-    quantity: Decimal = Field(...)
-    purchase_price: Decimal = Field(...)
-    portfolio_id: int
+    name: str
+    asset_type: AssetType
+    exchange: Optional[str] = None
+    isin: Optional[str] = None
+    cusip: Optional[str] = None
+    sector: Optional[str] = None
+    industry: Optional[str] = None
+    country: Optional[str] = None
+    description: Optional[str] = None
+    is_active: bool = Field(default=True)
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
 
 class AssetCreate(AssetBase):
@@ -92,9 +102,17 @@ class AssetCreate(AssetBase):
 
 
 class AssetUpdate(BaseModel):
-    quantity: Optional[Decimal] = Field(None)
-    purchase_price: Optional[Decimal] = Field(None)
-    currency: Optional[str] = None
+    name: Optional[str] = Field(None)
+    asset_type: Optional[AssetType] = Field(None)
+    currency: Optional[str] = Field(None)
+    exchange: Optional[str] = Field(None)
+    isin: Optional[str] = Field(None)
+    cusip: Optional[str] = Field(None)
+    sector: Optional[str] = Field(None)
+    industry: Optional[str] = Field(None)
+    country: Optional[str] = Field(None)
+    description: Optional[str] = Field(None)
+    is_active: Optional[bool] = Field(None)
 
 
 class Asset(AssetBase):

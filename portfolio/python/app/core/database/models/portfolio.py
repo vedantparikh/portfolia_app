@@ -47,6 +47,21 @@ class Portfolio(Base):
     transactions = relationship(
         "Transaction", back_populates="portfolio", cascade="all, delete-orphan"
     )
+    performance_history = relationship(
+        "PortfolioPerformanceHistory", back_populates="portfolio", cascade="all, delete-orphan"
+    )
+    allocations = relationship(
+        "PortfolioAllocation", back_populates="portfolio", cascade="all, delete-orphan"
+    )
+    rebalancing_events = relationship(
+        "RebalancingEvent", back_populates="portfolio", cascade="all, delete-orphan"
+    )
+    risk_metrics = relationship(
+        "PortfolioRiskMetrics", back_populates="portfolio", cascade="all, delete-orphan"
+    )
+    benchmarks = relationship(
+        "PortfolioBenchmark", back_populates="portfolio", cascade="all, delete-orphan"
+    )
 
     # Indexes for performance
     __table_args__ = (

@@ -34,9 +34,13 @@ const Assets = () => {
         priceRange: 'all',
         valueRange: 'all',
         changeRange: 'all',
+        marketCapRange: 'all',
+        rsiRange: 'all',
         sortBy: 'symbol',
         sortOrder: 'asc'
     });
+    const [autoRefresh, setAutoRefresh] = useState(false);
+    const [refreshInterval, setRefreshInterval] = useState(null);
 
     // Load assets on component mount
     useEffect(() => {
@@ -48,12 +52,35 @@ const Assets = () => {
         filterAssets();
     }, [assets, searchQuery, filters]);
 
+    // Auto-refresh functionality
+    useEffect(() => {
+        if (autoRefresh) {
+            const interval = setInterval(() => {
+                loadAssets();
+            }, 30000); // Refresh every 30 seconds
+            setRefreshInterval(interval);
+        } else {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+                setRefreshInterval(null);
+            }
+        }
+
+        return () => {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+        };
+    }, [autoRefresh]);
+
     const loadAssets = async () => {
         try {
             setLoading(true);
             const response = await userAssetsAPI.getUserAssets({
                 limit: 100,
-                include_prices: true
+                include_prices: true,
+                include_performance: true,
+                include_analytics: true
             });
             setAssets(response.assets || []);
         } catch (error) {
@@ -77,7 +104,21 @@ const Assets = () => {
 
         // Category filter
         if (filters.category !== 'all') {
-            filtered = filtered.filter(asset => asset.category === filters.category);
+            filtered = filtered.filter(asset => {
+                // Map frontend categories to backend asset types
+                const categoryMap = {
+                    'cryptocurrency': 'CRYPTOCURRENCY',
+                    'stock': 'EQUITY',
+                    'commodity': 'COMMODITY',
+                    'forex': 'CASH',
+                    'etf': 'ETF',
+                    'bond': 'BOND',
+                    'real_estate': 'REAL_ESTATE',
+                    'mutual_fund': 'MUTUALFUND',
+                    'index_fund': 'INDEX'
+                };
+                return asset.asset_type === categoryMap[filters.category];
+            });
         }
 
         // Price range filter
@@ -123,6 +164,43 @@ const Assets = () => {
             });
         }
 
+        // Market cap range filter
+        if (filters.marketCapRange !== 'all') {
+            filtered = filtered.filter(asset => {
+                const marketCap = asset.market_cap || 0;
+                switch (filters.marketCapRange) {
+                    case '0-1e6':
+                        return marketCap < 1e6;
+                    case '1e6-1e9':
+                        return marketCap >= 1e6 && marketCap < 1e9;
+                    case '1e9-1e12':
+                        return marketCap >= 1e9 && marketCap < 1e12;
+                    case '1e12-':
+                        return marketCap >= 1e12;
+                    default:
+                        return true;
+                }
+            });
+        }
+
+        // RSI range filter
+        if (filters.rsiRange !== 'all') {
+            filtered = filtered.filter(asset => {
+                const rsi = asset.rsi;
+                if (rsi === null || rsi === undefined) return false;
+                switch (filters.rsiRange) {
+                    case '0-30':
+                        return rsi >= 0 && rsi <= 30;
+                    case '30-70':
+                        return rsi > 30 && rsi < 70;
+                    case '70-100':
+                        return rsi >= 70 && rsi <= 100;
+                    default:
+                        return true;
+                }
+            });
+        }
+
         // Sort
         filtered.sort((a, b) => {
             let aValue, bValue;
@@ -155,6 +233,26 @@ const Assets = () => {
                 case 'purchase_date':
                     aValue = new Date(a.purchase_date || 0);
                     bValue = new Date(b.purchase_date || 0);
+                    break;
+                case 'market_cap':
+                    aValue = a.market_cap || 0;
+                    bValue = b.market_cap || 0;
+                    break;
+                case 'volume_24h':
+                    aValue = a.volume_24h || 0;
+                    bValue = b.volume_24h || 0;
+                    break;
+                case 'price_change_percentage_24h':
+                    aValue = a.price_change_percentage_24h || 0;
+                    bValue = b.price_change_percentage_24h || 0;
+                    break;
+                case 'rsi':
+                    aValue = a.rsi || 0;
+                    bValue = b.rsi || 0;
+                    break;
+                case 'volatility_20d':
+                    aValue = a.volatility_20d || 0;
+                    bValue = b.volatility_20d || 0;
                     break;
                 default:
                     aValue = a.symbol || '';
@@ -249,6 +347,18 @@ const Assets = () => {
         }
     };
 
+    const handleAddToPortfolio = (asset) => {
+        // This would open a modal to select portfolio and add the asset
+        toast.success(`Adding ${asset.symbol} to portfolio...`);
+        // TODO: Implement portfolio selection modal
+    };
+
+    const handleViewInPortfolio = (asset) => {
+        // This would navigate to the portfolio view showing this asset
+        toast.success(`Viewing ${asset.symbol} in portfolio...`);
+        // TODO: Implement navigation to portfolio view
+    };
+
     const getTotalStats = () => {
         const totalValue = filteredAssets.reduce((sum, asset) => {
             const value = (asset.quantity || 0) * (asset.current_price || 0);
@@ -339,6 +449,13 @@ const Assets = () => {
                                 >
                                     <RefreshCw size={16} />
                                     <span>Refresh</span>
+                                </button>
+                                <button
+                                    onClick={() => setAutoRefresh(!autoRefresh)}
+                                    className={`btn-outline flex items-center space-x-2 ${autoRefresh ? 'bg-primary-600 text-white' : ''}`}
+                                >
+                                    <RefreshCw size={16} className={autoRefresh ? 'animate-spin' : ''} />
+                                    <span>{autoRefresh ? 'Auto-Refresh ON' : 'Auto-Refresh OFF'}</span>
                                 </button>
                                 <button
                                     onClick={() => setShowFilters(!showFilters)}
@@ -503,6 +620,8 @@ const Assets = () => {
                                     onClick={() => handleAssetClick(asset)}
                                     onEdit={() => handleEditAsset(asset)}
                                     onDelete={() => handleDeleteAsset(asset.id)}
+                                    onAddToPortfolio={handleAddToPortfolio}
+                                    onViewInPortfolio={handleViewInPortfolio}
                                 />
                             ))}
                         </div>

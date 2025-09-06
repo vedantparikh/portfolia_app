@@ -54,6 +54,7 @@ async def create_asset(
             detail="Asset with this symbol already exists",
         )
     ticker_data = await market_data_service.get_ticker_info(asset_data.symbol.upper())
+    
     new_asset = AssetModel(
         symbol=asset_data.symbol.upper(),
         name=ticker_data.get("longName") or ticker_data.get("shortName"),

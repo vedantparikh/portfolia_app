@@ -1,286 +1,61 @@
 """
-Analytics and reporting router with authentication.
+Portfolio Analytics Router
+Comprehensive API endpoints for portfolio analysis, risk management, and performance tracking.
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.auth.dependencies import (
-    get_current_active_user,
-)
+from app.core.auth.dependencies import get_current_active_user
 from app.core.database.connection import get_db
-from app.core.database.models import Portfolio, PortfolioAsset, Transaction, User
+from app.core.database.models import Portfolio, User
+from app.core.database.models.portfolio_analytics import (
+    AssetCorrelation,
+    AssetPerformanceMetrics,
+    PortfolioAllocation,
+    PortfolioBenchmark,
+    PortfolioPerformanceHistory,
+    PortfolioRiskMetrics,
+    RebalancingEvent,
+)
+from app.core.schemas.portfolio_analytics import (
+    PortfolioAllocationCreate,
+    PortfolioBenchmarkCreate,
+    RebalancingEventCreate,
+)
+from app.core.services.portfolio_analytics_service import PortfolioAnalyticsService
 
-router = APIRouter(prefix="/analytics", tags=["analytics"])
+router = APIRouter(prefix="/analytics")
 
 
-@router.get("/performance/{portfolio_id}")
-async def get_portfolio_performance(
+# Portfolio Performance History
+@router.post("/portfolios/{portfolio_id}/performance/snapshot")
+async def create_performance_snapshot(
     portfolio_id: int,
-    period: str = Query(
-        "1y", description="Performance period (1m, 3m, 6m, 1y, 2y, 5y, max)"
-    ),
-    current_user: User = Depends(get_current_active_user),
+    snapshot_date: Optional[datetime] = Query(None, description="Snapshot date (defaults to now)"),
     db: Session = Depends(get_db),
 ):
-    """Get portfolio performance metrics."""
-    # Verify portfolio ownership
-    portfolio = (
-        db.query(Portfolio)
-        .filter(
-            Portfolio.id == portfolio_id,
-            Portfolio.user_id == current_user.id,
-            Portfolio.is_active == True,
-        )
-        .first()
-    )
-
-    if not portfolio:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Portfolio not found or access denied",
-        )
-
-    # Get portfolio assets
-    assets = (
-        db.query(PortfolioAsset)
-        .filter(PortfolioAsset.portfolio_id == portfolio_id)
-        .all()
-    )
-
-    if not assets:
-        return {
-            "portfolio_id": portfolio_id,
-            "portfolio_name": portfolio.name,
-            "period": period,
-            "total_value": 0,
-            "total_cost_basis": 0,
-            "total_return": 0,
-            "total_return_percent": 0,
-            "message": "No assets in portfolio",
-        }
-
-    # Calculate performance metrics
-    total_cost_basis = sum(float(asset.cost_basis_total) for asset in assets)
-    total_current_value = sum(
-        float(asset.current_value or asset.cost_basis_total) for asset in assets
-    )
-    total_return = total_current_value - total_cost_basis
-    total_return_percent = (
-        (total_return / total_cost_basis * 100) if total_cost_basis > 0 else 0
-    )
-
-    # Calculate per-asset performance
-    asset_performance = []
-    for asset in assets:
-        asset_return = float(asset.current_value or asset.cost_basis_total) - float(
-            asset.cost_basis_total
-        )
-        asset_return_percent = (
-            (asset_return / float(asset.cost_basis_total) * 100)
-            if float(asset.cost_basis_total) > 0
-            else 0
-        )
-
-        asset_performance.append(
-            {
-                "asset_id": asset.asset_id,
-                "symbol": getattr(asset.asset, "symbol", "Unknown"),
-                "quantity": float(asset.quantity),
-                "cost_basis": float(asset.cost_basis),
-                "current_value": float(asset.current_value or asset.cost_basis_total),
-                "return": round(asset_return, 2),
-                "return_percent": round(asset_return_percent, 2),
-            }
-        )
-
-    return {
-        "portfolio_id": portfolio_id,
-        "portfolio_name": portfolio.name,
-        "period": period,
-        "total_value": round(total_current_value, 2),
-        "total_cost_basis": round(total_cost_basis, 2),
-        "total_return": round(total_return, 2),
-        "total_return_percent": round(total_return_percent, 2),
-        "asset_count": len(assets),
-        "asset_performance": asset_performance,
-        "calculated_at": datetime.utcnow().isoformat(),
-    }
-
-
-@router.get("/risk/{portfolio_id}")
-async def get_portfolio_risk_metrics(
-    portfolio_id: int,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    """Get portfolio risk metrics."""
-    # Verify portfolio ownership
-    portfolio = (
-        db.query(Portfolio)
-        .filter(
-            Portfolio.id == portfolio_id,
-            Portfolio.user_id == current_user.id,
-            Portfolio.is_active == True,
-        )
-        .first()
-    )
-
-    if not portfolio:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Portfolio not found or access denied",
-        )
-
-    # Get portfolio assets
-    assets = (
-        db.query(PortfolioAsset)
-        .filter(PortfolioAsset.portfolio_id == portfolio_id)
-        .all()
-    )
-
-    if not assets:
-        return {
-            "portfolio_id": portfolio_id,
-            "portfolio_name": portfolio.name,
-            "message": "No assets in portfolio",
-            "risk_metrics": {},
-        }
-
-    # Calculate risk metrics
-    total_value = sum(
-        float(asset.current_value or asset.cost_basis_total) for asset in assets
-    )
-
-    # Calculate concentration risk (largest position percentage)
-    asset_weights = []
-    for asset in assets:
-        asset_value = float(asset.current_value or asset.cost_basis_total)
-        weight = (asset_value / total_value * 100) if total_value > 0 else 0
-        asset_weights.append(
-            {
-                "asset_id": asset.asset_id,
-                "symbol": getattr(asset.asset, "symbol", "Unknown"),
-                "weight": round(weight, 2),
-                "value": round(asset_value, 2),
-            }
-        )
-
-    # Sort by weight (descending)
-    asset_weights.sort(key=lambda x: x["weight"], reverse=True)
-
-    # Calculate concentration metrics
-    largest_position_weight = asset_weights[0]["weight"] if asset_weights else 0
-    top_5_concentration = sum(asset["weight"] for asset in asset_weights[:5])
-    top_10_concentration = sum(asset["weight"] for asset in asset_weights[:10])
-
-    # Calculate diversification score (Herfindahl-Hirschman Index)
-    hhi = sum((asset["weight"] / 100) ** 2 for asset in asset_weights)
-    diversification_score = max(0, 100 - (hhi * 100))  # Convert to 0-100 scale
-
-    return {
-        "portfolio_id": portfolio_id,
-        "portfolio_name": portfolio.name,
-        "total_value": round(total_value, 2),
-        "asset_count": len(assets),
-        "risk_metrics": {
-            "largest_position_weight": round(largest_position_weight, 2),
-            "top_5_concentration": round(top_5_concentration, 2),
-            "top_10_concentration": round(top_10_concentration, 2),
-            "diversification_score": round(diversification_score, 2),
-            "concentration_risk": (
-                "High"
-                if largest_position_weight > 20
-                else "Medium"
-                if largest_position_weight > 10
-                else "Low"
-            ),
-        },
-        "asset_weights": asset_weights,
-        "calculated_at": datetime.utcnow().isoformat(),
-    }
-
-
-@router.get("/benchmark/{portfolio_id}")
-async def get_portfolio_benchmark_comparison(
-    portfolio_id: int,
-    benchmark_symbol: str = Query(
-        "^GSPC", description="Benchmark symbol (default: S&P 500)"
-    ),
-    period: str = Query("1y", description="Comparison period"),
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    """Compare portfolio performance against a benchmark."""
-    # Verify portfolio ownership
-    portfolio = (
-        db.query(Portfolio)
-        .filter(
-            Portfolio.id == portfolio_id,
-            Portfolio.user_id == current_user.id,
-            Portfolio.is_active == True,
-        )
-        .first()
-    )
-
-    if not portfolio:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Portfolio not found or access denied",
-        )
-
+    """Create a performance snapshot for a portfolio."""
+    analytics_service = PortfolioAnalyticsService(db)
+    
     try:
-        # Get portfolio performance
-        portfolio_performance = await get_portfolio_performance(
-            portfolio_id, period, current_user, db
-        )
-
-        # Get benchmark data (this would integrate with market data service)
-        # For now, return a placeholder structure
-        benchmark_data = {
-            "symbol": benchmark_symbol,
-            "period": period,
-            "return_percent": 0,  # Placeholder - would calculate from market data
-            "volatility": 0,  # Placeholder
-            "sharpe_ratio": 0,  # Placeholder
-        }
-
-        # Calculate relative performance
-        portfolio_return = portfolio_performance.get("total_return_percent", 0)
-        benchmark_return = benchmark_data["return_percent"]
-        relative_performance = portfolio_return - benchmark_return
-
-        return {
-            "portfolio_id": portfolio_id,
-            "portfolio_name": portfolio.name,
-            "period": period,
-            "portfolio_performance": portfolio_performance,
-            "benchmark": benchmark_data,
-            "comparison": {
-                "relative_performance": round(relative_performance, 2),
-                "outperformed": relative_performance > 0,
-                "performance_gap": round(abs(relative_performance), 2),
-            },
-            "calculated_at": datetime.utcnow().isoformat(),
-        }
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error calculating benchmark comparison: {str(e)}",
-        )
+        snapshot = analytics_service.create_performance_snapshot(portfolio_id, snapshot_date)
+        return snapshot
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
 
-@router.get("/reports/daily/{portfolio_id}")
-async def get_daily_portfolio_report(
+@router.get("/portfolios/{portfolio_id}/performance/history")
+async def get_performance_history(
     portfolio_id: int,
-    date: str = Query(None, description="Report date (YYYY-MM-DD, default: today)"),
+    days: int = Query(30, ge=1, le=365, description="Number of days to look back"),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    """Get daily portfolio report."""
+    """Get portfolio performance history."""
     # Verify portfolio ownership
     portfolio = (
         db.query(Portfolio)
@@ -294,193 +69,581 @@ async def get_daily_portfolio_report(
 
     if not portfolio:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Portfolio not found or access denied",
+            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
         )
-
-    # Parse date or use today
-    if date:
-        try:
-            report_date = datetime.strptime(date, "%Y-%m-%d")
-        except ValueError:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid date format. Use YYYY-MM-DD",
-            )
-    else:
-        report_date = datetime.utcnow().date()
-
-    # Get portfolio assets
-    assets = (
-        db.query(PortfolioAsset)
-        .filter(PortfolioAsset.portfolio_id == portfolio_id)
-        .all()
-    )
-
-    if not assets:
-        return {
-            "portfolio_id": portfolio_id,
-            "portfolio_name": portfolio.name,
-            "report_date": report_date.isoformat(),
-            "message": "No assets in portfolio",
-        }
-
-    # Calculate daily metrics
-    total_value = sum(
-        float(asset.current_value or asset.cost_basis_total) for asset in assets
-    )
-    total_cost_basis = sum(float(asset.cost_basis_total) for asset in assets)
-    total_return = total_value - total_cost_basis
-    total_return_percent = (
-        (total_return / total_cost_basis * 100) if total_cost_basis > 0 else 0
-    )
-
-    # Get daily transactions
-    start_of_day = datetime.combine(report_date, datetime.min.time())
-    end_of_day = datetime.combine(report_date, datetime.max.time())
-
-    daily_transactions = (
-        db.query(Transaction)
+    
+    # Get performance history
+    end_date = datetime.utcnow()
+    start_date = end_date - timedelta(days=days)
+    
+    history = (
+        db.query(PortfolioPerformanceHistory)
         .filter(
-            Transaction.portfolio_id == portfolio_id,
-            Transaction.transaction_date >= start_of_day,
-            Transaction.transaction_date <= end_of_day,
+            PortfolioPerformanceHistory.portfolio_id == portfolio_id,
+            PortfolioPerformanceHistory.snapshot_date >= start_date,
+        )
+        .order_by(PortfolioPerformanceHistory.snapshot_date.desc())
+        .all()
+    )
+
+    return history
+
+
+# Asset Performance Metrics
+@router.post("/assets/{asset_id}/metrics")
+async def calculate_asset_metrics(
+    asset_id: int,
+    calculation_date: Optional[datetime] = Query(None, description="Calculation date (defaults to now)"),
+    db: Session = Depends(get_db),
+):
+    """Calculate comprehensive metrics for an asset."""
+    analytics_service = PortfolioAnalyticsService(db)
+    
+    try:
+        metrics = analytics_service.calculate_asset_metrics(asset_id, calculation_date)
+        return metrics
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+
+
+@router.get("/assets/{asset_id}/metrics")
+async def get_asset_metrics(
+    asset_id: int,
+    days: int = Query(30, ge=1, le=365, description="Number of days to look back"),
+    db: Session = Depends(get_db),
+):
+    """Get asset performance metrics history."""
+    end_date = datetime.utcnow()
+    start_date = end_date - timedelta(days=days)
+    
+    metrics = (
+        db.query(AssetPerformanceMetrics)
+        .filter(
+            AssetPerformanceMetrics.asset_id == asset_id,
+            AssetPerformanceMetrics.calculation_date >= start_date,
+        )
+        .order_by(AssetPerformanceMetrics.calculation_date.desc())
+        .all()
+    )
+    
+    return metrics
+
+
+# Portfolio Allocation Management
+@router.post("/portfolios/{portfolio_id}/allocations")
+async def set_portfolio_allocations(
+    portfolio_id: int,
+    allocations: List[PortfolioAllocationCreate],
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """Set target allocations for a portfolio."""
+    # Verify portfolio ownership
+    portfolio = (
+        db.query(Portfolio)
+        .filter(
+            Portfolio.id == portfolio_id,
+            Portfolio.user_id == current_user.id,
+            Portfolio.is_active == True,
+        )
+        .first()
+    )
+    
+    if not portfolio:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
+        )
+    
+    analytics_service = PortfolioAnalyticsService(db)
+    new_allocations = analytics_service.set_portfolio_allocation(portfolio_id, allocations)
+    
+    return new_allocations
+
+
+@router.get("/portfolios/{portfolio_id}/allocations")
+async def get_portfolio_allocations(
+    portfolio_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """Get portfolio target allocations."""
+    # Verify portfolio ownership
+    portfolio = (
+        db.query(Portfolio)
+        .filter(
+            Portfolio.id == portfolio_id,
+            Portfolio.user_id == current_user.id,
+            Portfolio.is_active == True,
+        )
+        .first()
+    )
+
+    if not portfolio:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
+        )
+    
+    allocations = (
+        db.query(PortfolioAllocation)
+        .filter(
+            PortfolioAllocation.portfolio_id == portfolio_id,
+            PortfolioAllocation.is_active == True,
         )
         .all()
     )
 
-    # Calculate daily activity
-    daily_buy_value = sum(
-        float(t.quantity * t.price)
-        for t in daily_transactions
-        if t.transaction_type == "buy"
-    )
-    daily_sell_value = sum(
-        float(t.quantity * t.price)
-        for t in daily_transactions
-        if t.transaction_type == "sell"
-    )
-    daily_dividends = sum(
-        float(t.quantity * t.price)
-        for t in daily_transactions
-        if t.transaction_type == "dividend"
-    )
-
-    return {
-        "portfolio_id": portfolio_id,
-        "portfolio_name": portfolio.name,
-        "report_date": report_date.isoformat(),
-        "summary": {
-            "total_value": round(total_value, 2),
-            "total_cost_basis": round(total_cost_basis, 2),
-            "total_return": round(total_return, 2),
-            "total_return_percent": round(total_return_percent, 2),
-            "asset_count": len(assets),
-        },
-        "daily_activity": {
-            "transactions_count": len(daily_transactions),
-            "buy_value": round(daily_buy_value, 2),
-            "sell_value": round(daily_sell_value, 2),
-            "dividends": round(daily_dividends, 2),
-            "net_flow": round(daily_buy_value - daily_sell_value, 2),
-        },
-        "assets": [
-            {
-                "asset_id": asset.asset_id,
-                "symbol": getattr(asset.asset, "symbol", "Unknown"),
-                "quantity": float(asset.quantity),
-                "current_value": round(
-                    float(asset.current_value or asset.cost_basis_total), 2
-                ),
-                "return": round(
-                    float(asset.current_value or asset.cost_basis_total)
-                    - float(asset.cost_basis_total),
-                    2,
-                ),
-            }
-            for asset in assets
-        ],
-        "generated_at": datetime.utcnow().isoformat(),
-    }
+    return allocations
 
 
-@router.get("/reports/summary")
-async def get_user_portfolios_summary(
-    current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
+@router.get("/portfolios/{portfolio_id}/allocations/analysis")
+async def analyze_portfolio_allocation(
+    portfolio_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
-    """Get summary of all user portfolios."""
-    # Get user's portfolios
-    portfolios = (
+    """Analyze portfolio allocation and detect drift."""
+    # Verify portfolio ownership
+    portfolio = (
         db.query(Portfolio)
-        .filter(Portfolio.user_id == current_user.id, Portfolio.is_active == True)
+        .filter(
+            Portfolio.id == portfolio_id,
+            Portfolio.user_id == current_user.id,
+            Portfolio.is_active == True,
+        )
+        .first()
+    )
+    
+    if not portfolio:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
+        )
+    
+    analytics_service = PortfolioAnalyticsService(db)
+    analysis = analytics_service.analyze_portfolio_allocation(portfolio_id)
+    
+    return analysis
+
+
+# Portfolio Risk Analysis
+@router.post("/portfolios/{portfolio_id}/risk/calculate")
+async def calculate_portfolio_risk(
+    portfolio_id: int,
+    calculation_date: Optional[datetime] = Query(None, description="Calculation date (defaults to now)"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """Calculate comprehensive risk metrics for a portfolio."""
+    # Verify portfolio ownership
+    portfolio = (
+        db.query(Portfolio)
+        .filter(
+            Portfolio.id == portfolio_id,
+            Portfolio.user_id == current_user.id,
+            Portfolio.is_active == True,
+        )
+        .first()
+    )
+
+    if not portfolio:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
+        )
+    
+    analytics_service = PortfolioAnalyticsService(db)
+    
+    try:
+        risk_metrics = analytics_service.calculate_portfolio_risk_metrics(portfolio_id, calculation_date)
+        return risk_metrics
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+
+
+@router.get("/portfolios/{portfolio_id}/risk")
+async def get_portfolio_risk_analysis(
+    portfolio_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """Get portfolio risk analysis."""
+    # Verify portfolio ownership
+    portfolio = (
+        db.query(Portfolio)
+        .filter(
+            Portfolio.id == portfolio_id,
+            Portfolio.user_id == current_user.id,
+            Portfolio.is_active == True,
+        )
+        .first()
+    )
+    
+    if not portfolio:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
+        )
+    
+    # Get latest risk metrics
+    latest_risk = (
+        db.query(PortfolioRiskMetrics)
+        .filter(PortfolioRiskMetrics.portfolio_id == portfolio_id)
+        .order_by(PortfolioRiskMetrics.calculation_date.desc())
+        .first()
+    )
+    
+    if not latest_risk:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="No risk metrics found for this portfolio"
+        )
+    
+    return latest_risk
+
+
+# Portfolio Benchmarks
+@router.post("/portfolios/{portfolio_id}/benchmarks")
+async def add_portfolio_benchmark(
+    portfolio_id: int,
+    benchmark_data: PortfolioBenchmarkCreate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """Add a benchmark to a portfolio."""
+    # Verify portfolio ownership
+    portfolio = (
+        db.query(Portfolio)
+        .filter(
+            Portfolio.id == portfolio_id,
+            Portfolio.user_id == current_user.id,
+            Portfolio.is_active == True,
+        )
+        .first()
+    )
+    
+    if not portfolio:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
+        )
+    
+    # If this is set as primary, unset other primary benchmarks
+    if benchmark_data.is_primary:
+        db.query(PortfolioBenchmark).filter(
+            PortfolioBenchmark.portfolio_id == portfolio_id
+        ).update({"is_primary": False})
+    
+    benchmark = PortfolioBenchmark(
+        portfolio_id=portfolio_id,
+        benchmark_asset_id=benchmark_data.benchmark_asset_id,
+        benchmark_name=benchmark_data.benchmark_name,
+        benchmark_type=benchmark_data.benchmark_type,
+        tracking_error=benchmark_data.tracking_error,
+        information_ratio=benchmark_data.information_ratio,
+        beta=benchmark_data.beta,
+        alpha=benchmark_data.alpha,
+        excess_return=benchmark_data.excess_return,
+        excess_return_percent=benchmark_data.excess_return_percent,
+        is_active=benchmark_data.is_active,
+        is_primary=benchmark_data.is_primary,
+    )
+    
+    db.add(benchmark)
+    db.commit()
+    db.refresh(benchmark)
+    
+    return benchmark
+
+
+@router.get("/portfolios/{portfolio_id}/benchmarks")
+async def get_portfolio_benchmarks(
+    portfolio_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """Get portfolio benchmarks."""
+    # Verify portfolio ownership
+    portfolio = (
+        db.query(Portfolio)
+        .filter(
+            Portfolio.id == portfolio_id,
+            Portfolio.user_id == current_user.id,
+            Portfolio.is_active == True,
+        )
+        .first()
+    )
+
+    if not portfolio:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
+        )
+    
+    benchmarks = (
+        db.query(PortfolioBenchmark)
+        .filter(
+            PortfolioBenchmark.portfolio_id == portfolio_id,
+            PortfolioBenchmark.is_active == True,
+        )
         .all()
     )
 
-    if not portfolios:
-        return {
-            "user_id": current_user.id,
-            "username": current_user.username,
-            "total_portfolios": 0,
-            "message": "No portfolios found",
-        }
+    return benchmarks
 
-    # Calculate summary metrics
-    total_portfolios = len(portfolios)
-    total_assets = 0
-    total_value = 0
-    total_cost_basis = 0
 
-    portfolio_summaries = []
+# Rebalancing Events
+@router.post("/portfolios/{portfolio_id}/rebalancing/events")
+async def create_rebalancing_event(
+    portfolio_id: int,
+    event_data: RebalancingEventCreate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """Create a rebalancing event for a portfolio."""
+    # Verify portfolio ownership
+    portfolio = (
+        db.query(Portfolio)
+        .filter(
+            Portfolio.id == portfolio_id,
+            Portfolio.user_id == current_user.id,
+            Portfolio.is_active == True,
+        )
+        .first()
+    )
+    
+    if not portfolio:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
+        )
+    
+    event = RebalancingEvent(
+        portfolio_id=portfolio_id,
+        event_date=event_data.event_date,
+        event_type=event_data.event_type,
+        trigger_reason=event_data.trigger_reason,
+        pre_rebalance_value=event_data.pre_rebalance_value,
+        pre_rebalance_allocations=event_data.pre_rebalance_allocations,
+        rebalancing_actions=event_data.rebalancing_actions,
+        post_rebalance_value=event_data.post_rebalance_value,
+        post_rebalance_allocations=event_data.post_rebalance_allocations,
+        rebalancing_cost=event_data.rebalancing_cost,
+        tax_impact=event_data.tax_impact,
+        status=event_data.status,
+        execution_notes=event_data.execution_notes,
+    )
+    
+    db.add(event)
+    db.commit()
+    db.refresh(event)
+    
+    return event
 
-    for portfolio in portfolios:
-        assets = (
-            db.query(PortfolioAsset)
-            .filter(PortfolioAsset.portfolio_id == portfolio.id)
+
+@router.get("/portfolios/{portfolio_id}/rebalancing/events")
+async def get_rebalancing_events(
+    portfolio_id: int,
+    days: int = Query(90, ge=1, le=365, description="Number of days to look back"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """Get rebalancing events for a portfolio."""
+    # Verify portfolio ownership
+    portfolio = (
+        db.query(Portfolio)
+        .filter(
+            Portfolio.id == portfolio_id,
+            Portfolio.user_id == current_user.id,
+            Portfolio.is_active == True,
+        )
+        .first()
+    )
+    
+    if not portfolio:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
+        )
+    
+    end_date = datetime.utcnow()
+    start_date = end_date - timedelta(days=days)
+    
+    events = (
+        db.query(RebalancingEvent)
+        .filter(
+            RebalancingEvent.portfolio_id == portfolio_id,
+            RebalancingEvent.event_date >= start_date,
+        )
+        .order_by(RebalancingEvent.event_date.desc())
+        .all()
+    )
+
+    return events
+
+
+# Comprehensive Analytics
+@router.get("/portfolios/{portfolio_id}/summary")
+async def get_portfolio_analytics_summary(
+    portfolio_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """Get comprehensive portfolio analytics summary."""
+    # Verify portfolio ownership
+    portfolio = (
+        db.query(Portfolio)
+        .filter(
+            Portfolio.id == portfolio_id,
+            Portfolio.user_id == current_user.id,
+            Portfolio.is_active == True,
+        )
+        .first()
+    )
+    
+    if not portfolio:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
+        )
+    
+    analytics_service = PortfolioAnalyticsService(db)
+    
+    try:
+        summary = analytics_service.get_portfolio_analytics_summary(portfolio_id)
+        return summary
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+
+
+@router.get("/portfolios/{portfolio_id}/rebalancing/recommendations")
+async def get_rebalancing_recommendations(
+    portfolio_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """Get rebalancing recommendations for a portfolio."""
+    # Verify portfolio ownership
+    portfolio = (
+        db.query(Portfolio)
+        .filter(
+            Portfolio.id == portfolio_id,
+            Portfolio.user_id == current_user.id,
+            Portfolio.is_active == True,
+        )
+        .first()
+    )
+    
+    if not portfolio:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
+        )
+    
+    analytics_service = PortfolioAnalyticsService(db)
+    recommendation = analytics_service.get_rebalancing_recommendation(portfolio_id)
+    
+    return recommendation
+
+
+# Asset Correlations
+@router.get("/assets/correlations")
+async def get_asset_correlations(
+    asset1_id: Optional[int] = Query(None, description="First asset ID"),
+    asset2_id: Optional[int] = Query(None, description="Second asset ID"),
+    days: int = Query(30, ge=1, le=365, description="Number of days to look back"),
+    db: Session = Depends(get_db),
+):
+    """Get asset correlations."""
+    end_date = datetime.utcnow()
+    start_date = end_date - timedelta(days=days)
+    
+    query = db.query(AssetCorrelation).filter(
+        AssetCorrelation.calculation_date >= start_date,
+    )
+    
+    if asset1_id:
+        query = query.filter(AssetCorrelation.asset1_id == asset1_id)
+    if asset2_id:
+        query = query.filter(AssetCorrelation.asset2_id == asset2_id)
+    
+    correlations = query.order_by(AssetCorrelation.calculation_date.desc()).all()
+    
+    return correlations
+
+
+# Performance Comparison
+@router.get("/portfolios/{portfolio_id}/performance/comparison")
+async def get_portfolio_performance_comparison(
+    portfolio_id: int,
+    benchmark_id: Optional[int] = Query(None, description="Benchmark asset ID"),
+    days: int = Query(30, ge=1, le=365, description="Number of days to compare"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """Get portfolio performance comparison with benchmark."""
+    # Verify portfolio ownership
+    portfolio = (
+        db.query(Portfolio)
+        .filter(
+            Portfolio.id == portfolio_id,
+            Portfolio.user_id == current_user.id,
+            Portfolio.is_active == True,
+        )
+        .first()
+    )
+    
+    if not portfolio:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
+        )
+    
+    # Get portfolio performance history
+    end_date = datetime.utcnow()
+    start_date = end_date - timedelta(days=days)
+    
+    portfolio_history = (
+        db.query(PortfolioPerformanceHistory)
+        .filter(
+            PortfolioPerformanceHistory.portfolio_id == portfolio_id,
+            PortfolioPerformanceHistory.snapshot_date >= start_date,
+        )
+        .order_by(PortfolioPerformanceHistory.snapshot_date)
+        .all()
+    )
+
+    if not portfolio_history:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="No performance data found"
+        )
+    
+    # Get benchmark performance if specified
+    benchmark_history = None
+    if benchmark_id:
+        benchmark_history = (
+            db.query(AssetPerformanceMetrics)
+            .filter(
+                AssetPerformanceMetrics.asset_id == benchmark_id,
+                AssetPerformanceMetrics.calculation_date >= start_date,
+            )
+            .order_by(AssetPerformanceMetrics.calculation_date)
             .all()
         )
 
-        portfolio_value = sum(
-            float(asset.current_value or asset.cost_basis_total) for asset in assets
-        )
-        portfolio_cost_basis = sum(float(asset.cost_basis_total) for asset in assets)
-        portfolio_return = portfolio_value - portfolio_cost_basis
-        portfolio_return_percent = (
-            (portfolio_return / portfolio_cost_basis * 100)
-            if portfolio_cost_basis > 0
-            else 0
-        )
-
-        total_assets += len(assets)
-        total_value += portfolio_value
-        total_cost_basis += portfolio_cost_basis
-
-        portfolio_summaries.append(
+    # Build comparison data
+    comparison_data = {
+        "portfolio_id": portfolio_id,
+        "period_days": days,
+        "start_date": start_date,
+        "end_date": end_date,
+        "portfolio_performance": [
             {
-                "portfolio_id": portfolio.id,
-                "name": portfolio.name,
-                "asset_count": len(assets),
-                "value": round(portfolio_value, 2),
-                "return": round(portfolio_return, 2),
-                "return_percent": round(portfolio_return_percent, 2),
+                "date": snapshot.snapshot_date,
+                "total_return": float(snapshot.cumulative_return or 0),
+                "volatility": float(snapshot.volatility or 0),
+                "sharpe_ratio": float(snapshot.sharpe_ratio or 0),
             }
-        )
-
-    total_return = total_value - total_cost_basis
-    total_return_percent = (
-        (total_return / total_cost_basis * 100) if total_cost_basis > 0 else 0
-    )
-
-    return {
-        "user_id": current_user.id,
-        "username": current_user.username,
-        "summary": {
-            "total_portfolios": total_portfolios,
-            "total_assets": total_assets,
-            "total_value": round(total_value, 2),
-            "total_cost_basis": round(total_cost_basis, 2),
-            "total_return": round(total_return, 2),
-            "total_return_percent": round(total_return_percent, 2),
-        },
-        "portfolios": portfolio_summaries,
-        "generated_at": datetime.utcnow().isoformat(),
+            for snapshot in portfolio_history
+        ],
     }
+    
+    if benchmark_history:
+        comparison_data["benchmark_performance"] = [
+            {
+                "date": metric.calculation_date,
+                "total_return": float(metric.total_return_1m or 0),  # Using 1-month return as proxy
+                "volatility": float(metric.volatility_20d or 0),
+            }
+            for metric in benchmark_history
+        ]
+    
+    return comparison_data

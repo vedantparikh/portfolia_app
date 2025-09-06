@@ -1,18 +1,17 @@
-"""extends asset type enum
+"""Initial migration
 
-Revision ID: 22eb674867a8
-Revises:
-Create Date: 2025-09-04 00:22:49.071700
+Revision ID: 426497007c5e
+Revises: 
+Create Date: 2025-09-07 00:19:12.189293
 
 """
 
-from typing import Sequence, Union
 
 # revision identifiers, used by Alembic.
-revision: str = "22eb674867a8"
-down_revision: Union[str, None] = None
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+revision = '426497007c5e'
+down_revision = None
+branch_labels = None
+depends_on = None
 
 
 def upgrade() -> None:
