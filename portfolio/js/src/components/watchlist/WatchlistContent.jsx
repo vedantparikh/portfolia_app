@@ -11,18 +11,19 @@ import {
     Trash2,
     X
 } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { DragDropContext, Draggable, Droppable } from 'react-beautiful-dnd';
 import toast from 'react-hot-toast';
 import { watchlistAPI } from '../../services/api';
+import { LoadingSpinner } from '../shared';
 import EditSymbolModal from './EditSymbolModal';
 
 // WatchlistContent component - displays the symbols table with search, sort, and refresh controls
 // This component receives props from the parent Watchlist component
 const WatchlistContent = ({
-    watchlist, 
-    onRemoveSymbol, 
-    onReorderItems, 
+    watchlist,
+    onRemoveSymbol,
+    onReorderItems,
     onUpdateWatchlist,
     // New props for refresh controls
     autoRefreshEnabled,
@@ -31,19 +32,46 @@ const WatchlistContent = ({
     setRefreshInterval,
     isRefreshing,
     onManualRefresh,
-    onAddSymbol
+    onAddSymbol,
+    // New prop for loading watchlist items
+    onLoadWatchlistItems
 }) => {
     // ===== STATE MANAGEMENT =====
     // useState is a React Hook that lets you add state to functional components
     // Each useState call returns an array with two elements: [currentValue, setterFunction]
-    
+
     // Search functionality state
     const [searchTerm, setSearchTerm] = useState(''); // Current search input value
-    
+    const [loadingItems, setLoadingItems] = useState(false); // Loading state for watchlist items
+
     // Sorting functionality state
     const [sortBy, setSortBy] = useState('symbol'); // Which column to sort by
     const [sortOrder, setSortOrder] = useState('asc'); // Sort direction: ascending or descending
-    
+
+    // Load watchlist items when component mounts or watchlist changes
+    useEffect(() => {
+        const loadWatchlistItems = async () => {
+            if (!watchlist?.id) return;
+
+            // Only load items if they haven't been loaded yet
+            if (!watchlist.items || watchlist.items.length === 0) {
+                setLoadingItems(true);
+                try {
+                    if (onLoadWatchlistItems) {
+                        await onLoadWatchlistItems(watchlist.id);
+                    }
+                } catch (error) {
+                    console.error('Failed to load watchlist items:', error);
+                    toast.error('Failed to load watchlist items');
+                } finally {
+                    setLoadingItems(false);
+                }
+            }
+        };
+
+        loadWatchlistItems();
+    }, [watchlist?.id, onLoadWatchlistItems]);
+
     // Modal and dropdown state management
     const [showEditModal, setShowEditModal] = useState(false); // Controls edit modal visibility
     const [editingSymbol, setEditingSymbol] = useState(null); // Which symbol is being edited
@@ -53,7 +81,7 @@ const WatchlistContent = ({
 
     // ===== EVENT HANDLER FUNCTIONS =====
     // These functions handle user interactions and update the component state
-    
+
     // Function to handle editing a symbol
     // This is called when user clicks "Edit" in the dropdown menu
     const handleEditSymbol = (symbol) => {
@@ -78,21 +106,21 @@ const WatchlistContent = ({
         try {
             // Make API call to update the watchlist item
             const updatedItem = await watchlistAPI.updateWatchlistItem(watchlist.id, itemId, updateData);
-            
+
             // If parent component provided an update callback, call it
             if (onUpdateWatchlist) {
                 onUpdateWatchlist(updatedItem);
             }
-            
+
             // Show success message using toast notification
             toast.success('Symbol updated successfully');
         } catch (error) {
             // Log error to console for debugging
             console.error('Failed to update symbol:', error);
-            
+
             // Extract error message from API response or use default
             const errorMessage = error.response?.data?.message || 'Failed to update symbol';
-            
+
             // Show error message using toast notification
             toast.error(errorMessage);
         }
@@ -113,31 +141,31 @@ const WatchlistContent = ({
 
         // Create a copy of the items array (don't mutate original)
         const items = Array.from(watchlist.items);
-        
+
         // Remove the dragged item from its original position
         const [reorderedItem] = items.splice(result.source.index, 1);
-        
+
         // Insert the dragged item at its new position
         items.splice(result.destination.index, 0, reorderedItem);
 
         // Extract just the IDs in the new order
         const itemIds = items.map(item => item.id);
-        
+
         // Call parent component's reorder function with new order
         onReorderItems(itemIds);
     };
 
     // ===== DATA PROCESSING FUNCTIONS =====
-    
+
     // Function to get filtered and sorted items for display
     // This combines search filtering and sorting logic
     const getSortedItems = () => {
         // Return empty array if no watchlist or items
         if (!watchlist?.items) return [];
-        
+
         // Create a copy of items array (spread operator creates new array)
         let items = [...watchlist.items];
-        
+
         // Apply search filter if search term exists
         if (searchTerm) {
             items = items.filter(item =>
@@ -147,11 +175,11 @@ const WatchlistContent = ({
                 item.company_name?.toLowerCase().includes(searchTerm.toLowerCase())
             );
         }
-        
+
         // Sort the filtered items
         items.sort((a, b) => {
             let aValue, bValue; // Variables to hold values for comparison
-            
+
             // Switch statement determines which field to sort by
             switch (sortBy) {
                 case 'symbol':
@@ -183,7 +211,7 @@ const WatchlistContent = ({
                     aValue = a.symbol;
                     bValue = b.symbol;
             }
-            
+
             // Apply sort order (ascending or descending)
             if (sortOrder === 'asc') {
                 return aValue > bValue ? 1 : -1; // Ascending: smaller values first
@@ -191,13 +219,13 @@ const WatchlistContent = ({
                 return aValue < bValue ? 1 : -1; // Descending: larger values first
             }
         });
-        
+
         return items; // Return the processed items
     };
 
     // ===== UTILITY FUNCTIONS =====
     // These are helper functions that format data for display
-    
+
     // Function to format large numbers with K, M, B suffixes
     // This makes numbers more readable (e.g., 1000000 becomes 1.0M)
     const formatNumber = (num) => {
@@ -248,11 +276,25 @@ const WatchlistContent = ({
             <div className="flex-1 flex items-center justify-center">
                 <div className="text-center">
                     {/* Warning icon */}
-                    <AlertTriangle size={48} className="mx-auto text-gray-600 mb-4"/>
+                    <AlertTriangle size={48} className="mx-auto text-gray-600 mb-4" />
                     {/* Error message */}
                     <h3 className="text-lg font-medium text-gray-300 mb-2">No Watchlist Selected</h3>
                     <p className="text-gray-400">Select a watchlist from the sidebar to view its symbols</p>
                 </div>
+            </div>
+        );
+    }
+
+    // Show loading state when loading watchlist items
+    if (loadingItems) {
+        return (
+            <div className="flex-1 flex items-center justify-center">
+                <LoadingSpinner
+                    size="lg"
+                    color="primary"
+                    text="Loading watchlist items..."
+                    centered
+                />
             </div>
         );
     }
@@ -275,7 +317,7 @@ const WatchlistContent = ({
                         <div className="relative">
                             {/* Search icon positioned absolutely inside the input */}
                             <Search size={16}
-                                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"/>
+                                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                             <input
                                 type="text"
                                 placeholder="Search symbols..."
@@ -284,7 +326,7 @@ const WatchlistContent = ({
                                 className="pl-10 pr-4 py-2 bg-dark-800 border border-dark-600 rounded-lg text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent w-64"
                             />
                         </div>
-                        
+
                         {/* Sort controls */}
                         <div className="flex items-center space-x-2">
                             {/* Sort by dropdown */}
@@ -299,16 +341,16 @@ const WatchlistContent = ({
                                 <option value="added_price">Added Price</option>
                                 <option value="added_date">Added Date</option>
                             </select>
-                            
+
                             {/* Sort order toggle button */}
                             <button
                                 onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
                                 className="p-2 rounded-lg bg-dark-800 border border-dark-600 text-gray-400 hover:bg-dark-700 transition-colors"
                             >
-                                {sortOrder === 'asc' ? <SortAsc size={16}/> : <SortDesc size={16}/>}
+                                {sortOrder === 'asc' ? <SortAsc size={16} /> : <SortDesc size={16} />}
                             </button>
                         </div>
-                        
+
                         {/* Refresh controls - only show if props are provided */}
                         {autoRefreshEnabled !== undefined && (
                             <div className="flex items-center space-x-2">
@@ -322,7 +364,7 @@ const WatchlistContent = ({
                                     />
                                     <span>Auto-refresh</span>
                                 </label>
-                                
+
                                 {/* Refresh interval selector - only show when auto-refresh is enabled */}
                                 {autoRefreshEnabled && (
                                     <select
@@ -336,7 +378,7 @@ const WatchlistContent = ({
                                         <option value={300000}>5m</option>
                                     </select>
                                 )}
-                                
+
                                 {/* Manual refresh button */}
                                 <button
                                     onClick={onManualRefresh}
@@ -344,13 +386,13 @@ const WatchlistContent = ({
                                     className="flex items-center space-x-2 px-3 py-2 bg-dark-800 hover:bg-dark-700 text-gray-300 rounded-lg transition-colors disabled:opacity-50"
                                     title="Refresh watchlist data"
                                 >
-                                    <RefreshCw 
-                                        size={16} 
-                                        className={isRefreshing ? 'animate-spin' : ''} 
+                                    <RefreshCw
+                                        size={16}
+                                        className={isRefreshing ? 'animate-spin' : ''}
                                     />
                                     <span>{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
                                 </button>
-                                
+
                                 {/* Add Symbol button */}
                                 <button
                                     onClick={onAddSymbol}
@@ -362,7 +404,7 @@ const WatchlistContent = ({
                             </div>
                         )}
                     </div>
-                    
+
                     {/* Right side: Symbol count display */}
                     <div className="text-sm text-gray-400">
                         {sortedItems.length} of {watchlist.items?.length || 0} symbols
@@ -380,7 +422,7 @@ const WatchlistContent = ({
                         <div className="w-6 flex-shrink-0"></div> {/* Space for drag handle */}
                         <span>Symbol</span> {/* Column title */}
                     </div>
-                    
+
                     {/* Right side: Fixed-width data columns */}
                     <div className="flex items-center space-x-6 text-right">
                         <div className="w-28 flex-shrink-0"><span>Added Price & Date</span></div>
@@ -401,7 +443,7 @@ const WatchlistContent = ({
                     /* Empty state when no symbols match the current filter */
                     <div className="flex items-center justify-center h-full">
                         <div className="text-center">
-                            <AlertTriangle size={48} className="mx-auto text-gray-600 mb-4"/>
+                            <AlertTriangle size={48} className="mx-auto text-gray-600 mb-4" />
                             <h3 className="text-lg font-medium text-gray-300 mb-2">No Symbols Found</h3>
                             <p className="text-gray-400">
                                 {searchTerm ? 'Try adjusting your search terms' : 'Add some symbols to get started'}
@@ -415,7 +457,7 @@ const WatchlistContent = ({
                         <Droppable droppableId="watchlist-items">
                             {/* Render prop pattern - provided contains drag/drop props */}
                             {(provided) => (
-                                <div 
+                                <div
                                     {...provided.droppableProps} // Spread drag/drop props
                                     ref={provided.innerRef} // Reference for drag/drop library
                                     className="divide-y divide-dark-700" // Visual separators between rows
@@ -425,13 +467,13 @@ const WatchlistContent = ({
                                         // Calculate if price change is positive or negative for styling
                                         const isPositive = parseFloat(item.price_change_percent_since_added || 0) > 0;
                                         const isNegative = parseFloat(item.price_change_percent_since_added || 0) < 0;
-                                        
+
                                         return (
                                             /* Draggable row - each symbol can be dragged to reorder */
                                             <Draggable key={item.id} draggableId={item.id.toString()} index={index}>
                                                 {/* Render prop pattern - provided contains drag props, snapshot contains drag state */}
                                                 {(provided, snapshot) => (
-                                                    <div 
+                                                    <div
                                                         ref={provided.innerRef} // Reference for drag library
                                                         {...provided.draggableProps} // Spread drag props
                                                         className={`group hover:bg-dark-800/50 transition-colors ${snapshot.isDragging ? 'bg-dark-800' : ''}`}
@@ -441,13 +483,13 @@ const WatchlistContent = ({
                                                             {/* Left side: Symbol info with drag handle */}
                                                             <div className="flex items-center space-x-3 flex-1 min-w-0">
                                                                 {/* Drag handle - allows user to grab and drag the row */}
-                                                                <div 
+                                                                <div
                                                                     {...provided.dragHandleProps}
                                                                     className="text-gray-500 hover:text-gray-400 cursor-grab active:cursor-grabbing"
                                                                 >
-                                                                    <GripVertical size={16}/>
+                                                                    <GripVertical size={16} />
                                                                 </div>
-                                                                
+
                                                                 {/* Symbol name and company info */}
                                                                 <div className="flex-1 min-w-0">
                                                                     <h4 className="text-sm font-medium text-gray-100">{item.symbol}</h4>
@@ -470,7 +512,7 @@ const WatchlistContent = ({
                                                                         Days {item.days_since_added || 0}
                                                                     </div>
                                                                 </div>
-                                                                
+
                                                                 {/* Current Price & Last Updated Column */}
                                                                 <div className="text-right w-28 flex-shrink-0">
                                                                     <div className="text-gray-100 font-medium">
@@ -480,7 +522,7 @@ const WatchlistContent = ({
                                                                         Updated {formatDateTime(item.updated_at)}
                                                                     </div>
                                                                 </div>
-                                                                
+
                                                                 {/* Change Since Added Column */}
                                                                 <div className="text-right w-24 flex-shrink-0">
                                                                     <div className={`font-medium ${getChangeColor(item.price_change_percent_since_added)}`}>
@@ -490,7 +532,7 @@ const WatchlistContent = ({
                                                                         {isPositive ? '+' : ''}{item.price_change_since_added || '0.00'}
                                                                     </div>
                                                                 </div>
-                                                                
+
                                                                 {/* Alerts Column */}
                                                                 <div className="text-right w-20 flex-shrink-0">
                                                                     <div className="text-gray-100 font-medium">
@@ -498,7 +540,7 @@ const WatchlistContent = ({
                                                                     </div>
                                                                     <div className="text-xs text-gray-400">Alerts</div>
                                                                 </div>
-                                                                
+
                                                                 {/* Notes Column - clickable if notes exist */}
                                                                 <div className="text-right w-24 flex-shrink-0">
                                                                     <div
@@ -510,7 +552,7 @@ const WatchlistContent = ({
                                                                     </div>
                                                                     <div className="text-xs text-gray-400">Notes</div>
                                                                 </div>
-                                                                
+
                                                                 {/* Actions Column - dropdown menu */}
                                                                 <div className="relative w-16 text-center flex-shrink-0">
                                                                     {/* Three-dot menu button */}
@@ -518,24 +560,24 @@ const WatchlistContent = ({
                                                                         onClick={() => setShowDropdown(showDropdown === item.id ? null : item.id)}
                                                                         className="p-1 rounded hover:bg-dark-600 transition-colors opacity-0 group-hover:opacity-100"
                                                                     >
-                                                                        <MoreVertical size={14} className="text-gray-400"/>
+                                                                        <MoreVertical size={14} className="text-gray-400" />
                                                                     </button>
-                                                                    
+
                                                                     {/* Dropdown menu - only show for this item */}
                                                                     {showDropdown === item.id && (
                                                                         <div className="absolute right-0 top-8 w-48 bg-dark-800 border border-dark-600 rounded-lg shadow-lg z-10">
-                                                                            <button 
+                                                                            <button
                                                                                 onClick={() => handleEditSymbol(item)}
                                                                                 className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-300 hover:bg-dark-700 transition-colors"
                                                                             >
-                                                                                <Edit3 size={14}/>
+                                                                                <Edit3 size={14} />
                                                                                 <span>Edit</span>
                                                                             </button>
                                                                             <button
                                                                                 onClick={() => handleDeleteSymbol(item.id)}
                                                                                 className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
                                                                             >
-                                                                                <Trash2 size={14}/>
+                                                                                <Trash2 size={14} />
                                                                                 <span>Remove</span>
                                                                             </button>
                                                                         </div>
@@ -559,13 +601,13 @@ const WatchlistContent = ({
 
             {/* ===== MODALS ===== */}
             {/* Edit Symbol Modal - allows editing symbol details */}
-            <EditSymbolModal 
-                isOpen={showEditModal} 
+            <EditSymbolModal
+                isOpen={showEditModal}
                 onClose={() => {
                     setShowEditModal(false);
                     setEditingSymbol(null);
-                }} 
-                symbol={editingSymbol} 
+                }}
+                symbol={editingSymbol}
                 onUpdate={handleUpdateSymbol}
             />
 
@@ -578,17 +620,17 @@ const WatchlistContent = ({
                             <h2 className="text-lg font-semibold text-gray-100">
                                 Notes for {selectedNotes.symbol}
                             </h2>
-                            <button 
+                            <button
                                 onClick={() => {
                                     setShowNotesModal(false);
                                     setSelectedNotes(null);
-                                }} 
+                                }}
                                 className="p-2 rounded-lg hover:bg-dark-800 transition-colors"
                             >
-                                <X size={20} className="text-gray-400"/>
+                                <X size={20} className="text-gray-400" />
                             </button>
                         </div>
-                        
+
                         {/* Modal content */}
                         <div className="p-6">
                             <div className="bg-dark-800/50 border border-dark-600 rounded-lg p-4">
@@ -596,10 +638,10 @@ const WatchlistContent = ({
                                     {selectedNotes.notes || 'No notes available for this symbol.'}
                                 </p>
                             </div>
-                            
+
                             {/* Edit notes button */}
                             <div className="mt-4 text-center">
-                                <button 
+                                <button
                                     onClick={() => {
                                         setShowNotesModal(false);
                                         setSelectedNotes(null);

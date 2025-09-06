@@ -2,7 +2,8 @@ import { X } from 'lucide-react';
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
-import { SymbolSearch } from '../shared';
+import { authUtils, marketAPI } from '../../services/api';
+import { LoadingSpinner, SymbolSearch } from '../shared';
 
 const AddSymbolModal = ({ isOpen, onClose, onAdd }) => {
     const { isAuthenticated } = useAuth();
@@ -29,11 +30,7 @@ const AddSymbolModal = ({ isOpen, onClose, onAdd }) => {
 
         try {
             // Create basic symbol data for watchlist
-            const symbolData = {
-                symbol: symbol.trim().toUpperCase(),
-                name: symbol.trim().toUpperCase(),
-                shortname: symbol.trim().toUpperCase()
-            };
+            const symbolData = await fetchSymbolData(symbol.trim().toUpperCase());
 
             await onAdd(symbolData);
             handleClose();
@@ -60,10 +57,61 @@ const AddSymbolModal = ({ isOpen, onClose, onAdd }) => {
         setError(''); // Clear error when user types
     };
 
-    const handleSymbolSelect = (suggestion) => {
+    const handleSymbolSelect = async (suggestion) => {
         setSymbol(suggestion.symbol);
+        setError('');
+
         // Automatically add the symbol to watchlist when selected
-        handleSubmit({ preventDefault: () => { } });
+        try {
+            // Pass the complete symbol data to preserve all symbol information
+            await onAdd(suggestion);
+            handleClose();
+            toast.success(`Added ${suggestion.symbol} to watchlist`);
+        } catch (error) {
+            console.error('Failed to add symbol:', error);
+            const errorMessage = error.response?.data?.message || error.message || 'Failed to add symbol';
+            setError(errorMessage);
+            toast.error(errorMessage);
+        }
+    };
+    // Function to fetch symbol data for popular symbols
+    const fetchSymbolData = async (symbolString) => {
+        try {
+            // Check authentication before making API call
+            if (!authUtils.isAuthenticated()) {
+                console.warn('[AddSymbolModal] User not authenticated for symbol search');
+                throw new Error('Please log in to search for symbols');
+            }
+
+            // Search for the symbol to get complete data
+            const results = await marketAPI.searchSymbols(symbolString);
+
+            // Find exact match or return first result
+            const exactMatch = results.find(result =>
+                result.symbol?.toUpperCase() === symbolString.toUpperCase()
+            );
+
+            if (exactMatch) {
+                return exactMatch;
+            } else if (results.length > 0) {
+                return results[0];
+            } else {
+                // Fallback: create basic symbol object
+                return {
+                    symbol: symbolString.toUpperCase(),
+                    name: symbolString.toUpperCase(),
+                    shortname: symbolString.toUpperCase()
+                };
+            }
+        } catch (error) {
+            console.error('Failed to fetch symbol data:', error);
+            // Fallback: create basic symbol object
+            return {
+                symbol: symbolString.toUpperCase(),
+                name: symbolString.toUpperCase(),
+                shortname: symbolString.toUpperCase()
+            };
+        }
     };
 
     if (!isOpen) return null;
@@ -151,10 +199,7 @@ const AddSymbolModal = ({ isOpen, onClose, onAdd }) => {
                             className="px-6 py-2 bg-primary-600 hover:bg-primary-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center space-x-2"
                         >
                             {loading ? (
-                                <>
-                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                    <span>Adding...</span>
-                                </>
+                                <LoadingSpinner size="sm" color="white" text="Adding..." />
                             ) : (
                                 <span>Add Symbol</span>
                             )}

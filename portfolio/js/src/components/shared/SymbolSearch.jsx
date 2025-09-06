@@ -1,6 +1,7 @@
 import { Search, TrendingUp } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import { marketAPI } from '../../services/api';
+import LoadingSpinner from './LoadingSpinner';
 
 const SymbolSearch = ({
     value,
@@ -111,9 +112,8 @@ const SymbolSearch = ({
                 {showSuggestions && showSuggestionsDropdown && suggestions.length > 0 && (
                     <div className="absolute top-full left-0 right-0 mt-1 bg-dark-800 border border-dark-600 rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto">
                         {searching && (
-                            <div className="px-4 py-3 text-gray-400 text-sm flex items-center space-x-2">
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-500"></div>
-                                <span>Searching...</span>
+                            <div className="px-4 py-3 text-gray-400 text-sm">
+                                <LoadingSpinner size="sm" color="primary" text="Searching..." />
                             </div>
                         )}
                         {suggestions.map((suggestion, index) => (

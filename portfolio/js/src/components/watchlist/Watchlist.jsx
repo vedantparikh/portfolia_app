@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { watchlistAPI } from '../../services/api';
 import EmailVerificationPrompt from '../auth/EmailVerificationPrompt';
-import { Sidebar } from '../shared';
+import { LoadingSpinner, Sidebar } from '../shared';
 import AddSymbolModal from './AddSymbolModal';
 import CreateWatchlistModal from './CreateWatchlistModal';
 import EditWatchlistModal from './EditWatchlistModal';
@@ -30,7 +30,7 @@ const Watchlist = () => {
     const [editingWatchlist, setEditingWatchlist] = useState(null);
     const [showDropdown, setShowDropdown] = useState(null);
     const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'content'
-    
+
     // useRef to store the interval ID so we can clear it later
     const refreshIntervalRef = useRef(null);
 
@@ -44,7 +44,7 @@ const Watchlist = () => {
         const checkMobile = () => {
             setIsMobile(window.innerWidth < 768);
         };
-        
+
         checkMobile();
         window.addEventListener('resize', checkMobile);
         return () => window.removeEventListener('resize', checkMobile);
@@ -60,7 +60,7 @@ const Watchlist = () => {
         // Only start auto-refresh if we have a selected watchlist and auto-refresh is enabled
         if (selectedWatchlist && autoRefreshEnabled) {
             console.log(`[Watchlist] Starting auto-refresh every ${refreshInterval}ms for watchlist ${selectedWatchlist.id}`);
-            
+
             refreshIntervalRef.current = setInterval(() => {
                 refreshSelectedWatchlist();
             }, refreshInterval);
@@ -78,23 +78,9 @@ const Watchlist = () => {
     const loadWatchlists = async () => {
         try {
             setLoading(true);
-            const data = await watchlistAPI.getWatchlists(true);
+            const data = await watchlistAPI.getWatchlists(false);
             setWatchlists(data);
-
-            // Select the first watchlist or default watchlist
-            if (data.length > 0) {
-                const defaultWatchlist = data.find(w => w.is_default) || data[0];
-
-                // Load the full watchlist with items
-                try {
-                    const fullWatchlist = await watchlistAPI.getWatchlist(defaultWatchlist.id, true);
-                    setSelectedWatchlist(fullWatchlist);
-                } catch (error) {
-                    console.error('Failed to load watchlist items:', error);
-                    // Fallback to the basic watchlist data
-                    setSelectedWatchlist(defaultWatchlist);
-                }
-            }
+            
         } catch (error) {
             console.error('Failed to load watchlists:', error);
             console.error('Error details:', error.response?.data);
@@ -111,11 +97,11 @@ const Watchlist = () => {
         try {
             console.log(`[Watchlist] Refreshing watchlist ${selectedWatchlist.id} with real-time data`);
             setIsRefreshing(true);
-            
+
             // Fetch the latest data with real-time prices
             const updatedWatchlist = await watchlistAPI.getWatchlist(selectedWatchlist.id, true);
             setSelectedWatchlist(updatedWatchlist);
-            
+
             console.log('[Watchlist] Watchlist data refreshed successfully');
         } catch (error) {
             console.error('Failed to refresh watchlist data:', error);
@@ -329,16 +315,12 @@ const Watchlist = () => {
 
     const handleSelectWatchlist = async (watchlist) => {
         try {
-            // Load the full watchlist with items
-            const fullWatchlist = await watchlistAPI.getWatchlist(watchlist.id, true);
-            setSelectedWatchlist(fullWatchlist);
-            setViewMode('content');
-        } catch (error) {
-            console.error('Failed to load watchlist items:', error);
-            // Fallback to the basic watchlist data
+            // Only load the basic watchlist data first, not the items
             setSelectedWatchlist(watchlist);
             setViewMode('content');
-            toast.error('Failed to load watchlist items');
+        } catch (error) {
+            console.error('Failed to select watchlist:', error);
+            toast.error('Failed to select watchlist');
         }
     };
 
@@ -350,6 +332,17 @@ const Watchlist = () => {
                 item.id === updatedItem.id ? updatedItem : item
             )
         }));
+    };
+
+    const handleLoadWatchlistItems = async (watchlistId) => {
+        try {
+            // Load the full watchlist with items
+            const fullWatchlist = await watchlistAPI.getWatchlist(watchlistId, true);
+            setSelectedWatchlist(fullWatchlist);
+        } catch (error) {
+            console.error('Failed to load watchlist items:', error);
+            throw error; // Re-throw to let the component handle it
+        }
     };
 
     const handleBackToGrid = () => {
@@ -372,10 +365,12 @@ const Watchlist = () => {
     if (loading) {
         return (
             <div className="min-h-screen gradient-bg flex items-center justify-center">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
-                    <p className="text-gray-400">Loading watchlists...</p>
-                </div>
+                <LoadingSpinner
+                    size="lg"
+                    color="primary"
+                    text="Loading watchlists..."
+                    centered
+                />
             </div>
         );
     }
@@ -480,9 +475,9 @@ const Watchlist = () => {
                                         className="flex items-center space-x-2 px-3 py-2 bg-dark-800 hover:bg-dark-700 text-gray-300 rounded-lg transition-colors disabled:opacity-50"
                                         title="Refresh watchlist data"
                                     >
-                                        <RefreshCw 
-                                            size={16} 
-                                            className={isRefreshing ? 'animate-spin' : ''} 
+                                        <RefreshCw
+                                            size={16}
+                                            className={isRefreshing ? 'animate-spin' : ''}
                                         />
                                         <span>{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
                                     </button>
@@ -520,6 +515,7 @@ const Watchlist = () => {
                                     isRefreshing={isRefreshing}
                                     onManualRefresh={handleManualRefresh}
                                     onAddSymbol={() => setShowAddSymbolModal(true)}
+                                    onLoadWatchlistItems={handleLoadWatchlistItems}
                                 />
                             </div>
                         ) : (
@@ -555,7 +551,7 @@ const Watchlist = () => {
                                                     onClick={() => handleSelectWatchlist(watchlist)}
                                                 >
                                                     {/* Color indicator */}
-                                                    <div 
+                                                    <div
                                                         className="absolute top-0 left-0 right-0 h-1 rounded-t-xl"
                                                         style={{ backgroundColor: color }}
                                                     />
@@ -563,15 +559,15 @@ const Watchlist = () => {
                                                     {/* Header */}
                                                     <div className="flex items-start justify-between mb-4">
                                                         <div className="flex items-center space-x-2">
-                                                            <Bookmark 
-                                                                size={20} 
-                                                                className={watchlist.is_default ? 'text-yellow-400' : 'text-gray-400'} 
+                                                            <Bookmark
+                                                                size={20}
+                                                                className={watchlist.is_default ? 'text-yellow-400' : 'text-gray-400'}
                                                             />
                                                             {watchlist.is_default && (
                                                                 <Star size={16} className="text-yellow-400" />
                                                             )}
                                                         </div>
-                                                        
+
                                                         {/* Actions Dropdown */}
                                                         <div className="relative">
                                                             <button
@@ -627,7 +623,7 @@ const Watchlist = () => {
                                                             <span className="text-gray-400">
                                                                 {watchlist.items?.length || 0} symbols
                                                             </span>
-                                                            <div 
+                                                            <div
                                                                 className="w-3 h-3 rounded-full"
                                                                 style={{ backgroundColor: color }}
                                                             />
