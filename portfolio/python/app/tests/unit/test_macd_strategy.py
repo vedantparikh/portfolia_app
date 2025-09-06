@@ -1,11 +1,12 @@
-import unittest
-import polars as pl
-import numpy as np
-from unittest.mock import patch, MagicMock
+import os
 
 # Add the parent directory to the path so we can import our modules
 import sys
-import os
+import unittest
+from unittest.mock import MagicMock, patch
+
+import numpy as np
+import polars as pl
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -28,13 +29,15 @@ class TestMacdStrategy(unittest.TestCase):
         volumes = np.random.randint(1000, 10000, 100)
 
         # Create polars DataFrame
-        self.pl_df = pl.DataFrame({
-            "Open": close_prices * 0.99,
-            "High": high_prices,
-            "Low": low_prices,
-            "Close": close_prices,
-            "Volume": volumes,
-        })
+        self.pl_df = pl.DataFrame(
+            {
+                "Open": close_prices * 0.99,
+                "High": high_prices,
+                "Low": low_prices,
+                "Close": close_prices,
+                "Volume": volumes,
+            }
+        )
 
         # Test symbol
         self.test_symbol = "AAPL"
@@ -85,7 +88,7 @@ class TestMacdStrategy(unittest.TestCase):
             # Should return a polars DataFrame
             self.assertIsInstance(result, pl.DataFrame)
             self.assertIn("MACD", result.columns)
-        except Exception as e:
+        except Exception:
             # If it fails due to missing data, that's acceptable
             pass
 
@@ -139,7 +142,7 @@ class TestMacdStrategy(unittest.TestCase):
             result = strategy.calculate_macd(small_df)
             # If it succeeds, that's fine - the test passes
             self.assertIsInstance(result, pl.DataFrame)
-        except Exception as e:
+        except Exception:
             # Small datasets might not have enough data for MACD
             pass
 
@@ -176,7 +179,7 @@ class TestMacdStrategy(unittest.TestCase):
             result = strategy.calculate_macd(corrupted_df)
             # Should handle NaN values gracefully
             self.assertIsInstance(result, pl.DataFrame)
-        except Exception as e:
+        except Exception:
             # If it fails, that's acceptable
             pass
 

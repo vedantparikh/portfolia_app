@@ -2,8 +2,11 @@
 Authentication router with user registration, login, and management endpoints.
 """
 
-from datetime import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta
+
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.core.auth.dependencies import (
@@ -56,13 +59,6 @@ from app.core.schemas.auth import (
     UserResponse,
     UserUpdate,
 )
-from fastapi import APIRouter
-from fastapi import Depends
-from fastapi import HTTPException
-from fastapi import Request
-from fastapi import status
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
 
 logger = get_logger(__name__)
 
@@ -73,7 +69,7 @@ router = APIRouter(tags=["authentication"])
     "/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED
 )
 async def register_user(
-        user_data: UserCreate, request: Request, db: Session = Depends(get_db)
+    user_data: UserCreate, request: Request, db: Session = Depends(get_db)
 ):
     """Register a new user."""
     client_ip = get_client_ip(request) if request else "unknown"
@@ -240,7 +236,7 @@ async def register_user(
 
 @router.post("/login", response_model=Token)
 async def login_user(
-        user_credentials: UserLogin, request: Request, db: Session = Depends(get_db)
+    user_credentials: UserLogin, request: Request, db: Session = Depends(get_db)
 ):
     """Authenticate user and return JWT tokens."""
     # Find user by username
@@ -305,8 +301,8 @@ async def login_user(
 
 @router.post("/refresh", response_model=Token)
 async def refresh_access_token(
-        refresh_token_data: dict = Depends(validate_refresh_token),
-        db: Session = Depends(get_db),
+    refresh_token_data: dict = Depends(validate_refresh_token),
+    db: Session = Depends(get_db),
 ):
     """Refresh access token using refresh token."""
     user_id = int(refresh_token_data.get("sub"))
@@ -325,9 +321,9 @@ async def refresh_access_token(
 
 @router.post("/logout")
 async def logout_user(
-        request: Request,
-        current_user: User = Depends(get_current_user),
-        db: Session = Depends(get_db),
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     """Logout user and invalidate session."""
     # Invalidate current session
@@ -373,7 +369,7 @@ async def get_current_user_info(current_user: User = Depends(get_current_active_
 
 @router.get("/me/profile", response_model=UserProfileResponse)
 async def get_current_user_profile_info(
-        current_user_profile: UserProfile = Depends(get_current_user_profile),
+    current_user_profile: UserProfile = Depends(get_current_user_profile),
 ):
     """Get current user's profile information."""
     return current_user_profile
@@ -381,9 +377,9 @@ async def get_current_user_profile_info(
 
 @router.put("/me", response_model=UserResponse)
 async def update_current_user(
-        user_update: UserUpdate,
-        current_user: User = Depends(get_current_active_user),
-        db: Session = Depends(get_db),
+    user_update: UserUpdate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """Update current user's profile."""
     # Update user profile
@@ -403,9 +399,9 @@ async def update_current_user(
 
 @router.post("/change-password")
 async def change_password(
-        password_data: PasswordChange,
-        current_user: User = Depends(get_current_active_user),
-        db: Session = Depends(get_db),
+    password_data: PasswordChange,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """Change user password."""
     # Verify current password
@@ -438,7 +434,7 @@ async def change_password(
 
 @router.post("/forgot-password")
 async def forgot_password(
-        password_reset: PasswordReset, request: Request, db: Session = Depends(get_db)
+    password_reset: PasswordReset, request: Request, db: Session = Depends(get_db)
 ):
     """Request password reset."""
     client_ip = get_client_ip(request) if request else "unknown"
@@ -507,7 +503,7 @@ async def forgot_password(
 
 @router.get("/validate-reset-token/")
 async def validate_reset_token_endpoint(
-        token: str, request: Request, db: Session = Depends(get_db)
+    token: str, request: Request, db: Session = Depends(get_db)
 ):
     """Validate password reset token and return information for frontend redirection."""
     client_ip = get_client_ip(request) if request else "unknown"
@@ -534,7 +530,7 @@ async def validate_reset_token_endpoint(
             message="Token is valid. You can now reset your password.",
             redirect_url=f"{settings.API_URL}{settings.API_V1_STR}/reset-password?token={token}",
             expires_at=datetime.fromisoformat(token_data["created_at"])
-                       + timedelta(hours=24),
+            + timedelta(hours=24),
             user_email=token_data["user_email"],
         )
     else:
@@ -557,9 +553,9 @@ async def validate_reset_token_endpoint(
 
 @router.post("/reset-password")
 async def reset_password(
-        password_reset: PasswordResetConfirm,
-        request: Request,
-        db: Session = Depends(get_db),
+    password_reset: PasswordResetConfirm,
+    request: Request,
+    db: Session = Depends(get_db),
 ):
     """Reset password using reset token."""
     client_ip = get_client_ip(request) if request else "unknown"
@@ -772,7 +768,7 @@ async def resend_verification(current_user: User = Depends(get_current_user)):
 
 @router.delete("/me")
 async def delete_account(
-        current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ):
     """Delete current user account."""
     # In production, this would require additional confirmation

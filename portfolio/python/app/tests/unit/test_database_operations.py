@@ -3,24 +3,23 @@
 Test script to verify basic database operations.
 """
 
-import sys
 import os
-from datetime import datetime, timedelta
-from sqlalchemy.orm import Session
+import sys
+from datetime import datetime
 
 # Add the current directory to the Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from app.core.database.connection import get_db_context, init_db
-from app.core.database.models import User, Portfolio, Asset, Transaction, PortfolioAsset
+from app.core.database.connection import get_db_context
+from app.core.database.models import Asset, Portfolio, PortfolioAsset, Transaction, User
 from app.core.database.models.asset import AssetType
-from app.core.database.models.transaction import TransactionType, TransactionStatus
+from app.core.database.models.transaction import TransactionStatus, TransactionType
 from app.core.database.utils import (
-    get_user_by_email,
-    get_user_portfolios,
-    get_portfolio_assets,
     calculate_portfolio_value,
     get_database_stats,
+    get_portfolio_assets,
+    get_user_by_email,
+    get_user_portfolios,
     validate_database_integrity,
 )
 

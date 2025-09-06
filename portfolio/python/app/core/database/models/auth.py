@@ -1,17 +1,19 @@
+import secrets
+from datetime import datetime, timedelta
+
 from sqlalchemy import (
-    Column,
-    Integer,
-    String,
     Boolean,
+    Column,
     DateTime,
-    Text,
     ForeignKey,
     Index,
+    Integer,
+    String,
+    Text,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from datetime import datetime, timedelta
-import secrets
+
 from app.core.database.connection import Base
 
 

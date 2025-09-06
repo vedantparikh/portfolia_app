@@ -7,16 +7,14 @@ import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, Query, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from yahooquery import search
 
-from app.core.services.market_data_service import market_data_service
 from app.core.auth.dependencies import (
-    get_optional_current_user,
     get_client_ip,
     get_current_user,
+    get_optional_current_user,
 )
-from app.core.schemas.market import MarketData
 from app.core.auth.utils import is_rate_limited
 from app.core.logging_config import (
     get_logger,
@@ -24,6 +22,8 @@ from app.core.logging_config import (
     log_api_response,
     log_error_with_context,
 )
+from app.core.schemas.market import MarketData
+from app.core.services.market_data_service import market_data_service
 
 logger = get_logger(__name__)
 
@@ -327,12 +327,12 @@ async def get_stock_latest_data(
 ) -> List[Optional[MarketData]]:
     """
     Get the latest stock data for a specific symbol.
-    
+
     """
     log_api_request(
         logger,
         "GET",
-        f"/stock-latest-data",
+        "/stock-latest-data",
         current_user.id,
         f"Fetching tickers: {symbols}",
     )
@@ -340,11 +340,11 @@ async def get_stock_latest_data(
     try:
         data = await market_data_service.get_stock_latest_data(symbols)
         response_time = time.time() - start_time
-        log_api_response(logger, "GET", f"/stock-latest-data", 200, response_time)
+        log_api_response(logger, "GET", "/stock-latest-data", 200, response_time)
         return data
     except Exception as e:
         logger.error(f"Error retrieving latest data for {symbols}: {str(e)}")
         raise HTTPException(
-            status_code=500, detail=f"Error retrieving latest data for {symbols}: {str(e)}"
+            status_code=500,
+            detail=f"Error retrieving latest data for {symbols}: {str(e)}",
         )
- 

@@ -10,10 +10,11 @@ This test suite covers:
 - Authentication scenarios
 """
 
-import pytest
-import pandas as pd
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, patch
+
+import pandas as pd
+import pytest
 from fastapi.testclient import TestClient
 
 # Mock dependencies at the module level before importing
@@ -620,9 +621,9 @@ class TestStockRouter:
             response_time = end_time - start_time
 
             # Response should be under 5 seconds (adjust as needed for slower systems)
-            assert (
-                response_time < 5.0
-            ), f"Endpoint {endpoint} took {response_time:.2f}s to respond"
+            assert response_time < 5.0, (
+                f"Endpoint {endpoint} took {response_time:.2f}s to respond"
+            )
 
             # Should get some kind of response (not timeout)
             assert response.status_code in [200, 400, 401, 404, 429, 500, 422]
@@ -665,7 +666,6 @@ class TestStockRouter:
     def test_concurrent_access(self, client, sample_quotes_data):
         """Test that endpoints can handle concurrent access."""
         import threading
-        import time
 
         # Setup mocks
         with patch("app.v1.market.stock.search", return_value=sample_quotes_data):

@@ -5,14 +5,10 @@ API endpoints for market data operations with separate endpoints for fresh and l
 
 import asyncio
 import logging
-from datetime import datetime
-from datetime import timedelta
-from typing import List
-from typing import Optional
+from datetime import datetime, timedelta
+from typing import List, Optional
 
-from fastapi import APIRouter
-from fastapi import HTTPException
-from fastapi import Query
+from fastapi import APIRouter, HTTPException, Query
 
 from app.core.database.connection import get_db_session
 from app.core.services.data_scheduler import data_scheduler
@@ -99,7 +95,7 @@ async def get_ticker_data_quality(symbol: str):
 async def update_all_tickers(
     tickers: Optional[List[str]] = Query(
         None, description="Specific tickers to update, or all if not specified"
-    )
+    ),
 ):
     """
     Update market data for multiple tickers.
@@ -162,10 +158,8 @@ async def get_service_status():
 
         # Get recent update logs (last 24 hours)
         async with get_db_session() as session:
-            from sqlalchemy import and_
-            from sqlalchemy import select
-
             from models.market_data import DataUpdateLog
+            from sqlalchemy import select
 
             cutoff_time = datetime.utcnow() - timedelta(hours=24)
             result = await session.execute(
@@ -313,9 +307,8 @@ async def get_ticker_info(symbol: str):
         symbol = symbol.upper()
 
         async with get_db_session() as session:
-            from sqlalchemy import select
-
             from models.market_data import TickerInfo
+            from sqlalchemy import select
 
             result = await session.execute(
                 select(TickerInfo).where(TickerInfo.symbol == symbol)

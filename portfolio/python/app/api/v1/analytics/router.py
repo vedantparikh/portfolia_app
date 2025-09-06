@@ -2,15 +2,16 @@
 Analytics and reporting router with authentication.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
 from datetime import datetime
 
-from app.core.database.connection import get_db
-from app.core.database.models import User, Portfolio, PortfolioAsset, Transaction
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session
+
 from app.core.auth.dependencies import (
     get_current_active_user,
 )
+from app.core.database.connection import get_db
+from app.core.database.models import Portfolio, PortfolioAsset, Transaction, User
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
@@ -192,7 +193,9 @@ async def get_portfolio_risk_metrics(
             "concentration_risk": (
                 "High"
                 if largest_position_weight > 20
-                else "Medium" if largest_position_weight > 10 else "Low"
+                else "Medium"
+                if largest_position_weight > 10
+                else "Low"
             ),
         },
         "asset_weights": asset_weights,

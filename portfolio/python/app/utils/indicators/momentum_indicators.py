@@ -1,4 +1,5 @@
 import polars as pl
+
 from .base import BaseIndicator
 
 
@@ -249,7 +250,9 @@ def calculate_rsi(prices: pl.Series, window: int = 14) -> pl.Series:
     return result["RSI"]
 
 
-def calculate_macd(prices: pl.Series, fast: int = 12, slow: int = 26, signal: int = 9) -> pl.DataFrame:
+def calculate_macd(
+    prices: pl.Series, fast: int = 12, slow: int = 26, signal: int = 9
+) -> pl.DataFrame:
     """Calculate MACD for a price series."""
     df = pl.DataFrame({"Close": prices})
     # This would need a trend indicators class
@@ -257,14 +260,17 @@ def calculate_macd(prices: pl.Series, fast: int = 12, slow: int = 26, signal: in
     return pl.DataFrame()
 
 
-def calculate_stochastic(high: pl.Series, low: pl.Series, close: pl.Series, 
-                        k_window: int = 14, d_window: int = 3) -> pl.DataFrame:
+def calculate_stochastic(
+    high: pl.Series,
+    low: pl.Series,
+    close: pl.Series,
+    k_window: int = 14,
+    d_window: int = 3,
+) -> pl.DataFrame:
     """Calculate Stochastic Oscillator."""
-    df = pl.DataFrame({
-        "High": high,
-        "Low": low,
-        "Close": close
-    })
+    df = pl.DataFrame({"High": high, "Low": low, "Close": close})
     indicator = MomentumIndicators(df)
-    result = indicator.stoch_oscillator_indicator(window=k_window, smooth_window=d_window)
+    result = indicator.stoch_oscillator_indicator(
+        window=k_window, smooth_window=d_window
+    )
     return result.select(["stoch", "stoch_signal"])

@@ -3,18 +3,19 @@
 Performance comparison script for technical indicators.
 """
 
-import time
-import polars as pl
-import numpy as np
-import sys
 import os
+import sys
+import time
 import unittest
+
+import numpy as np
+import polars as pl
 
 # Add the parent directory to the path so we can import our modules
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.utils.indicators.momentum_indicators import calculate_rsi
-from app.utils.indicators.trend_indicators import calculate_sma, calculate_ema
+from app.utils.indicators.trend_indicators import calculate_ema, calculate_sma
 from app.utils.indicators.volatility_indicators import calculate_bollinger_bands
 
 
@@ -22,7 +23,7 @@ def generate_test_data(size=10000):
     """Generate test OHLCV data."""
     np.random.seed(42)
     dates = np.arange(size)
-    
+
     # Generate realistic price data
     close_prices = 100 + np.cumsum(np.random.randn(size) * 0.5)
     high_prices = close_prices + np.random.uniform(0.5, 2.0, size)
@@ -30,13 +31,15 @@ def generate_test_data(size=10000):
     volumes = np.random.randint(1000, 10000, size)
 
     # Create polars DataFrame
-    pl_df = pl.DataFrame({
-        "Open": close_prices * 0.99,
-        "High": high_prices,
-        "Low": low_prices,
-        "Close": close_prices,
-        "Volume": volumes,
-    })
+    pl_df = pl.DataFrame(
+        {
+            "Open": close_prices * 0.99,
+            "High": high_prices,
+            "Low": low_prices,
+            "Close": close_prices,
+            "Volume": volumes,
+        }
+    )
 
     return pl_df
 
@@ -116,7 +119,7 @@ class TestPerformanceComparison(unittest.TestCase):
     def test_memory_usage(self):
         """Test memory usage of indicators."""
         print("\n=== Memory Usage Test ===")
-        
+
         # This is a basic test - in a real scenario you'd use memory_profiler
         try:
             result = calculate_rsi(self.test_data["Close"], window=14)

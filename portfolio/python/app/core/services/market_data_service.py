@@ -6,12 +6,12 @@ Handles fetching, storing, and serving daily market data with fallback to local 
 import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
 
 import pandas as pd
 import yfinance as yf
+from sqlalchemy import and_, desc, select
 from sqlalchemy.orm import Session
-from sqlalchemy import select, and_, desc
 
 from app.core.database.connection import get_db_session
 from app.core.database.models.market_data import MarketData, TickerInfo
@@ -612,7 +612,7 @@ class MarketDataService:
                     beta=info.get("beta", None),
                     currency=info.get("currency", None),
                     exchange=info.get("exchange", None),
-                    dividend_yield=info.get("dividendYield", 0.0), # Corrected key
+                    dividend_yield=info.get("dividendYield", 0.0),  # Corrected key
                 )
             )
 
@@ -628,6 +628,7 @@ class MarketDataService:
         except Exception as e:
             logger.error(f"Error getting ticker info for {symbol}: {e}")
             return None
+
 
 # Global instance
 market_data_service = MarketDataService()

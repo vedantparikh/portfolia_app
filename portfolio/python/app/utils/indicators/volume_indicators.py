@@ -1,4 +1,5 @@
 import polars as pl
+
 from .base import BaseIndicator
 
 
@@ -17,7 +18,11 @@ class VolumeIndicators(BaseIndicator):
         """
         # Calculate typical price
         self.df = self.df.with_columns(
-            [((pl.col("High") + pl.col("Low") + pl.col("Close")) / 3).alias("typical_price")]
+            [
+                ((pl.col("High") + pl.col("Low") + pl.col("Close")) / 3).alias(
+                    "typical_price"
+                )
+            ]
         )
 
         # Calculate money flow
@@ -56,7 +61,13 @@ class VolumeIndicators(BaseIndicator):
 
         # Clean up temporary columns
         self.df = self.df.drop(
-            ["typical_price", "money_flow", "positive_money_flow", "negative_money_flow", "money_ratio"]
+            [
+                "typical_price",
+                "money_flow",
+                "positive_money_flow",
+                "negative_money_flow",
+                "money_ratio",
+            ]
         )
 
         if not fillna:
@@ -88,17 +99,11 @@ class VolumeIndicators(BaseIndicator):
 
         # Calculate VPT
         self.df = self.df.with_columns(
-            [
-                (
-                    pl.col("price_change_pct") * pl.col("Volume")
-                ).alias("vpt")
-            ]
+            [(pl.col("price_change_pct") * pl.col("Volume")).alias("vpt")]
         )
 
         # Calculate cumulative VPT
-        self.df = self.df.with_columns(
-            [pl.col("vpt").cum_sum().alias("VPT")]
-        )
+        self.df = self.df.with_columns([pl.col("vpt").cum_sum().alias("VPT")])
 
         # Clean up temporary columns
         self.df = self.df.drop(["price_change_pct", "vpt"])
@@ -120,7 +125,11 @@ class VolumeIndicators(BaseIndicator):
         """
         # Calculate typical price
         self.df = self.df.with_columns(
-            [((pl.col("High") + pl.col("Low") + pl.col("Close")) / 3).alias("typical_price")]
+            [
+                ((pl.col("High") + pl.col("Low") + pl.col("Close")) / 3).alias(
+                    "typical_price"
+                )
+            ]
         )
 
         # Calculate price * volume
@@ -174,9 +183,7 @@ class VolumeIndicators(BaseIndicator):
         )
 
         # Calculate cumulative OBV
-        self.df = self.df.with_columns(
-            [pl.col("obv_change").cum_sum().alias("OBV")]
-        )
+        self.df = self.df.with_columns([pl.col("obv_change").cum_sum().alias("OBV")])
 
         # Clean up temporary columns
         self.df = self.df.drop(["obv_change"])
@@ -188,7 +195,9 @@ class VolumeIndicators(BaseIndicator):
 
         return self.df
 
-    def force_index_indicator(self, window: int = 13, fillna: bool = False) -> pl.DataFrame:
+    def force_index_indicator(
+        self, window: int = 13, fillna: bool = False
+    ) -> pl.DataFrame:
         """
         Force Index
         The Force Index is a technical indicator that measures the power behind price movements by considering both
@@ -210,11 +219,7 @@ class VolumeIndicators(BaseIndicator):
 
         # Calculate smoothed Force Index
         self.df = self.df.with_columns(
-            [
-                pl.col("force_index")
-                .ewm_mean(span=window)
-                .alias("Force_Index")
-            ]
+            [pl.col("force_index").ewm_mean(span=window).alias("Force_Index")]
         )
 
         # Clean up temporary columns
@@ -244,23 +249,17 @@ class VolumeIndicators(BaseIndicator):
 # Convenience functions for pandas-style usage
 def calculate_obv(close: pl.Series, volume: pl.Series) -> pl.Series:
     """Calculate On-Balance Volume (OBV)."""
-    df = pl.DataFrame({
-        "Close": close,
-        "Volume": volume
-    })
+    df = pl.DataFrame({"Close": close, "Volume": volume})
     indicator = VolumeIndicators(df)
     result = indicator.obv_indicator()
     return result["OBV"]
 
 
-def calculate_vwap(high: pl.Series, low: pl.Series, close: pl.Series, volume: pl.Series) -> pl.Series:
+def calculate_vwap(
+    high: pl.Series, low: pl.Series, close: pl.Series, volume: pl.Series
+) -> pl.Series:
     """Calculate Volume Weighted Average Price (VWAP)."""
-    df = pl.DataFrame({
-        "High": high,
-        "Low": low,
-        "Close": close,
-        "Volume": volume
-    })
+    df = pl.DataFrame({"High": high, "Low": low, "Close": close, "Volume": volume})
     indicator = VolumeIndicators(df)
     result = indicator.vwap_indicator()
     return result["VWAP"]

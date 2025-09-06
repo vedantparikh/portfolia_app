@@ -42,6 +42,7 @@ class MarketData(BaseModel):
     dividend_yield: Optional[Decimal] = None
     beta: Optional[Decimal] = None
 
+
 class MarketIndex(BaseModel):
     name: str
     value: Decimal

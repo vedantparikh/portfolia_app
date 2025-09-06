@@ -1,4 +1,5 @@
 import polars as pl
+
 from .base import BaseIndicator
 
 
@@ -283,19 +284,19 @@ class VolatilityIndicators(BaseIndicator):
 
 
 # Convenience functions for pandas-style usage
-def calculate_atr(high: pl.Series, low: pl.Series, close: pl.Series, window: int = 14) -> pl.Series:
+def calculate_atr(
+    high: pl.Series, low: pl.Series, close: pl.Series, window: int = 14
+) -> pl.Series:
     """Calculate Average True Range (ATR)."""
-    df = pl.DataFrame({
-        "High": high,
-        "Low": low,
-        "Close": close
-    })
+    df = pl.DataFrame({"High": high, "Low": low, "Close": close})
     indicator = VolatilityIndicators(df)
     result = indicator.average_true_range_indicator(window=window)
     return result["average_true_range"]
 
 
-def calculate_bollinger_bands(prices: pl.Series, window: int = 20, num_std: float = 2.0) -> pl.DataFrame:
+def calculate_bollinger_bands(
+    prices: pl.Series, window: int = 20, num_std: float = 2.0
+) -> pl.DataFrame:
     """Calculate Bollinger Bands."""
     df = pl.DataFrame({"Close": prices})
     indicator = VolatilityIndicators(df)
@@ -303,14 +304,17 @@ def calculate_bollinger_bands(prices: pl.Series, window: int = 20, num_std: floa
     return result.select(["bb_bbm", "bb_bbh", "bb_bbl"])
 
 
-def calculate_keltner_channels(high: pl.Series, low: pl.Series, close: pl.Series, 
-                              window: int = 20, multiplier: float = 2.0) -> pl.DataFrame:
+def calculate_keltner_channels(
+    high: pl.Series,
+    low: pl.Series,
+    close: pl.Series,
+    window: int = 20,
+    multiplier: float = 2.0,
+) -> pl.DataFrame:
     """Calculate Keltner Channels."""
-    df = pl.DataFrame({
-        "High": high,
-        "Low": low,
-        "Close": close
-    })
+    df = pl.DataFrame({"High": high, "Low": low, "Close": close})
     indicator = VolatilityIndicators(df)
     result = indicator.keltner_channel_indicator(window=window, multiplier=multiplier)
-    return result.select(["keltner_channel_mband", "keltner_channel_hband", "keltner_channel_lband"])
+    return result.select(
+        ["keltner_channel_mband", "keltner_channel_hband", "keltner_channel_lband"]
+    )

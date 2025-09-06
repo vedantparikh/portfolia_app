@@ -1,15 +1,19 @@
 import pandas as pd
-from app.utils.indicators.base import BaseIndicator
 from ta.volatility import (
     AverageTrueRange,
-    BollingerBands, KeltnerChannel,
+    BollingerBands,
+    KeltnerChannel,
 )
+
+from app.utils.indicators.base import BaseIndicator
 
 
 class VolatilityIndicators(BaseIndicator):
-    """ Returns a Pandas Dataframe with calculated different Volatility Indicators. """
+    """Returns a Pandas Dataframe with calculated different Volatility Indicators."""
 
-    def bollinger_bands_indicator(self, window: int = 20, window_dev: int = 2, fillna: bool = False):
+    def bollinger_bands_indicator(
+        self, window: int = 20, window_dev: int = 2, fillna: bool = False
+    ):
         """
         Bollinger Bands are a technical analysis tool used in finance to measure the volatility of an asset.
         They consist of three lines drawn on a chart: a simple moving average in the middle, with an upper and
@@ -23,18 +27,22 @@ class VolatilityIndicators(BaseIndicator):
         :param fillna: If True, fil NaN values.
         :return: DataFrame with bollinger bands indicator fields.
         """
-        bollinger_bands = BollingerBands(close=self.df.Close, window=window, window_dev=window_dev, fillna=fillna)
-        self.df['bb_bbm'] = bollinger_bands.bollinger_mavg()
-        self.df['bb_bbh'] = bollinger_bands.bollinger_hband()
-        self.df['bb_bbl'] = bollinger_bands.bollinger_lband()
+        bollinger_bands = BollingerBands(
+            close=self.df.Close, window=window, window_dev=window_dev, fillna=fillna
+        )
+        self.df["bb_bbm"] = bollinger_bands.bollinger_mavg()
+        self.df["bb_bbh"] = bollinger_bands.bollinger_hband()
+        self.df["bb_bbl"] = bollinger_bands.bollinger_lband()
         # Add Bollinger Band high indicator
-        self.df['bb_bbhi'] = bollinger_bands.bollinger_hband_indicator()
+        self.df["bb_bbhi"] = bollinger_bands.bollinger_hband_indicator()
         # Add Bollinger Band low indicator
-        self.df['bb_bbli'] = bollinger_bands.bollinger_lband_indicator()
+        self.df["bb_bbli"] = bollinger_bands.bollinger_lband_indicator()
 
         return self.df
 
-    def average_true_range_indicator(self, window: int = 14, fillna: bool = False) -> pd.DataFrame:
+    def average_true_range_indicator(
+        self, window: int = 14, fillna: bool = False
+    ) -> pd.DataFrame:
         """
         The ATR is calculated by taking the average of the true ranges over a specified number of days.
         A true range is defined as the greatest of the following:
@@ -53,15 +61,23 @@ class VolatilityIndicators(BaseIndicator):
         """
 
         average_true_range = AverageTrueRange(
-            high=self.df.High, low=self.df.Low, close=self.df.Close, window=window, fillna=fillna
+            high=self.df.High,
+            low=self.df.Low,
+            close=self.df.Close,
+            window=window,
+            fillna=fillna,
         )
-        self.df['average_true_range'] = average_true_range.average_true_range()
+        self.df["average_true_range"] = average_true_range.average_true_range()
 
         return self.df
 
     def keltner_channel_indicator(
-            self, window: int = 20, window_atr: int = 10, fillna: bool = False, original_version: bool = True,
-            multiplier: int = 2
+        self,
+        window: int = 20,
+        window_atr: int = 10,
+        fillna: bool = False,
+        original_version: bool = True,
+        multiplier: int = 2,
     ) -> pd.DataFrame:
         """
         Keltner Channels are a trend following indicator used to identify reversals with channel breakouts and channel
@@ -77,16 +93,26 @@ class VolatilityIndicators(BaseIndicator):
         :return: DataFrame with Keltner channel indicator fields.
         """
         keltner_channel = KeltnerChannel(
-            high=self.df.High, low=self.df.Low, close=self.df.Close, window=window, window_atr=window_atr,
-            fillna=fillna, original_version=original_version, multiplier=multiplier
+            high=self.df.High,
+            low=self.df.Low,
+            close=self.df.Close,
+            window=window,
+            window_atr=window_atr,
+            fillna=fillna,
+            original_version=original_version,
+            multiplier=multiplier,
         )
-        self.df['keltner_channel_hband'] = keltner_channel.keltner_channel_hband()
-        self.df['keltner_channel_hband_indicator'] = keltner_channel.keltner_channel_hband_indicator()
-        self.df['keltner_channel_lband'] = keltner_channel.keltner_channel_lband()
-        self.df['keltner_channel_lband_indicator'] = keltner_channel.keltner_channel_lband_indicator()
-        self.df['keltner_channel_mband'] = keltner_channel.keltner_channel_mband()
-        self.df['keltner_channel_pband'] = keltner_channel.keltner_channel_pband()
-        self.df['keltner_channel_wband'] = keltner_channel.keltner_channel_wband()
+        self.df["keltner_channel_hband"] = keltner_channel.keltner_channel_hband()
+        self.df["keltner_channel_hband_indicator"] = (
+            keltner_channel.keltner_channel_hband_indicator()
+        )
+        self.df["keltner_channel_lband"] = keltner_channel.keltner_channel_lband()
+        self.df["keltner_channel_lband_indicator"] = (
+            keltner_channel.keltner_channel_lband_indicator()
+        )
+        self.df["keltner_channel_mband"] = keltner_channel.keltner_channel_mband()
+        self.df["keltner_channel_pband"] = keltner_channel.keltner_channel_pband()
+        self.df["keltner_channel_wband"] = keltner_channel.keltner_channel_wband()
 
         return self.df
 

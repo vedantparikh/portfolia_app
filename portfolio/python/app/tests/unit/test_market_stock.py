@@ -1,17 +1,16 @@
-import unittest
-import pandas as pd
-import numpy as np
-from unittest.mock import patch, MagicMock
-import polars as pl
+import os
 
 # Add the parent directory to the path so we can import our modules
 import sys
-import os
 import time
+import unittest
+from unittest.mock import MagicMock, patch
 
+import numpy as np
+import pandas as pd
+import polars as pl
 
-from app.api.v1.market.stock import get_symbols, get_symbol_df, get_symbol_data
-
+from app.api.v1.market.stock import get_symbol_data, get_symbol_df, get_symbols
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

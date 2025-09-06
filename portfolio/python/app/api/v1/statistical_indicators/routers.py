@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, Request, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request
 
-from utils.indicators.momentum_indicators import MomentumIndicators
-from app.core.services.market_data_service import MarketDataService
-from app.core.auth.dependencies import get_optional_current_user, get_client_ip
+from app.core.auth.dependencies import get_client_ip, get_optional_current_user
 from app.core.auth.utils import is_rate_limited
+from app.core.services.market_data_service import MarketDataService
+from utils.indicators.momentum_indicators import MomentumIndicators
 
 router = APIRouter(prefix="/statistical-indicators", tags=["statistical-indicators"])
 

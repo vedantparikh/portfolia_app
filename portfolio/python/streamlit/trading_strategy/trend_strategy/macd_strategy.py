@@ -26,8 +26,9 @@ class MACDStrategy:
         # we should receive DataFrame with the MACD fields, No need to calculate again.
         self.df = df
 
-        assert {'MACD', 'Signal', 'Histogram'}.issubset(df.columns), "MACD trend calculated fields are " \
-                                                                     "not present in DataFrame."
+        assert {"MACD", "Signal", "Histogram"}.issubset(df.columns), (
+            "MACD trend calculated fields are not present in DataFrame."
+        )
 
     def _find_intersection(self, x: float, y: float, digits: int = 0) -> int:
         """
@@ -53,19 +54,23 @@ class MACDStrategy:
         """
         ith_row = None
         for i in df.index:
-            if df.loc[i, 'MACD_intersection'].any():
+            if df.loc[i, "MACD_intersection"].any():
                 if not ith_row:
                     ith_row = i
-                    df.loc[i, 'MACD_price_difference'] = np.nan
+                    df.loc[i, "MACD_price_difference"] = np.nan
                 else:
-                    df.loc[i, 'MACD_price_difference'] = df.loc[i, 'Close'] - df.loc[ith_row, 'Close']
+                    df.loc[i, "MACD_price_difference"] = (
+                        df.loc[i, "Close"] - df.loc[ith_row, "Close"]
+                    )
                     ith_row = i
             else:
-                df.loc[i, 'MACD_price_difference'] = np.nan
+                df.loc[i, "MACD_price_difference"] = np.nan
 
         return df
 
-    def _get_buy_sell_calls(self, df: pd.DataFrame, condition_days: int = 10) -> pd.DataFrame:
+    def _get_buy_sell_calls(
+        self, df: pd.DataFrame, condition_days: int = 10
+    ) -> pd.DataFrame:
         """
         Calculates Buy/Sell signals.
         :param df: DataFrame with the MACD intersection column.
@@ -78,10 +83,10 @@ class MACDStrategy:
         for i in range(df.shape[0]):
             # 26 as initial 26 value of Signal will be `Null` because of the 26-day moving average calculation.
             if i > 26:
-                if df['MACD_intersection'][i] == 1:
+                if df["MACD_intersection"][i] == 1:
                     # getting last number of condition days values (days) of MACD and Signal for comparison.
-                    macd = df['MACD'][i - condition_days:i].tolist()
-                    signal = df['Signal'][i - condition_days:i].tolist()
+                    macd = df["MACD"][i - condition_days : i].tolist()
+                    signal = df["Signal"][i - condition_days : i].tolist()
                     states = []
                     for m, s in zip(macd, signal):
                         # for last condition_days values if MACD value is less than the Signal value and also both
@@ -98,35 +103,50 @@ class MACDStrategy:
                         # sure that all the values were not tangled with each other and not generating weak buy/sell
                         # signals.
                     # all past days should have either `True` or `False` values.
-                    c = all(state is True for state in states) or all(state is False for state in states)
+                    c = all(state is True for state in states) or all(
+                        state is False for state in states
+                    )
                     # We are not interested if we did not receive condition_days states.
                     if len(states) == condition_days:
-                        if c and (df['MACD'][i] <= df['Signal'][i] < 0) and df['Close'][i] >= df['MACD_EMA'][i]:
+                        if (
+                            c
+                            and (df["MACD"][i] <= df["Signal"][i] < 0)
+                            and df["Close"][i] >= df["MACD_EMA"][i]
+                        ):
                             # Keeping the value 1 as it's a Buy call.
                             continue
-                        elif c and (df['MACD'][i] >= df['Signal'][i] > 0) and df['Close'][i] <= df['MACD_EMA'][i]:
+                        elif (
+                            c
+                            and (df["MACD"][i] >= df["Signal"][i] > 0)
+                            and df["Close"][i] <= df["MACD_EMA"][i]
+                        ):
                             # Changing the value to -1 as it's a Sell call.
-                            df['MACD_intersection'].iloc[i] = -1
+                            df["MACD_intersection"].iloc[i] = -1
                     else:
                         # If states are less than condition_days we should change the intersection value 1 to 0 else it
                         # will be considered as a Buy signal.
-                        df['MACD_intersection'].iloc[i] = 0
+                        df["MACD_intersection"].iloc[i] = 0
 
         df = self._get_closing_price_difference(df=df)
-        df['MACD_intersection'] = abs(df['MACD_intersection']) * df['MACD']
-        df['MACD_intersection'] = df['MACD_intersection'].replace(0, np.nan)
+        df["MACD_intersection"] = abs(df["MACD_intersection"]) * df["MACD"]
+        df["MACD_intersection"] = df["MACD_intersection"].replace(0, np.nan)
 
         return df
 
-    def buy_sell_strategy(self, condition_days: int = 10, moving_average_days: int = 200):
+    def buy_sell_strategy(
+        self, condition_days: int = 10, moving_average_days: int = 200
+    ):
         """
         :return: DataFrame with the MACD Buy and Sell signals.
         """
         # initial intersection mappings
-        self.df['MACD_intersection'] = self.df.apply(lambda row: self._find_intersection(row['MACD'], row['Signal']),
-                                                     axis=1)
-        self.df['MACD_EMA'] = EMAIndicator(close=self.df.Close, window=moving_average_days).ema_indicator()
+        self.df["MACD_intersection"] = self.df.apply(
+            lambda row: self._find_intersection(row["MACD"], row["Signal"]), axis=1
+        )
+        self.df["MACD_EMA"] = EMAIndicator(
+            close=self.df.Close, window=moving_average_days
+        ).ema_indicator()
         self.df = self._get_buy_sell_calls(df=self.df, condition_days=condition_days)
-        self.df.rename(columns={'MACD_intersection': 'MACD_buy_or_sell'}, inplace=True)
+        self.df.rename(columns={"MACD_intersection": "MACD_buy_or_sell"}, inplace=True)
 
         return self.df

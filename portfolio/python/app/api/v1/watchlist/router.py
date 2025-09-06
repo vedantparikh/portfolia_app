@@ -1,25 +1,26 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
-from typing import List
 import time
+from typing import List
 
-from app.core.database.connection import get_db
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session
+
 from app.core.auth.dependencies import get_current_user
+from app.core.database.connection import get_db
 from app.core.database.models import User
-from app.core.services.watchlist_service import WatchlistService
-from app.core.schemas.watchlist import (
-    WatchlistCreate,
-    WatchlistUpdate,
-    WatchlistResponse,
-    WatchlistWithItemsResponse,
-    WatchlistItemCreate,
-    WatchlistItemUpdate,
-    WatchlistItemResponse,
-    WatchlistReorderRequest,
-    WatchlistBulkAddRequest,
-    WatchlistStatsResponse,
-)
 from app.core.logging_config import get_logger, log_api_request, log_api_response
+from app.core.schemas.watchlist import (
+    WatchlistBulkAddRequest,
+    WatchlistCreate,
+    WatchlistItemCreate,
+    WatchlistItemResponse,
+    WatchlistItemUpdate,
+    WatchlistReorderRequest,
+    WatchlistResponse,
+    WatchlistStatsResponse,
+    WatchlistUpdate,
+    WatchlistWithItemsResponse,
+)
+from app.core.services.watchlist_service import WatchlistService
 
 logger = get_logger(__name__)
 
@@ -92,7 +93,9 @@ async def get_user_watchlists(
         watchlists = service.get_user_watchlists(current_user.id, include_items)
 
         response_time = time.time() - start_time
-        log_api_response(logger, "GET", "/watchlists", 200, response_time, data_size=len(watchlists))
+        log_api_response(
+            logger, "GET", "/watchlists", 200, response_time, data_size=len(watchlists)
+        )
         return watchlists
 
     except Exception as e:
@@ -266,7 +269,9 @@ async def add_item_to_watchlist(
     start_time = time.time()
     try:
         service = WatchlistService(db)
-        item = await service.add_item_to_watchlist(watchlist_id, current_user.id, item_data)
+        item = await service.add_item_to_watchlist(
+            watchlist_id, current_user.id, item_data
+        )
 
         if not item:
             raise HTTPException(

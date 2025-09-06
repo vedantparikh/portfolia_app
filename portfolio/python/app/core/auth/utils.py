@@ -4,21 +4,17 @@ Authentication utilities for password hashing, JWT tokens, and security.
 
 import secrets
 import string
-from datetime import datetime
-from datetime import timedelta
-from typing import Optional
-from typing import Tuple
-from typing import Union
+from datetime import datetime, timedelta
+from typing import Optional, Tuple, Union
+
+from fastapi import HTTPException, status
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from pytz import utc
 
 from app.config import settings
 from app.core.database.redis_client import get_redis
 from app.core.logging_config import get_logger
-from fastapi import HTTPException
-from fastapi import status
-from jose import JWTError
-from jose import jwt
-from passlib.context import CryptContext
-from pytz import utc
 
 logger = get_logger(__name__)
 

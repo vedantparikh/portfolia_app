@@ -1,17 +1,18 @@
-import unittest
-import pandas as pd
-import polars as pl
-import numpy as np
-from ta.momentum import (
-    RSIIndicator,
-    ROCIndicator,
-    StochRSIIndicator,
-    StochasticOscillator,
-)
+import os
 
 # Add the parent directory to the path so we can import our modules
 import sys
-import os
+import unittest
+
+import numpy as np
+import pandas as pd
+import polars as pl
+from ta.momentum import (
+    ROCIndicator,
+    RSIIndicator,
+    StochasticOscillator,
+    StochRSIIndicator,
+)
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

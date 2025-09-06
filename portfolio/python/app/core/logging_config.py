@@ -160,7 +160,7 @@ def setup_logging(
 
     # Log the configuration
     logger = logging.getLogger(__name__)
-    logger.info(f"Logging configured successfully")
+    logger.info("Logging configured successfully")
     logger.info(f"Log level: {log_level}")
     logger.info(f"Console logging: {enable_console}")
     logger.info(f"File logging: {enable_file}")

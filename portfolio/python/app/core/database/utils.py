@@ -2,12 +2,20 @@
 Database utility functions for common operations.
 """
 
-from typing import List, Optional, Dict, Any
-from sqlalchemy.orm import Session
-from sqlalchemy import text, func
-from app.core.database.models import User, Portfolio, Asset, Transaction, PortfolioAsset, UserSession
-
 import logging
+from typing import Any, Dict, List, Optional
+
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
+from app.core.database.models import (
+    Asset,
+    Portfolio,
+    PortfolioAsset,
+    Transaction,
+    User,
+    UserSession,
+)
 
 logger = logging.getLogger(__name__)
 

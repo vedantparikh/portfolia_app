@@ -4,13 +4,9 @@ Comprehensive testing script for Portfolia application.
 This script tests all major components: environment, database, API, and functionality.
 """
 
-import os
 import sys
-import time
-import json
-from pathlib import Path
-from typing import Dict, Any, List
 import unittest
+from pathlib import Path
 
 # Add the current directory to Python path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -40,6 +36,7 @@ class TestPortfoliaSetup(unittest.TestCase):
         """Test configuration loading."""
         try:
             from app.config import settings
+
             self.assertIsNotNone(settings)
             self.assertEqual(settings.project_name, "Portfolia API")
             self.assertEqual(settings.version, "1.0.0")
@@ -49,7 +46,8 @@ class TestPortfoliaSetup(unittest.TestCase):
     def test_database_models_import(self):
         """Test database models import."""
         try:
-            from app.core.database.models import Base, User, Portfolio, Asset
+            from app.core.database.models import Asset, Base, Portfolio, User
+
             self.assertIsNotNone(Base)
             self.assertIsNotNone(User)
             self.assertIsNotNone(Portfolio)
@@ -60,7 +58,8 @@ class TestPortfoliaSetup(unittest.TestCase):
     def test_database_connection(self):
         """Test database connection setup."""
         try:
-            from app.core.database.connection import engine, SessionLocal
+            from app.core.database.connection import SessionLocal, engine
+
             self.assertIsNotNone(engine)
             self.assertIsNotNone(SessionLocal)
         except ImportError as e:
@@ -70,6 +69,7 @@ class TestPortfoliaSetup(unittest.TestCase):
         """Test main application import."""
         try:
             from app.main import app
+
             self.assertIsNotNone(app)
         except ImportError as e:
             self.fail(f"Failed to import main application: {e}")
@@ -78,6 +78,7 @@ class TestPortfoliaSetup(unittest.TestCase):
         """Test health check import."""
         try:
             from app.health_check import router
+
             self.assertIsNotNone(router)
         except ImportError as e:
             self.fail(f"Failed to import health check: {e}")
@@ -89,9 +90,9 @@ class TestPortfoliaSetup(unittest.TestCase):
             "uvicorn",
             "sqlalchemy",
             "pydantic",
-            "pydantic_settings"
+            "pydantic_settings",
         ]
-        
+
         for package in required_packages:
             try:
                 __import__(package)
@@ -111,9 +112,9 @@ class TestPortfoliaSetup(unittest.TestCase):
             "schemas",
             "utils",
             "tests",
-            "docs"
+            "docs",
         ]
-        
+
         for directory in required_dirs:
             dir_path = Path(directory)
             self.assertTrue(dir_path.exists(), f"Directory {directory} should exist")
@@ -124,12 +125,14 @@ class TestPortfoliaSetup(unittest.TestCase):
             "README.md",
             "docs/architecture/ARCHITECTURE.md",
             "docs/development/DEVELOPMENT.md",
-            "docs/development/MIGRATION_GUIDE.md"
+            "docs/development/MIGRATION_GUIDE.md",
         ]
-        
+
         for doc_file in required_docs:
             doc_path = Path(doc_file)
-            self.assertTrue(doc_path.exists(), f"Documentation file {doc_file} should exist")
+            self.assertTrue(
+                doc_path.exists(), f"Documentation file {doc_file} should exist"
+            )
 
 
 if __name__ == "__main__":

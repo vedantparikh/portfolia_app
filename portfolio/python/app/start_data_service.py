@@ -9,13 +9,12 @@ import logging
 import sys
 from pathlib import Path
 
-
 from sqlalchemy import select
 
-from app.core.database.connection import init_db, get_db_session
-from app.core.database.models.market_data import MarketData
 from api.app.core.services.data_scheduler import data_scheduler
 from api.app.core.services.market_data_service import market_data_service
+from app.core.database.connection import get_db_session, init_db
+from app.core.database.models.market_data import MarketData
 
 # Add the project root to Python path
 project_root = Path(__file__).parent
@@ -90,7 +89,6 @@ async def populate_initial_data():
 
         # Check if we have any data
         async with get_db_session() as session:
-
             result = await session.execute(select(MarketData).limit(1))
             has_data = result.scalar_one_or_none() is not None
 

@@ -1,6 +1,5 @@
 import pandas as pd
 import yfinance as yf
-
 from statistical_indicators.momentum_indicators import MomentumIndicators
 
 
@@ -81,7 +80,7 @@ class GfsStrategy:
     def __init__(self, symbol):
         self.symbol = symbol
         if not symbol:
-            raise ValueError('Symbol is not present. ')
+            raise ValueError("Symbol is not present. ")
 
     def calculater_rsi(self, df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -109,7 +108,7 @@ class GfsStrategy:
         float: The calculated RSI value.
         """
         stock = yf.Ticker(self.symbol)
-        df = stock.history(period="max", interval='1m')
+        df = stock.history(period="max", interval="1m")
         return self.calculater_rsi(df=df)
 
     def father_rsi(self):
@@ -128,7 +127,7 @@ class GfsStrategy:
 
         """
         stock = yf.Ticker(self.symbol)
-        df = stock.history(period="max", interval='5d')
+        df = stock.history(period="max", interval="5d")
         return self.calculater_rsi(df)
 
     def son_rsi(self):
@@ -138,7 +137,7 @@ class GfsStrategy:
         :return: The RSI value.
         """
         stock = yf.Ticker(self.symbol)
-        df = stock.history(period="max", interval='1d')
+        df = stock.history(period="max", interval="1d")
         return self.calculater_rsi(df)
 
     def calculate_gfs(self) -> dict:
@@ -154,19 +153,19 @@ class GfsStrategy:
                   - 'son': RSI value for the son.
                   - 'recommendation': Recommendation based on the RSI values ('Buy', 'Sell', or 'Hold Tight! Or Seat Back!').
         """
-        grandfather = self.grandfather_rsi()[-1:]['RSI']
-        father = self.father_rsi()[-1:]['RSI']
-        son = self.son_rsi()[-1:]['RSI']
+        grandfather = self.grandfather_rsi()[-1:]["RSI"]
+        father = self.father_rsi()[-1:]["RSI"]
+        son = self.son_rsi()[-1:]["RSI"]
         result = {
-            'grandfather': round(grandfather.to_list()[0], 2),
-            'father': round(father.to_list()[0], 2),
-            'son': round(son.to_list()[0], 2)
+            "grandfather": round(grandfather.to_list()[0], 2),
+            "father": round(father.to_list()[0], 2),
+            "son": round(son.to_list()[0], 2),
         }
 
         if grandfather.all() >= 60 and father.all() >= 60 and son.all() >= 40:
-            result['recommendation'] = 'Buy'
+            result["recommendation"] = "Buy"
         elif grandfather.all() <= 40 and father.all() <= 40 and son.all() >= 60:
-            result['recommendation'] = 'Sell'
+            result["recommendation"] = "Sell"
         else:
-            result['recommendation'] = 'Hold Tight! Or Seat Back!'
+            result["recommendation"] = "Hold Tight! Or Seat Back!"
         return result
