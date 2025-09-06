@@ -4,6 +4,16 @@ from app.core.database.connection import Base
 from .asset import Asset, AssetPrice, MarketIndex
 from .market_data import DataUpdateLog, MarketData, TickerInfo
 from .portfolio import Portfolio, PortfolioAsset
+from .portfolio_analytics import (
+    AssetCorrelation,
+    AssetPerformanceMetrics,
+    PortfolioAllocation,
+    PortfolioBenchmark,
+    PortfolioPerformanceHistory,
+    PortfolioRiskMetrics,
+    RebalancingEvent,
+    RiskLevel,
+)
 from .transaction import ManualEntry, Transaction, TransactionType
 from .user import User, UserProfile, UserSession
 from .watchlist import Watchlist, WatchlistAlert, WatchlistItem, WatchlistPerformance
@@ -30,4 +40,13 @@ __all__ = [
     "WatchlistItem",
     "WatchlistAlert",
     "WatchlistPerformance",
+    # Portfolio Analytics Models
+    "PortfolioPerformanceHistory",
+    "AssetPerformanceMetrics",
+    "PortfolioAllocation",
+    "RebalancingEvent",
+    "PortfolioRiskMetrics",
+    "AssetCorrelation",
+    "PortfolioBenchmark",
+    "RiskLevel",
 ]
