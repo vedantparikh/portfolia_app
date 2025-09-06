@@ -1,17 +1,15 @@
 import enum
 
-from sqlalchemy import (
-    Boolean,
-    Column,
-    DateTime,
-    Enum,
-    ForeignKey,
-    Index,
-    Integer,
-    Numeric,
-    String,
-    Text,
-)
+from sqlalchemy import Boolean
+from sqlalchemy import Column
+from sqlalchemy import DateTime
+from sqlalchemy import Enum
+from sqlalchemy import ForeignKey
+from sqlalchemy import Index
+from sqlalchemy import Integer
+from sqlalchemy import Numeric
+from sqlalchemy import String
+from sqlalchemy import Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -26,9 +24,9 @@ class AssetType(enum.Enum):
     BOND = "BOND"
     INDEX = "INDEX"
     CASH = "CASH"
-    MUTUAL_FUND = "MUTUALFUND"
+    MUTUALFUND = "MUTUALFUND"
     COMMODITY = "COMMODITY"
-    CRYPTO = "CRYPTOCURRENCY"
+    CRYPTOCURRENCY = "CRYPTOCURRENCY"
     REAL_ESTATE = "REAL_ESTATE"
     OTHER = "OTHER"
     FUTURE = "FUTURE"

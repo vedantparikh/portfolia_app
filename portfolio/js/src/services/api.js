@@ -41,8 +41,8 @@ const api = axios.create({
 */
 api.interceptors.request.use(
     (config) => {
-        // Get the access token from browser storage
-        const token = localStorage.getItem('access_token');
+        // Get the access token from browser storage or use the provided token
+        const token = localStorage.getItem('access_token') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwiZW1haWwiOiJ2ZWRhbnRwYXJpa2g2M0BnbWFpbC5jb20iLCJ1c2VybmFtZSI6ImJ1YmJseSIsImV4cCI6MTc1NzE4OTE2NSwidHlwZSI6ImFjY2VzcyJ9.OH8kMg20oclmL_UxKHtm6vbEytKcpdqHXIdxssjhcsU';
         
         if (token) {
             // If token exists, add it to the request headers
@@ -396,7 +396,7 @@ export const userAssetsAPI = {
 
     /* 
       CREATE USER ASSET - Add a new asset to user's portfolio
-      Parameters: assetData (object with symbol, quantity, purchase_price, etc.)
+      Parameters: assetData (object with symbol etc.)
       Returns: Server response with created asset data
     */
     createUserAsset: async (assetData) => {

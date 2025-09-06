@@ -3,14 +3,16 @@ import {
     ArrowUpRight,
     BarChart3,
     Edit,
+    Eye,
     MoreVertical,
+    Plus,
     Trash2,
     TrendingDown,
     TrendingUp
 } from 'lucide-react';
 import React, { useState } from 'react';
 
-const AssetCard = ({ asset, viewMode = 'grid', onClick, onEdit, onDelete }) => {
+const AssetCard = ({ asset, viewMode = 'grid', onClick, onEdit, onDelete, onAddToPortfolio, onViewInPortfolio }) => {
     const [showMenu, setShowMenu] = useState(false);
     const formatPrice = (price) => {
         if (price === null || price === undefined) return 'N/A';
@@ -29,9 +31,21 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick, onEdit, onDelete }) => {
 
     const formatVolume = (volume) => {
         if (!volume) return 'N/A';
-        if (volume >= 1e9) return `$${(volume / 1e9).toFixed(2)}B`;
-        if (volume >= 1e6) return `$${(volume / 1e6).toFixed(2)}M`;
-        return `$${volume.toFixed(0)}`;
+        if (volume >= 1e9) return `${(volume / 1e9).toFixed(2)}B`;
+        if (volume >= 1e6) return `${(volume / 1e6).toFixed(2)}M`;
+        return `${volume.toFixed(0)}`;
+    };
+
+    const formatPercentage = (value) => {
+        if (value === null || value === undefined) return 'N/A';
+        return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
+    };
+
+    const formatCurrency = (value) => {
+        if (value === null || value === undefined) return 'N/A';
+        if (value < 0.01) return `$${value.toFixed(6)}`;
+        if (value < 1) return `$${value.toFixed(4)}`;
+        return `$${value.toFixed(2)}`;
     };
 
     const getChangeColor = (change) => {
@@ -69,6 +83,18 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick, onEdit, onDelete }) => {
         onDelete && onDelete();
     };
 
+    const handleAddToPortfolio = (e) => {
+        e.stopPropagation();
+        setShowMenu(false);
+        onAddToPortfolio && onAddToPortfolio(asset);
+    };
+
+    const handleViewInPortfolio = (e) => {
+        e.stopPropagation();
+        setShowMenu(false);
+        onViewInPortfolio && onViewInPortfolio(asset);
+    };
+
     if (viewMode === 'list') {
         return (
             <div
@@ -83,6 +109,11 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick, onEdit, onDelete }) => {
                         <div>
                             <h3 className="text-lg font-semibold text-gray-100">{asset.symbol}</h3>
                             <p className="text-sm text-gray-400 truncate max-w-48">{asset.name}</p>
+                            {asset.asset_type && (
+                                <p className="text-xs text-primary-400 capitalize">
+                                    {asset.asset_type.toLowerCase().replace('_', ' ')}
+                                </p>
+                            )}
                         </div>
                     </div>
 
@@ -123,13 +154,27 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick, onEdit, onDelete }) => {
                                     <MoreVertical size={16} className="text-gray-400" />
                                 </button>
                                 {showMenu && (
-                                    <div className="absolute right-0 top-8 bg-dark-800 border border-dark-700 rounded-lg shadow-lg z-10 min-w-32">
+                                    <div className="absolute right-0 top-8 bg-dark-800 border border-dark-700 rounded-lg shadow-lg z-10 min-w-40">
                                         <button
                                             onClick={handleEdit}
                                             className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-dark-700 flex items-center space-x-2"
                                         >
                                             <Edit size={14} />
                                             <span>Edit</span>
+                                        </button>
+                                        <button
+                                            onClick={handleAddToPortfolio}
+                                            className="w-full px-3 py-2 text-left text-sm text-primary-400 hover:bg-dark-700 flex items-center space-x-2"
+                                        >
+                                            <Plus size={14} />
+                                            <span>Add to Portfolio</span>
+                                        </button>
+                                        <button
+                                            onClick={handleViewInPortfolio}
+                                            className="w-full px-3 py-2 text-left text-sm text-blue-400 hover:bg-dark-700 flex items-center space-x-2"
+                                        >
+                                            <Eye size={14} />
+                                            <span>View in Portfolio</span>
                                         </button>
                                         <button
                                             onClick={handleDelete}
@@ -161,6 +206,11 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick, onEdit, onDelete }) => {
                     <div>
                         <h3 className="text-lg font-semibold text-gray-100">{asset.symbol}</h3>
                         <p className="text-sm text-gray-400 truncate max-w-32">{asset.name}</p>
+                        {asset.asset_type && (
+                            <p className="text-xs text-primary-400 capitalize">
+                                {asset.asset_type.toLowerCase().replace('_', ' ')}
+                            </p>
+                        )}
                     </div>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -173,13 +223,27 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick, onEdit, onDelete }) => {
                             <MoreVertical size={16} className="text-gray-400" />
                         </button>
                         {showMenu && (
-                            <div className="absolute right-0 top-8 bg-dark-800 border border-dark-700 rounded-lg shadow-lg z-10 min-w-32">
+                            <div className="absolute right-0 top-8 bg-dark-800 border border-dark-700 rounded-lg shadow-lg z-10 min-w-40">
                                 <button
                                     onClick={handleEdit}
                                     className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-dark-700 flex items-center space-x-2"
                                 >
                                     <Edit size={14} />
                                     <span>Edit</span>
+                                </button>
+                                <button
+                                    onClick={handleAddToPortfolio}
+                                    className="w-full px-3 py-2 text-left text-sm text-primary-400 hover:bg-dark-700 flex items-center space-x-2"
+                                >
+                                    <Plus size={14} />
+                                    <span>Add to Portfolio</span>
+                                </button>
+                                <button
+                                    onClick={handleViewInPortfolio}
+                                    className="w-full px-3 py-2 text-left text-sm text-blue-400 hover:bg-dark-700 flex items-center space-x-2"
+                                >
+                                    <Eye size={14} />
+                                    <span>View in Portfolio</span>
                                 </button>
                                 <button
                                     onClick={handleDelete}
@@ -197,9 +261,19 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick, onEdit, onDelete }) => {
             <div className="space-y-3">
                 <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-400">Current Price</span>
-                    <span className="text-xl font-bold text-gray-100">
-                        {formatPrice(asset.current_price)}
-                    </span>
+                    <div className="text-right">
+                        <span className="text-xl font-bold text-gray-100">
+                            {formatPrice(asset.current_price)}
+                        </span>
+                        {asset.price_change_percentage_24h && (
+                            <div className="flex items-center space-x-1">
+                                {getChangeIcon(asset.price_change_percentage_24h)}
+                                <span className={`text-xs ${getChangeColor(asset.price_change_percentage_24h)}`}>
+                                    {formatPercentage(asset.price_change_percentage_24h)}
+                                </span>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 <div className="flex items-center justify-between">
@@ -239,6 +313,36 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick, onEdit, onDelete }) => {
                         )}
                     </div>
                 </div>
+
+                {/* Additional Performance Metrics */}
+                {(asset.market_cap || asset.volume_24h || asset.rsi) && (
+                    <div className="pt-3 border-t border-dark-700 space-y-2">
+                        {asset.market_cap && (
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs text-gray-500">Market Cap</span>
+                                <span className="text-xs text-gray-300">
+                                    {formatMarketCap(asset.market_cap)}
+                                </span>
+                            </div>
+                        )}
+                        {asset.volume_24h && (
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs text-gray-500">24h Volume</span>
+                                <span className="text-xs text-gray-300">
+                                    {formatVolume(asset.volume_24h)}
+                                </span>
+                            </div>
+                        )}
+                        {asset.rsi && (
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs text-gray-500">RSI</span>
+                                <span className={`text-xs ${asset.rsi > 70 ? 'text-danger-400' : asset.rsi < 30 ? 'text-success-400' : 'text-gray-300'}`}>
+                                    {asset.rsi.toFixed(1)}
+                                </span>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Price change indicator bar */}

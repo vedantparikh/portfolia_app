@@ -85,7 +85,6 @@ class AssetBase(BaseModel):
     symbol: str
     name: str
     asset_type: AssetType
-    currency: str
     exchange: Optional[str] = None
     isin: Optional[str] = None
     cusip: Optional[str] = None
@@ -94,7 +93,7 @@ class AssetBase(BaseModel):
     country: Optional[str] = None
     description: Optional[str] = None
     is_active: bool = Field(default=True)
-    created_at: datetime
+    created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
 

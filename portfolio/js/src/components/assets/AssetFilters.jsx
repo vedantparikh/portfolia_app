@@ -10,7 +10,9 @@ const AssetFilters = ({ filters, onFilterChange }) => {
         { value: 'forex', label: 'Forex' },
         { value: 'etf', label: 'ETFs' },
         { value: 'bond', label: 'Bonds' },
-        { value: 'real_estate', label: 'Real Estate' }
+        { value: 'real_estate', label: 'Real Estate' },
+        { value: 'mutual_fund', label: 'Mutual Funds' },
+        { value: 'index_fund', label: 'Index Funds' }
     ];
 
     const priceRanges = [
@@ -37,6 +39,21 @@ const AssetFilters = ({ filters, onFilterChange }) => {
         { value: 'stable', label: 'Stable' }
     ];
 
+    const marketCapRanges = [
+        { value: 'all', label: 'All Market Caps' },
+        { value: '0-1e6', label: 'Under $1M' },
+        { value: '1e6-1e9', label: '$1M - $1B' },
+        { value: '1e9-1e12', label: '$1B - $1T' },
+        { value: '1e12-', label: 'Over $1T' }
+    ];
+
+    const rsiRanges = [
+        { value: 'all', label: 'All RSI' },
+        { value: '0-30', label: 'Oversold (0-30)' },
+        { value: '30-70', label: 'Neutral (30-70)' },
+        { value: '70-100', label: 'Overbought (70-100)' }
+    ];
+
     const sortOptions = [
         { value: 'symbol', label: 'Symbol' },
         { value: 'name', label: 'Name' },
@@ -44,7 +61,12 @@ const AssetFilters = ({ filters, onFilterChange }) => {
         { value: 'purchase_price', label: 'Purchase Price' },
         { value: 'current_price', label: 'Current Price' },
         { value: 'total_value', label: 'Total Value' },
-        { value: 'purchase_date', label: 'Purchase Date' }
+        { value: 'purchase_date', label: 'Purchase Date' },
+        { value: 'market_cap', label: 'Market Cap' },
+        { value: 'volume_24h', label: '24h Volume' },
+        { value: 'price_change_percentage_24h', label: '24h Change %' },
+        { value: 'rsi', label: 'RSI' },
+        { value: 'volatility_20d', label: 'Volatility' }
     ];
 
     const sortOrders = [
@@ -62,6 +84,8 @@ const AssetFilters = ({ filters, onFilterChange }) => {
             priceRange: 'all',
             valueRange: 'all',
             changeRange: 'all',
+            marketCapRange: 'all',
+            rsiRange: 'all',
             sortBy: 'symbol',
             sortOrder: 'asc'
         });
@@ -72,6 +96,8 @@ const AssetFilters = ({ filters, onFilterChange }) => {
             filters.priceRange !== 'all' ||
             filters.valueRange !== 'all' ||
             filters.changeRange !== 'all' ||
+            filters.marketCapRange !== 'all' ||
+            filters.rsiRange !== 'all' ||
             filters.sortBy !== 'symbol' ||
             filters.sortOrder !== 'asc';
     };
@@ -94,7 +120,7 @@ const AssetFilters = ({ filters, onFilterChange }) => {
                 )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {/* Category Filter */}
                 <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -160,6 +186,42 @@ const AssetFilters = ({ filters, onFilterChange }) => {
                         className="input-field w-full"
                     >
                         {changeRanges.map((range) => (
+                            <option key={range.value} value={range.value}>
+                                {range.label}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* Market Cap Range Filter */}
+                <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Market Cap
+                    </label>
+                    <select
+                        value={filters.marketCapRange || 'all'}
+                        onChange={(e) => handleFilterChange('marketCapRange', e.target.value)}
+                        className="input-field w-full"
+                    >
+                        {marketCapRanges.map((range) => (
+                            <option key={range.value} value={range.value}>
+                                {range.label}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* RSI Range Filter */}
+                <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                        RSI Range
+                    </label>
+                    <select
+                        value={filters.rsiRange || 'all'}
+                        onChange={(e) => handleFilterChange('rsiRange', e.target.value)}
+                        className="input-field w-full"
+                    >
+                        {rsiRanges.map((range) => (
                             <option key={range.value} value={range.value}>
                                 {range.label}
                             </option>
