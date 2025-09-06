@@ -13,6 +13,7 @@ import {
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { portfolioAPI, transactionAPI } from '../../services/api';
+import { Sidebar } from '../shared';
 import CreateTransactionModal from './CreateTransactionModal';
 import EditTransactionModal from './EditTransactionModal';
 import TransactionCard from './TransactionCard';
@@ -54,7 +55,7 @@ const Transactions = () => {
 
             // Load portfolios
             const portfoliosResponse = await portfolioAPI.getPortfolios();
-            setPortfolios(portfoliosResponse.portfolios || []);
+            setPortfolios(portfoliosResponse || []);
 
             // Load transactions
             const transactionsResponse = await transactionAPI.getTransactions({
@@ -154,8 +155,9 @@ const Transactions = () => {
 
     const handleCreateTransaction = async (transactionData) => {
         try {
-            const response = await transactionAPI.createBuyTransaction(transactionData);
-            setTransactions(prev => [response, ...prev]);
+            console.log('[Transactions] Creating transaction with data:', transactionData);
+            const newTransaction = await transactionAPI.createTransaction(transactionData);
+            setTransactions(prev => [newTransaction, ...prev]);
             setShowCreateModal(false);
             toast.success('Transaction created successfully');
         } catch (error) {
@@ -209,6 +211,19 @@ const Transactions = () => {
         toast.success('Transaction data refreshed');
     };
 
+    const handleQuickAction = (action) => {
+        switch (action) {
+            case 'create-transaction':
+                setShowCreateModal(true);
+                break;
+            case 'refresh':
+                handleRefresh();
+                break;
+            default:
+                break;
+        }
+    };
+
     const getTransactionStats = () => {
         const totalTransactions = filteredTransactions.length;
         const buyTransactions = filteredTransactions.filter(t => t.type === 'buy').length;
@@ -245,8 +260,23 @@ const Transactions = () => {
     }
 
     return (
-        <div className="min-h-screen gradient-bg">
-            <div className="max-w-7xl mx-auto p-6">
+        <div className="min-h-screen gradient-bg flex">
+            <Sidebar
+                currentView="transactions"
+                portfolios={portfolios}
+                selectedPortfolio={portfolios.find(p => p.id === parseInt(filters.portfolio)) || null}
+                onPortfolioChange={(portfolio) => setFilters(prev => ({ ...prev, portfolio: portfolio?.id || 'all' }))}
+                onRefresh={handleRefresh}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                showFilters={showFilters}
+                onToggleFilters={() => setShowFilters(!showFilters)}
+                stats={stats}
+                recentTransactions={filteredTransactions.slice(0, 5)}
+                onQuickAction={handleQuickAction}
+            />
+            <div className="flex-1 overflow-y-auto">
+                <div className="max-w-7xl mx-auto p-6">
                 {/* Header */}
                 <div className="mb-8">
                     <div className="flex items-center justify-between mb-4">
@@ -437,6 +467,7 @@ const Transactions = () => {
                         onUpdate={handleUpdateTransaction}
                     />
                 )}
+                </div>
             </div>
         </div>
     );

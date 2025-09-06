@@ -12,10 +12,8 @@ This test suite covers:
 
 import pytest
 import pandas as pd
-import numpy as np
 from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch, Mock
-from fastapi import HTTPException, Request
+from unittest.mock import AsyncMock, patch
 from fastapi.testclient import TestClient
 
 # Mock dependencies at the module level before importing
@@ -29,7 +27,7 @@ with patch("yahooquery.search") as mock_search:
             with patch("app.core.auth.dependencies.get_client_ip") as mock_get_ip:
                 with patch("app.core.auth.utils.is_rate_limited") as mock_rate_limit:
                     # Now import the router with mocked dependencies
-                    from api.v1.market.stock import router
+                    from app.api.v1.market.stock import router
 
 # Create test app with the router
 from fastapi import FastAPI

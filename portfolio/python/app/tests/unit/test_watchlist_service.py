@@ -27,14 +27,14 @@ from app.core.database.models.watchlist import Watchlist
 from app.core.database.models.watchlist import WatchlistAlert
 from app.core.database.models.watchlist import WatchlistItem
 from app.core.database.models.watchlist import WatchlistPerformance
-from schemas.watchlist import WatchlistAlertCreate
-from schemas.watchlist import WatchlistCreate
-from schemas.watchlist import WatchlistItemCreate
-from schemas.watchlist import WatchlistItemUpdate
-from schemas.watchlist import WatchlistUpdate
+from app.core.schemas.watchlist import WatchlistAlertCreate
+from app.core.schemas.watchlist import WatchlistCreate
+from app.core.schemas.watchlist import WatchlistItemCreate
+from app.core.schemas.watchlist import WatchlistItemUpdate
+from app.core.schemas.watchlist import WatchlistUpdate
 
 # Import the service and models
-from services.watchlist_service import WatchlistService
+from app.core.services.watchlist_service import WatchlistService
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 

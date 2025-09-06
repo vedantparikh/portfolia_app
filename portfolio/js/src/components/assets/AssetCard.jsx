@@ -2,12 +2,16 @@ import {
     ArrowDownRight,
     ArrowUpRight,
     BarChart3,
+    Edit,
+    MoreVertical,
+    Trash2,
     TrendingDown,
     TrendingUp
 } from 'lucide-react';
-import React from 'react';
+import React, { useState } from 'react';
 
-const AssetCard = ({ asset, viewMode = 'grid', onClick }) => {
+const AssetCard = ({ asset, viewMode = 'grid', onClick, onEdit, onDelete }) => {
+    const [showMenu, setShowMenu] = useState(false);
     const formatPrice = (price) => {
         if (price === null || price === undefined) return 'N/A';
         if (price < 0.01) return `$${price.toFixed(6)}`;
@@ -48,10 +52,27 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick }) => {
         return null;
     };
 
+    const handleMenuClick = (e) => {
+        e.stopPropagation();
+        setShowMenu(!showMenu);
+    };
+
+    const handleEdit = (e) => {
+        e.stopPropagation();
+        setShowMenu(false);
+        onEdit && onEdit();
+    };
+
+    const handleDelete = (e) => {
+        e.stopPropagation();
+        setShowMenu(false);
+        onDelete && onDelete();
+    };
+
     if (viewMode === 'list') {
         return (
             <div
-                className="card p-4 hover:bg-dark-800/50 transition-colors cursor-pointer"
+                className="card p-4 hover:bg-dark-800/50 transition-colors cursor-pointer relative"
                 onClick={onClick}
             >
                 <div className="flex items-center justify-between">
@@ -79,21 +100,47 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick }) => {
                         </div>
 
                         <div className="text-right">
-                            <p className="text-sm text-gray-400">Market Cap</p>
+                            <p className="text-sm text-gray-400">Quantity</p>
                             <p className="text-sm font-medium text-gray-100">
-                                {formatMarketCap(asset.market_cap)}
+                                {asset.quantity || 'N/A'}
                             </p>
                         </div>
 
                         <div className="text-right">
-                            <p className="text-sm text-gray-400">Volume</p>
+                            <p className="text-sm text-gray-400">Purchase Price</p>
                             <p className="text-sm font-medium text-gray-100">
-                                {formatVolume(asset.total_volume)}
+                                {formatPrice(asset.purchase_price)}
                             </p>
                         </div>
 
-                        <div className="flex items-center">
+                        <div className="flex items-center space-x-2">
                             {getChangeArrow(asset.price_change_percentage_24h)}
+                            <div className="relative">
+                                <button
+                                    onClick={handleMenuClick}
+                                    className="p-1 rounded-lg hover:bg-dark-700 transition-colors"
+                                >
+                                    <MoreVertical size={16} className="text-gray-400" />
+                                </button>
+                                {showMenu && (
+                                    <div className="absolute right-0 top-8 bg-dark-800 border border-dark-700 rounded-lg shadow-lg z-10 min-w-32">
+                                        <button
+                                            onClick={handleEdit}
+                                            className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-dark-700 flex items-center space-x-2"
+                                        >
+                                            <Edit size={14} />
+                                            <span>Edit</span>
+                                        </button>
+                                        <button
+                                            onClick={handleDelete}
+                                            className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-dark-700 flex items-center space-x-2"
+                                        >
+                                            <Trash2 size={14} />
+                                            <span>Delete</span>
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -103,7 +150,7 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick }) => {
 
     return (
         <div
-            className="card p-6 hover:bg-dark-800/50 transition-all duration-200 cursor-pointer group"
+            className="card p-6 hover:bg-dark-800/50 transition-all duration-200 cursor-pointer group relative"
             onClick={onClick}
         >
             <div className="flex items-start justify-between mb-4">
@@ -116,41 +163,81 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick }) => {
                         <p className="text-sm text-gray-400 truncate max-w-32">{asset.name}</p>
                     </div>
                 </div>
-                <div className="flex items-center">
+                <div className="flex items-center space-x-2">
                     {getChangeArrow(asset.price_change_percentage_24h)}
+                    <div className="relative">
+                        <button
+                            onClick={handleMenuClick}
+                            className="p-1 rounded-lg hover:bg-dark-700 transition-colors opacity-0 group-hover:opacity-100"
+                        >
+                            <MoreVertical size={16} className="text-gray-400" />
+                        </button>
+                        {showMenu && (
+                            <div className="absolute right-0 top-8 bg-dark-800 border border-dark-700 rounded-lg shadow-lg z-10 min-w-32">
+                                <button
+                                    onClick={handleEdit}
+                                    className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-dark-700 flex items-center space-x-2"
+                                >
+                                    <Edit size={14} />
+                                    <span>Edit</span>
+                                </button>
+                                <button
+                                    onClick={handleDelete}
+                                    className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-dark-700 flex items-center space-x-2"
+                                >
+                                    <Trash2 size={14} />
+                                    <span>Delete</span>
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
             <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-400">Price</span>
+                    <span className="text-sm text-gray-400">Current Price</span>
                     <span className="text-xl font-bold text-gray-100">
                         {formatPrice(asset.current_price)}
                     </span>
                 </div>
 
                 <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-400">24h Change</span>
+                    <span className="text-sm text-gray-400">Quantity</span>
+                    <span className="text-sm font-medium text-gray-100">
+                        {asset.quantity || 'N/A'}
+                    </span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-400">Purchase Price</span>
+                    <span className="text-sm font-medium text-gray-100">
+                        {formatPrice(asset.purchase_price)}
+                    </span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-400">Total Value</span>
+                    <span className="text-sm font-medium text-gray-100">
+                        {asset.quantity && asset.current_price ?
+                            formatPrice(asset.quantity * asset.current_price) : 'N/A'}
+                    </span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-400">P&L</span>
                     <div className="flex items-center space-x-1">
-                        {getChangeIcon(asset.price_change_percentage_24h)}
-                        <span className={`text-sm font-medium ${getChangeColor(asset.price_change_percentage_24h)}`}>
-                            {asset.price_change_percentage_24h ? `${asset.price_change_percentage_24h.toFixed(2)}%` : 'N/A'}
-                        </span>
+                        {asset.quantity && asset.purchase_price && asset.current_price ? (
+                            <>
+                                {getChangeIcon(((asset.current_price - asset.purchase_price) / asset.purchase_price) * 100)}
+                                <span className={`text-sm font-medium ${getChangeColor(((asset.current_price - asset.purchase_price) / asset.purchase_price) * 100)}`}>
+                                    {formatPrice((asset.current_price - asset.purchase_price) * asset.quantity)}
+                                </span>
+                            </>
+                        ) : (
+                            <span className="text-sm text-gray-400">N/A</span>
+                        )}
                     </div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-400">Market Cap</span>
-                    <span className="text-sm font-medium text-gray-100">
-                        {formatMarketCap(asset.market_cap)}
-                    </span>
-                </div>
-
-                <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-400">Volume</span>
-                    <span className="text-sm font-medium text-gray-100">
-                        {formatVolume(asset.total_volume)}
-                    </span>
                 </div>
             </div>
 

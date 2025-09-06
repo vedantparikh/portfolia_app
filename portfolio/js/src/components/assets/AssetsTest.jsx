@@ -1,145 +1,163 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
-import { marketAPI } from '../../services/api';
+import { userAssetsAPI } from '../../services/api';
 
 const AssetsTest = () => {
-    const [testResults, setTestResults] = useState({});
+    const [testResults, setTestResults] = useState([]);
     const [loading, setLoading] = useState(false);
 
-    const testAssetsAPI = async () => {
+    const runTests = async () => {
         setLoading(true);
-        const results = {};
+        setTestResults([]);
+        const results = [];
 
         try {
-            // Test 1: Get assets
-            console.log('Testing getAssets...');
-            const assetsResponse = await marketAPI.getAssets({
-                limit: 10,
-                include_prices: true
+            // Test 1: Get user assets
+            results.push({ test: 'Get User Assets', status: 'running' });
+            setTestResults([...results]);
+
+            const assets = await userAssetsAPI.getUserAssets();
+            results[results.length - 1] = {
+                test: 'Get User Assets',
+                status: 'success',
+                message: `Found ${assets.assets?.length || 0} assets`
+            };
+            setTestResults([...results]);
+
+            // Test 2: Create a test asset
+            results.push({ test: 'Create Test Asset', status: 'running' });
+            setTestResults([...results]);
+
+            const testAsset = {
+                symbol: 'TEST',
+                name: 'Test Asset',
+                quantity: 10,
+                purchase_price: 100.50,
+                purchase_date: '2024-01-01',
+                notes: 'Test asset for API testing',
+                currency: 'USD',
+                portfolio_id: 1
+            };
+
+            const createdAsset = await userAssetsAPI.createUserAsset(testAsset);
+            results[results.length - 1] = {
+                test: 'Create Test Asset',
+                status: 'success',
+                message: `Created asset with ID: ${createdAsset.id}`
+            };
+            setTestResults([...results]);
+
+            // Test 3: Update the test asset
+            results.push({ test: 'Update Test Asset', status: 'running' });
+            setTestResults([...results]);
+
+            const updatedAsset = await userAssetsAPI.updateUserAsset(createdAsset.id, {
+                ...testAsset,
+                quantity: 15,
+                notes: 'Updated test asset'
             });
-            results.getAssets = {
-                success: true,
-                data: assetsResponse,
-                message: 'Successfully fetched assets'
+            results[results.length - 1] = {
+                test: 'Update Test Asset',
+                status: 'success',
+                message: `Updated asset quantity to ${updatedAsset.quantity}`
             };
-            console.log('Assets response:', assetsResponse);
-        } catch (error) {
-            results.getAssets = {
-                success: false,
-                error: error.message,
-                response: error.response?.data,
-                status: error.response?.status,
-                message: 'Failed to fetch assets'
-            };
-            console.error('Assets error:', error);
-        }
+            setTestResults([...results]);
 
-        try {
-            // Test 2: Search assets
-            console.log('Testing searchAssets...');
-            const searchResponse = await marketAPI.searchAssets('AAPL');
-            results.searchAssets = {
-                success: true,
-                data: searchResponse,
-                message: 'Successfully searched assets'
-            };
-            console.log('Search response:', searchResponse);
-        } catch (error) {
-            results.searchAssets = {
-                success: false,
-                error: error.message,
-                response: error.response?.data,
-                status: error.response?.status,
-                message: 'Failed to search assets'
-            };
-            console.error('Search error:', error);
-        }
+            // Test 4: Get specific asset
+            results.push({ test: 'Get Specific Asset', status: 'running' });
+            setTestResults([...results]);
 
-        try {
-            // Test 3: Search stock symbols
-            console.log('Testing searchSymbols...');
-            const symbolsResponse = await marketAPI.searchSymbols('Apple');
-            results.searchSymbols = {
-                success: true,
-                data: symbolsResponse,
-                message: 'Successfully searched symbols'
+            const specificAsset = await userAssetsAPI.getUserAsset(createdAsset.id);
+            results[results.length - 1] = {
+                test: 'Get Specific Asset',
+                status: 'success',
+                message: `Retrieved asset: ${specificAsset.symbol}`
             };
-            console.log('Symbols response:', symbolsResponse);
-        } catch (error) {
-            results.searchSymbols = {
-                success: false,
-                error: error.message,
-                response: error.response?.data,
-                status: error.response?.status,
-                message: 'Failed to search symbols'
-            };
-            console.error('Symbols error:', error);
-        }
+            setTestResults([...results]);
 
-        // Test 4: Get asset prices (if we have an asset)
-        if (results.getAssets?.success && results.getAssets.data?.assets?.length > 0) {
-            const firstAsset = results.getAssets.data.assets[0];
-            try {
-                console.log('Testing getAssetPrices...');
-                const pricesResponse = await marketAPI.getAssetPrices(firstAsset.id, {
-                    days: 7
-                });
-                results.getAssetPrices = {
-                    success: true,
-                    data: pricesResponse,
-                    message: 'Successfully fetched asset prices'
-                };
-                console.log('Prices response:', pricesResponse);
-            } catch (error) {
-                results.getAssetPrices = {
-                    success: false,
-                    error: error.message,
-                    response: error.response?.data,
-                    status: error.response?.status,
-                    message: 'Failed to fetch asset prices'
-                };
-                console.error('Prices error:', error);
+            // Test 5: Delete the test asset
+            results.push({ test: 'Delete Test Asset', status: 'running' });
+            setTestResults([...results]);
+
+            await userAssetsAPI.deleteUserAsset(createdAsset.id);
+            results[results.length - 1] = {
+                test: 'Delete Test Asset',
+                status: 'success',
+                message: 'Asset deleted successfully'
+            };
+            setTestResults([...results]);
+
+            // Test 6: Get asset summary
+            results.push({ test: 'Get Asset Summary', status: 'running' });
+            setTestResults([...results]);
+
+            const summary = await userAssetsAPI.getUserAssetSummary();
+            results[results.length - 1] = {
+                test: 'Get Asset Summary',
+                status: 'success',
+                message: `Summary retrieved: ${Object.keys(summary).length} metrics`
+            };
+            setTestResults([...results]);
+
+            toast.success('All tests passed!');
+
+        } catch (error) {
+            const lastTest = results[results.length - 1];
+            if (lastTest) {
+                lastTest.status = 'error';
+                lastTest.message = error.response?.data?.detail || error.message;
             }
+            setTestResults([...results]);
+            toast.error('Test failed: ' + (error.response?.data?.detail || error.message));
+        } finally {
+            setLoading(false);
         }
+    };
 
-        setTestResults(results);
-        setLoading(false);
-        toast.success('Assets API tests completed. Check console for details.');
+    const getStatusColor = (status) => {
+        switch (status) {
+            case 'success': return 'text-green-400';
+            case 'error': return 'text-red-400';
+            case 'running': return 'text-yellow-400';
+            default: return 'text-gray-400';
+        }
+    };
+
+    const getStatusIcon = (status) => {
+        switch (status) {
+            case 'success': return '✓';
+            case 'error': return '✗';
+            case 'running': return '⏳';
+            default: return '○';
+        }
     };
 
     return (
         <div className="card p-6">
-            <h3 className="text-lg font-semibold text-gray-100 mb-4">Assets API Test</h3>
+            <h3 className="text-lg font-semibold text-gray-100 mb-4">Assets API Test Suite</h3>
+            <p className="text-sm text-gray-400 mb-4">
+                Test all CRUD operations for user assets
+            </p>
+
             <button
-                onClick={testAssetsAPI}
+                onClick={runTests}
                 disabled={loading}
                 className="btn-primary mb-4"
             >
-                {loading ? 'Testing...' : 'Test Assets API'}
+                {loading ? 'Running Tests...' : 'Run Tests'}
             </button>
 
-            {Object.keys(testResults).length > 0 && (
-                <div className="space-y-4">
-                    {Object.entries(testResults).map(([test, result]) => (
-                        <div key={test} className="p-4 bg-dark-800 rounded-lg">
-                            <h4 className="font-medium text-gray-100 mb-2">{test}</h4>
-                            <div className={`text-sm ${result.success ? 'text-success-400' : 'text-danger-400'}`}>
-                                {result.message}
-                            </div>
-                            {result.error && (
-                                <div className="text-xs text-gray-400 mt-1">
-                                    Error: {result.error}
-                                </div>
-                            )}
-                            {result.status && (
-                                <div className="text-xs text-gray-400">
-                                    Status: {result.status}
-                                </div>
-                            )}
-                            {result.response && (
-                                <div className="text-xs text-gray-400 mt-1">
-                                    Response: {JSON.stringify(result.response, null, 2)}
-                                </div>
+            {testResults.length > 0 && (
+                <div className="space-y-2">
+                    <h4 className="text-md font-medium text-gray-200 mb-2">Test Results:</h4>
+                    {testResults.map((result, index) => (
+                        <div key={index} className="flex items-center space-x-3 p-2 rounded-lg bg-dark-800">
+                            <span className={`text-sm ${getStatusColor(result.status)}`}>
+                                {getStatusIcon(result.status)}
+                            </span>
+                            <span className="text-sm text-gray-300 flex-1">{result.test}</span>
+                            {result.message && (
+                                <span className="text-xs text-gray-400">{result.message}</span>
                             )}
                         </div>
                     ))}

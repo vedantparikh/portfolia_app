@@ -5,6 +5,7 @@ import {
     DollarSign,
     Filter,
     PieChart,
+    Plus,
     RefreshCw,
     Search,
     TrendingDown,
@@ -12,7 +13,8 @@ import {
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { marketAPI } from '../../services/api';
+import { userAssetsAPI } from '../../services/api';
+import { SymbolSearchTest as SharedSymbolSearchTest, Sidebar } from '../shared';
 import AssetCard from './AssetCard';
 import AssetFilters from './AssetFilters';
 import AssetModal from './AssetModal';
@@ -27,12 +29,14 @@ const Assets = () => {
     const [showModal, setShowModal] = useState(false);
     const [showFilters, setShowFilters] = useState(false);
     const [viewMode, setViewMode] = useState('grid'); // grid or list
+    const [modalMode, setModalMode] = useState('view'); // view, create, edit
     const [filters, setFilters] = useState({
         category: 'all',
         priceRange: 'all',
+        valueRange: 'all',
         changeRange: 'all',
-        sortBy: 'market_cap',
-        sortOrder: 'desc'
+        sortBy: 'symbol',
+        sortOrder: 'asc'
     });
 
     // Load assets on component mount
@@ -48,14 +52,14 @@ const Assets = () => {
     const loadAssets = async () => {
         try {
             setLoading(true);
-            const response = await marketAPI.getAssets({
+            const response = await userAssetsAPI.getUserAssets({
                 limit: 100,
                 include_prices: true
             });
             setAssets(response.assets || []);
         } catch (error) {
-            console.error('Failed to load assets:', error);
-            toast.error('Failed to load assets');
+            console.error('Failed to load user assets:', error);
+            toast.error('Failed to load your assets');
         } finally {
             setLoading(false);
         }
@@ -90,6 +94,19 @@ const Assets = () => {
             });
         }
 
+        // Value range filter
+        if (filters.valueRange !== 'all') {
+            const [min, max] = filters.valueRange.split('-').map(Number);
+            filtered = filtered.filter(asset => {
+                const totalValue = (asset.quantity || 0) * (asset.current_price || 0);
+                if (max) {
+                    return totalValue >= min && totalValue <= max;
+                } else {
+                    return totalValue >= min;
+                }
+            });
+        }
+
         // Change range filter
         if (filters.changeRange !== 'all') {
             filtered = filtered.filter(asset => {
@@ -112,31 +129,53 @@ const Assets = () => {
             let aValue, bValue;
 
             switch (filters.sortBy) {
-                case 'market_cap':
-                    aValue = a.market_cap || 0;
-                    bValue = b.market_cap || 0;
+                case 'symbol':
+                    aValue = a.symbol || '';
+                    bValue = b.symbol || '';
                     break;
-                case 'price':
+                case 'name':
+                    aValue = a.name || '';
+                    bValue = b.name || '';
+                    break;
+                case 'quantity':
+                    aValue = a.quantity || 0;
+                    bValue = b.quantity || 0;
+                    break;
+                case 'purchase_price':
+                    aValue = a.purchase_price || 0;
+                    bValue = b.purchase_price || 0;
+                    break;
+                case 'current_price':
                     aValue = a.current_price || 0;
                     bValue = b.current_price || 0;
                     break;
-                case 'change':
-                    aValue = a.price_change_percentage_24h || 0;
-                    bValue = b.price_change_percentage_24h || 0;
+                case 'total_value':
+                    aValue = (a.quantity || 0) * (a.current_price || 0);
+                    bValue = (b.quantity || 0) * (b.current_price || 0);
                     break;
-                case 'volume':
-                    aValue = a.total_volume || 0;
-                    bValue = b.total_volume || 0;
+                case 'purchase_date':
+                    aValue = new Date(a.purchase_date || 0);
+                    bValue = new Date(b.purchase_date || 0);
                     break;
                 default:
-                    aValue = a.market_cap || 0;
-                    bValue = b.market_cap || 0;
+                    aValue = a.symbol || '';
+                    bValue = b.symbol || '';
             }
 
-            if (filters.sortOrder === 'asc') {
-                return aValue - bValue;
+            if (filters.sortBy === 'symbol' || filters.sortBy === 'name') {
+                // String comparison
+                if (filters.sortOrder === 'asc') {
+                    return aValue.localeCompare(bValue);
+                } else {
+                    return bValue.localeCompare(aValue);
+                }
             } else {
-                return bValue - aValue;
+                // Numeric comparison
+                if (filters.sortOrder === 'asc') {
+                    return aValue - bValue;
+                } else {
+                    return bValue - aValue;
+                }
             }
         });
 
@@ -145,7 +184,51 @@ const Assets = () => {
 
     const handleAssetClick = (asset) => {
         setSelectedAsset(asset);
+        setModalMode('view');
         setShowModal(true);
+    };
+
+    const handleCreateAsset = () => {
+        setSelectedAsset(null);
+        setModalMode('create');
+        setShowModal(true);
+    };
+
+    const handleEditAsset = (asset) => {
+        setSelectedAsset(asset);
+        setModalMode('edit');
+        setShowModal(true);
+    };
+
+    const handleDeleteAsset = async (assetId) => {
+        if (window.confirm('Are you sure you want to delete this asset?')) {
+            try {
+                await userAssetsAPI.deleteUserAsset(assetId);
+                toast.success('Asset deleted successfully');
+                loadAssets(); // Reload assets
+            } catch (error) {
+                console.error('Failed to delete asset:', error);
+                toast.error('Failed to delete asset');
+            }
+        }
+    };
+
+    const handleAssetSave = async (assetData) => {
+        try {
+            if (modalMode === 'create') {
+                await userAssetsAPI.createUserAsset(assetData);
+                toast.success('Asset added successfully');
+            } else if (modalMode === 'edit') {
+                await userAssetsAPI.updateUserAsset(selectedAsset.id, assetData);
+                toast.success('Asset updated successfully');
+            }
+            loadAssets(); // Reload assets
+            setShowModal(false);
+            setSelectedAsset(null);
+        } catch (error) {
+            console.error('Failed to save asset:', error);
+            toast.error(`Failed to ${modalMode === 'create' ? 'create' : 'update'} asset`);
+        }
     };
 
     const handleRefresh = () => {
@@ -157,17 +240,49 @@ const Assets = () => {
         setFilters(prev => ({ ...prev, ...newFilters }));
     };
 
+    const handleQuickAction = (action) => {
+        switch (action) {
+            case 'refresh':
+                handleRefresh();
+                break;
+            default:
+                break;
+        }
+    };
+
     const getTotalStats = () => {
-        const totalMarketCap = filteredAssets.reduce((sum, asset) => sum + (asset.market_cap || 0), 0);
-        const totalVolume = filteredAssets.reduce((sum, asset) => sum + (asset.total_volume || 0), 0);
-        const positiveChanges = filteredAssets.filter(asset => (asset.price_change_percentage_24h || 0) > 0).length;
-        const negativeChanges = filteredAssets.filter(asset => (asset.price_change_percentage_24h || 0) < 0).length;
+        const totalValue = filteredAssets.reduce((sum, asset) => {
+            const value = (asset.quantity || 0) * (asset.current_price || 0);
+            return sum + value;
+        }, 0);
+
+        const totalInvested = filteredAssets.reduce((sum, asset) => {
+            const invested = (asset.quantity || 0) * (asset.purchase_price || 0);
+            return sum + invested;
+        }, 0);
+
+        const totalPnL = totalValue - totalInvested;
+        const totalPnLPercentage = totalInvested > 0 ? (totalPnL / totalInvested) * 100 : 0;
+
+        const positiveAssets = filteredAssets.filter(asset => {
+            if (!asset.quantity || !asset.purchase_price || !asset.current_price) return false;
+            const pnl = ((asset.current_price - asset.purchase_price) / asset.purchase_price) * 100;
+            return pnl > 0;
+        }).length;
+
+        const negativeAssets = filteredAssets.filter(asset => {
+            if (!asset.quantity || !asset.purchase_price || !asset.current_price) return false;
+            const pnl = ((asset.current_price - asset.purchase_price) / asset.purchase_price) * 100;
+            return pnl < 0;
+        }).length;
 
         return {
-            totalMarketCap,
-            totalVolume,
-            positiveChanges,
-            negativeChanges,
+            totalValue,
+            totalInvested,
+            totalPnL,
+            totalPnLPercentage,
+            positiveAssets,
+            negativeAssets,
             totalAssets: filteredAssets.length
         };
     };
@@ -186,201 +301,232 @@ const Assets = () => {
     }
 
     return (
-        <div className="min-h-screen gradient-bg">
-            <div className="max-w-7xl mx-auto p-6">
-                {/* Header */}
-                <div className="mb-8">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center space-x-4">
-                            <a
-                                href="/dashboard"
-                                className="flex items-center space-x-2 text-gray-400 hover:text-gray-300 transition-colors"
-                            >
-                                <ArrowLeft size={20} />
-                                <span>Back to Dashboard</span>
-                            </a>
-                        </div>
-                        <div className="flex items-center space-x-3">
-                            <button
-                                onClick={handleRefresh}
-                                className="btn-secondary flex items-center space-x-2"
-                            >
-                                <RefreshCw size={16} />
-                                <span>Refresh</span>
-                            </button>
-                            <button
-                                onClick={() => setShowFilters(!showFilters)}
-                                className="btn-outline flex items-center space-x-2"
-                            >
-                                <Filter size={16} />
-                                <span>Filters</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="mb-4">
-                        <h1 className="text-3xl font-bold text-gray-100 mb-2">Assets</h1>
-                        <p className="text-gray-400">Explore and analyze market assets</p>
-                    </div>
-
-                    {/* Search Bar */}
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-                        <input
-                            type="text"
-                            placeholder="Search assets by symbol or name..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="input-field w-full pl-10 pr-4 py-3"
-                        />
-                    </div>
-                </div>
-
-                {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-                    <div className="card p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-gray-400">Total Assets</p>
-                                <p className="text-2xl font-bold text-gray-100">{stats.totalAssets}</p>
+        <div className="min-h-screen gradient-bg flex">
+            <Sidebar
+                currentView="assets"
+                onRefresh={handleRefresh}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                showFilters={showFilters}
+                onToggleFilters={() => setShowFilters(!showFilters)}
+                stats={stats}
+                onQuickAction={handleQuickAction}
+            />
+            <div className="flex-1 overflow-y-auto">
+                <div className="max-w-7xl mx-auto p-6">
+                    {/* Header */}
+                    <div className="mb-8">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center space-x-4">
+                                <a
+                                    href="/dashboard"
+                                    className="flex items-center space-x-2 text-gray-400 hover:text-gray-300 transition-colors"
+                                >
+                                    <ArrowLeft size={20} />
+                                    <span>Back to Dashboard</span>
+                                </a>
                             </div>
-                            <div className="w-12 h-12 bg-primary-600/20 rounded-lg flex items-center justify-center">
-                                <BarChart3 size={24} className="text-primary-400" />
+                            <div className="flex items-center space-x-3">
+                                <button
+                                    onClick={handleCreateAsset}
+                                    className="btn-primary flex items-center space-x-2"
+                                >
+                                    <Plus size={16} />
+                                    <span>Add Asset</span>
+                                </button>
+                                <button
+                                    onClick={handleRefresh}
+                                    className="btn-secondary flex items-center space-x-2"
+                                >
+                                    <RefreshCw size={16} />
+                                    <span>Refresh</span>
+                                </button>
+                                <button
+                                    onClick={() => setShowFilters(!showFilters)}
+                                    className="btn-outline flex items-center space-x-2"
+                                >
+                                    <Filter size={16} />
+                                    <span>Filters</span>
+                                </button>
                             </div>
                         </div>
-                    </div>
 
-                    <div className="card p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-gray-400">Market Cap</p>
-                                <p className="text-2xl font-bold text-gray-100">
-                                    ${(stats.totalMarketCap / 1e12).toFixed(2)}T
-                                </p>
-                            </div>
-                            <div className="w-12 h-12 bg-success-600/20 rounded-lg flex items-center justify-center">
-                                <DollarSign size={24} className="text-success-400" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="card p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-gray-400">24h Volume</p>
-                                <p className="text-2xl font-bold text-gray-100">
-                                    ${(stats.totalVolume / 1e9).toFixed(2)}B
-                                </p>
-                            </div>
-                            <div className="w-12 h-12 bg-warning-600/20 rounded-lg flex items-center justify-center">
-                                <Activity size={24} className="text-warning-400" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="card p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-gray-400">Gainers</p>
-                                <p className="text-2xl font-bold text-success-400">{stats.positiveChanges}</p>
-                            </div>
-                            <div className="w-12 h-12 bg-success-600/20 rounded-lg flex items-center justify-center">
-                                <TrendingUp size={24} className="text-success-400" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="card p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-gray-400">Losers</p>
-                                <p className="text-2xl font-bold text-danger-400">{stats.negativeChanges}</p>
-                            </div>
-                            <div className="w-12 h-12 bg-danger-600/20 rounded-lg flex items-center justify-center">
-                                <TrendingDown size={24} className="text-danger-400" />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Filters */}
-                {showFilters && (
-                    <div className="card p-6 mb-8">
-                        <AssetFilters
-                            filters={filters}
-                            onFilterChange={handleFilterChange}
-                        />
-                    </div>
-                )}
-
-                {/* View Mode Toggle */}
-                <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center space-x-2">
-                        <button
-                            onClick={() => setViewMode('grid')}
-                            className={`p-2 rounded-lg transition-colors ${viewMode === 'grid'
-                                ? 'bg-primary-600 text-white'
-                                : 'bg-dark-700 text-gray-400 hover:bg-dark-600'
-                                }`}
-                        >
-                            <BarChart3 size={16} />
-                        </button>
-                        <button
-                            onClick={() => setViewMode('list')}
-                            className={`p-2 rounded-lg transition-colors ${viewMode === 'list'
-                                ? 'bg-primary-600 text-white'
-                                : 'bg-dark-700 text-gray-400 hover:bg-dark-600'
-                                }`}
-                        >
-                            <PieChart size={16} />
-                        </button>
-                    </div>
-                    <p className="text-sm text-gray-400">
-                        Showing {filteredAssets.length} of {assets.length} assets
-                    </p>
-                </div>
-
-                {/* Assets Grid/List */}
-                {filteredAssets.length === 0 ? (
-                    <div className="space-y-6">
-                        <div className="card p-12 text-center">
-                            <BarChart3 className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                            <h3 className="text-xl font-semibold text-gray-300 mb-2">No assets found</h3>
-                            <p className="text-gray-500">
-                                {searchQuery ? 'Try adjusting your search criteria' : 'No assets available at the moment'}
-                            </p>
+                        <div className="mb-4">
+                            <h1 className="text-3xl font-bold text-gray-100 mb-2">My Assets</h1>
+                            <p className="text-gray-400">Manage your personal asset portfolio</p>
                         </div>
 
-                        {/* Debug Test Component */}
-                        <AssetsTest />
-                    </div>
-                ) : (
-                    <div className={
-                        viewMode === 'grid'
-                            ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
-                            : 'space-y-4'
-                    }>
-                        {filteredAssets.map((asset) => (
-                            <AssetCard
-                                key={asset.id}
-                                asset={asset}
-                                viewMode={viewMode}
-                                onClick={() => handleAssetClick(asset)}
+                        {/* Search Bar */}
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                            <input
+                                type="text"
+                                placeholder="Search assets by symbol or name..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="input-field w-full pl-10 pr-4 py-3"
                             />
-                        ))}
+                        </div>
                     </div>
-                )}
 
-                {/* Asset Modal */}
-                {showModal && selectedAsset && (
-                    <AssetModal
-                        asset={selectedAsset}
-                        onClose={() => {
-                            setShowModal(false);
-                            setSelectedAsset(null);
-                        }}
-                    />
-                )}
+                    {/* Stats Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+                        <div className="card p-6">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm text-gray-400">Total Assets</p>
+                                    <p className="text-2xl font-bold text-gray-100">{stats.totalAssets}</p>
+                                </div>
+                                <div className="w-12 h-12 bg-primary-600/20 rounded-lg flex items-center justify-center">
+                                    <BarChart3 size={24} className="text-primary-400" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="card p-6">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm text-gray-400">Total Value</p>
+                                    <p className="text-2xl font-bold text-gray-100">
+                                        ${(stats.totalValue / 1000).toFixed(2)}K
+                                    </p>
+                                </div>
+                                <div className="w-12 h-12 bg-success-600/20 rounded-lg flex items-center justify-center">
+                                    <DollarSign size={24} className="text-success-400" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="card p-6">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm text-gray-400">Total Invested</p>
+                                    <p className="text-2xl font-bold text-gray-100">
+                                        ${(stats.totalInvested / 1000).toFixed(2)}K
+                                    </p>
+                                </div>
+                                <div className="w-12 h-12 bg-warning-600/20 rounded-lg flex items-center justify-center">
+                                    <Activity size={24} className="text-warning-400" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="card p-6">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm text-gray-400">P&L</p>
+                                    <p className={`text-2xl font-bold ${stats.totalPnL >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
+                                        ${(stats.totalPnL / 1000).toFixed(2)}K
+                                    </p>
+                                    <p className={`text-xs ${stats.totalPnLPercentage >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
+                                        {stats.totalPnLPercentage.toFixed(2)}%
+                                    </p>
+                                </div>
+                                <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${stats.totalPnL >= 0 ? 'bg-success-600/20' : 'bg-danger-600/20'}`}>
+                                    {stats.totalPnL >= 0 ? <TrendingUp size={24} className="text-success-400" /> : <TrendingDown size={24} className="text-danger-400" />}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="card p-6">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm text-gray-400">Winners</p>
+                                    <p className="text-2xl font-bold text-success-400">{stats.positiveAssets}</p>
+                                    <p className="text-xs text-gray-500">vs {stats.negativeAssets} losers</p>
+                                </div>
+                                <div className="w-12 h-12 bg-success-600/20 rounded-lg flex items-center justify-center">
+                                    <TrendingUp size={24} className="text-success-400" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Filters */}
+                    {showFilters && (
+                        <div className="card p-6 mb-8">
+                            <AssetFilters
+                                filters={filters}
+                                onFilterChange={handleFilterChange}
+                            />
+                        </div>
+                    )}
+
+                    {/* View Mode Toggle */}
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center space-x-2">
+                            <button
+                                onClick={() => setViewMode('grid')}
+                                className={`p-2 rounded-lg transition-colors ${viewMode === 'grid'
+                                    ? 'bg-primary-600 text-white'
+                                    : 'bg-dark-700 text-gray-400 hover:bg-dark-600'
+                                    }`}
+                            >
+                                <BarChart3 size={16} />
+                            </button>
+                            <button
+                                onClick={() => setViewMode('list')}
+                                className={`p-2 rounded-lg transition-colors ${viewMode === 'list'
+                                    ? 'bg-primary-600 text-white'
+                                    : 'bg-dark-700 text-gray-400 hover:bg-dark-600'
+                                    }`}
+                            >
+                                <PieChart size={16} />
+                            </button>
+                        </div>
+                        <p className="text-sm text-gray-400">
+                            Showing {filteredAssets.length} of {assets.length} assets
+                        </p>
+                    </div>
+
+                    {/* Assets Grid/List */}
+                    {filteredAssets.length === 0 ? (
+                        <div className="space-y-6">
+                            <div className="card p-12 text-center">
+                                <BarChart3 className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                                <h3 className="text-xl font-semibold text-gray-300 mb-2">No assets found</h3>
+                                <p className="text-gray-500">
+                                    {searchQuery ? 'Try adjusting your search criteria' : 'No assets available at the moment'}
+                                </p>
+                            </div>
+
+                            {/* Debug Test Components */}
+                            <AssetsTest />
+                            <SharedSymbolSearchTest />
+                        </div>
+                    ) : (
+                        <div className={
+                            viewMode === 'grid'
+                                ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
+                                : 'space-y-4'
+                        }>
+                            {filteredAssets.map((asset) => (
+                                <AssetCard
+                                    key={asset.id}
+                                    asset={asset}
+                                    viewMode={viewMode}
+                                    onClick={() => handleAssetClick(asset)}
+                                    onEdit={() => handleEditAsset(asset)}
+                                    onDelete={() => handleDeleteAsset(asset.id)}
+                                />
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Asset Modal */}
+                    {showModal && (
+                        <AssetModal
+                            asset={selectedAsset}
+                            mode={modalMode}
+                            onClose={() => {
+                                setShowModal(false);
+                                setSelectedAsset(null);
+                                setModalMode('view');
+                            }}
+                            onSave={handleAssetSave}
+                        />
+                    )}
+                </div>
             </div>
         </div>
     );

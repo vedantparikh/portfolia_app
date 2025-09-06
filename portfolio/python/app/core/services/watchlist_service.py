@@ -637,8 +637,8 @@ class WatchlistService:
                         item.beta = data.beta
                         item.currency = data.currency
                         item.exchange = data.exchange
-                        item.price_change_since_added = data.latest_price - item.added_price
-                        item.price_change_percent_since_added = (item.price_change_since_added / item.added_price) * 100
+                        item.price_change_since_added = data.latest_price - item.added_price if item.added_price and data.latest_price else 0
+                        item.price_change_percent_since_added = (item.price_change_since_added / item.added_price) * 100 if item.added_price and item.price_change_since_added else 0
                         item.updated_at = datetime.utcnow()
 
                         logger.info(f"Updated watchlist item {item.symbol} with real-time data")

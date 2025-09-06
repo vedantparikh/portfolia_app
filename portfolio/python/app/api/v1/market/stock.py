@@ -247,10 +247,10 @@ async def get_symbol_data_local(
                 detail=f"Invalid end_date format. Use YYYY-MM-DD: {str(e)}",
             )
 
-        # Get data from local database
-        data = await market_data_service.get_market_data(
-            symbol=name, start_date=start_dt, end_date=end_dt
-        )
+    # Get data from local database
+    data = await market_data_service.get_market_data(
+        symbol=name, start_date=start_dt, end_date=end_dt
+    )
 
     if data is None:
         raise HTTPException(

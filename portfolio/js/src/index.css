@@ -1,82 +1,250 @@
+/**
+ * INDEX.CSS - GLOBAL STYLES AND THEME CONFIGURATION
+ * 
+ * This file contains all the global CSS styles for our React application.
+ * It uses Tailwind CSS framework with custom components and utilities.
+ * 
+ * What this file does:
+ * 1. Imports Google Fonts (Inter and JetBrains Mono)
+ * 2. Imports Tailwind CSS framework
+ * 3. Defines custom component classes
+ * 4. Sets up the overall visual theme
+ * 5. Creates reusable utility classes
+ * 
+ * Key CSS concepts for beginners:
+ * - @import: Imports external stylesheets (Google Fonts)
+ * - @tailwind: Tailwind CSS directives
+ * - @layer: Organizes CSS into logical layers
+ * - @apply: Applies Tailwind utility classes
+ */
+
+/* 
+  GOOGLE FONTS IMPORT
+  Imports two font families from Google Fonts:
+  - Inter: Modern, clean font for UI text
+  - JetBrains Mono: Monospace font for code
+  The display=swap parameter makes text visible while fonts load
+*/
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* 
+  TAILWIND CSS DIRECTIVES
+  These import the Tailwind CSS framework:
+  - @tailwind base: Resets and base element styles
+  - @tailwind components: Component-level styles
+  - @tailwind utilities: Utility classes (margin, padding, colors, etc.)
+*/
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* 
+  BASE LAYER - Styles for HTML elements
+  This layer contains styles that apply to basic HTML elements
+  These styles are applied automatically to all elements
+*/
 @layer base {
+  /* 
+    UNIVERSAL SELECTOR - Applies to ALL elements
+    Sets default border color to gray-600 for consistency
+  */
   * {
     @apply border-gray-600;
   }
 
+  /* 
+    BODY STYLES - Main page styling
+    Sets the overall background, text color, and font
+  */
   body {
     @apply bg-dark-950 text-gray-100 font-sans;
+    /* 
+      Font feature settings improve text rendering:
+      - "rlig" 1: Enables required ligatures
+      - "calt" 1: Enables contextual alternates
+    */
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 
+  /* 
+    HTML ELEMENT - Smooth scrolling behavior
+    Makes page scrolling smooth instead of instant
+  */
   html {
     scroll-behavior: smooth;
   }
 }
 
+/* 
+  COMPONENTS LAYER - Reusable component styles
+  This layer contains classes that can be applied to elements
+  These are like "templates" for common UI elements
+*/
 @layer components {
+  /* 
+    PRIMARY BUTTON - Main action buttons (blue theme)
+    Used for important actions like "Save", "Submit", "Login"
+  */
   .btn-primary {
     @apply bg-primary-600 hover:bg-primary-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-dark-950;
+    /* 
+      This applies:
+      - bg-primary-600: Blue background
+      - hover:bg-primary-700: Darker blue on hover
+      - text-white: White text
+      - font-medium: Medium font weight
+      - py-2 px-4: Padding (vertical 2, horizontal 4)
+      - rounded-lg: Large border radius
+      - transition-colors duration-200: Smooth color transitions
+      - focus:outline-none: Remove default focus outline
+      - focus:ring-2 focus:ring-primary-500: Blue ring on focus
+      - focus:ring-offset-2: Space between element and ring
+      - focus:ring-offset-dark-950: Ring offset color
+    */
   }
 
+  /* 
+    SECONDARY BUTTON - Less important actions (gray theme)
+    Used for actions like "Cancel", "Back", "Close"
+  */
   .btn-secondary {
     @apply bg-dark-700 hover:bg-dark-600 text-gray-100 font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-dark-500 focus:ring-offset-2 focus:ring-offset-dark-950;
   }
 
+  /* 
+    OUTLINE BUTTON - Transparent background with border
+    Used for actions that are less prominent but still important
+  */
   .btn-outline {
     @apply border border-dark-600 hover:bg-dark-800 text-gray-100 font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-dark-500 focus:ring-offset-2 focus:ring-offset-dark-950;
   }
 
+  /* 
+    INPUT FIELD - Styling for form inputs
+    Creates consistent appearance for all text inputs, selects, textareas
+  */
   .input-field {
     @apply bg-dark-800 border border-dark-600 text-gray-100 placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200;
+    /* 
+      This applies:
+      - bg-dark-800: Dark background
+      - border border-dark-600: Dark border
+      - text-gray-100: Light text color
+      - placeholder-gray-400: Gray placeholder text
+      - rounded-lg: Rounded corners
+      - px-3 py-2: Padding (horizontal 3, vertical 2)
+      - focus:outline-none: Remove default focus outline
+      - focus:ring-2 focus:ring-primary-500: Blue ring on focus
+      - focus:border-transparent: Transparent border on focus
+      - transition-all duration-200: Smooth transitions
+    */
   }
 
+  /* 
+    CARD - Container for content sections
+    Used throughout the app to group related content
+  */
   .card {
     @apply bg-dark-900 border border-dark-700 rounded-xl shadow-xl backdrop-blur-sm;
+    /* 
+      This applies:
+      - bg-dark-900: Very dark background
+      - border border-dark-700: Dark border
+      - rounded-xl: Extra large border radius
+      - shadow-xl: Extra large drop shadow
+      - backdrop-blur-sm: Small blur effect
+    */
   }
 
+  /* 
+    GLASS EFFECT - Semi-transparent background with blur
+    Creates a modern "frosted glass" appearance
+  */
   .glass-effect {
     @apply bg-dark-900/80 backdrop-blur-md border border-dark-700/50;
+    /* 
+      This applies:
+      - bg-dark-900/80: 80% opacity dark background
+      - backdrop-blur-md: Medium blur effect
+      - border border-dark-700/50: 50% opacity dark border
+    */
   }
 
+  /* 
+    GRADIENT BACKGROUND - Main background for the app
+    Creates a beautiful gradient from dark colors
+  */
   .gradient-bg {
     @apply bg-gradient-to-br from-dark-900 via-dark-800 to-dark-950;
+    /* 
+      This applies:
+      - bg-gradient-to-br: Gradient from top-left to bottom-right
+      - from-dark-900: Starting color (very dark)
+      - via-dark-800: Middle color (dark)
+      - to-dark-950: Ending color (darkest)
+    */
   }
 
+  /* 
+    TEXT GRADIENT - Gradient text effect
+    Makes text appear with a colorful gradient
+  */
   .text-gradient {
     @apply bg-gradient-to-r from-primary-400 to-primary-600 bg-clip-text text-transparent;
+    /* 
+      This applies:
+      - bg-gradient-to-r: Horizontal gradient
+      - from-primary-400: Starting color (light blue)
+      - to-primary-600: Ending color (blue)
+      - bg-clip-text: Clip background to text shape
+      - text-transparent: Make text transparent to show gradient
+    */
   }
 }
 
+/* 
+  UTILITIES LAYER - Custom utility classes
+  This layer contains small, single-purpose utility classes
+  These are like "helper" classes for specific styling needs
+*/
 @layer utilities {
+  /* 
+    SCROLLBAR HIDE - Completely hides scrollbars
+    Useful when you want scrolling but don't want to show scrollbars
+  */
   .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+    -ms-overflow-style: none;  /* Internet Explorer */
+    scrollbar-width: none;     /* Firefox */
   }
 
   .scrollbar-hide::-webkit-scrollbar {
-    display: none;
+    display: none;  /* Webkit browsers (Chrome, Safari, Edge) */
   }
 
+  /* 
+    SCROLLBAR THIN - Custom thin scrollbars with dark theme
+    Makes scrollbars thinner and matches our dark color scheme
+  */
   .scrollbar-thin {
-    scrollbar-width: thin;
+    scrollbar-width: thin;  /* Firefox thin scrollbar */
+    /* 
+      scrollbar-color: thumb track
+      - First color: The draggable part (thumb)
+      - Second color: The background track
+    */
     scrollbar-color: theme('colors.dark.600') theme('colors.dark.800');
   }
 
   .scrollbar-thin::-webkit-scrollbar {
-    width: 6px;
+    width: 6px;  /* Width of the scrollbar */
   }
 
   .scrollbar-thin::-webkit-scrollbar-track {
-    background: theme('colors.dark.800');
+    background: theme('colors.dark.800');  /* Track background color */
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: theme('colors.dark.600');
-    border-radius: 3px;
+    background-color: theme('colors.dark.600');  /* Thumb color */
+    border-radius: 3px;  /* Rounded corners for the thumb */
   }
 }
