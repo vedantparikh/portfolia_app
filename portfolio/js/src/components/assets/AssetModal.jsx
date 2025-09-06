@@ -54,8 +54,8 @@ const AssetModal = ({ asset, mode = 'view', onClose, onSave }) => {
         try {
             setLoading(true);
             const response = await marketAPI.getAssetPrices(asset.id, {
-                days: 30,
-                interval: 'daily'
+                period: '30d',
+                interval: '1d'
             });
             setPriceHistory(response.prices || []);
         } catch (error) {

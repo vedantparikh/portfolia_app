@@ -231,8 +231,6 @@ async def get_asset_prices(
 
     try:
         # Use the market data service to get prices
-        from services.market_data_service import market_data_service
-
         data = await market_data_service.fetch_ticker_data(
             symbol=asset.symbol, period=period, interval=interval
         )
@@ -249,7 +247,7 @@ async def get_asset_prices(
             "period": period,
             "interval": interval,
             "data_points": len(data),
-            "data": data.reset_index().to_dict(orient="records"),
+            "data": data.to_dict(orient="records"),
         }
 
     except Exception as e:
