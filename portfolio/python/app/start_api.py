@@ -13,12 +13,13 @@ import logging
 import sys
 from pathlib import Path
 
-# Add the current directory to Python path
-sys.path.insert(0, str(Path(__file__).parent))
+# Add the parent directory to Python path so we can import 'app' module
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from app.core.database.connection import create_tables, init_db
-from config import settings
-from core.database.init_db import init_database
+from app.config import settings
+from app.core.database.connection import create_tables
+from app.core.database.connection import init_db
+from app.core.database.init_db import init_database
 
 # Configure logging
 logging.basicConfig(
