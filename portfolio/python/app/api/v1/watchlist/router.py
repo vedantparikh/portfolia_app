@@ -364,7 +364,6 @@ async def bulk_add_items_to_watchlist(
             f"/watchlists/{watchlist_id}/items/bulk",
             200,
             response_time,
-            "Success",
         )
         return result
 
@@ -476,7 +475,6 @@ async def remove_item_from_watchlist(
             f"/watchlists/{watchlist_id}/items/{item_id}",
             200,
             response_time,
-            "Success",
         )
         return {"message": "Item removed from watchlist successfully"}
 
@@ -526,7 +524,6 @@ async def reorder_watchlist_items(
             f"/watchlists/{watchlist_id}/reorder",
             200,
             response_time,
-            "Success",
         )
         return {"message": "Watchlist items reordered successfully"}
 

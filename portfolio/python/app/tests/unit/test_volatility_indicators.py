@@ -2,6 +2,7 @@ import unittest
 import pandas as pd
 import numpy as np
 from unittest.mock import patch, MagicMock
+import polars as pl
 
 # Add the parent directory to the path so we can import our modules
 import sys
@@ -9,7 +10,8 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from utils.indicators.volatility_indicators import calculate_atr, calculate_bollinger_bands, calculate_keltner_channels
+from app.utils.indicators.volatility_indicators import calculate_atr, calculate_bollinger_bands, calculate_keltner_channels, VolatilityIndicators
+from ta.volatility import BollingerBands, AverageTrueRange, KeltnerChannel
 
 
 class TestVolatilityIndicators(unittest.TestCase):

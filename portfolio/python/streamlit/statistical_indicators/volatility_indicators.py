@@ -1,5 +1,5 @@
 import pandas as pd
-from statistical_indicators.base import BaseIndicator
+from app.utils.indicators.base import BaseIndicator
 from ta.volatility import (
     AverageTrueRange,
     BollingerBands, KeltnerChannel,
