@@ -41,9 +41,7 @@ class RedisClient(metaclass=SingletonMeta):
             self.connection_pool = connection_pool
 
         def __enter__(self):
-            self.redis = redis.Redis(
-                connection_pool=self.connection_pool
-            )  # noqa pylint: disable=attribute-defined-outside-init
+            self.redis = redis.Redis(connection_pool=self.connection_pool)  # noqa pylint: disable=attribute-defined-outside-init
             try:
                 self.redis.ping()
             except redis.ConnectionError:
@@ -126,7 +124,7 @@ class RedisClient(metaclass=SingletonMeta):
             if client is not None:
                 result = client.set(cache_key, value, ex=ex_seconds)
                 logger.info(
-                    f'Created new Redis cache with instance: {resource["id"] + "_" + resource["resourceType"]}.'
+                    f"Created new Redis cache with instance: {resource['id'] + '_' + resource['resourceType']}."
                 )
 
                 return result
@@ -165,12 +163,12 @@ class RedisClient(metaclass=SingletonMeta):
                     data = pickle.loads(data)
                     logger.info(
                         f"Found Redis cache for model instance: "
-                        f'{resource["resourceType"] + "_" + resource["id"]} '
+                        f"{resource['resourceType'] + '_' + resource['id']} "
                     )
                 else:
                     logger.info(
                         f"Given instance: "
-                        f'{resource["resourceType"] + "_" + resource["id"]} was not found or changed.'
+                        f"{resource['resourceType'] + '_' + resource['id']} was not found or changed."
                     )
 
             return data, exist

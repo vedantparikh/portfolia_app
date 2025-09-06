@@ -2,19 +2,26 @@
 Assets management router with authentication.
 """
 
+import time
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.database.connection import get_db
-from app.core.database.models import User, Asset as AssetModel
-from app.core.database.models.asset import AssetType
 from app.core.auth.dependencies import (
     get_current_active_user,
     get_current_verified_user,
 )
-from app.core.schemas.portfolio import AssetCreate, AssetUpdate, Asset as AssetSchema
+from app.core.database.connection import get_db
+from app.core.database.models import Asset as AssetModel
+from app.core.database.models import User
+from app.core.database.models.asset import AssetType
+from app.core.logging_config import get_logger, log_api_request, log_api_response
+from app.core.schemas.portfolio import Asset as AssetSchema
+from app.core.schemas.portfolio import AssetCreate, AssetUpdate
 from app.core.services.market_data_service import market_data_service
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/assets", tags=["assets"])
 
@@ -26,6 +33,14 @@ async def create_asset(
     db: Session = Depends(get_db),
 ):
     """Create a new financial asset."""
+    log_api_request(
+        logger,
+        "POST",
+        "/assets",
+        current_user.id,
+        f"Creating asset: {asset_data.symbol}",
+    )
+    start_time = time.time()
     # Check if asset already exists
     existing_asset = (
         db.query(AssetModel)
@@ -63,6 +78,8 @@ async def create_asset(
     db.commit()
     db.refresh(new_asset)
 
+    response_time = time.time() - start_time
+    log_api_response(logger, "POST", "/assets", 200, response_time)
     return new_asset
 
 

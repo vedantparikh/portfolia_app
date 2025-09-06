@@ -3,6 +3,7 @@ Test to verify the new API structure works correctly.
 """
 
 import unittest
+
 from app.config import settings
 from app.main import app
 

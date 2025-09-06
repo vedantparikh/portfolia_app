@@ -1,18 +1,20 @@
+import enum
+
 from sqlalchemy import (
-    Column,
-    Integer,
-    String,
-    Text,
-    DateTime,
-    Numeric,
     Boolean,
-    Index,
+    Column,
+    DateTime,
     Enum,
     ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-import enum
+
 from app.core.database.connection import Base
 
 

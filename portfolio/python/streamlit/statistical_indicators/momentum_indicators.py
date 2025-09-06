@@ -1,10 +1,15 @@
 import pandas as pd
 from statistical_indicators.base import BaseIndicator
-from ta.momentum import (ROCIndicator, RSIIndicator, StochRSIIndicator, StochasticOscillator)
+from ta.momentum import (
+    ROCIndicator,
+    RSIIndicator,
+    StochasticOscillator,
+    StochRSIIndicator,
+)
 
 
 class MomentumIndicators(BaseIndicator):
-    """ Returns a Pandas Dataframe with calculated different Momentum Indicators. """
+    """Returns a Pandas Dataframe with calculated different Momentum Indicators."""
 
     def rsi_indicator(self, window: int = 14, fillna: bool = False) -> pd.DataFrame:
         """
@@ -17,7 +22,9 @@ class MomentumIndicators(BaseIndicator):
         :param fillna: If True, fill NaN values.
         :return: DataFrame with RSI indicator fields.
         """
-        self.df['RSI'] = RSIIndicator(close=self.df.Close, window=window, fillna=fillna).rsi()
+        self.df["RSI"] = RSIIndicator(
+            close=self.df.Close, window=window, fillna=fillna
+        ).rsi()
 
         return self.df
 
@@ -38,12 +45,14 @@ class MomentumIndicators(BaseIndicator):
         :return: DataFrame with ROC indicator field.
         """
 
-        self.df['ROC'] = ROCIndicator(close=self.df.Close, window=window, fillna=fillna).roc()
+        self.df["ROC"] = ROCIndicator(
+            close=self.df.Close, window=window, fillna=fillna
+        ).roc()
 
         return self.df
 
     def stoch_rsi_indicator(
-            self, window: int = 14, smooth1: int = 3, smooth2: int = 3, fillna: bool = False
+        self, window: int = 14, smooth1: int = 3, smooth2: int = 3, fillna: bool = False
     ) -> pd.DataFrame:
         """
         Stochastic RSI
@@ -59,16 +68,20 @@ class MomentumIndicators(BaseIndicator):
         :return: DataFrame with Stochastic RSI indicator fields.
         """
         stoch_rsi = StochRSIIndicator(
-            close=self.df.Close, window=window, smooth1=smooth1, smooth2=smooth2, fillna=fillna
+            close=self.df.Close,
+            window=window,
+            smooth1=smooth1,
+            smooth2=smooth2,
+            fillna=fillna,
         )
-        self.df['stoch_rsi'] = stoch_rsi.stochrsi()
-        self.df['stoch_rsi_d'] = stoch_rsi.stochrsi_d()
-        self.df['stoch_rsi_k'] = stoch_rsi.stochrsi_k()
+        self.df["stoch_rsi"] = stoch_rsi.stochrsi()
+        self.df["stoch_rsi_d"] = stoch_rsi.stochrsi_d()
+        self.df["stoch_rsi_k"] = stoch_rsi.stochrsi_k()
 
         return self.df
 
     def stoch_oscillator_indicator(
-            self, window: int = 14, smooth_window: int = 3, fillna: bool = False
+        self, window: int = 14, smooth_window: int = 3, fillna: bool = False
     ) -> pd.DataFrame:
         """
         Stochastic Oscillator
@@ -82,11 +95,15 @@ class MomentumIndicators(BaseIndicator):
         :return: DataFrame with Stochastic Oscillator indicator fields.
         """
         stochastic_oscillator = StochasticOscillator(
-            close=self.df.Close, high=self.df.High, low=self.df.Low, window=window, smooth_window=smooth_window,
-            fillna=fillna
+            close=self.df.Close,
+            high=self.df.High,
+            low=self.df.Low,
+            window=window,
+            smooth_window=smooth_window,
+            fillna=fillna,
         )
-        self.df['stoch'] = stochastic_oscillator.stoch()
-        self.df['stoch_signal'] = stochastic_oscillator.stoch_signal()
+        self.df["stoch"] = stochastic_oscillator.stoch()
+        self.df["stoch_signal"] = stochastic_oscillator.stoch_signal()
 
         return self.df
 

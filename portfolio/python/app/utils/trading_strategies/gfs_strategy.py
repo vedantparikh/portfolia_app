@@ -122,7 +122,7 @@ class GfsStrategy:
             # Convert to polars DataFrame
             pl_df = pl.from_pandas(df)
             return self.calculater_rsi(df=pl_df)
-        except Exception as e:
+        except Exception:
             raise ValueError(
                 f"{self.symbol}: No price data found, symbol may be delisted (period=5y)"
             )
@@ -150,7 +150,7 @@ class GfsStrategy:
             # Convert to polars DataFrame
             pl_df = pl.from_pandas(df)
             return self.calculater_rsi(df=pl_df)
-        except Exception as e:
+        except Exception:
             raise ValueError(
                 f"{self.symbol}: No price data found, symbol may be delisted (period=1y)"
             )
@@ -175,7 +175,7 @@ class GfsStrategy:
             # Convert to polars DataFrame
             pl_df = pl.from_pandas(df)
             return self.calculater_rsi(df=pl_df)
-        except Exception as e:
+        except Exception:
             raise ValueError(
                 f"{self.symbol}: No price data found, symbol may be delisted (period=1mo)"
             )

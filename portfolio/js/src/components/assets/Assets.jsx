@@ -14,11 +14,10 @@ import {
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { userAssetsAPI } from '../../services/api';
-import { SymbolSearchTest as SharedSymbolSearchTest, Sidebar } from '../shared';
+import { Sidebar } from '../shared';
 import AssetCard from './AssetCard';
 import AssetFilters from './AssetFilters';
 import AssetModal from './AssetModal';
-import AssetsTest from './AssetsTest';
 
 const Assets = () => {
     const [assets, setAssets] = useState([]);
@@ -489,10 +488,6 @@ const Assets = () => {
                                     {searchQuery ? 'Try adjusting your search criteria' : 'No assets available at the moment'}
                                 </p>
                             </div>
-
-                            {/* Debug Test Components */}
-                            <AssetsTest />
-                            <SharedSymbolSearchTest />
                         </div>
                     ) : (
                         <div className={

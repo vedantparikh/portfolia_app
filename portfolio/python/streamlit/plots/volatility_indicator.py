@@ -3,11 +3,17 @@ import plotly.graph_objects as go
 
 
 class VolatilityIndicatorChart:
-
     def bollinger_bands_indicator(
-            self, df: pd.DataFrame, fig: go, row: int, column: int, window: int = 20, window_dev: int = 2,
-            fillna: bool = False,
-            color: str = 'gold', width: int = 2,
+        self,
+        df: pd.DataFrame,
+        fig: go,
+        row: int,
+        column: int,
+        window: int = 20,
+        window_dev: int = 2,
+        fillna: bool = False,
+        color: str = "gold",
+        width: int = 2,
     ) -> go:
         """
         Creates plot for the Bollinger Bands indicator.
@@ -25,27 +31,48 @@ class VolatilityIndicatorChart:
         df = df.iloc[window:]
         fig.add_trace(
             go.Scatter(
-                x=df.index, y=df.bb_bbm, name='Bollinger MAVG', line=dict(color='green', width=width)
-            ), row=row, col=column
+                x=df.index,
+                y=df.bb_bbm,
+                name="Bollinger MAVG",
+                line=dict(color="green", width=width),
+            ),
+            row=row,
+            col=column,
         )
         fig.add_trace(
             go.Scatter(
-                x=df.index, y=df.bb_bbh, name='Bollinger hband', line=dict(color=color, width=width)
-            ), row=row, col=column
+                x=df.index,
+                y=df.bb_bbh,
+                name="Bollinger hband",
+                line=dict(color=color, width=width),
+            ),
+            row=row,
+            col=column,
         )
         fig.add_trace(
             go.Scatter(
-                x=df.index, y=df.bb_bbl, name='Bollinger lband', line=dict(color='cyan', width=width)
-            ), row=row, col=column
+                x=df.index,
+                y=df.bb_bbl,
+                name="Bollinger lband",
+                line=dict(color="cyan", width=width),
+            ),
+            row=row,
+            col=column,
         )
-        fig.update_yaxes(title_text='Bollinger Bands', row=row, col=column)
+        fig.update_yaxes(title_text="Bollinger Bands", row=row, col=column)
 
         return fig
 
     def average_true_range_indicator(
-            self, df: pd.DataFrame, fig: go, row: int, column: int, window: int = 20, fillna: bool = False,
-            color: str = 'gold',
-            width: int = 2,
+        self,
+        df: pd.DataFrame,
+        fig: go,
+        row: int,
+        column: int,
+        window: int = 20,
+        fillna: bool = False,
+        color: str = "gold",
+        width: int = 2,
     ) -> go:
         """
         Creates plot for the Average True Range indicator.
@@ -62,17 +89,31 @@ class VolatilityIndicatorChart:
         df = df.iloc[window:]
         fig.add_trace(
             go.Scatter(
-                x=df.index, y=df.average_true_range, name='Average True Range', line=dict(color='green', width=width)
-            ), row=row, col=column
+                x=df.index,
+                y=df.average_true_range,
+                name="Average True Range",
+                line=dict(color="green", width=width),
+            ),
+            row=row,
+            col=column,
         )
-        fig.update_yaxes(title_text='Average True Range', row=row, col=column)
+        fig.update_yaxes(title_text="Average True Range", row=row, col=column)
 
         return fig
 
     def keltner_channel_indicator(
-            self, df: pd.DataFrame, fig: go, row: int, column: int, window: int = 20, window_atr: int = 10,
-            original_version: bool = True,
-            multiplier: int = 2, fillna: bool = False, color: str = 'gold', width: int = 2,
+        self,
+        df: pd.DataFrame,
+        fig: go,
+        row: int,
+        column: int,
+        window: int = 20,
+        window_atr: int = 10,
+        original_version: bool = True,
+        multiplier: int = 2,
+        fillna: bool = False,
+        color: str = "gold",
+        width: int = 2,
     ) -> go:
         """
         Creates plot for the Keltner Channel indicator.
@@ -94,22 +135,34 @@ class VolatilityIndicatorChart:
         df = df.iloc[window:]
         fig.add_trace(
             go.Scatter(
-                x=df.index, y=df.keltner_channel_mband, name='Keltner Channel mband',
-                line=dict(color='green', width=width)
-            ), row=row, col=column
+                x=df.index,
+                y=df.keltner_channel_mband,
+                name="Keltner Channel mband",
+                line=dict(color="green", width=width),
+            ),
+            row=row,
+            col=column,
         )
         fig.add_trace(
             go.Scatter(
-                x=df.index, y=df.keltner_channel_hband, name='Keltner Channel hband',
-                line=dict(color=color, width=width)
-            ), row=row, col=column
+                x=df.index,
+                y=df.keltner_channel_hband,
+                name="Keltner Channel hband",
+                line=dict(color=color, width=width),
+            ),
+            row=row,
+            col=column,
         )
         fig.add_trace(
             go.Scatter(
-                x=df.index, y=df.keltner_channel_lband, name='Keltner Channel lband',
-                line=dict(color='cyan', width=width)
-            ), row=row, col=column
+                x=df.index,
+                y=df.keltner_channel_lband,
+                name="Keltner Channel lband",
+                line=dict(color="cyan", width=width),
+            ),
+            row=row,
+            col=column,
         )
-        fig.update_yaxes(title_text='Keltner Channel', row=row, col=column)
+        fig.update_yaxes(title_text="Keltner Channel", row=row, col=column)
 
         return fig

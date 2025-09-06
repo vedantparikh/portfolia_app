@@ -2,26 +2,31 @@
 Transactions management router with authentication.
 """
 
-from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
 from datetime import datetime
+from typing import List, Optional
 
-from app.core.database.connection import get_db
-from app.core.database.models import (
-    User,
-    Transaction as TransactionModel,
-    Portfolio,
-    PortfolioAsset,
-)
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session
+
 from app.core.auth.dependencies import (
     get_current_active_user,
     get_current_verified_user,
 )
+from app.core.database.connection import get_db
+from app.core.database.models import (
+    Portfolio,
+    PortfolioAsset,
+    User,
+)
+from app.core.database.models import (
+    Transaction as TransactionModel,
+)
+from app.core.schemas.portfolio import (
+    Transaction as TransactionSchema,
+)
 from app.core.schemas.portfolio import (
     TransactionCreate,
     TransactionUpdate,
-    Transaction as TransactionSchema,
 )
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])

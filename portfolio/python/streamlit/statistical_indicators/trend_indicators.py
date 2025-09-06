@@ -1,18 +1,23 @@
 import pandas as pd
 from statistical_indicators.base import BaseIndicator
 from ta.trend import (
+    MACD,
     ADXIndicator,
     AroonIndicator,
-    MACD,
-    PSARIndicator, CCIIndicator,
+    CCIIndicator,
+    PSARIndicator,
 )
 
 
 class TrendIndicators(BaseIndicator):
-    """ Returns a Pandas Dataframe with calculated different Trend Indicators. """
+    """Returns a Pandas Dataframe with calculated different Trend Indicators."""
 
     def macd_indicator(
-            self, window_slow: int = 26, window_fast: int = 12, window_sign: int = 9, fillna: bool = False
+        self,
+        window_slow: int = 26,
+        window_fast: int = 12,
+        window_sign: int = 9,
+        fillna: bool = False,
     ) -> pd.DataFrame:
         """
         Moving Average Convergence Divergence (MACD)
@@ -25,12 +30,15 @@ class TrendIndicators(BaseIndicator):
         :return: DataFrame with the MACD indicator fields.
         """
         macd = MACD(
-            close=self.df.Close, window_slow=window_slow, window_fast=window_fast, window_sign=window_sign,
-            fillna=fillna
+            close=self.df.Close,
+            window_slow=window_slow,
+            window_fast=window_fast,
+            window_sign=window_sign,
+            fillna=fillna,
         )
-        self.df['MACD'] = macd.macd()
-        self.df['Signal'] = macd.macd_signal()
-        self.df['Histogram'] = macd.macd_diff()
+        self.df["MACD"] = macd.macd()
+        self.df["Signal"] = macd.macd_signal()
+        self.df["Histogram"] = macd.macd_diff()
 
         return self.df
 
@@ -48,10 +56,16 @@ class TrendIndicators(BaseIndicator):
         :param fillna: if True, fill NaN values.
         :return: DataFrame with ADX indicator fields.
         """
-        adx = ADXIndicator(high=self.df.High, low=self.df.Low, close=self.df.Close, window=window, fillna=fillna)
-        self.df['ADX'] = adx.adx()
-        self.df['ADX_neg'] = adx.adx_neg()
-        self.df['ADX_pos'] = adx.adx_pos()
+        adx = ADXIndicator(
+            high=self.df.High,
+            low=self.df.Low,
+            close=self.df.Close,
+            window=window,
+            fillna=fillna,
+        )
+        self.df["ADX"] = adx.adx()
+        self.df["ADX_neg"] = adx.adx_neg()
+        self.df["ADX_pos"] = adx.adx_pos()
 
         return self.df
 
@@ -67,13 +81,15 @@ class TrendIndicators(BaseIndicator):
         :return: DataFrame with Aroon indicator fields.
         """
         aroon = AroonIndicator(close=self.df.Close, window=window, fillna=fillna)
-        self.df['aroon_down'] = aroon.aroon_down()
-        self.df['aroon_up'] = aroon.aroon_up()
-        self.df['aroon_indicator'] = aroon.aroon_indicator()
+        self.df["aroon_down"] = aroon.aroon_down()
+        self.df["aroon_up"] = aroon.aroon_up()
+        self.df["aroon_indicator"] = aroon.aroon_indicator()
 
         return self.df
 
-    def psar_indicator(self, step: float = 0.02, max_step: float = 0.2, fillna: bool = False) -> pd.DataFrame:
+    def psar_indicator(
+        self, step: float = 0.02, max_step: float = 0.2, fillna: bool = False
+    ) -> pd.DataFrame:
         """
         Parabolic Stop and Reverse (Parabolic SAR)
         The Parabolic Stop and Reverse, more commonly known as the Parabolic SAR,is a trend-following indicator
@@ -86,13 +102,18 @@ class TrendIndicators(BaseIndicator):
         :return: DataFrame with the PSAR indicator fields.
         """
         psar = PSARIndicator(
-            high=self.df.High, low=self.df.Low, close=self.df.Close, step=step, max_step=max_step, fillna=fillna
+            high=self.df.High,
+            low=self.df.Low,
+            close=self.df.Close,
+            step=step,
+            max_step=max_step,
+            fillna=fillna,
         )
-        self.df['psar'] = psar.psar()
-        self.df['psar_down'] = psar.psar_down()
-        self.df['psar_down_indicator'] = psar.psar_down_indicator()
-        self.df['psar_up'] = psar.psar_up()
-        self.df['psar_up_indicator'] = psar.psar_up_indicator()
+        self.df["psar"] = psar.psar()
+        self.df["psar_down"] = psar.psar_down()
+        self.df["psar_down_indicator"] = psar.psar_down_indicator()
+        self.df["psar_up"] = psar.psar_up()
+        self.df["psar_up_indicator"] = psar.psar_up_indicator()
 
         return self.df
 
@@ -108,7 +129,9 @@ class TrendIndicators(BaseIndicator):
 
         return self.df
 
-    def cci_indicator(self, window: int = 20, constant: float = 0.015, fillna: bool= False) -> pd.DataFrame:
+    def cci_indicator(
+        self, window: int = 20, constant: float = 0.015, fillna: bool = False
+    ) -> pd.DataFrame:
         """
         CCI measures the difference between a security’s price change and its average price change.
         High positive readings indicate that prices are well above their average, which is a show of strength.
@@ -120,9 +143,14 @@ class TrendIndicators(BaseIndicator):
         :return:
         """
         cci_indicator = CCIIndicator(
-            high=self.df.High, low=self.df.Low, close=self.df.Close,window = window, constant= constant, fillna= fillna
+            high=self.df.High,
+            low=self.df.Low,
+            close=self.df.Close,
+            window=window,
+            constant=constant,
+            fillna=fillna,
         )
 
-        self.df['CCI'] = cci_indicator.cci()
+        self.df["CCI"] = cci_indicator.cci()
 
         return self.df

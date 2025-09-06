@@ -1,12 +1,13 @@
-import unittest
-import pandas as pd
-import polars as pl
-import numpy as np
-from unittest.mock import patch, MagicMock
+import os
 
 # Add the parent directory to the path so we can import our modules
 import sys
-import os
+import unittest
+from unittest.mock import MagicMock, patch
+
+import numpy as np
+import pandas as pd
+import polars as pl
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -294,7 +295,7 @@ class TestGfsStrategy(unittest.TestCase):
             result = strategy.calculater_rsi(corrupted_df)
             # Should handle NaN values gracefully
             self.assertIsInstance(result, pl.DataFrame)
-        except Exception as e:
+        except Exception:
             # If it fails, that's acceptable
             pass
 

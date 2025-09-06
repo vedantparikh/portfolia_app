@@ -13,16 +13,16 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from app.core.logging_config import (
-    setup_logging,
     get_logger,
-    log_function_call,
-    log_function_result,
-    log_database_operation,
     log_api_request,
     log_api_response,
-    log_security_event,
-    log_performance_metric,
+    log_database_operation,
     log_error_with_context,
+    log_function_call,
+    log_function_result,
+    log_performance_metric,
+    log_security_event,
+    setup_logging,
 )
 
 
@@ -199,11 +199,11 @@ def main():
 
     print("\n✅ Logging demonstration completed!")
     print("\n📁 Check the following locations for logs:")
-    print(f"   - Console output (above)")
-    print(f"   - Log file: logs/demo_logging.log")
-    print(f"\n🔧 To change log level, set LOG_LEVEL environment variable:")
-    print(f"   export LOG_LEVEL=DEBUG  # For more detailed logs")
-    print(f"   export LOG_LEVEL=WARNING  # For fewer logs")
+    print("   - Console output (above)")
+    print("   - Log file: logs/demo_logging.log")
+    print("\n🔧 To change log level, set LOG_LEVEL environment variable:")
+    print("   export LOG_LEVEL=DEBUG  # For more detailed logs")
+    print("   export LOG_LEVEL=WARNING  # For fewer logs")
 
 
 if __name__ == "__main__":

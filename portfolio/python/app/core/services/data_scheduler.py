@@ -5,18 +5,16 @@ Handles scheduled updates of market data for all tracked tickers.
 
 import asyncio
 import logging
-import schedule
-from datetime import datetime, timedelta
-from typing import List, Dict
 import traceback
+from datetime import datetime, timedelta
+from typing import Dict, List
 
-from sqlalchemy import select
-from sqlalchemy import and_
+import schedule
+from sqlalchemy import and_, select
 
 from app.core.database.connection import get_db_session
+from app.core.database.models.market_data import DataUpdateLog, MarketData, TickerInfo
 from app.core.services.market_data_service import market_data_service
-from app.core.database.models.market_data import DataUpdateLog, TickerInfo, MarketData
-
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +83,7 @@ class DataScheduler:
 
                 # Log batch progress
                 logger.info(
-                    f"Processed batch {i//self.batch_size + 1}/{(len(tickers) + self.batch_size - 1)//self.batch_size}"
+                    f"Processed batch {i // self.batch_size + 1}/{(len(tickers) + self.batch_size - 1) // self.batch_size}"
                 )
 
                 # Small delay between batches to avoid overwhelming external APIs

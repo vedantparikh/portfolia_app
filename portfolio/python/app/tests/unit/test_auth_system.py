@@ -4,9 +4,6 @@ Comprehensive test script for the authentication system.
 """
 
 import unittest
-from unittest.mock import patch, MagicMock
-import json
-from datetime import datetime
 
 # Test user data
 TEST_USER = {
@@ -32,11 +29,11 @@ class TestAuthSystem(unittest.TestCase):
         self.assertIn("email", self.test_user)
         self.assertIn("username", self.test_user)
         self.assertIn("password", self.test_user)
-        
+
         # Test email format
         self.assertIn("@", self.test_user["email"])
         self.assertIn(".", self.test_user["email"])
-        
+
         # Test password strength
         self.assertGreaterEqual(len(self.test_user["password"]), 8)
 
@@ -44,9 +41,9 @@ class TestAuthSystem(unittest.TestCase):
         """Test user login data validation."""
         login_data = {
             "email": self.test_user["email"],
-            "password": self.test_user["password"]
+            "password": self.test_user["password"],
         }
-        
+
         self.assertIn("email", login_data)
         self.assertIn("password", login_data)
         self.assertEqual(login_data["email"], self.test_user["email"])
@@ -60,11 +57,8 @@ class TestAuthSystem(unittest.TestCase):
     def test_token_validation(self):
         """Test token validation logic."""
         # Test token structure
-        mock_token = {
-            "access_token": "mock_access_token_123",
-            "token_type": "bearer"
-        }
-        
+        mock_token = {"access_token": "mock_access_token_123", "token_type": "bearer"}
+
         self.assertIn("access_token", mock_token)
         self.assertIn("token_type", mock_token)
         self.assertEqual(mock_token["token_type"], "bearer")
@@ -72,7 +66,7 @@ class TestAuthSystem(unittest.TestCase):
     def test_password_change_validation(self):
         """Test password change validation."""
         new_password = "NewPassword123!"
-        
+
         # Test password strength
         self.assertGreaterEqual(len(new_password), 8)
         self.assertNotEqual(new_password, self.test_user["password"])

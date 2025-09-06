@@ -8,7 +8,7 @@ from .volume_indicators import *
 __all__ = [
     "base",
     "momentum_indicators",
-    "trend_indicators", 
+    "trend_indicators",
     "volatility_indicators",
-    "volume_indicators"
+    "volume_indicators",
 ]

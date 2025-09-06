@@ -1,18 +1,19 @@
 from sqlalchemy import (
-    Column,
-    Integer,
-    String,
+    JSON,
     Boolean,
+    Column,
     DateTime,
-    Text,
     ForeignKey,
     Index,
-    UniqueConstraint,
+    Integer,
     Numeric,
-    JSON,
+    String,
+    Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+
 from app.core.database.connection import Base
 
 

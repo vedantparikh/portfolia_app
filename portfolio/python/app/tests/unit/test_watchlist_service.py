@@ -10,33 +10,26 @@ This module tests all functionality of the WatchlistService including:
 - Real-time data integration
 """
 
-import asyncio
-from datetime import datetime
-from datetime import timedelta
-from datetime import timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from typing import List
-from typing import Optional
-from unittest.mock import AsyncMock
-from unittest.mock import Mock
-from unittest.mock import patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
 from app.core.database.models import User
-from app.core.database.models.watchlist import Watchlist
-from app.core.database.models.watchlist import WatchlistAlert
-from app.core.database.models.watchlist import WatchlistItem
-from app.core.database.models.watchlist import WatchlistPerformance
-from app.core.schemas.watchlist import WatchlistAlertCreate
-from app.core.schemas.watchlist import WatchlistCreate
-from app.core.schemas.watchlist import WatchlistItemCreate
-from app.core.schemas.watchlist import WatchlistItemUpdate
-from app.core.schemas.watchlist import WatchlistUpdate
+from app.core.database.models.watchlist import Watchlist, WatchlistAlert, WatchlistItem
+from app.core.schemas.watchlist import (
+    WatchlistAlertCreate,
+    WatchlistCreate,
+    WatchlistItemCreate,
+    WatchlistItemUpdate,
+    WatchlistUpdate,
+)
 
 # Import the service and models
 from app.core.services.watchlist_service import WatchlistService
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
 
 
 class TestWatchlistService:
@@ -493,9 +486,7 @@ class TestWatchlistService:
     ):
         """Test successful watchlist item removal."""
         # Setup
-        mock_db.query.return_value.join.return_value.filter.return_value.first.return_value = (
-            sample_watchlist_item
-        )
+        mock_db.query.return_value.join.return_value.filter.return_value.first.return_value = sample_watchlist_item
         mock_db.delete = Mock()
         mock_db.commit = Mock()
 
@@ -514,9 +505,7 @@ class TestWatchlistService:
     ):
         """Test removing non-existent watchlist item."""
         # Setup
-        mock_db.query.return_value.join.return_value.filter.return_value.first.return_value = (
-            None
-        )
+        mock_db.query.return_value.join.return_value.filter.return_value.first.return_value = None
 
         # Execute
         result = watchlist_service.remove_item_from_watchlist(999, sample_user.id)
@@ -616,9 +605,7 @@ class TestWatchlistService:
         """Test successful real-time data retrieval."""
         # Setup
         sample_watchlist.items = [sample_watchlist_item]
-        mock_db.query.return_value.filter.return_value.options.return_value.first.return_value = (
-            sample_watchlist
-        )
+        mock_db.query.return_value.filter.return_value.options.return_value.first.return_value = sample_watchlist
         mock_db.refresh = Mock()
 
         # Execute
@@ -638,9 +625,7 @@ class TestWatchlistService:
     ):
         """Test real-time data retrieval for non-existent watchlist."""
         # Setup
-        mock_db.query.return_value.filter.return_value.options.return_value.first.return_value = (
-            None
-        )
+        mock_db.query.return_value.filter.return_value.options.return_value.first.return_value = None
 
         # Execute
         result = await watchlist_service.get_watchlist_with_real_time_data(
@@ -664,9 +649,7 @@ class TestWatchlistService:
         added_date = datetime.now(timezone.utc) - timedelta(days=30)
         sample_watchlist_item.added_date = added_date
         sample_watchlist.items = [sample_watchlist_item]
-        mock_db.query.return_value.filter.return_value.options.return_value.first.return_value = (
-            sample_watchlist
-        )
+        mock_db.query.return_value.filter.return_value.options.return_value.first.return_value = sample_watchlist
         mock_db.refresh = Mock()
 
         # Execute

@@ -1,6 +1,5 @@
-import polars as pl
-import pandas as pd
 import numpy as np
+import polars as pl
 
 
 class MACDStrategy:
@@ -27,7 +26,7 @@ class MACDStrategy:
         self.df = df
 
         assert {"MACD", "Signal", "Histogram"}.issubset(df.columns), (
-            "MACD trend calculated fields are " "not present in DataFrame."
+            "MACD trend calculated fields are not present in DataFrame."
         )
 
     def _find_intersection(self, x: float, y: float, digits: int = 0) -> int:

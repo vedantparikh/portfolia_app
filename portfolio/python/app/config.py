@@ -1,6 +1,6 @@
-from pathlib import Path
-from typing import List, Any
 import os
+from pathlib import Path
+from typing import Any, List
 
 from environs import Env
 from pydantic_settings import BaseSettings
@@ -75,7 +75,7 @@ class Settings(BaseSettings):
     EMAIL_HOST_PASSWORD: str = env.str("EMAIL_HOST_PASSWORD", "")
 
     STATIC_DIR: str = env.str("STATIC_DIR", "STATICS")
-    
+
     FRONTEND_URL: str = env.str("FRONTEND_URL", "http://localhost:3000")
 
     @property

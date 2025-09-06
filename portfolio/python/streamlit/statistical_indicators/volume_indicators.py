@@ -1,14 +1,16 @@
 import pandas as pd
+from statistical_indicators.base import BaseIndicator
 from ta.volume import (
-    ForceIndexIndicator, MFIIndicator, OnBalanceVolumeIndicator, VolumePriceTrendIndicator,
+    ForceIndexIndicator,
+    MFIIndicator,
+    OnBalanceVolumeIndicator,
+    VolumePriceTrendIndicator,
     VolumeWeightedAveragePrice,
 )
 
-from statistical_indicators.base import BaseIndicator
-
 
 class VolumeIndicators(BaseIndicator):
-    """ Returns a Pandas Dataframe with calculated different Volume Indicators. """
+    """Returns a Pandas Dataframe with calculated different Volume Indicators."""
 
     def mfi_indicator(self, window: int = 14, fillna: bool = False) -> pd.DataFrame:
         """
@@ -22,8 +24,13 @@ class VolumeIndicators(BaseIndicator):
         :param fillna: If True, fill NaN values.
         :return: DataFrame with the MFI indicator fields.
         """
-        self.df['mfi_indicator'] = MFIIndicator(
-            high=self.df.High, low=self.df.Low, close=self.df.Close, volume=self.df.Volume, window=window, fillna=fillna
+        self.df["mfi_indicator"] = MFIIndicator(
+            high=self.df.High,
+            low=self.df.Low,
+            close=self.df.Close,
+            volume=self.df.Volume,
+            window=window,
+            fillna=fillna,
         ).money_flow_index()
 
         return self.df
@@ -37,13 +44,15 @@ class VolumeIndicators(BaseIndicator):
         :param fillna: If True, fill NaN values.
         :return: DataFrame with the volume price trend indicator fields.
         """
-        self.df['volume_price_trend'] = VolumePriceTrendIndicator(
+        self.df["volume_price_trend"] = VolumePriceTrendIndicator(
             close=self.df.Close, volume=self.df.Volume, fillna=fillna
         ).volume_price_trend()
 
         return self.df
 
-    def volume_weighted_average_price(self, window: int = 14, fillna: bool = False) -> pd.DataFrame:
+    def volume_weighted_average_price(
+        self, window: int = 14, fillna: bool = False
+    ) -> pd.DataFrame:
         """
         Volume Weighted Average Price (VWAP)
         VWAP equals the dollar value of all trading periods divided by the total trading volume for the current day.
@@ -54,8 +63,13 @@ class VolumeIndicators(BaseIndicator):
         :param fillna: If True, fill NaN values.
         :return: DataFrame with the volume weighted average price field.
         """
-        self.df['volume_weighted_average_price'] = VolumeWeightedAveragePrice(
-            high=self.df.High, low=self.df.Low, close=self.df.Close, volume=self.df.Volume, window=window, fillna=fillna
+        self.df["volume_weighted_average_price"] = VolumeWeightedAveragePrice(
+            high=self.df.High,
+            low=self.df.Low,
+            close=self.df.Close,
+            volume=self.df.Volume,
+            window=window,
+            fillna=fillna,
         ).volume_weighted_average_price()
 
         return self.df
@@ -66,13 +80,15 @@ class VolumeIndicators(BaseIndicator):
         :param fillna:
         :return:
         """
-        self.df['on_balance_volume'] = OnBalanceVolumeIndicator(
+        self.df["on_balance_volume"] = OnBalanceVolumeIndicator(
             close=self.df.Close, volume=self.df.Volume, fillna=fillna
         ).on_balance_volume()
 
         return self.df
 
-    def force_index_indicator(self, window: int = 13, fillna: bool = False) -> pd.DataFrame:
+    def force_index_indicator(
+        self, window: int = 13, fillna: bool = False
+    ) -> pd.DataFrame:
         """
         Force Index (FI)
         It illustrates how strong the actual buying or selling pressure is. High positive values mean there is a
@@ -82,7 +98,7 @@ class VolumeIndicators(BaseIndicator):
         :param fillna: If True, fill NaN values.
         :return: DataFrame with the FI indicator field.
         """
-        self.df['force_index'] = ForceIndexIndicator(
+        self.df["force_index"] = ForceIndexIndicator(
             close=self.df.Close, volume=self.df.Volume, window=window, fillna=fillna
         ).force_index()
 

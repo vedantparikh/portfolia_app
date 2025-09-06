@@ -5,6 +5,7 @@ class SingletonMeta(type):
     """
     singleton metaclass (thread-safe)
     """
+
     _instances = {}
 
     def __call__(cls, *args, **kwargs):

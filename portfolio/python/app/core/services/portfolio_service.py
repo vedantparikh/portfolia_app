@@ -1,30 +1,30 @@
-from typing import List, Optional, Dict, Any
 from decimal import Decimal
+from typing import Any, Dict, List, Optional
 
-from sqlalchemy.orm import Session
 from sqlalchemy import and_, desc
+from sqlalchemy.orm import Session
 
 from app.core.database.models import (
+    Asset,
+    AssetPrice,
     Portfolio,
     PortfolioAsset,
-    Asset,
     Transaction,
     TransactionType,
-    AssetPrice,
-)
-from app.core.schemas.portfolio import (
-    PortfolioCreate,
-    PortfolioUpdate,
-    PortfolioAssetCreate,
-    PortfolioAssetUpdate,
-    TransactionCreate,
-    TransactionUpdate,
-    PortfolioSummary,
-    PortfolioHolding,
-    PortfolioStatistics,
-    PortfolioAssetWithDetails,
 )
 from app.core.database.utils import get_portfolio_performance_summary
+from app.core.schemas.portfolio import (
+    PortfolioAssetCreate,
+    PortfolioAssetUpdate,
+    PortfolioAssetWithDetails,
+    PortfolioCreate,
+    PortfolioHolding,
+    PortfolioStatistics,
+    PortfolioSummary,
+    PortfolioUpdate,
+    TransactionCreate,
+    TransactionUpdate,
+)
 
 
 class PortfolioService:
@@ -34,7 +34,9 @@ class PortfolioService:
         self.db = db
 
     # Portfolio CRUD Operations
-    def create_portfolio(self, portfolio_data: PortfolioCreate, user_id: int) -> Portfolio:
+    def create_portfolio(
+        self, portfolio_data: PortfolioCreate, user_id: int
+    ) -> Portfolio:
         """Create a new portfolio."""
         portfolio = Portfolio(
             user_id=user_id,

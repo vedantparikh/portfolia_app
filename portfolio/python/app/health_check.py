@@ -4,10 +4,12 @@ Health check router for Portfolia application.
 This module provides health check endpoints for monitoring application health.
 """
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+
 from app.core.database.connection import get_db, get_db_health
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +34,7 @@ async def health_check_endpoint():
             "database": "unknown",
             "redis": "unknown",
             "timestamp": "2024-01-15T10:30:00Z",
-            "error": str(e)
+            "error": str(e),
         }
 
 
@@ -41,7 +43,7 @@ async def detailed_health_check(db: Session = Depends(get_db)):
     """Detailed health check with database statistics."""
     try:
         health_status = await get_db_health()
-        
+
         if health_status["database"] != "healthy":
             raise HTTPException(status_code=503, detail="Database connection failed")
 

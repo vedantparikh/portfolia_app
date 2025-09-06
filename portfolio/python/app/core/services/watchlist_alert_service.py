@@ -1,7 +1,7 @@
 from typing import List
 
-from sqlalchemy.orm import Session
 from sqlalchemy import and_, func
+from sqlalchemy.orm import Session
 
 from app.core.database.models.watchlist import WatchlistAlert
 from app.core.logging_config import get_logger

@@ -1,12 +1,8 @@
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 
 class WatchlistBase(BaseModel):
@@ -121,7 +117,7 @@ class WatchlistItemResponse(WatchlistItemBase):
         if self.added_date:
             # Calculate the time difference between now and the added date
             time_difference = datetime.now(timezone.utc) - self.added_date
-            
+
             # The .days attribute of a timedelta object gives the number of full days
             self.days_since_added = time_difference.days
 

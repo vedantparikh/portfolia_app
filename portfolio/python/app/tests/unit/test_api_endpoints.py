@@ -4,6 +4,7 @@ Test API endpoints to verify routing works correctly.
 
 import pytest
 from fastapi.testclient import TestClient
+
 from app.main import app
 
 client = TestClient(app)
@@ -81,4 +82,3 @@ def test_openapi_schema():
 
 if __name__ == "__main__":
     pytest.main([__file__])
-

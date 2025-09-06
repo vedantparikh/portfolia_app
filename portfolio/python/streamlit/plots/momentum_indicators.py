@@ -1,8 +1,6 @@
 import pandas as pd
 import plotly.graph_objects as go
 
-from statistical_indicators import MomentumIndicators
-
 
 class MomentumIndicatorChart:
     # def __init__(self, df: pd.DataFrame) -> None:
@@ -12,9 +10,15 @@ class MomentumIndicatorChart:
     #     self.momentum_indicator = MomentumIndicators(df=df)
 
     def rsi_indicator_chart(
-            self, df: pd.DataFrame, fig: go, row: int, column: int, window: int = 14, fillna: bool = False,
-            color: str = 'gold',
-            width: int = 2
+        self,
+        df: pd.DataFrame,
+        fig: go,
+        row: int,
+        column: int,
+        window: int = 14,
+        fillna: bool = False,
+        color: str = "gold",
+        width: int = 2,
     ) -> go:
         """
         Creates plot for the RSI indicator.
@@ -31,18 +35,25 @@ class MomentumIndicatorChart:
         df = df.iloc[window:]
         fig.add_trace(
             go.Scatter(
-                x=df.index, y=df.RSI, name='RSI', line=dict(color=color, width=width)
+                x=df.index, y=df.RSI, name="RSI", line=dict(color=color, width=width)
             ),
-            row=row, col=column
+            row=row,
+            col=column,
         )
-        fig.update_yaxes(title_text='RSI', row=row, col=column)
+        fig.update_yaxes(title_text="RSI", row=row, col=column)
 
         return fig
 
     def roc_indicator_chart(
-            self, df: pd.DataFrame, fig: go, row: int, column: int, window: int = 12, fillna: bool = False,
-            color: str = 'gold',
-            width: int = 2
+        self,
+        df: pd.DataFrame,
+        fig: go,
+        row: int,
+        column: int,
+        window: int = 12,
+        fillna: bool = False,
+        color: str = "gold",
+        width: int = 2,
     ) -> go:
         """
         Creates plot for the ROC indicator.
@@ -59,18 +70,27 @@ class MomentumIndicatorChart:
         df = df.iloc[window:]
         fig.add_trace(
             go.Scatter(
-                x=df.index, y=df.ROC, name='ROC', line=dict(color=color, width=width)
+                x=df.index, y=df.ROC, name="ROC", line=dict(color=color, width=width)
             ),
-            row=row, col=column
+            row=row,
+            col=column,
         )
-        fig.update_yaxes(title_text='ROC', row=row, col=column)
+        fig.update_yaxes(title_text="ROC", row=row, col=column)
 
         return fig
 
     def stoch_rsi_indicator_chart(
-            self, df: pd.DataFrame, fig: go, row: int, column: int, window: int = 14, smooth1: int = 3,
-            smooth2: int = 3,
-            fillna: bool = False, color: str = 'gold', width: int = 2
+        self,
+        df: pd.DataFrame,
+        fig: go,
+        row: int,
+        column: int,
+        window: int = 14,
+        smooth1: int = 3,
+        smooth2: int = 3,
+        fillna: bool = False,
+        color: str = "gold",
+        width: int = 2,
     ) -> go:
         """
         Creates plot for the Stochastic RSI indicator.
@@ -90,18 +110,29 @@ class MomentumIndicatorChart:
         fig.add_trace(
             # TODO: multiple fields.
             go.Scatter(
-                x=df.index, y=df.stoch_rsi, name='Stochastic RSI', line=dict(color=color, width=width)
+                x=df.index,
+                y=df.stoch_rsi,
+                name="Stochastic RSI",
+                line=dict(color=color, width=width),
             ),
-            row=row, col=column
+            row=row,
+            col=column,
         )
-        fig.update_yaxes(title_text='Stochastic RSI', row=row, col=column)
+        fig.update_yaxes(title_text="Stochastic RSI", row=row, col=column)
 
         return fig
 
     def stoch_oscillator_indicator_chart(
-            self, df: pd.DataFrame, fig: go, row: int, column: int, window: int = 14, smooth_window: int = 3,
-            fillna: bool = False,
-            color: str = 'gold', width: int = 2
+        self,
+        df: pd.DataFrame,
+        fig: go,
+        row: int,
+        column: int,
+        window: int = 14,
+        smooth_window: int = 3,
+        fillna: bool = False,
+        color: str = "gold",
+        width: int = 2,
     ) -> go:
         """
         Creates plot for the Stochastic Oscillator indicator.
@@ -120,10 +151,14 @@ class MomentumIndicatorChart:
         fig.add_trace(
             # TODO: multiple fields.
             go.Scatter(
-                x=df.index, y=df.stoch, name='Stochastic Oscillator', line=dict(color=color, width=width)
+                x=df.index,
+                y=df.stoch,
+                name="Stochastic Oscillator",
+                line=dict(color=color, width=width),
             ),
-            row=row, col=column
+            row=row,
+            col=column,
         )
-        fig.update_yaxes(title_text='Stochastic Oscillator', row=row, col=column)
+        fig.update_yaxes(title_text="Stochastic Oscillator", row=row, col=column)
 
         return fig

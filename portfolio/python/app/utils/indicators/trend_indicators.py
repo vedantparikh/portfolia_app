@@ -1,4 +1,5 @@
 import polars as pl
+
 from .base import BaseIndicator
 
 
@@ -394,16 +395,14 @@ def calculate_ema(prices: pl.Series, window: int = 20) -> pl.Series:
     return prices.ewm_mean(span=window)
 
 
-def calculate_bollinger_bands(prices: pl.Series, window: int = 20, num_std: float = 2.0) -> pl.DataFrame:
+def calculate_bollinger_bands(
+    prices: pl.Series, window: int = 20, num_std: float = 2.0
+) -> pl.DataFrame:
     """Calculate Bollinger Bands."""
     sma = prices.rolling_mean(window_size=window)
     std = prices.rolling_std(window_size=window)
-    
+
     upper_band = sma + (std * num_std)
     lower_band = sma - (std * num_std)
-    
-    return pl.DataFrame({
-        'Upper': upper_band,
-        'Middle': sma,
-        'Lower': lower_band
-    })
+
+    return pl.DataFrame({"Upper": upper_band, "Middle": sma, "Lower": lower_band})
