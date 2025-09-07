@@ -387,6 +387,17 @@ export const marketAPI = {
         const response = await api.get(`/stock/price/${symbol}`);
         return response.data;
     },
+
+    /* 
+      GET STOCK LATEST DATA - Get latest market data for symbols
+      Parameters: symbols (array of strings) - Stock symbols to get data for
+      Returns: Server response with latest market data
+    */
+    getStockLatestData: async (symbols) => {
+        // Use the symbol-data endpoint which we know works
+        const response = await api.get(`/stock/symbol-data?name=${symbols}`);
+        return response.data;
+    },
 };
 
 /* 
@@ -669,6 +680,82 @@ export const userAssetsAPI = {
         // Update assets in the first portfolio (in a real app, you'd handle multiple portfolios)
         const portfolioId = portfolios[0].id;
         const response = await api.put(`/portfolios/${portfolioId}/assets/bulk`, { updates: portfolioUpdates });
+        return response.data;
+    },
+};
+
+/* 
+  ASSET API METHODS - Asset management
+  These methods handle all asset-related API calls for CRUD operations
+*/
+export const assetAPI = {
+    /* 
+      GET ASSETS - Get list of available assets/stocks
+      Parameters: params (object with query parameters like limit, include_prices)
+      Returns: Server response with array of asset objects
+    */
+    getAssets: async (params = {}) => {
+        const response = await api.get('/assets', { params });
+        return response.data;
+    },
+
+    /* 
+      CREATE ASSET - Create a new financial asset
+      Parameters: assetData (object with asset information)
+      Returns: Server response with created asset data
+    */
+    createAsset: async (assetData) => {
+        const response = await api.post('/assets', assetData);
+        return response.data;
+    },
+
+    /* 
+      GET ASSET - Get a specific asset by ID
+      Parameters: id (string or number)
+      Returns: Server response with asset details
+    */
+    getAsset: async (id) => {
+        const response = await api.get(`/assets/${id}`);
+        return response.data;
+    },
+
+    /* 
+      UPDATE ASSET - Update an existing asset
+      Parameters: id (string or number), assetData (object with updated information)
+      Returns: Server response with updated asset data
+    */
+    updateAsset: async (id, assetData) => {
+        const response = await api.put(`/assets/${id}`, assetData);
+        return response.data;
+    },
+
+    /* 
+      DELETE ASSET - Delete an asset
+      Parameters: id (string or number)
+      Returns: Server response confirming deletion
+    */
+    deleteAsset: async (id) => {
+        const response = await api.delete(`/assets/${id}`);
+        return response.data;
+    },
+
+    /* 
+      SEARCH ASSETS - Search for assets by symbol or name
+      Parameters: query (string to search for)
+      Returns: Server response with matching assets
+    */
+    searchAssets: async (query) => {
+        const response = await api.get(`/assets/search/${query}`);
+        return response.data;
+    },
+
+    /* 
+      GET ASSET PRICES - Get historical price data for an asset
+      Parameters: id (asset ID), params (object with date range, interval)
+      Returns: Server response with price history data
+    */
+    getAssetPrices: async (id, params = {}) => {
+        const response = await api.get(`/assets/${id}/prices`, { params });
         return response.data;
     },
 };

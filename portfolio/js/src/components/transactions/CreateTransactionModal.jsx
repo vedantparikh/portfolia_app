@@ -2,7 +2,7 @@ import { Calculator, Plus, TrendingDown, TrendingUp, X } from 'lucide-react';
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
-import { SymbolSearch } from '../shared';
+import { ClientSideAssetSearch } from '../shared';
 
 const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
     const { isAuthenticated } = useAuth();  // Get the authentication status
@@ -19,7 +19,8 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
         date: new Date().toISOString().split('T')[0]
     });
     const [loading, setLoading] = useState(false);  // Loading state
-    const [assets, setAssets] = useState([]);
+    const [selectedAsset, setSelectedAsset] = useState(null);
+    const [isCreatingAsset, setIsCreatingAsset] = useState(false);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -29,20 +30,24 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
         }));
     };
 
-    const handleSymbolSelect = (suggestion) => {
+    const handleSymbolSelect = (asset) => {
+        setSelectedAsset(asset);
         setFormData(prev => ({
             ...prev,
-            symbol: suggestion.symbol,
-            asset_id: suggestion.symbol // Use symbol as asset_id for now
+            symbol: asset.symbol,
+            asset_id: asset.id
         }));
     };
 
     const handleSymbolChange = (value) => {
         setFormData(prev => ({
             ...prev,
-            symbol: value,
-            asset_id: value // Use symbol as asset_id for now
+            symbol: value
         }));
+        // Clear selected asset when manually typing
+        if (!value) {
+            setSelectedAsset(null);
+        }
     };
 
     const handlePriceUpdate = (priceData) => {
@@ -51,6 +56,7 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
                 ...prev,
                 price: priceData.price.toString()
             }));
+            toast.success(`Current price for ${priceData.symbol}: $${priceData.price} (${priceData.currency})`);
         }
     };
 
@@ -74,6 +80,11 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
             return;
         }
 
+        if (!formData.asset_id) {
+            toast.error('Please select an asset from the search results. If the asset doesn\'t exist, add it first in the Assets section.');
+            return;
+        }
+
         if (!formData.quantity || parseFloat(formData.quantity) <= 0) {
             toast.error('Valid quantity is required');
             return;
@@ -90,7 +101,7 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
             const transactionData = {
                 portfolio_id: parseInt(formData.portfolio_id),
                 transaction_type: formData.transaction_type,
-                asset_id: formData.symbol.trim().toUpperCase(),
+                asset_id: parseInt(formData.asset_id),
                 currency: formData.currency,
                 quantity: parseFloat(formData.quantity),
                 price: parseFloat(formData.price),
@@ -210,18 +221,49 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
                     {/* Symbol */}
                     <div>
                         <label className="block text-sm font-medium text-gray-300 mb-2">
-                            Stock Symbol *
+                            Asset Symbol *
                         </label>
-                        <SymbolSearch
+                        <ClientSideAssetSearch
                             value={formData.symbol}
                             onChange={handleSymbolChange}
                             onSelect={handleSymbolSelect}
                             onPriceUpdate={handlePriceUpdate}
-                            placeholder="e.g., AAPL"
+                            placeholder="Search your assets..."
                             disabled={loading}
                             showSuggestions={isAuthenticated}
                         />
 
+                        {/* Selected Asset Info */}
+                        {selectedAsset && (
+                            <div className="mt-2 p-3 bg-dark-800 rounded-lg border border-dark-600">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center space-x-3">
+                                        <div className="w-8 h-8 bg-primary-600/20 rounded-lg flex items-center justify-center">
+                                            <TrendingUp size={16} className="text-primary-400" />
+                                        </div>
+                                        <div>
+                                            <div className="font-mono text-sm font-medium text-gray-100">
+                                                {selectedAsset.symbol}
+                                            </div>
+                                            <div className="text-xs text-gray-400">
+                                                {selectedAsset.name}
+                                            </div>
+                                            <div className="text-xs text-gray-500">
+                                                {selectedAsset.exchange} • {selectedAsset.asset_type}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="text-xs text-gray-400">
+                                        Your Asset
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Help Text */}
+                        <div className="mt-2 text-xs text-gray-500">
+                            If the asset doesn't exist, add it first in the Assets section.
+                        </div>
                     </div>
                     {/* Quantity and Price */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
