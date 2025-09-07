@@ -45,6 +45,7 @@ class MarketDataService:
         interval: str = "1d",
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
+        ticker: Optional[yf.Ticker] = None,
     ) -> Optional[pd.DataFrame]:
         """
         Fetch ticker data from yfinance with retry logic.
@@ -64,7 +65,8 @@ class MarketDataService:
             try:
                 logger.info(f"Fetching data for {symbol} (attempt {attempt + 1})")
 
-                ticker = yf.Ticker(symbol)
+                if ticker is None:
+                    ticker = yf.Ticker(symbol)
 
                 data = ticker.history(
                     period=period, interval=interval, start=start_date, end=end_date

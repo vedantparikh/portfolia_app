@@ -7,6 +7,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
+import yfinance as yf
 
 from app.core.auth.dependencies import (
     get_current_active_user,
@@ -234,8 +235,9 @@ async def get_asset_prices(
 
     try:
         # Use the market data service to get prices
+        ticker = yf.Ticker(asset.symbol)
         data = await market_data_service.fetch_ticker_data(
-            symbol=asset.symbol, period=period, interval=interval
+            symbol=asset.symbol, period=period, interval=interval, ticker=ticker
         )
         if not data.empty:
             data.rename(
