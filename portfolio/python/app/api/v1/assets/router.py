@@ -13,12 +13,15 @@ from app.core.auth.dependencies import (
     get_current_verified_user,
 )
 from app.core.database.connection import get_db
-from app.core.database.models import Asset as AssetModel
-from app.core.database.models import User
+from app.core.database.models import Asset as AssetModel, User
 from app.core.database.models.asset import AssetType
 from app.core.logging_config import get_logger, log_api_request, log_api_response
-from app.core.schemas.portfolio import Asset as AssetSchema
-from app.core.schemas.portfolio import AssetCreate, AssetUpdate
+from app.core.schemas.portfolio import (
+    Asset as AssetSchema,
+    AssetCreate,
+    AssetUpdate,
+    AssetPrice,
+)
 from app.core.services.market_data_service import market_data_service
 
 logger = get_logger(__name__)
@@ -54,7 +57,7 @@ async def create_asset(
             detail="Asset with this symbol already exists",
         )
     ticker_data = await market_data_service.get_ticker_info(asset_data.symbol.upper())
-    
+
     new_asset = AssetModel(
         symbol=asset_data.symbol.upper(),
         name=ticker_data.get("longName") or ticker_data.get("shortName"),
@@ -209,7 +212,7 @@ async def search_assets(
     return assets
 
 
-@router.get("/{asset_id}/prices")
+@router.get("/{asset_id}/prices", response_model=AssetPrice)
 async def get_asset_prices(
     asset_id: int,
     period: str = Query("1y", description="Data period"),
@@ -234,6 +237,20 @@ async def get_asset_prices(
         data = await market_data_service.fetch_ticker_data(
             symbol=asset.symbol, period=period, interval=interval
         )
+        if not data.empty:
+            data.rename(
+                columns={
+                    "Date": "date",
+                    "Open": "open",
+                    "High": "high",
+                    "Low": "low",
+                    "Close": "close",
+                    "Volume": "volume",
+                    "Dividends": "dividends",
+                    "Stock Splits": "stock_splits",
+                },
+                inplace=True,
+            )
 
         if data is None:
             raise HTTPException(

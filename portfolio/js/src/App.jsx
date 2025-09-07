@@ -76,22 +76,22 @@ function App() {
               PUBLIC ROUTES - These pages can be accessed without logging in
               Anyone can visit these URLs without authentication
             */}
-            
+
             {/* Login page - where users enter their username and password */}
             <Route path="/login" element={<Login />} />
-            
+
             {/* Registration page - where new users create accounts */}
             <Route path="/register" element={<Register />} />
-            
+
             {/* Forgot password page - where users request password reset */}
             <Route path="/forgot-password" element={<ForgotPassword />} />
-            
+
             {/* Password reset page - where users enter new password */}
             <Route path="/reset-password" element={<ResetPassword />} />
-            
+
             {/* Token validation page - validates password reset tokens */}
             <Route path="/validate-reset-token" element={<ValidateResetToken />} />
-            
+
             {/* Email verification page - where users verify their email */}
             <Route path="/verify-email" element={<EmailVerification />} />
 
@@ -100,7 +100,7 @@ function App() {
               ProtectedRoute component checks if user is authenticated
               If not logged in, user gets redirected to login page
             */}
-            
+
             {/* Main dashboard - the home page after login */}
             <Route
               path="/dashboard"
@@ -110,7 +110,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            
+
             {/* Watchlist page - where users manage their stock watchlists */}
             <Route
               path="/watchlist"
@@ -120,7 +120,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            
+
             {/* Assets page - where users browse market assets/stocks */}
             <Route
               path="/assets"
@@ -130,7 +130,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            
+
             {/* Portfolio page - where users manage their investment portfolios */}
             <Route
               path="/portfolio"
@@ -140,7 +140,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            
+
             {/* Transactions page - where users view their transaction history */}
             <Route
               path="/transactions"
@@ -150,7 +150,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            
+
             {/* Test pages - for developers to test API functionality */}
             <Route
               path="/test"
