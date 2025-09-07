@@ -377,6 +377,16 @@ export const marketAPI = {
         });
         return response.data;
     },
+
+    /* 
+      GET CURRENT PRICE - Get current price for a symbol
+      Parameters: symbol (string) - Stock symbol to get price for
+      Returns: Server response with current price data
+    */
+    getCurrentPrice: async (symbol) => {
+        const response = await api.get(`/stock/price/${symbol}`);
+        return response.data;
+    },
 };
 
 /* 

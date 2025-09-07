@@ -7,6 +7,7 @@ const SymbolSearch = ({
     value,
     onChange,
     onSelect,
+    onPriceUpdate,
     placeholder = "e.g., AAPL, BTC",
     className = "",
     disabled = false,
@@ -80,10 +81,22 @@ const SymbolSearch = ({
         }
     };
 
-    const handleSuggestionClick = (suggestion) => {
+    const handleSuggestionClick = async (suggestion) => {
         if (onSelect) {
             onSelect(suggestion);
         }
+
+        // Fetch current price if callback is provided
+        if (onPriceUpdate) {
+            try {
+                const priceData = await marketAPI.getCurrentPrice(suggestion.symbol);
+                onPriceUpdate(priceData);
+            } catch (error) {
+                console.error('Failed to fetch current price:', error);
+                // Still allow selection even if price fetch fails
+            }
+        }
+
         setShowSuggestionsDropdown(false);
     };
 

@@ -2,7 +2,7 @@ import { Calculator, Plus, TrendingDown, TrendingUp, X } from 'lucide-react';
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
-import { authUtils, portfolioAPI } from '../../services/api';
+import { SymbolSearch } from '../shared';
 
 const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
     const { isAuthenticated } = useAuth();  // Get the authentication status
@@ -10,10 +10,11 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
         portfolio_id: '',
         transaction_type: 'buy',
         asset_id: '',
-        currency: '',
+        symbol: '',
+        currency: 'USD',
         quantity: '',
         price: '',
-        fees: '', 
+        fees: '',
         notes: '',
         date: new Date().toISOString().split('T')[0]
     });
@@ -26,6 +27,31 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
             ...prev,
             [name]: value
         }));
+    };
+
+    const handleSymbolSelect = (suggestion) => {
+        setFormData(prev => ({
+            ...prev,
+            symbol: suggestion.symbol,
+            asset_id: suggestion.symbol // Use symbol as asset_id for now
+        }));
+    };
+
+    const handleSymbolChange = (value) => {
+        setFormData(prev => ({
+            ...prev,
+            symbol: value,
+            asset_id: value // Use symbol as asset_id for now
+        }));
+    };
+
+    const handlePriceUpdate = (priceData) => {
+        if (priceData && priceData.price) {
+            setFormData(prev => ({
+                ...prev,
+                price: priceData.price.toString()
+            }));
+        }
     };
 
     const calculateTotal = () => {
@@ -43,7 +69,7 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
             return;
         }
 
-        if (!formData.asset_id.trim()) {
+        if (!formData.symbol.trim()) {
             toast.error('Symbol is required');
             return;
         }
@@ -64,7 +90,7 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
             const transactionData = {
                 portfolio_id: parseInt(formData.portfolio_id),
                 transaction_type: formData.transaction_type,
-                asset_id: formData.asset_id.trim().toUpperCase(),
+                asset_id: formData.symbol.trim().toUpperCase(),
                 currency: formData.currency,
                 quantity: parseFloat(formData.quantity),
                 price: parseFloat(formData.price),
@@ -143,8 +169,8 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
                             </button>
                             <button
                                 type="button"
-                                onClick={() => setFormData(prev => ({ ...prev, type: 'sell' }))}
-                                className={`p-4 rounded-lg border-2 transition-colors ${formData.type === 'sell'
+                                onClick={() => setFormData(prev => ({ ...prev, transaction_type: 'sell' }))}
+                                className={`p-4 rounded-lg border-2 transition-colors ${formData.transaction_type === 'sell'
                                     ? 'border-danger-400 bg-danger-400/10 text-danger-400'
                                     : 'border-dark-600 bg-dark-800 text-gray-300 hover:border-dark-500'
                                     }`}
@@ -184,19 +210,19 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
                     {/* Symbol */}
                     <div>
                         <label className="block text-sm font-medium text-gray-300 mb-2">
-                            Symbol *
+                            Stock Symbol *
                         </label>
-                        <input
-                            type="text"
-                            name="symbol"
+                        <SymbolSearch
                             value={formData.symbol}
-                            onChange={handleInputChange}
-                            placeholder="e.g., AAPL, GOOGL, BTC"
-                            className="input-field w-full"
-                            required
+                            onChange={handleSymbolChange}
+                            onSelect={handleSymbolSelect}
+                            onPriceUpdate={handlePriceUpdate}
+                            placeholder="e.g., AAPL"
+                            disabled={loading}
+                            showSuggestions={isAuthenticated}
                         />
-                    </div>
 
+                    </div>
                     {/* Quantity and Price */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
@@ -272,7 +298,7 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
                                 <span className="text-sm font-medium text-gray-300">Total Amount</span>
                             </div>
                             <span className="text-xl font-bold text-gray-100">
-                                {formData.type === 'buy' ? '-' : '+'}${totalAmount.toFixed(2)}
+                                {formData.transaction_type === 'buy' ? '-' : '+'}${totalAmount.toFixed(2)}
                             </span>
                         </div>
                         <div className="text-xs text-gray-500 mt-1">

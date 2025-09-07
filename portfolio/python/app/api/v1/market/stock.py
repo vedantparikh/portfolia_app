@@ -5,24 +5,29 @@ API endpoints for stock data operations with separate endpoints for fresh and lo
 
 import time
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter
+from fastapi import Depends
+from fastapi import HTTPException
+from fastapi import Query
+from fastapi import Request
 from yahooquery import search
 
-from app.core.auth.dependencies import (
-    get_client_ip,
-    get_current_user,
-    get_optional_current_user,
-)
+from app.core.auth.dependencies import get_client_ip
+from app.core.auth.dependencies import get_current_user
+from app.core.auth.dependencies import get_optional_current_user
 from app.core.auth.utils import is_rate_limited
-from app.core.logging_config import (
-    get_logger,
-    log_api_request,
-    log_api_response,
-    log_error_with_context,
-)
+from app.core.logging_config import get_logger
+from app.core.logging_config import log_api_request
+from app.core.logging_config import log_api_response
+from app.core.logging_config import log_error_with_context
 from app.core.schemas.market import MarketData
+from app.core.schemas.market_data import SymbolSearchResult
+from app.core.schemas.market_data import YFinanceDataResponse
 from app.core.services.market_data_service import market_data_service
 
 logger = get_logger(__name__)
@@ -30,12 +35,12 @@ logger = get_logger(__name__)
 router = APIRouter()
 
 
-@router.get("/symbols")
+@router.get("/symbols", response_model=List[SymbolSearchResult])
 async def get_symbols(
     name: str,
     request: Request,
     current_user=Depends(get_optional_current_user),
-) -> Optional[List[Dict[str, Any]]]:
+):
     """
     Get stock symbols matching the search name.
 
@@ -113,7 +118,26 @@ async def get_symbols(
             results_count=len(quotes),
         )
 
-        return quotes
+        # Convert to SymbolSearchResult objects
+        search_results = []
+        for quote in quotes:
+            search_results.append(
+                SymbolSearchResult(
+                    symbol=quote.get("symbol", ""),
+                    short_name=quote.get("shortName"),
+                    long_name=quote.get("longName"),
+                    quote_type=quote.get("quoteType"),
+                    exchange=quote.get("exchange"),
+                    market=quote.get("market"),
+                    currency=quote.get("currency"),
+                    sector=quote.get("sector"),
+                    industry=quote.get("industry"),
+                    market_cap=quote.get("marketCap"),
+                    is_active=quote.get("isActive"),
+                )
+            )
+
+        return search_results
 
     except HTTPException:
         # Re-raise HTTP exceptions without logging (they're expected)
@@ -139,7 +163,7 @@ async def get_symbols(
         )
 
 
-@router.get("/symbol-data/fresh")
+@router.get("/symbol-data/fresh", response_model=YFinanceDataResponse)
 async def get_symbol_data_fresh(
     name: str,
     request: Request,
@@ -154,7 +178,7 @@ async def get_symbol_data_fresh(
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     current_user=Depends(get_optional_current_user),
-) -> Optional[Dict[str, Any]]:
+):
     """
     Get fresh stock data for a specific symbol from yfinance API.
 
@@ -187,16 +211,31 @@ async def get_symbol_data_fresh(
             )
 
         # Convert DataFrame to JSON-serializable format
-        result = {
-            "symbol": name.upper(),
-            "period": period,
-            "interval": interval,
-            "source": "yfinance_fresh",
-            "data_points": len(data),
-            "data": data.to_dict(orient="records"),
-        }
+        from app.core.schemas.market_data import YFinancePriceData
 
-        return result
+        price_data = []
+        for _, row in data.iterrows():
+            price_data.append(
+                YFinancePriceData(
+                    date=row.get("Date", row.name),
+                    open=row.get("Open"),
+                    high=row.get("High"),
+                    low=row.get("Low"),
+                    close=row.get("Close"),
+                    volume=row.get("Volume"),
+                    dividends=row.get("Dividends"),
+                    stock_splits=row.get("Stock Splits"),
+                )
+            )
+
+        return YFinanceDataResponse(
+            symbol=name.upper(),
+            period=period,
+            interval=interval,
+            source="yfinance_fresh",
+            data_points=len(data),
+            data=price_data,
+        )
 
     except Exception as e:
         raise HTTPException(

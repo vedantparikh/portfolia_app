@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
-import { portfolioAPI, transactionAPI } from '../../services/api';
+import { marketAPI, portfolioAPI, transactionAPI } from '../../services/api';
 
 const TransactionsTest = () => {
     const [testResults, setTestResults] = useState({});
@@ -84,38 +84,63 @@ const TransactionsTest = () => {
             }
         }
 
-        // Test 4: Create a test buy transaction (if we have portfolios)
+        // Test 4: Get current price for a symbol
+        try {
+            console.log('Testing getCurrentPrice...');
+            const priceResponse = await marketAPI.getCurrentPrice('AAPL');
+            results.getCurrentPrice = {
+                success: true,
+                data: priceResponse,
+                message: 'Successfully fetched current price for AAPL'
+            };
+            console.log('Current price response:', priceResponse);
+        } catch (error) {
+            results.getCurrentPrice = {
+                success: false,
+                error: error.message,
+                response: error.response?.data,
+                status: error.response?.status,
+                message: 'Failed to fetch current price'
+            };
+            console.error('Current price error:', error);
+        }
+
+        // Test 5: Create a test transaction (if we have portfolios)
         if (results.getPortfolios?.success && results.getPortfolios.data?.portfolios?.length > 0) {
             const firstPortfolio = results.getPortfolios.data.portfolios[0];
             try {
-                console.log('Testing createBuyTransaction...');
+                console.log('Testing createTransaction...');
                 const testTransaction = {
                     portfolio_id: firstPortfolio.id,
-                    symbol: 'AAPL',
+                    transaction_type: 'buy',
+                    asset_id: 'AAPL',
+                    currency: 'USD',
                     quantity: 1,
                     price: 150.00,
+                    fees: 0,
+                    notes: 'Test transaction',
                     transaction_date: new Date().toISOString()
                 };
-                const createResponse = await transactionAPI.createBuyTransaction(testTransaction);
-                results.createBuyTransaction = {
+                const createResponse = await transactionAPI.createTransaction(testTransaction);
+                results.createTransaction = {
                     success: true,
                     data: createResponse,
-                    message: 'Successfully created buy transaction'
+                    message: 'Successfully created transaction'
                 };
-                console.log('Create buy transaction response:', createResponse);
+                console.log('Create transaction response:', createResponse);
             } catch (error) {
-                results.createBuyTransaction = {
+                results.createTransaction = {
                     success: false,
                     error: error.message,
                     response: error.response?.data,
                     status: error.response?.status,
-                    message: 'Failed to create buy transaction'
+                    message: 'Failed to create transaction'
                 };
-                console.error('Create buy transaction error:', error);
+                console.error('Create transaction error:', error);
             }
         }
 
-        // Test 5: Get transaction history
+        // Test 6: Get transaction history
         try {
             console.log('Testing getTransactionHistory...');
             const historyResponse = await transactionAPI.getTransactionHistory({

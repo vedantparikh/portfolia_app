@@ -1,8 +1,10 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import List, Optional
+from typing import List
+from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+from pydantic import Field
 
 from app.core.database.models.asset import AssetType
 
@@ -231,3 +233,18 @@ class PortfolioItem(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class PortfolioPerformance(BaseModel):
+    """Portfolio performance metrics."""
+
+    portfolio_id: int
+    period_days: int
+    total_return: float
+    annualized_return: Optional[float] = None
+    volatility: Optional[float] = None
+    sharpe_ratio: Optional[float] = None
+    max_drawdown: Optional[float] = None
+    beta: Optional[float] = None
+    alpha: Optional[float] = None
+    calculation_date: datetime

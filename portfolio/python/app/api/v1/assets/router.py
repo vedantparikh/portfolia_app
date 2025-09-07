@@ -3,26 +3,31 @@ Assets management router with authentication.
 """
 
 import time
-from typing import List, Optional
+from typing import List
+from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.orm import Session
 import yfinance as yf
+from fastapi import APIRouter
+from fastapi import Depends
+from fastapi import HTTPException
+from fastapi import Query
+from fastapi import status
+from sqlalchemy.orm import Session
 
-from app.core.auth.dependencies import (
-    get_current_active_user,
-    get_current_verified_user,
-)
+from app.core.auth.dependencies import get_current_active_user
+from app.core.auth.dependencies import get_current_verified_user
 from app.core.database.connection import get_db
-from app.core.database.models import Asset as AssetModel, User
+from app.core.database.models import Asset as AssetModel
+from app.core.database.models import User
 from app.core.database.models.asset import AssetType
-from app.core.logging_config import get_logger, log_api_request, log_api_response
-from app.core.schemas.portfolio import (
-    Asset as AssetSchema,
-    AssetCreate,
-    AssetUpdate,
-    AssetPrice,
-)
+from app.core.logging_config import get_logger
+from app.core.logging_config import log_api_request
+from app.core.logging_config import log_api_response
+from app.core.schemas.market_data import AssetSearchResponse
+from app.core.schemas.portfolio import Asset as AssetSchema
+from app.core.schemas.portfolio import AssetCreate
+from app.core.schemas.portfolio import AssetPrice
+from app.core.schemas.portfolio import AssetUpdate
 from app.core.services.market_data_service import market_data_service
 
 logger = get_logger(__name__)
@@ -36,7 +41,7 @@ async def create_asset(
     current_user: User = Depends(get_current_verified_user),
     db: Session = Depends(get_db),
 ):
-    """Create a new financial asset."""
+    """Create a new financial asset for the authenticated user."""
     log_api_request(
         logger,
         "POST",
@@ -45,29 +50,47 @@ async def create_asset(
         f"Creating asset: {asset_data.symbol}",
     )
     start_time = time.time()
-    # Check if asset already exists
+
+    # Check if asset already exists for this user
     existing_asset = (
         db.query(AssetModel)
-        .filter(AssetModel.symbol == asset_data.symbol.upper())
+        .filter(
+            AssetModel.symbol == asset_data.symbol.upper(),
+            AssetModel.user_id == current_user.id,
+        )
         .first()
     )
 
     if existing_asset:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Asset with this symbol already exists",
+            detail="Asset with this symbol already exists for your account",
         )
-    ticker_data = await market_data_service.get_ticker_info(asset_data.symbol.upper())
+
+    try:
+        ticker_data = await market_data_service.get_ticker_info(
+            asset_data.symbol.upper()
+        )
+    except Exception as e:
+        logger.error(
+            "Failed to fetch ticker data for %s: %s", asset_data.symbol, str(e)
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to fetch market data for symbol {asset_data.symbol}",
+        ) from e
 
     new_asset = AssetModel(
         symbol=asset_data.symbol.upper(),
-        name=ticker_data.get("longName") or ticker_data.get("shortName"),
+        name=ticker_data.get("longName")
+        or ticker_data.get("shortName")
+        or asset_data.symbol.upper(),
         asset_type=(
             AssetType[ticker_data.get("quoteType").upper()]
             if ticker_data.get("quoteType")
             else AssetType.OTHER
         ),
-        currency=ticker_data.get("currency"),
+        currency=ticker_data.get("currency", "USD"),
         exchange=ticker_data.get("exchange"),
         isin=ticker_data.get("isin"),
         cusip=ticker_data.get("cusip"),
@@ -75,7 +98,7 @@ async def create_asset(
         industry=ticker_data.get("industry"),
         country=ticker_data.get("country"),
         description=ticker_data.get("longDescription"),
-        # Default name from symbol
+        user_id=current_user.id,
         is_active=True,
     )
 
@@ -99,8 +122,10 @@ async def get_assets(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    """Get list of financial assets with optional filtering."""
-    query = db.query(AssetModel).filter(AssetModel.is_active == True)
+    """Get list of financial assets for the authenticated user with optional filtering."""
+    query = db.query(AssetModel).filter(
+        AssetModel.is_active == True, AssetModel.user_id == current_user.id
+    )
 
     if symbol:
         query = query.filter(AssetModel.symbol.ilike(f"%{symbol.upper()}%"))
@@ -119,10 +144,14 @@ async def get_asset(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    """Get a specific financial asset by ID."""
+    """Get a specific financial asset by ID for the authenticated user."""
     asset = (
         db.query(AssetModel)
-        .filter(AssetModel.id == asset_id, AssetModel.is_active == True)
+        .filter(
+            AssetModel.id == asset_id,
+            AssetModel.is_active == True,
+            AssetModel.user_id == current_user.id,
+        )
         .first()
     )
 
@@ -141,10 +170,14 @@ async def update_asset(
     current_user: User = Depends(get_current_verified_user),
     db: Session = Depends(get_db),
 ):
-    """Update a financial asset (admin/verified users only)."""
+    """Update a financial asset for the authenticated user."""
     asset = (
         db.query(AssetModel)
-        .filter(AssetModel.id == asset_id, AssetModel.is_active == True)
+        .filter(
+            AssetModel.id == asset_id,
+            AssetModel.is_active == True,
+            AssetModel.user_id == current_user.id,
+        )
         .first()
     )
 
@@ -170,10 +203,14 @@ async def delete_asset(
     current_user: User = Depends(get_current_verified_user),
     db: Session = Depends(get_db),
 ):
-    """Delete a financial asset (admin/verified users only)."""
+    """Delete a financial asset for the authenticated user."""
     asset = (
         db.query(AssetModel)
-        .filter(AssetModel.id == asset_id, AssetModel.is_active == True)
+        .filter(
+            AssetModel.id == asset_id,
+            AssetModel.is_active == True,
+            AssetModel.user_id == current_user.id,
+        )
         .first()
     )
 
@@ -189,18 +226,19 @@ async def delete_asset(
     return None
 
 
-@router.get("/search/{query}")
+@router.get("/search/{query}", response_model=AssetSearchResponse)
 async def search_assets(
     query: str,
     limit: int = Query(20, ge=1, le=100, description="Maximum number of results"),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    """Search for assets by symbol or name."""
+    """Search for assets by symbol or name for the authenticated user."""
     assets = (
         db.query(AssetModel)
         .filter(
             AssetModel.is_active == True,
+            AssetModel.user_id == current_user.id,
             (
                 AssetModel.symbol.ilike(f"%{query.upper()}%")
                 | AssetModel.name.ilike(f"%{query}%")
@@ -210,7 +248,7 @@ async def search_assets(
         .all()
     )
 
-    return assets
+    return AssetSearchResponse(assets=assets, total_count=len(assets), query=query)
 
 
 @router.get("/{asset_id}/prices", response_model=AssetPrice)
@@ -221,10 +259,14 @@ async def get_asset_prices(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    """Get price data for a specific asset."""
+    """Get price data for a specific asset for the authenticated user."""
     asset = (
         db.query(AssetModel)
-        .filter(AssetModel.id == asset_id, AssetModel.is_active == True)
+        .filter(
+            AssetModel.id == asset_id,
+            AssetModel.is_active == True,
+            AssetModel.user_id == current_user.id,
+        )
         .first()
     )
 
@@ -273,4 +315,4 @@ async def get_asset_prices(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error retrieving price data: {str(e)}",
-        )
+        ) from e

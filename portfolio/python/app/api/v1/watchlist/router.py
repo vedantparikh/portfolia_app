@@ -1,25 +1,33 @@
 import time
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter
+from fastapi import Depends
+from fastapi import HTTPException
+from fastapi import Query
+from fastapi import status
 from sqlalchemy.orm import Session
 
 from app.core.auth.dependencies import get_current_user
 from app.core.database.connection import get_db
 from app.core.database.models import User
-from app.core.logging_config import get_logger, log_api_request, log_api_response
-from app.core.schemas.watchlist import (
-    WatchlistBulkAddRequest,
-    WatchlistCreate,
-    WatchlistItemCreate,
-    WatchlistItemResponse,
-    WatchlistItemUpdate,
-    WatchlistReorderRequest,
-    WatchlistResponse,
-    WatchlistStatsResponse,
-    WatchlistUpdate,
-    WatchlistWithItemsResponse,
-)
+from app.core.logging_config import get_logger
+from app.core.logging_config import log_api_request
+from app.core.logging_config import log_api_response
+from app.core.schemas.portfolio_performance import WatchlistBulkAddResponse
+from app.core.schemas.portfolio_performance import WatchlistDeleteResponse
+from app.core.schemas.portfolio_performance import WatchlistItemDeleteResponse
+from app.core.schemas.portfolio_performance import WatchlistReorderResponse
+from app.core.schemas.watchlist import WatchlistBulkAddRequest
+from app.core.schemas.watchlist import WatchlistCreate
+from app.core.schemas.watchlist import WatchlistItemCreate
+from app.core.schemas.watchlist import WatchlistItemResponse
+from app.core.schemas.watchlist import WatchlistItemUpdate
+from app.core.schemas.watchlist import WatchlistReorderRequest
+from app.core.schemas.watchlist import WatchlistResponse
+from app.core.schemas.watchlist import WatchlistStatsResponse
+from app.core.schemas.watchlist import WatchlistUpdate
+from app.core.schemas.watchlist import WatchlistWithItemsResponse
 from app.core.services.watchlist_service import WatchlistService
 
 logger = get_logger(__name__)
@@ -209,7 +217,7 @@ async def update_watchlist(
         )
 
 
-@router.delete("/{watchlist_id}")
+@router.delete("/{watchlist_id}", response_model=WatchlistDeleteResponse)
 async def delete_watchlist(
     watchlist_id: int,
     current_user: User = Depends(get_current_user),
@@ -237,7 +245,7 @@ async def delete_watchlist(
         log_api_response(
             logger, "DELETE", f"/watchlists/{watchlist_id}", 200, response_time
         )
-        return {"message": "Watchlist deleted successfully"}
+        return WatchlistDeleteResponse(message="Watchlist deleted successfully")
 
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -322,7 +330,7 @@ async def add_item_to_watchlist(
         )
 
 
-@router.post("/{watchlist_id}/items/bulk")
+@router.post("/{watchlist_id}/items/bulk", response_model=WatchlistBulkAddResponse)
 async def bulk_add_items_to_watchlist(
     watchlist_id: int,
     bulk_data: WatchlistBulkAddRequest,
@@ -354,13 +362,13 @@ async def bulk_add_items_to_watchlist(
             except Exception as e:
                 failed_symbols.append({"symbol": symbol, "error": str(e)})
 
-        result = {
-            "added_items": added_items,
-            "failed_symbols": failed_symbols,
-            "total_requested": len(bulk_data.symbols),
-            "successfully_added": len(added_items),
-            "failed": len(failed_symbols),
-        }
+        result = WatchlistBulkAddResponse(
+            added_items=added_items,
+            failed_symbols=failed_symbols,
+            total_requested=len(bulk_data.symbols),
+            successfully_added=len(added_items),
+            failed=len(failed_symbols),
+        )
 
         response_time = time.time() - start_time
         log_api_response(
@@ -448,7 +456,9 @@ async def update_watchlist_item(
         )
 
 
-@router.delete("/{watchlist_id}/items/{item_id}")
+@router.delete(
+    "/{watchlist_id}/items/{item_id}", response_model=WatchlistItemDeleteResponse
+)
 async def remove_item_from_watchlist(
     watchlist_id: int,
     item_id: int,
@@ -481,7 +491,9 @@ async def remove_item_from_watchlist(
             200,
             response_time,
         )
-        return {"message": "Item removed from watchlist successfully"}
+        return WatchlistItemDeleteResponse(
+            message="Item removed from watchlist successfully"
+        )
 
     except HTTPException:
         raise
@@ -495,7 +507,7 @@ async def remove_item_from_watchlist(
         )
 
 
-@router.post("/{watchlist_id}/reorder")
+@router.post("/{watchlist_id}/reorder", response_model=WatchlistReorderResponse)
 async def reorder_watchlist_items(
     watchlist_id: int,
     reorder_data: WatchlistReorderRequest,
@@ -530,7 +542,9 @@ async def reorder_watchlist_items(
             200,
             response_time,
         )
-        return {"message": "Watchlist items reordered successfully"}
+        return WatchlistReorderResponse(
+            message="Watchlist items reordered successfully"
+        )
 
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

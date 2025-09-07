@@ -1,6 +1,7 @@
 import { Calculator, Edit, TrendingDown, TrendingUp, X } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
+import { SymbolSearch } from '../shared';
 
 const EditTransactionModal = ({ isOpen, onClose, transaction, portfolios, onUpdate }) => {
     const [formData, setFormData] = useState({
@@ -36,6 +37,29 @@ const EditTransactionModal = ({ isOpen, onClose, transaction, portfolios, onUpda
             ...prev,
             [name]: value
         }));
+    };
+
+    const handleSymbolSelect = (suggestion) => {
+        setFormData(prev => ({
+            ...prev,
+            symbol: suggestion.symbol
+        }));
+    };
+
+    const handleSymbolChange = (value) => {
+        setFormData(prev => ({
+            ...prev,
+            symbol: value
+        }));
+    };
+
+    const handlePriceUpdate = (priceData) => {
+        if (priceData && priceData.price) {
+            setFormData(prev => ({
+                ...prev,
+                price: priceData.price.toString()
+            }));
+        }
     };
 
     const calculateTotal = () => {
@@ -190,14 +214,14 @@ const EditTransactionModal = ({ isOpen, onClose, transaction, portfolios, onUpda
                         <label className="block text-sm font-medium text-gray-300 mb-2">
                             Symbol *
                         </label>
-                        <input
-                            type="text"
-                            name="symbol"
+                        <SymbolSearch
                             value={formData.symbol}
-                            onChange={handleInputChange}
+                            onChange={handleSymbolChange}
+                            onSelect={handleSymbolSelect}
+                            onPriceUpdate={handlePriceUpdate}
                             placeholder="e.g., AAPL, GOOGL, BTC"
-                            className="input-field w-full"
-                            required
+                            disabled={loading}
+                            showSuggestions={true}
                         />
                     </div>
 

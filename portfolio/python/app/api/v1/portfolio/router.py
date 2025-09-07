@@ -2,32 +2,37 @@
 Portfolio management router with full authentication.
 """
 
-from typing import List, Optional
+from typing import List
+from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter
+from fastapi import Depends
+from fastapi import HTTPException
+from fastapi import Query
+from fastapi import status
 from sqlalchemy.orm import Session
 
-from app.core.auth.dependencies import (
-    get_current_active_user,
-    get_current_verified_user,
-)
+from app.core.auth.dependencies import get_current_active_user
+from app.core.auth.dependencies import get_current_verified_user
 from app.core.database.connection import get_db
 from app.core.database.models import User
-from app.core.schemas.portfolio import (
-    AssetCreate,
-    Portfolio,
-    PortfolioAsset,
-    PortfolioAssetCreate,
-    PortfolioAssetUpdate,
-    PortfolioAssetWithDetails,
-    PortfolioCreate,
-    PortfolioHolding,
-    PortfolioStatistics,
-    PortfolioSummary,
-    PortfolioUpdate,
-    Transaction,
-    TransactionCreate,
-)
+from app.core.schemas.portfolio import AssetCreate
+from app.core.schemas.portfolio import Portfolio
+from app.core.schemas.portfolio import PortfolioAsset
+from app.core.schemas.portfolio import PortfolioAssetCreate
+from app.core.schemas.portfolio import PortfolioAssetUpdate
+from app.core.schemas.portfolio import PortfolioAssetWithDetails
+from app.core.schemas.portfolio import PortfolioCreate
+from app.core.schemas.portfolio import PortfolioHolding
+from app.core.schemas.portfolio import PortfolioPerformance
+from app.core.schemas.portfolio import PortfolioStatistics
+from app.core.schemas.portfolio import PortfolioSummary
+from app.core.schemas.portfolio import PortfolioUpdate
+from app.core.schemas.portfolio import Transaction
+from app.core.schemas.portfolio import TransactionCreate
+from app.core.schemas.portfolio_performance import PortfolioDiscoverResponse
+from app.core.schemas.portfolio_performance import PortfolioRefreshResponse
+from app.core.schemas.portfolio_performance import PortfolioSearchResponse
 from app.core.services.portfolio_service import PortfolioService
 
 router = APIRouter(prefix="/portfolios", tags=["portfolios"])
@@ -308,7 +313,7 @@ async def get_portfolio_holdings(
     return holdings
 
 
-@router.get("/{portfolio_id}/performance")
+@router.get("/{portfolio_id}/performance", response_model=PortfolioPerformance)
 async def get_portfolio_performance(
     portfolio_id: int,
     days: int = Query(
@@ -331,7 +336,11 @@ async def get_portfolio_performance(
     return performance
 
 
-@router.post("/{portfolio_id}/refresh", status_code=status.HTTP_200_OK)
+@router.post(
+    "/{portfolio_id}/refresh",
+    response_model=PortfolioRefreshResponse,
+    status_code=status.HTTP_200_OK,
+)
 async def refresh_portfolio_values(
     portfolio_id: int,
     current_user: User = Depends(get_current_active_user),
@@ -346,10 +355,10 @@ async def refresh_portfolio_values(
             status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
         )
 
-    return {"message": "Portfolio values refreshed successfully"}
+    return PortfolioRefreshResponse(message="Portfolio values refreshed successfully")
 
 
-@router.get("/search", response_model=List[Portfolio])
+@router.get("/search", response_model=PortfolioSearchResponse)
 async def search_portfolios(
     search_term: Optional[str] = Query(
         None, description="Search term for portfolio names"
@@ -363,7 +372,12 @@ async def search_portfolios(
     portfolios = portfolio_service.search_portfolios(
         current_user.id, search_term=search_term, currency=currency
     )
-    return portfolios
+    return PortfolioSearchResponse(
+        portfolios=portfolios,
+        total_count=len(portfolios),
+        search_term=search_term,
+        currency=currency,
+    )
 
 
 @router.get("/statistics/overview", response_model=PortfolioStatistics)
@@ -377,7 +391,7 @@ async def get_portfolio_statistics(
     return statistics
 
 
-@router.get("/public/discover", response_model=List[Portfolio])
+@router.get("/public/discover", response_model=PortfolioDiscoverResponse)
 async def discover_public_portfolios(
     limit: int = Query(50, ge=1, le=100, description="Number of portfolios to return"),
     offset: int = Query(0, ge=0, description="Number of portfolios to skip"),
@@ -386,7 +400,9 @@ async def discover_public_portfolios(
     """Discover public portfolios (no authentication required)."""
     portfolio_service = PortfolioService(db)
     portfolios = portfolio_service.get_public_portfolios(limit=limit, offset=offset)
-    return portfolios
+    return PortfolioDiscoverResponse(
+        portfolios=portfolios, total_count=len(portfolios), limit=limit, offset=offset
+    )
 
 
 # Legacy endpoints for backward compatibility
