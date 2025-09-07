@@ -33,6 +33,7 @@ const AssetModal = ({ asset, mode = 'view', onClose, onSave }) => {
         is_active: true
     });
     const [isEditing, setIsEditing] = useState(false);
+    const [isChartFullscreen, setIsChartFullscreen] = useState(false);
 
     // **FIX:** The useState hook is now correctly at the top level, but it has been moved into the ChartComponent.
     // This is the best practice for encapsulating component-specific state.
@@ -127,6 +128,10 @@ const AssetModal = ({ asset, mode = 'view', onClose, onSave }) => {
     const handlePeriodChange = (newPeriod) => {
         setChartPeriod(newPeriod);
         loadPriceHistory(newPeriod);
+    };
+
+    const handleChartFullscreenToggle = (isFullscreen) => {
+        setIsChartFullscreen(isFullscreen);
     };
 
     const handleInputChange = (e) => {
@@ -367,14 +372,14 @@ const AssetModal = ({ asset, mode = 'view', onClose, onSave }) => {
                                         onPeriodChange={handlePeriodChange}
                                         height={500}
                                         showVolume={true}
-                                        showTechnicalIndicators={false}
                                         loading={loading}
                                         onRefresh={() => loadPriceHistory()}
                                         showControls={true}
                                         showPeriodSelector={true}
-                                        showTechnicalToggle={true}
                                         chartType="candlestick"
                                         theme="dark"
+                                        enableFullscreen={true}
+                                        onFullscreenToggle={handleChartFullscreenToggle}
                                     />
                                 </div>
                             )}
@@ -410,6 +415,42 @@ const AssetModal = ({ asset, mode = 'view', onClose, onSave }) => {
                     </div>
                 </div>
             </div>
+
+            {/* Fullscreen Chart Overlay */}
+            {isChartFullscreen && (
+                <div className="fixed inset-0 z-[60] bg-dark-950 flex flex-col">
+                    <div className="flex items-center justify-between p-4 border-b border-dark-700">
+                        <h3 className="text-2xl font-semibold text-gray-100">
+                            {asset?.symbol} - Price Chart
+                        </h3>
+                        <button
+                            onClick={() => setIsChartFullscreen(false)}
+                            className="p-2 text-gray-400 hover:text-gray-100 hover:bg-dark-700 rounded transition-colors"
+                            title="Exit fullscreen"
+                        >
+                            <X size={24} />
+                        </button>
+                    </div>
+                    <div className="flex-1 p-4">
+                        <Chart
+                            data={priceHistory}
+                            symbol={asset?.symbol}
+                            period={chartPeriod}
+                            onPeriodChange={handlePeriodChange}
+                            height={window.innerHeight - 120}
+                            showVolume={true}
+                            loading={loading}
+                            onRefresh={() => loadPriceHistory()}
+                            showControls={true}
+                            showPeriodSelector={true}
+                            chartType="candlestick"
+                            theme="dark"
+                            enableFullscreen={true}
+                            onFullscreenToggle={handleChartFullscreenToggle}
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
