@@ -3,37 +3,31 @@ Portfolio Analytics Router
 Comprehensive API endpoints for portfolio analysis, risk management, and performance tracking.
 """
 
-from datetime import datetime
-from datetime import timedelta
-from typing import List
-from typing import Optional
+from datetime import datetime, timedelta
+from typing import List, Optional
 
-from fastapi import APIRouter
-from fastapi import Depends
-from fastapi import HTTPException
-from fastapi import Query
-from fastapi import status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.auth.dependencies import get_current_active_user
 from app.core.database.connection import get_db
-from app.core.database.models import Portfolio
-from app.core.database.models import User
-from app.core.database.models.portfolio_analytics import AssetCorrelation
-from app.core.database.models.portfolio_analytics import AssetPerformanceMetrics
-from app.core.database.models.portfolio_analytics import PortfolioAllocation
-from app.core.database.models.portfolio_analytics import PortfolioBenchmark
-from app.core.database.models.portfolio_analytics import PortfolioPerformanceHistory
-from app.core.database.models.portfolio_analytics import PortfolioRiskMetrics
-from app.core.database.models.portfolio_analytics import RebalancingEvent
-from app.core.schemas.portfolio_analytics import PortfolioAllocationAnalysis
-from app.core.schemas.portfolio_analytics import PortfolioAllocationCreate
-from app.core.schemas.portfolio_analytics import PortfolioAnalyticsSummary
-from app.core.schemas.portfolio_analytics import PortfolioBenchmarkCreate
-from app.core.schemas.portfolio_analytics import PortfolioPerformanceAnalysis
-from app.core.schemas.portfolio_analytics import PortfolioRebalancingRecommendation
-from app.core.schemas.portfolio_analytics import PortfolioRiskAnalysis
-from app.core.schemas.portfolio_analytics import RebalancingEventCreate
+from app.core.database.models import Portfolio, User
+from app.core.database.models.portfolio_analytics import (
+    AssetCorrelation,
+    AssetPerformanceMetrics,
+    PortfolioAllocation,
+    PortfolioBenchmark,
+    PortfolioPerformanceHistory,
+    PortfolioRiskMetrics,
+    RebalancingEvent,
+)
+from app.core.schemas.portfolio_analytics import (
+    PortfolioAllocationCreate,
+    PortfolioAnalyticsSummary,
+    PortfolioBenchmarkCreate,
+    PortfolioRebalancingRecommendation,
+    RebalancingEventCreate,
+)
 from app.core.services.portfolio_analytics_service import PortfolioAnalyticsService
 
 router = APIRouter(prefix="/analytics")

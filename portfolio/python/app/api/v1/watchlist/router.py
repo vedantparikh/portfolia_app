@@ -1,33 +1,31 @@
 import time
 from typing import List
 
-from fastapi import APIRouter
-from fastapi import Depends
-from fastapi import HTTPException
-from fastapi import Query
-from fastapi import status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.auth.dependencies import get_current_user
 from app.core.database.connection import get_db
 from app.core.database.models import User
-from app.core.logging_config import get_logger
-from app.core.logging_config import log_api_request
-from app.core.logging_config import log_api_response
-from app.core.schemas.portfolio_performance import WatchlistBulkAddResponse
-from app.core.schemas.portfolio_performance import WatchlistDeleteResponse
-from app.core.schemas.portfolio_performance import WatchlistItemDeleteResponse
-from app.core.schemas.portfolio_performance import WatchlistReorderResponse
-from app.core.schemas.watchlist import WatchlistBulkAddRequest
-from app.core.schemas.watchlist import WatchlistCreate
-from app.core.schemas.watchlist import WatchlistItemCreate
-from app.core.schemas.watchlist import WatchlistItemResponse
-from app.core.schemas.watchlist import WatchlistItemUpdate
-from app.core.schemas.watchlist import WatchlistReorderRequest
-from app.core.schemas.watchlist import WatchlistResponse
-from app.core.schemas.watchlist import WatchlistStatsResponse
-from app.core.schemas.watchlist import WatchlistUpdate
-from app.core.schemas.watchlist import WatchlistWithItemsResponse
+from app.core.logging_config import get_logger, log_api_request, log_api_response
+from app.core.schemas.portfolio_performance import (
+    WatchlistBulkAddResponse,
+    WatchlistDeleteResponse,
+    WatchlistItemDeleteResponse,
+    WatchlistReorderResponse,
+)
+from app.core.schemas.watchlist import (
+    WatchlistBulkAddRequest,
+    WatchlistCreate,
+    WatchlistItemCreate,
+    WatchlistItemResponse,
+    WatchlistItemUpdate,
+    WatchlistReorderRequest,
+    WatchlistResponse,
+    WatchlistStatsResponse,
+    WatchlistUpdate,
+    WatchlistWithItemsResponse,
+)
 from app.core.services.watchlist_service import WatchlistService
 
 logger = get_logger(__name__)

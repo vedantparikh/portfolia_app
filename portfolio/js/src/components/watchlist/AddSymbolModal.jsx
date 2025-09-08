@@ -100,7 +100,8 @@ const AddSymbolModal = ({ isOpen, onClose, onAdd }) => {
                 return {
                     symbol: symbolString.toUpperCase(),
                     name: symbolString.toUpperCase(),
-                    shortname: symbolString.toUpperCase()
+                    short_name: symbolString.toUpperCase(),
+                    shortname: symbolString.toUpperCase() // Keep old property for compatibility
                 };
             }
         } catch (error) {
@@ -109,7 +110,8 @@ const AddSymbolModal = ({ isOpen, onClose, onAdd }) => {
             return {
                 symbol: symbolString.toUpperCase(),
                 name: symbolString.toUpperCase(),
-                shortname: symbolString.toUpperCase()
+                short_name: symbolString.toUpperCase(),
+                shortname: symbolString.toUpperCase() // Keep old property for compatibility
             };
         }
     };

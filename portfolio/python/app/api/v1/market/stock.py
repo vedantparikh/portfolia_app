@@ -5,29 +5,25 @@ API endpoints for stock data operations with separate endpoints for fresh and lo
 
 import time
 from datetime import datetime
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter
-from fastapi import Depends
-from fastapi import HTTPException
-from fastapi import Query
-from fastapi import Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from yahooquery import search
 
-from app.core.auth.dependencies import get_client_ip
-from app.core.auth.dependencies import get_current_user
-from app.core.auth.dependencies import get_optional_current_user
+from app.core.auth.dependencies import (
+    get_client_ip,
+    get_current_user,
+    get_optional_current_user,
+)
 from app.core.auth.utils import is_rate_limited
-from app.core.logging_config import get_logger
-from app.core.logging_config import log_api_request
-from app.core.logging_config import log_api_response
-from app.core.logging_config import log_error_with_context
+from app.core.logging_config import (
+    get_logger,
+    log_api_request,
+    log_api_response,
+    log_error_with_context,
+)
 from app.core.schemas.market import MarketData
-from app.core.schemas.market_data import SymbolSearchResult
-from app.core.schemas.market_data import YFinanceDataResponse
+from app.core.schemas.market_data import SymbolSearchResult, YFinanceDataResponse
 from app.core.services.market_data_service import market_data_service
 
 logger = get_logger(__name__)
@@ -124,16 +120,15 @@ async def get_symbols(
             search_results.append(
                 SymbolSearchResult(
                     symbol=quote.get("symbol", ""),
-                    short_name=quote.get("shortName"),
-                    long_name=quote.get("longName"),
-                    quote_type=quote.get("quoteType"),
-                    exchange=quote.get("exchange"),
+                    short_name=quote.get("shortName") or quote.get("shortname"),
+                    long_name=quote.get("longName") or quote.get("longname"),
+                    quote_type=quote.get("quoteType") or quote.get("quotetype"),
+                    exchange=quote.get("exchDisp") or quote.get("exchdisp") or quote.get("exchange"),
                     market=quote.get("market"),
                     currency=quote.get("currency"),
-                    sector=quote.get("sector"),
-                    industry=quote.get("industry"),
+                    sector=quote.get("sectorDisp") or quote.get("sector"),
+                    industry=quote.get("industryDisp") or quote.get("industry"),
                     market_cap=quote.get("marketCap"),
-                    is_active=quote.get("isActive"),
                 )
             )
 

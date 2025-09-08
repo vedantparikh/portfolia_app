@@ -154,13 +154,13 @@ const EnhancedSymbolSearch = ({
         try {
             const assetData = {
                 symbol: symbolData.symbol,
-                name: symbolData.longname || symbolData.shortname || symbolData.name || symbolData.symbol,
+                name: symbolData.long_name || symbolData.short_name || symbolData.longname || symbolData.shortname || symbolData.name || symbolData.symbol,
                 asset_type: symbolData.quote_type || 'EQUITY',
                 exchange: symbolData.exchange,
                 sector: symbolData.sector,
                 industry: symbolData.industry,
                 country: symbolData.country,
-                description: `${symbolData.longname || symbolData.shortname || symbolData.name} - ${symbolData.exchDisp || symbolData.exchange}`,
+                description: `${symbolData.long_name || symbolData.short_name || symbolData.longname || symbolData.shortname || symbolData.name} - ${symbolData.exchange || symbolData.exchDisp}`,
                 is_active: true
             };
 
@@ -299,10 +299,10 @@ const EnhancedSymbolSearch = ({
                                             {getSuggestionBadge(suggestion)}
                                         </div>
                                         <div className="text-xs text-gray-500 truncate">
-                                            {suggestion.longname || suggestion.shortname || suggestion.name || suggestion.asset_name}
+                                            {suggestion.long_name || suggestion.short_name || suggestion.longname || suggestion.shortname || suggestion.name || suggestion.asset_name}
                                         </div>
                                         <div className="text-xs text-gray-600">
-                                            {suggestion.exchDisp || suggestion.exchange} • {suggestion.typeDisp || suggestion.asset_type}
+                                            {suggestion.exchange || suggestion.exchDisp} • {suggestion.quote_type || suggestion.typeDisp || suggestion.asset_type}
                                         </div>
                                     </div>
                                     {suggestion.type === 'external_symbol' && (

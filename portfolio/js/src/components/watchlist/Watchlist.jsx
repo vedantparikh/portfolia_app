@@ -31,6 +31,13 @@ const Watchlist = () => {
     const [showDropdown, setShowDropdown] = useState(null);
     const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'content'
 
+    // Additional loading states for specific operations
+    const [addingSymbol, setAddingSymbol] = useState(false);
+    const [removingSymbol, setRemovingSymbol] = useState(null); // Store the ID of symbol being removed
+    const [creatingWatchlist, setCreatingWatchlist] = useState(false);
+    const [updatingWatchlist, setUpdatingWatchlist] = useState(false);
+    const [deletingWatchlist, setDeletingWatchlist] = useState(null); // Store the ID of watchlist being deleted
+
     // useRef to store the interval ID so we can clear it later
     const refreshIntervalRef = useRef(null);
 
@@ -80,7 +87,7 @@ const Watchlist = () => {
             setLoading(true);
             const data = await watchlistAPI.getWatchlists(false);
             setWatchlists(data);
-            
+
         } catch (error) {
             console.error('Failed to load watchlists:', error);
             console.error('Error details:', error.response?.data);
@@ -177,6 +184,7 @@ const Watchlist = () => {
 
     const handleCreateWatchlist = async (watchlistData) => {
         try {
+            setCreatingWatchlist(true);
             console.log('Creating watchlist with data:', watchlistData);
             const newWatchlist = await watchlistAPI.createWatchlist(watchlistData);
             console.log('Watchlist created successfully:', newWatchlist);
@@ -188,11 +196,14 @@ const Watchlist = () => {
             console.error('Failed to create watchlist:', error);
             console.error('Error details:', error.response?.data);
             toast.error('Failed to create watchlist');
+        } finally {
+            setCreatingWatchlist(false);
         }
     };
 
     const handleUpdateWatchlist = async (watchlistId, updateData) => {
         try {
+            setUpdatingWatchlist(true);
             const updatedWatchlist = await watchlistAPI.updateWatchlist(watchlistId, updateData);
             setWatchlists(prev =>
                 prev.map(w => w.id === watchlistId ? updatedWatchlist : w)
@@ -204,11 +215,14 @@ const Watchlist = () => {
         } catch (error) {
             console.error('Failed to update watchlist:', error);
             toast.error('Failed to update watchlist');
+        } finally {
+            setUpdatingWatchlist(false);
         }
     };
 
     const deleteWatchlist = async (watchlistId) => {
         try {
+            setDeletingWatchlist(watchlistId);
             await watchlistAPI.deleteWatchlist(watchlistId);
             setWatchlists(prev => prev.filter(w => w.id !== watchlistId));
 
@@ -225,6 +239,8 @@ const Watchlist = () => {
         } catch (error) {
             console.error('Failed to delete watchlist:', error);
             toast.error('Failed to delete watchlist');
+        } finally {
+            setDeletingWatchlist(null);
         }
     };
 
@@ -235,9 +251,10 @@ const Watchlist = () => {
         }
 
         try {
+            setAddingSymbol(true);
             // Extract symbol string for display purposes
             const symbolString = typeof symbolData === 'string' ? symbolData : symbolData.symbol || symbolData.name;
-            symbolData.company_name = symbolData.shortname || symbolData.name;
+            symbolData.company_name = symbolData.long_name || symbolData.short_name || symbolData.longname || symbolData.shortname || symbolData.name;
 
             // Pass the complete symbol data to the API
             const newItem = await watchlistAPI.addItemToWatchlist(selectedWatchlist.id, symbolData);
@@ -270,6 +287,8 @@ const Watchlist = () => {
 
             toast.error(errorMessage);
             throw error; // Re-throw to let the modal handle it
+        } finally {
+            setAddingSymbol(false);
         }
     };
 
@@ -277,6 +296,7 @@ const Watchlist = () => {
         if (!selectedWatchlist) return;
 
         try {
+            setRemovingSymbol(itemId);
             await watchlistAPI.removeItemFromWatchlist(selectedWatchlist.id, itemId);
 
             // Update the selected watchlist by removing the item
@@ -289,6 +309,8 @@ const Watchlist = () => {
         } catch (error) {
             console.error('Failed to remove symbol:', error);
             toast.error('Failed to remove symbol from watchlist');
+        } finally {
+            setRemovingSymbol(null);
         }
     };
 
@@ -484,10 +506,11 @@ const Watchlist = () => {
 
                                     <button
                                         onClick={() => setShowCreateModal(true)}
-                                        className="flex items-center space-x-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors"
+                                        disabled={creatingWatchlist}
+                                        className="flex items-center space-x-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors disabled:opacity-50"
                                     >
                                         <Plus size={16} />
-                                        <span>New Watchlist</span>
+                                        <span>{creatingWatchlist ? 'Creating...' : 'New Watchlist'}</span>
                                     </button>
                                 </>
                             )}
@@ -516,6 +539,9 @@ const Watchlist = () => {
                                     onManualRefresh={handleManualRefresh}
                                     onAddSymbol={() => setShowAddSymbolModal(true)}
                                     onLoadWatchlistItems={handleLoadWatchlistItems}
+                                    // Pass loading states
+                                    addingSymbol={addingSymbol}
+                                    removingSymbol={removingSymbol}
                                 />
                             </div>
                         ) : (
@@ -660,6 +686,7 @@ const Watchlist = () => {
                 isOpen={showCreateModal}
                 onClose={() => setShowCreateModal(false)}
                 onCreate={handleCreateWatchlist}
+                isLoading={creatingWatchlist}
             />
 
             <EditWatchlistModal
@@ -670,12 +697,14 @@ const Watchlist = () => {
                 }}
                 watchlist={editingWatchlist}
                 onUpdate={handleUpdateWatchlist}
+                isLoading={updatingWatchlist}
             />
 
             <AddSymbolModal
                 isOpen={showAddSymbolModal}
                 onClose={() => setShowAddSymbolModal(false)}
                 onAdd={handleAddSymbol}
+                isLoading={addingSymbol}
             />
         </div>
     );

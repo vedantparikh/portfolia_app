@@ -5,11 +5,9 @@ Pydantic schemas for portfolio performance and analytics.
 
 from datetime import datetime
 from decimal import Decimal
-from typing import List
-from typing import Optional
+from typing import List, Optional
 
-from pydantic import BaseModel
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 
 class PortfolioPerformance(BaseModel):

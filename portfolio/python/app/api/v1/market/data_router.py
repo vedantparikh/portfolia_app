@@ -5,28 +5,25 @@ API endpoints for market data operations with separate endpoints for fresh and l
 
 import asyncio
 import logging
-from datetime import datetime
-from datetime import timedelta
-from typing import List
-from typing import Optional
+from datetime import datetime, timedelta
+from typing import List, Optional
 
-from fastapi import APIRouter
-from fastapi import Depends
-from fastapi import HTTPException
-from fastapi import Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.core.auth.dependencies import get_current_active_user
 from app.core.database.connection import get_db_session
 from app.core.database.models import User
-from app.core.schemas.market_data import ActiveTickersResponse
-from app.core.schemas.market_data import BulkUpdateResponse
-from app.core.schemas.market_data import DataQualityInfo
-from app.core.schemas.market_data import SchedulerControlResponse
-from app.core.schemas.market_data import ServiceStatusResponse
-from app.core.schemas.market_data import TickerInfoResponse
-from app.core.schemas.market_data import TickerRefreshAllResponse
-from app.core.schemas.market_data import TickerRefreshResponse
-from app.core.schemas.market_data import TickerUpdateResponse
+from app.core.schemas.market_data import (
+    ActiveTickersResponse,
+    BulkUpdateResponse,
+    DataQualityInfo,
+    SchedulerControlResponse,
+    ServiceStatusResponse,
+    TickerInfoResponse,
+    TickerRefreshAllResponse,
+    TickerRefreshResponse,
+    TickerUpdateResponse,
+)
 from app.core.services.data_scheduler import data_scheduler
 from app.core.services.market_data_service import market_data_service
 
@@ -178,8 +175,7 @@ async def get_service_status(
     """
     try:
         # Get scheduler status
-        from app.core.schemas.market_data import SchedulerStatus
-        from app.core.schemas.market_data import UpdateLog
+        from app.core.schemas.market_data import SchedulerStatus, UpdateLog
 
         scheduler_status = SchedulerStatus(
             is_running=data_scheduler.is_running,

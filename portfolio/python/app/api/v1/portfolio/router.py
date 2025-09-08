@@ -2,37 +2,38 @@
 Portfolio management router with full authentication.
 """
 
-from typing import List
-from typing import Optional
+from typing import List, Optional
 
-from fastapi import APIRouter
-from fastapi import Depends
-from fastapi import HTTPException
-from fastapi import Query
-from fastapi import status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.auth.dependencies import get_current_active_user
-from app.core.auth.dependencies import get_current_verified_user
+from app.core.auth.dependencies import (
+    get_current_active_user,
+    get_current_verified_user,
+)
 from app.core.database.connection import get_db
 from app.core.database.models import User
-from app.core.schemas.portfolio import AssetCreate
-from app.core.schemas.portfolio import Portfolio
-from app.core.schemas.portfolio import PortfolioAsset
-from app.core.schemas.portfolio import PortfolioAssetCreate
-from app.core.schemas.portfolio import PortfolioAssetUpdate
-from app.core.schemas.portfolio import PortfolioAssetWithDetails
-from app.core.schemas.portfolio import PortfolioCreate
-from app.core.schemas.portfolio import PortfolioHolding
-from app.core.schemas.portfolio import PortfolioPerformance
-from app.core.schemas.portfolio import PortfolioStatistics
-from app.core.schemas.portfolio import PortfolioSummary
-from app.core.schemas.portfolio import PortfolioUpdate
-from app.core.schemas.portfolio import Transaction
-from app.core.schemas.portfolio import TransactionCreate
-from app.core.schemas.portfolio_performance import PortfolioDiscoverResponse
-from app.core.schemas.portfolio_performance import PortfolioRefreshResponse
-from app.core.schemas.portfolio_performance import PortfolioSearchResponse
+from app.core.schemas.portfolio import (
+    AssetCreate,
+    Portfolio,
+    PortfolioAsset,
+    PortfolioAssetCreate,
+    PortfolioAssetUpdate,
+    PortfolioAssetWithDetails,
+    PortfolioCreate,
+    PortfolioHolding,
+    PortfolioPerformance,
+    PortfolioStatistics,
+    PortfolioSummary,
+    PortfolioUpdate,
+    Transaction,
+    TransactionCreate,
+)
+from app.core.schemas.portfolio_performance import (
+    PortfolioDiscoverResponse,
+    PortfolioRefreshResponse,
+    PortfolioSearchResponse,
+)
 from app.core.services.portfolio_service import PortfolioService
 
 router = APIRouter(prefix="/portfolios", tags=["portfolios"])

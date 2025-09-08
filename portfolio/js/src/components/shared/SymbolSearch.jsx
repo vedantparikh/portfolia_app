@@ -140,10 +140,14 @@ const SymbolSearch = ({
                                 <div className="flex-1">
                                     <div className="font-mono text-sm">{suggestion.symbol}</div>
                                     <div className="text-xs text-gray-500 truncate">
-                                        {suggestion.longname || suggestion.shortname || suggestion.name}
+                                        {suggestion.long_name || suggestion.short_name || suggestion.longname || suggestion.shortname || suggestion.name || suggestion.company_name ||
+                                            (suggestion.sector && suggestion.industry ? `${suggestion.sector} - ${suggestion.industry}` : suggestion.sector || suggestion.industry) ||
+                                            'No description available'}
                                     </div>
                                     <div className="text-xs text-gray-600">
-                                        {suggestion.exchDisp} • {suggestion.typeDisp}
+                                        {(suggestion.exchange || suggestion.exchDisp || '')}
+                                        {(suggestion.exchange || suggestion.exchDisp) && (suggestion.quote_type || suggestion.typeDisp || suggestion.type || suggestion.asset_type) && ' • '}
+                                        {(suggestion.quote_type || suggestion.typeDisp || suggestion.type || suggestion.asset_type || '')}
                                     </div>
                                 </div>
                             </button>
