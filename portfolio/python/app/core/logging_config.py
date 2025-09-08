@@ -9,7 +9,7 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 # Log levels
 LOG_LEVELS = {
@@ -43,7 +43,7 @@ class ColoredFormatter(logging.Formatter):
         "RESET": "\033[0m",  # Reset
     }
 
-    def format(self, record):
+    def format(self, record: logging.LogRecord) -> str:
         # Add color to levelname
         if record.levelname in self.COLORS:
             record.levelname = f"{self.COLORS[record.levelname]}{record.levelname}{self.COLORS['RESET']}"
@@ -182,7 +182,7 @@ def get_logger(name: str) -> logging.Logger:
     return logging.getLogger(name)
 
 
-def log_function_call(logger: logging.Logger, func_name: str, **kwargs):
+def log_function_call(logger: logging.Logger, func_name: str, **kwargs: Any) -> None:
     """
     Log function call with parameters.
 
@@ -203,9 +203,9 @@ def log_function_call(logger: logging.Logger, func_name: str, **kwargs):
 def log_function_result(
     logger: logging.Logger,
     func_name: str,
-    result,
+    result: Any,
     execution_time: Optional[float] = None,
-):
+) -> None:
     """
     Log function result and execution time.
 
@@ -228,8 +228,8 @@ def log_database_operation(
     operation: str,
     table: str,
     record_id: Optional[str] = None,
-    **kwargs,
-):
+    **kwargs: Any,
+) -> None:
     """
     Log database operations.
 
@@ -251,8 +251,8 @@ def log_api_request(
     path: str,
     user_id: Optional[str] = None,
     ip: Optional[str] = None,
-    **kwargs,
-):
+    **kwargs: Any,
+) -> None:
     """
     Log API request details.
 
@@ -276,8 +276,8 @@ def log_api_response(
     path: str,
     status_code: int,
     response_time: float,
-    **kwargs,
-):
+    **kwargs: Any,
+) -> None:
     """
     Log API response details.
 
@@ -299,7 +299,7 @@ def log_security_event(
     user_id: Optional[str] = None,
     ip: Optional[str] = None,
     details: Optional[str] = None,
-):
+) -> None:
     """
     Log security-related events.
 
@@ -321,8 +321,8 @@ def log_performance_metric(
     metric_name: str,
     value: float,
     unit: Optional[str] = None,
-    **kwargs,
-):
+    **kwargs: Any,
+) -> None:
     """
     Log performance metrics.
 
@@ -339,8 +339,8 @@ def log_performance_metric(
 
 
 def log_error_with_context(
-    logger: logging.Logger, error: Exception, context: Optional[str] = None, **kwargs
-):
+    logger: logging.Logger, error: Exception, context: Optional[str] = None, **kwargs: Any
+) -> None:
     """
     Log errors with additional context.
 

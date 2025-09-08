@@ -5,6 +5,7 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 from app.core.database.models.asset import AssetType
+from app.core.database.models.transaction import TransactionType
 
 
 class PortfolioBase(BaseModel):
@@ -147,13 +148,13 @@ class AssetPrice(BaseModel):
 class TransactionBase(BaseModel):
     portfolio_id: int
     asset_id: int
-    transaction_type: str = Field(..., description="'buy', 'sell', 'dividend'")
+    transaction_type: TransactionType
     quantity: Decimal = Field(...)
     price: Decimal = Field(...)
     currency: str
     transaction_date: datetime
     fees: Optional[Decimal] = Field(0)
-    total_amount: Optional[Decimal] = Field(None)
+    total_amount: Decimal = Field(0)
 
 
 class TransactionCreate(TransactionBase):

@@ -606,15 +606,15 @@ class MarketDataService:
             tickers_info.append(
                 MarketDataSchema(
                     symbol=info.get("symbol", ticker_symbol),
-                    name=info.get("longName", "N/A"),
+                    name=info.get('longname') or info.get("longName") or info.get("shortName") or info.get("shortname", "N/A"),
                     latest_price=info.get("currentPrice", 0.0),
-                    latest_date=info.get("regularMarketTime", None),
-                    market_cap=info.get("marketCap", None),
-                    pe_ratio=info.get("trailingPE", None),
-                    beta=info.get("beta", None),
-                    currency=info.get("currency", None),
-                    exchange=info.get("exchange", None),
-                    dividend_yield=info.get("dividendYield", 0.0),  # Corrected key
+                    latest_date=info.get("regularMarketTime"),
+                    market_cap=info.get("marketCap"),
+                    pe_ratio=info.get("trailingPE"),
+                    beta=info.get("beta"),
+                    currency=info.get("currency"),
+                    exchange=info.get("exchdisp") or info.get("exchDisp") or info.get("exchange"),
+                    dividend_yield=info.get("dividendYield", 0.0),
                 )
             )
 

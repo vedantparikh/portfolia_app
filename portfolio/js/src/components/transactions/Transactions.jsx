@@ -13,15 +13,12 @@ import {
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { portfolioAPI, transactionAPI } from '../../services/api';
+import assetCache from '../../services/assetCache';
 import { Sidebar } from '../shared';
-import AssetTransactionTest from './AssetTransactionTest';
-import ClientSideSearchTest from './ClientSideSearchTest';
 import CreateTransactionModal from './CreateTransactionModal';
 import EditTransactionModal from './EditTransactionModal';
 import TransactionCard from './TransactionCard';
 import TransactionFilters from './TransactionFilters';
-import TransactionIntegrationTest from './TransactionIntegrationTest';
-import TransactionsTest from './TransactionsTest';
 
 const Transactions = () => {
     const [transactions, setTransactions] = useState([]);
@@ -42,9 +39,11 @@ const Transactions = () => {
         sortOrder: 'desc'
     });
 
-    // Load data on component mount
+    // Load data on component mount and preload assets
     useEffect(() => {
         loadData();
+        // Preload assets in the background for faster transaction creation
+        assetCache.preloadAssets();
     }, []);
 
     // Filter transactions when search query or filters change
@@ -432,17 +431,6 @@ const Transactions = () => {
                                 </button>
                             </div>
 
-                            {/* Debug Test Component */}
-                            <TransactionsTest />
-
-                            {/* Integration Test Component */}
-                            <TransactionIntegrationTest />
-
-                            {/* Simplified Asset Transaction Test */}
-                            <AssetTransactionTest />
-
-                            {/* Client-Side Search Test */}
-                            <ClientSideSearchTest />
                         </div>
                     ) : (
                         <div className="space-y-4">
