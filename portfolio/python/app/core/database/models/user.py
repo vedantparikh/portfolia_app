@@ -10,9 +10,9 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    text,
 )
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
 
 from app.core.database.connection import Base
 
@@ -29,12 +29,12 @@ class User(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     is_verified = Column(Boolean, default=False, nullable=False)
     created_at = Column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
+        DateTime(timezone=True), server_default=text("NOW()"), nullable=False
     )
     updated_at = Column(
         DateTime(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now(),
+        server_default=text("NOW()"),
+        onupdate=text("NOW()"),
         nullable=False,
     )
     last_login = Column(DateTime(timezone=True), nullable=True)
@@ -47,6 +47,7 @@ class User(Base):
     portfolios = relationship(
         "Portfolio", back_populates="user", cascade="all, delete-orphan"
     )
+    assets = relationship("Asset", back_populates="user", cascade="all, delete-orphan")
     manual_entries = relationship(
         "ManualEntry", back_populates="user", cascade="all, delete-orphan"
     )
@@ -85,12 +86,12 @@ class UserProfile(Base):
     language_preference = Column(String(10), default="en", nullable=False)
     notification_preferences = Column(Text, nullable=True)  # JSON string
     created_at = Column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
+        DateTime(timezone=True), server_default=text("NOW()"), nullable=False
     )
     updated_at = Column(
         DateTime(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now(),
+        server_default=text("NOW()"),
+        onupdate=text("NOW()"),
         nullable=False,
     )
 
@@ -122,12 +123,12 @@ class UserSession(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=False)
     created_at = Column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
+        DateTime(timezone=True), server_default=text("NOW()"), nullable=False
     )
     last_used = Column(
         DateTime(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now(),
+        server_default=text("NOW()"),
+        onupdate=text("NOW()"),
         nullable=False,
     )
 

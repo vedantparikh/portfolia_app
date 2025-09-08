@@ -99,11 +99,22 @@ const TransactionCard = ({ transaction, onEdit, onDelete }) => {
                                 {getStatusText(transaction.status)}
                             </span>
                         </div>
-                        <div className="flex items-center space-x-4 text-sm text-gray-400">
+                        <div className="flex items-center space-x-4 text-sm text-gray-400 mb-1">
                             <span>Portfolio: {transaction.portfolio_name || 'Unknown'}</span>
                             <span>•</span>
                             <span>{formatDate(transaction.created_at)}</span>
                         </div>
+                        {/* Asset Information */}
+                        {transaction.asset_name && (
+                            <div className="text-sm text-gray-500">
+                                {transaction.asset_name}
+                                {transaction.asset_exchange && transaction.asset_type && (
+                                    <span className="ml-2">
+                                        • {transaction.asset_exchange} • {transaction.asset_type}
+                                    </span>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
 

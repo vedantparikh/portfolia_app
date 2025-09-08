@@ -1,6 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -124,6 +124,26 @@ class Asset(AssetBase):
         from_attributes = True
 
 
+class AssetPriceData(BaseModel):
+    date: datetime
+    open: Decimal
+    high: Decimal
+    low: Decimal
+    close: Decimal
+    volume: int
+    dividends: Decimal
+    stock_splits: Decimal
+
+
+class AssetPrice(BaseModel):
+    asset_id: int
+    symbol: str
+    interval: str
+    period: str
+    data_points: int
+    data: List[AssetPriceData]
+
+
 class TransactionBase(BaseModel):
     portfolio_id: int
     asset_id: int
@@ -211,3 +231,18 @@ class PortfolioItem(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class PortfolioPerformance(BaseModel):
+    """Portfolio performance metrics."""
+
+    portfolio_id: int
+    period_days: int
+    total_return: float
+    annualized_return: Optional[float] = None
+    volatility: Optional[float] = None
+    sharpe_ratio: Optional[float] = None
+    max_drawdown: Optional[float] = None
+    beta: Optional[float] = None
+    alpha: Optional[float] = None
+    calculation_date: datetime

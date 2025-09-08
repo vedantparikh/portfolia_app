@@ -1,12 +1,14 @@
 import { Calculator, Edit, TrendingDown, TrendingUp, X } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
+import { ClientSideAssetSearch } from '../shared';
 
 const EditTransactionModal = ({ isOpen, onClose, transaction, portfolios, onUpdate }) => {
     const [formData, setFormData] = useState({
         portfolio_id: '',
         type: 'buy',
         symbol: '',
+        asset_id: '',
         quantity: '',
         price: '',
         fees: '',
@@ -14,6 +16,7 @@ const EditTransactionModal = ({ isOpen, onClose, transaction, portfolios, onUpda
         date: ''
     });
     const [loading, setLoading] = useState(false);
+    const [selectedAsset, setSelectedAsset] = useState(null);
 
     useEffect(() => {
         if (transaction) {
@@ -21,12 +24,22 @@ const EditTransactionModal = ({ isOpen, onClose, transaction, portfolios, onUpda
                 portfolio_id: transaction.portfolio_id || '',
                 type: transaction.type || 'buy',
                 symbol: transaction.symbol || '',
+                asset_id: transaction.asset_id || '',
                 quantity: transaction.quantity || '',
                 price: transaction.price || '',
                 fees: transaction.fees || '',
                 notes: transaction.notes || '',
                 date: transaction.transaction_date ? transaction.transaction_date.split('T')[0] : new Date().toISOString().split('T')[0]
             });
+
+            // Set selected asset if we have asset info
+            if (transaction.asset_id && transaction.symbol) {
+                setSelectedAsset({
+                    id: transaction.asset_id,
+                    symbol: transaction.symbol,
+                    type: 'existing_asset'
+                });
+            }
         }
     }, [transaction]);
 
@@ -36,6 +49,36 @@ const EditTransactionModal = ({ isOpen, onClose, transaction, portfolios, onUpda
             ...prev,
             [name]: value
         }));
+    };
+
+    const handleSymbolSelect = (asset) => {
+        setSelectedAsset(asset);
+        setFormData(prev => ({
+            ...prev,
+            symbol: asset.symbol,
+            asset_id: asset.id
+        }));
+    };
+
+    const handleSymbolChange = (value) => {
+        setFormData(prev => ({
+            ...prev,
+            symbol: value
+        }));
+        // Clear selected asset when manually typing
+        if (!value) {
+            setSelectedAsset(null);
+        }
+    };
+
+    const handlePriceUpdate = (priceData) => {
+        if (priceData && priceData.price) {
+            setFormData(prev => ({
+                ...prev,
+                price: priceData.price.toString()
+            }));
+            toast.success(`Current price for ${priceData.symbol}: $${priceData.price} (${priceData.currency})`);
+        }
     };
 
     const calculateTotal = () => {
@@ -58,6 +101,11 @@ const EditTransactionModal = ({ isOpen, onClose, transaction, portfolios, onUpda
             return;
         }
 
+        if (!formData.asset_id) {
+            toast.error('Please select an asset from the search results. If the asset doesn\'t exist, add it first in the Assets section.');
+            return;
+        }
+
         if (!formData.quantity || parseFloat(formData.quantity) <= 0) {
             toast.error('Valid quantity is required');
             return;
@@ -74,7 +122,7 @@ const EditTransactionModal = ({ isOpen, onClose, transaction, portfolios, onUpda
             const transactionData = {
                 portfolio_id: parseInt(formData.portfolio_id),
                 type: formData.type,
-                symbol: formData.symbol.trim().toUpperCase(),
+                asset_id: parseInt(formData.asset_id),
                 quantity: parseFloat(formData.quantity),
                 price: parseFloat(formData.price),
                 fees: parseFloat(formData.fees) || 0,
@@ -188,17 +236,49 @@ const EditTransactionModal = ({ isOpen, onClose, transaction, portfolios, onUpda
                     {/* Symbol */}
                     <div>
                         <label className="block text-sm font-medium text-gray-300 mb-2">
-                            Symbol *
+                            Asset Symbol *
                         </label>
-                        <input
-                            type="text"
-                            name="symbol"
+                        <ClientSideAssetSearch
                             value={formData.symbol}
-                            onChange={handleInputChange}
-                            placeholder="e.g., AAPL, GOOGL, BTC"
-                            className="input-field w-full"
-                            required
+                            onChange={handleSymbolChange}
+                            onSelect={handleSymbolSelect}
+                            onPriceUpdate={handlePriceUpdate}
+                            placeholder="Search your assets..."
+                            disabled={loading}
+                            showSuggestions={true}
                         />
+
+                        {/* Selected Asset Info */}
+                        {selectedAsset && (
+                            <div className="mt-2 p-3 bg-dark-800 rounded-lg border border-dark-600">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center space-x-3">
+                                        <div className="w-8 h-8 bg-primary-600/20 rounded-lg flex items-center justify-center">
+                                            <TrendingUp size={16} className="text-primary-400" />
+                                        </div>
+                                        <div>
+                                            <div className="font-mono text-sm font-medium text-gray-100">
+                                                {selectedAsset.symbol}
+                                            </div>
+                                            <div className="text-xs text-gray-400">
+                                                {selectedAsset.name}
+                                            </div>
+                                            <div className="text-xs text-gray-500">
+                                                {selectedAsset.exchange} • {selectedAsset.asset_type}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="text-xs text-gray-400">
+                                        Your Asset
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Help Text */}
+                        <div className="mt-2 text-xs text-gray-500">
+                            If the asset doesn't exist, add it first in the Assets section.
+                        </div>
                     </div>
 
                     {/* Quantity and Price */}

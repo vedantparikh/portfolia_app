@@ -34,7 +34,10 @@ const WatchlistContent = ({
     onManualRefresh,
     onAddSymbol,
     // New prop for loading watchlist items
-    onLoadWatchlistItems
+    onLoadWatchlistItems,
+    // Loading states
+    addingSymbol,
+    removingSymbol
 }) => {
     // ===== STATE MANAGEMENT =====
     // useState is a React Hook that lets you add state to functional components
@@ -53,8 +56,9 @@ const WatchlistContent = ({
         const loadWatchlistItems = async () => {
             if (!watchlist?.id) return;
 
-            // Only load items if they haven't been loaded yet
-            if (!watchlist.items || watchlist.items.length === 0) {
+            // Only load items if they haven't been loaded yet AND items is undefined (not just empty)
+            // This prevents loading when a watchlist is genuinely empty vs not yet loaded
+            if (watchlist.items === undefined) {
                 setLoadingItems(true);
                 try {
                     if (onLoadWatchlistItems) {
@@ -396,10 +400,11 @@ const WatchlistContent = ({
                                 {/* Add Symbol button */}
                                 <button
                                     onClick={onAddSymbol}
-                                    className="flex items-center space-x-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors"
+                                    disabled={addingSymbol}
+                                    className="flex items-center space-x-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors disabled:opacity-50"
                                 >
                                     <Plus size={16} />
-                                    <span>Add Symbol</span>
+                                    <span>{addingSymbol ? 'Adding...' : 'Add Symbol'}</span>
                                 </button>
                             </div>
                         )}
@@ -445,9 +450,20 @@ const WatchlistContent = ({
                         <div className="text-center">
                             <AlertTriangle size={48} className="mx-auto text-gray-600 mb-4" />
                             <h3 className="text-lg font-medium text-gray-300 mb-2">No Symbols Found</h3>
-                            <p className="text-gray-400">
+                            <p className="text-gray-400 mb-6">
                                 {searchTerm ? 'Try adjusting your search terms' : 'Add some symbols to get started'}
                             </p>
+                            {/* Show Add Symbol button when no symbols or no search results */}
+                            {onAddSymbol && (
+                                <button
+                                    onClick={onAddSymbol}
+                                    disabled={addingSymbol}
+                                    className="flex items-center space-x-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors mx-auto disabled:opacity-50"
+                                >
+                                    <Plus size={16} />
+                                    <span>{addingSymbol ? 'Adding...' : 'Add Symbol'}</span>
+                                </button>
+                            )}
                         </div>
                     </div>
                 ) : (
@@ -476,7 +492,9 @@ const WatchlistContent = ({
                                                     <div
                                                         ref={provided.innerRef} // Reference for drag library
                                                         {...provided.draggableProps} // Spread drag props
-                                                        className={`group hover:bg-dark-800/50 transition-colors ${snapshot.isDragging ? 'bg-dark-800' : ''}`}
+                                                        className={`group hover:bg-dark-800/50 transition-colors ${snapshot.isDragging ? 'bg-dark-800' : ''
+                                                            } ${removingSymbol === item.id ? 'opacity-50 bg-red-900/20' : ''
+                                                            }`}
                                                     >
                                                         {/* Main row content with flexible layout */}
                                                         <div className="flex items-center justify-between px-4 py-3">
@@ -575,10 +593,11 @@ const WatchlistContent = ({
                                                                             </button>
                                                                             <button
                                                                                 onClick={() => handleDeleteSymbol(item.id)}
-                                                                                className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                                                                                disabled={removingSymbol === item.id}
+                                                                                className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
                                                                             >
                                                                                 <Trash2 size={14} />
-                                                                                <span>Remove</span>
+                                                                                <span>{removingSymbol === item.id ? 'Removing...' : 'Remove'}</span>
                                                                             </button>
                                                                         </div>
                                                                     )}

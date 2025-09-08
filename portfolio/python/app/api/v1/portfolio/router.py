@@ -22,11 +22,17 @@ from app.core.schemas.portfolio import (
     PortfolioAssetWithDetails,
     PortfolioCreate,
     PortfolioHolding,
+    PortfolioPerformance,
     PortfolioStatistics,
     PortfolioSummary,
     PortfolioUpdate,
     Transaction,
     TransactionCreate,
+)
+from app.core.schemas.portfolio_performance import (
+    PortfolioDiscoverResponse,
+    PortfolioRefreshResponse,
+    PortfolioSearchResponse,
 )
 from app.core.services.portfolio_service import PortfolioService
 
@@ -308,7 +314,7 @@ async def get_portfolio_holdings(
     return holdings
 
 
-@router.get("/{portfolio_id}/performance")
+@router.get("/{portfolio_id}/performance", response_model=PortfolioPerformance)
 async def get_portfolio_performance(
     portfolio_id: int,
     days: int = Query(
@@ -331,7 +337,11 @@ async def get_portfolio_performance(
     return performance
 
 
-@router.post("/{portfolio_id}/refresh", status_code=status.HTTP_200_OK)
+@router.post(
+    "/{portfolio_id}/refresh",
+    response_model=PortfolioRefreshResponse,
+    status_code=status.HTTP_200_OK,
+)
 async def refresh_portfolio_values(
     portfolio_id: int,
     current_user: User = Depends(get_current_active_user),
@@ -346,10 +356,10 @@ async def refresh_portfolio_values(
             status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
         )
 
-    return {"message": "Portfolio values refreshed successfully"}
+    return PortfolioRefreshResponse(message="Portfolio values refreshed successfully")
 
 
-@router.get("/search", response_model=List[Portfolio])
+@router.get("/search", response_model=PortfolioSearchResponse)
 async def search_portfolios(
     search_term: Optional[str] = Query(
         None, description="Search term for portfolio names"
@@ -363,7 +373,12 @@ async def search_portfolios(
     portfolios = portfolio_service.search_portfolios(
         current_user.id, search_term=search_term, currency=currency
     )
-    return portfolios
+    return PortfolioSearchResponse(
+        portfolios=portfolios,
+        total_count=len(portfolios),
+        search_term=search_term,
+        currency=currency,
+    )
 
 
 @router.get("/statistics/overview", response_model=PortfolioStatistics)
@@ -377,7 +392,7 @@ async def get_portfolio_statistics(
     return statistics
 
 
-@router.get("/public/discover", response_model=List[Portfolio])
+@router.get("/public/discover", response_model=PortfolioDiscoverResponse)
 async def discover_public_portfolios(
     limit: int = Query(50, ge=1, le=100, description="Number of portfolios to return"),
     offset: int = Query(0, ge=0, description="Number of portfolios to skip"),
@@ -386,7 +401,9 @@ async def discover_public_portfolios(
     """Discover public portfolios (no authentication required)."""
     portfolio_service = PortfolioService(db)
     portfolios = portfolio_service.get_public_portfolios(limit=limit, offset=offset)
-    return portfolios
+    return PortfolioDiscoverResponse(
+        portfolios=portfolios, total_count=len(portfolios), limit=limit, offset=offset
+    )
 
 
 # Legacy endpoints for backward compatibility

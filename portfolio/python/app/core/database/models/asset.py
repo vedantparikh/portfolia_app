@@ -11,9 +11,9 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
+    text,
 )
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
 
 from app.core.database.connection import Base
 
@@ -42,7 +42,7 @@ class Asset(Base):
     __tablename__ = "assets"
 
     id = Column(Integer, primary_key=True, index=True)
-    symbol = Column(String(20), unique=True, index=True, nullable=False)
+    symbol = Column(String(20), index=True, nullable=False)
     name = Column(String(255), nullable=False)
     asset_type = Column(Enum(AssetType), nullable=False)
     currency = Column(String(3), default="USD", nullable=False)
@@ -58,17 +58,21 @@ class Asset(Base):
     country = Column(String(100), nullable=True)
     description = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
     created_at = Column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
+        DateTime(timezone=True), server_default=text("NOW()"), nullable=False
     )
     updated_at = Column(
         DateTime(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now(),
+        server_default=text("NOW()"),
+        onupdate=text("NOW()"),
         nullable=False,
     )
 
     # Relationships
+    user = relationship("User", back_populates="assets")
     prices = relationship(
         "AssetPrice", back_populates="asset", cascade="all, delete-orphan"
     )
@@ -85,18 +89,26 @@ class Asset(Base):
         "PortfolioAllocation", back_populates="asset", cascade="all, delete-orphan"
     )
     benchmark_portfolios = relationship(
-        "PortfolioBenchmark", back_populates="benchmark_asset", cascade="all, delete-orphan"
+        "PortfolioBenchmark",
+        back_populates="benchmark_asset",
+        cascade="all, delete-orphan",
     )
     correlations_as_asset1 = relationship(
-        "AssetCorrelation", foreign_keys="AssetCorrelation.asset1_id", cascade="all, delete-orphan"
+        "AssetCorrelation",
+        foreign_keys="AssetCorrelation.asset1_id",
+        cascade="all, delete-orphan",
     )
     correlations_as_asset2 = relationship(
-        "AssetCorrelation", foreign_keys="AssetCorrelation.asset2_id", cascade="all, delete-orphan"
+        "AssetCorrelation",
+        foreign_keys="AssetCorrelation.asset2_id",
+        cascade="all, delete-orphan",
     )
 
     # Indexes for performance
     __table_args__ = (
+        Index("idx_assets_user_id", "user_id"),
         Index("idx_assets_symbol", "symbol"),
+        Index("idx_assets_user_symbol", "user_id", "symbol", unique=True),
         Index("idx_assets_type", "asset_type"),
         Index("idx_assets_currency", "currency"),
         Index("idx_assets_exchange", "exchange"),
@@ -127,7 +139,7 @@ class AssetPrice(Base):
     dividend_amount = Column(Numeric(20, 4), nullable=True)
     split_ratio = Column(Numeric(10, 6), nullable=True)
     created_at = Column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
+        DateTime(timezone=True), server_default=text("NOW()"), nullable=False
     )
 
     # Relationships
@@ -155,12 +167,12 @@ class MarketIndex(Base):
     category = Column(String(100), nullable=True)  # e.g., "Major", "Sector", "Regional"
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
+        DateTime(timezone=True), server_default=text("NOW()"), nullable=False
     )
     updated_at = Column(
         DateTime(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now(),
+        server_default=text("NOW()"),
+        onupdate=text("NOW()"),
         nullable=False,
     )
 

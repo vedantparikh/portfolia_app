@@ -23,6 +23,7 @@ from app.core.logging_config import (
     log_error_with_context,
 )
 from app.core.schemas.market import MarketData
+from app.core.schemas.market_data import SymbolSearchResult, YFinanceDataResponse
 from app.core.services.market_data_service import market_data_service
 
 logger = get_logger(__name__)
@@ -30,12 +31,12 @@ logger = get_logger(__name__)
 router = APIRouter()
 
 
-@router.get("/symbols")
+@router.get("/symbols", response_model=List[SymbolSearchResult])
 async def get_symbols(
     name: str,
     request: Request,
     current_user=Depends(get_optional_current_user),
-) -> Optional[List[Dict[str, Any]]]:
+):
     """
     Get stock symbols matching the search name.
 
@@ -113,7 +114,25 @@ async def get_symbols(
             results_count=len(quotes),
         )
 
-        return quotes
+        # Convert to SymbolSearchResult objects
+        search_results = []
+        for quote in quotes:
+            search_results.append(
+                SymbolSearchResult(
+                    symbol=quote.get("symbol", ""),
+                    short_name=quote.get("shortName") or quote.get("shortname"),
+                    long_name=quote.get("longName") or quote.get("longname"),
+                    quote_type=quote.get("quoteType") or quote.get("quotetype"),
+                    exchange=quote.get("exchDisp") or quote.get("exchdisp") or quote.get("exchange"),
+                    market=quote.get("market"),
+                    currency=quote.get("currency"),
+                    sector=quote.get("sectorDisp") or quote.get("sector"),
+                    industry=quote.get("industryDisp") or quote.get("industry"),
+                    market_cap=quote.get("marketCap"),
+                )
+            )
+
+        return search_results
 
     except HTTPException:
         # Re-raise HTTP exceptions without logging (they're expected)
@@ -139,7 +158,7 @@ async def get_symbols(
         )
 
 
-@router.get("/symbol-data/fresh")
+@router.get("/symbol-data/fresh", response_model=YFinanceDataResponse)
 async def get_symbol_data_fresh(
     name: str,
     request: Request,
@@ -154,7 +173,7 @@ async def get_symbol_data_fresh(
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     current_user=Depends(get_optional_current_user),
-) -> Optional[Dict[str, Any]]:
+):
     """
     Get fresh stock data for a specific symbol from yfinance API.
 
@@ -187,16 +206,31 @@ async def get_symbol_data_fresh(
             )
 
         # Convert DataFrame to JSON-serializable format
-        result = {
-            "symbol": name.upper(),
-            "period": period,
-            "interval": interval,
-            "source": "yfinance_fresh",
-            "data_points": len(data),
-            "data": data.to_dict(orient="records"),
-        }
+        from app.core.schemas.market_data import YFinancePriceData
 
-        return result
+        price_data = []
+        for _, row in data.iterrows():
+            price_data.append(
+                YFinancePriceData(
+                    date=row.get("Date", row.name),
+                    open=row.get("Open"),
+                    high=row.get("High"),
+                    low=row.get("Low"),
+                    close=row.get("Close"),
+                    volume=row.get("Volume"),
+                    dividends=row.get("Dividends"),
+                    stock_splits=row.get("Stock Splits"),
+                )
+            )
+
+        return YFinanceDataResponse(
+            symbol=name.upper(),
+            period=period,
+            interval=interval,
+            source="yfinance_fresh",
+            data_points=len(data),
+            data=price_data,
+        )
 
     except Exception as e:
         raise HTTPException(

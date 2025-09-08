@@ -19,6 +19,7 @@ from .auth import (
 from .market import MarketData, MarketIndex, StockData, StockQuote, Symbol
 from .portfolio import (
     AssetCreate,
+    AssetPrice,
     Portfolio,
     PortfolioCreate,
     PortfolioItem,
@@ -48,6 +49,7 @@ __all__ = [
     "PortfolioCreate",
     "PortfolioUpdate",
     "AssetCreate",
+    "AssetPrice",
     "TransactionCreate",
     "Symbol",
     "Portfolio",
