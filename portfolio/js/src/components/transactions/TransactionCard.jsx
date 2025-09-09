@@ -29,6 +29,13 @@ const TransactionCard = ({ transaction, onEdit, onDelete }) => {
         });
     };
 
+    const formatQuantity = (quantity) => {
+        if (!quantity) return '0';
+        const num = parseFloat(quantity);
+        if (isNaN(num)) return '0';
+        return num.toFixed(4).replace(/\.?0+$/, '');
+    };
+
     const getTransactionIcon = (type) => {
         const transactionType = type || 'other';
         if (transactionType === 'buy') {
@@ -129,7 +136,7 @@ const TransactionCard = ({ transaction, onEdit, onDelete }) => {
                             </span>
                         </div>
                         <div className="text-sm text-gray-400">
-                            {transaction.quantity || 0} @ {formatCurrency(transaction.price || 0)}
+                            {formatQuantity(transaction.quantity)} @ {formatCurrency(transaction.price || 0)}
                         </div>
                     </div>
 
@@ -181,7 +188,7 @@ const TransactionCard = ({ transaction, onEdit, onDelete }) => {
                     <div>
                         <span className="text-gray-400">Quantity:</span>
                         <span className="text-gray-100 ml-2 font-medium">
-                            {transaction.quantity}
+                            {formatQuantity(transaction.quantity)}
                         </span>
                     </div>
                     <div>

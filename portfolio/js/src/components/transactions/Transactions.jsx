@@ -81,6 +81,7 @@ const Transactions = () => {
         if (searchQuery) {
             filtered = filtered.filter(transaction =>
                 (transaction.asset.symbol || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (transaction.asset.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                 (transaction.portfolio.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                 (transaction.notes || '').toLowerCase().includes(searchQuery.toLowerCase())
             );
@@ -345,7 +346,7 @@ const Transactions = () => {
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                             <input
                                 type="text"
-                                placeholder="Search transactions by symbol or portfolio..."
+                                placeholder="Search transactions by symbol, asset name, or portfolio..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="input-field w-full pl-10 pr-4 py-3"

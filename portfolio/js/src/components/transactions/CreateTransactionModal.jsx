@@ -31,6 +31,7 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
         currency: 'USD',
         quantity: '',
         price: '',
+        amount: '', // Optional amount field for UI calculation
         fees: '',
         notes: '',
         date: new Date().toISOString().split('T')[0],
@@ -198,6 +199,14 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
         return transactionTypes;
     };
 
+    // Helper function to format quantity with max 4 decimal places
+    const formatQuantity = (quantity) => {
+        if (!quantity) return '';
+        const num = parseFloat(quantity);
+        if (isNaN(num)) return '';
+        return num.toFixed(4).replace(/\.?0+$/, '');
+    };
+
     // Preload assets when the modal opens
     useEffect(() => {
         console.log('[CreateTransactionModal] Modal opened, preloading assets...');
@@ -250,10 +259,34 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: value
-        }));
+
+        // Handle amount/quantity/price calculations
+        if (name === 'amount' || name === 'price') {
+            const newFormData = { ...formData, [name]: value };
+
+            // Auto-calculate quantity if both amount and price are present
+            if (name === 'amount' && newFormData.price && parseFloat(newFormData.price) > 0) {
+                const calculatedQuantity = parseFloat(value || 0) / parseFloat(newFormData.price);
+                newFormData.quantity = calculatedQuantity > 0 ? calculatedQuantity.toFixed(6) : '';
+            } else if (name === 'price' && newFormData.amount && parseFloat(value) > 0) {
+                const calculatedQuantity = parseFloat(newFormData.amount) / parseFloat(value);
+                newFormData.quantity = calculatedQuantity > 0 ? calculatedQuantity.toFixed(6) : '';
+            }
+
+            setFormData(newFormData);
+        } else if (name === 'quantity') {
+            // Clear amount when quantity is manually changed
+            setFormData(prev => ({
+                ...prev,
+                [name]: value,
+                amount: ''
+            }));
+        } else {
+            setFormData(prev => ({
+                ...prev,
+                [name]: value
+            }));
+        }
     };
 
     const handleSymbolSelect = async (asset) => {
@@ -567,8 +600,8 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
                             If the asset doesn't exist, add it first in the Assets section.
                         </div>
                     </div>
-                    {/* Quantity and Price */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Amount, Quantity and Price */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {(() => {
                             const selectedType = getSelectedTransactionType();
                             const requiresQuantity = !['fee'].includes(selectedType.value);
@@ -576,6 +609,28 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
 
                             return (
                                 <>
+                                    {/* Amount field - optional helper for calculation */}
+                                    {requiresQuantity && requiresPrice && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-300 mb-2">
+                                                Total Amount
+                                                <span className="text-xs text-gray-500 ml-1">(optional)</span>
+                                            </label>
+                                            <input
+                                                type="number"
+                                                name="amount"
+                                                value={formData.amount}
+                                                onChange={handleInputChange}
+                                                placeholder="0.00"
+                                                min="0"
+                                                step="0.01"
+                                                className="input-field w-full"
+                                            />
+                                            <div className="text-xs text-gray-500 mt-1">
+                                                Auto-calculates quantity when price is set
+                                            </div>
+                                        </div>
+                                    )}
                                     {requiresQuantity && (
                                         <div>
                                             <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -584,14 +639,19 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
                                             <input
                                                 type="number"
                                                 name="quantity"
-                                                value={formData.quantity}
+                                                value={formatQuantity(formData.quantity)}
                                                 onChange={handleInputChange}
-                                                placeholder={selectedType.value === 'split' ? "2" : "0.00"}
+                                                placeholder={selectedType.value === 'split' ? "2" : "0.0000"}
                                                 min="0"
                                                 step={selectedType.value === 'split' ? "1" : "0.000001"}
                                                 className="input-field w-full"
                                                 required
                                             />
+                                            {formData.quantity && (
+                                                <div className="text-xs text-gray-500 mt-1">
+                                                    Exact: {parseFloat(formData.quantity || 0).toFixed(6)}
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                     {requiresPrice && (
@@ -634,7 +694,7 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
                                     )}
                                     {/* Fee field always visible for all transaction types */}
                                     {!requiresPrice && !requiresQuantity && (
-                                        <div className="md:col-span-2">
+                                        <div className="md:col-span-3">
                                             <label className="block text-sm font-medium text-gray-300 mb-2">
                                                 Fee Amount *
                                             </label>
@@ -736,7 +796,7 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
                                 const monetaryTypes = ['buy', 'sell', 'dividend', 'transfer_in', 'transfer_out'];
 
                                 if (monetaryTypes.includes(selectedType.value)) {
-                                    return `${formData.quantity || 0} × $${formData.price || 0} + $${formData.fees || 0} fees`;
+                                    return `${formatQuantity(formData.quantity) || 0} × $${formData.price || 0} + $${formData.fees || 0} fees`;
                                 } else {
                                     return `$${formData.fees || 0} fees only`;
                                 }
