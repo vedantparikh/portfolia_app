@@ -30,9 +30,10 @@ const TransactionCard = ({ transaction, onEdit, onDelete }) => {
     };
 
     const getTransactionIcon = (type) => {
-        if (type === 'buy') {
+        const transactionType = type || 'other';
+        if (transactionType === 'buy') {
             return <TrendingUp size={20} className="text-success-400" />;
-        } else if (type === 'sell') {
+        } else if (transactionType === 'sell') {
             return <TrendingDown size={20} className="text-danger-400" />;
         }
         return <DollarSign size={20} className="text-gray-400" />;
@@ -88,29 +89,29 @@ const TransactionCard = ({ transaction, onEdit, onDelete }) => {
             <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                     <div className="flex items-center justify-center w-12 h-12 bg-dark-800 rounded-lg">
-                        {getTransactionIcon(transaction.type)}
+                        {getTransactionIcon(transaction.transaction_type || transaction.type)}
                     </div>
                     <div>
                         <div className="flex items-center space-x-2 mb-1">
                             <h3 className="text-lg font-semibold text-gray-100">
-                                {transaction.type.toUpperCase()} {transaction.symbol}
+                                {(transaction.transaction_type || transaction.type || 'unknown').toUpperCase()} {transaction.symbol}
                             </h3>
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(transaction.status)}`}>
                                 {getStatusText(transaction.status)}
                             </span>
                         </div>
                         <div className="flex items-center space-x-4 text-sm text-gray-400 mb-1">
-                            <span>Portfolio: {transaction.portfolio_name || 'Unknown'}</span>
+                            <span>Portfolio: {transaction.portfolio.name || 'unknown'}</span>
                             <span>•</span>
                             <span>{formatDate(transaction.created_at)}</span>
                         </div>
                         {/* Asset Information */}
-                        {transaction.asset_name && (
+                        {transaction.asset.name && (
                             <div className="text-sm text-gray-500">
-                                {transaction.asset_name}
-                                {transaction.asset_exchange && transaction.asset_type && (
+                                {transaction.asset.name}
+                                {transaction.asset.exchange && transaction.asset.asset_type && (
                                     <span className="ml-2">
-                                        • {transaction.asset_exchange} • {transaction.asset_type}
+                                        • {transaction.asset.exchange} • {transaction.asset.asset_type}
                                     </span>
                                 )}
                             </div>
@@ -122,13 +123,13 @@ const TransactionCard = ({ transaction, onEdit, onDelete }) => {
                     {/* Transaction Details */}
                     <div className="text-right">
                         <div className="flex items-center space-x-2 mb-1">
-                            {getTransactionArrow(transaction.type)}
-                            <span className={`text-lg font-semibold ${getTransactionColor(transaction.type)}`}>
-                                {transaction.type === 'buy' ? '-' : '+'}{formatCurrency(transaction.total_amount)}
+                            {getTransactionArrow(transaction.transaction_type)}
+                            <span className={`text-lg font-semibold ${getTransactionColor(transaction.transaction_type)}`}>
+                                {(transaction.transaction_type) === 'buy' ? '-' : '+'}{formatCurrency(transaction.total_amount || 0)}
                             </span>
                         </div>
                         <div className="text-sm text-gray-400">
-                            {transaction.quantity} @ {formatCurrency(transaction.price)}
+                            {transaction.quantity || 0} @ {formatCurrency(transaction.price || 0)}
                         </div>
                     </div>
 
@@ -173,8 +174,8 @@ const TransactionCard = ({ transaction, onEdit, onDelete }) => {
                     </div>
                     <div>
                         <span className="text-gray-400">Type:</span>
-                        <span className={`ml-2 font-medium ${getTransactionColor(transaction.type)}`}>
-                            {transaction.type.toUpperCase()}
+                        <span className={`ml-2 font-medium ${getTransactionColor(transaction.transaction_type || transaction.type)}`}>
+                            {(transaction.transaction_type || transaction.type || 'unknown').toUpperCase()}
                         </span>
                     </div>
                     <div>

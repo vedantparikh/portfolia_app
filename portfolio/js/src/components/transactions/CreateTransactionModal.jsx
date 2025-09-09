@@ -388,9 +388,13 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
                 total_amount: parseFloat(formData.total_amount)
             };
 
+            // Calculate total_amount before sending
+            transactionData.total_amount = calculateTotal();
+
             await onCreate(transactionData);
         } catch (error) {
             console.error('Error creating transaction:', error);
+            // Don't show error toast here as it's handled in the parent component
         } finally {
             setLoading(false);
         }

@@ -65,7 +65,7 @@ const Transactions = () => {
                 order_by: 'created_at',
                 order: 'desc'
             });
-            setTransactions(transactionsResponse.transactions || []);
+            setTransactions(transactionsResponse || []);
         } catch (error) {
             console.error('Failed to load data:', error);
             toast.error('Failed to load transaction data');
@@ -80,8 +80,9 @@ const Transactions = () => {
         // Search filter
         if (searchQuery) {
             filtered = filtered.filter(transaction =>
-                transaction.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                transaction.portfolio_name?.toLowerCase().includes(searchQuery.toLowerCase())
+                (transaction.asset.symbol || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (transaction.portfolio.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (transaction.notes || '').toLowerCase().includes(searchQuery.toLowerCase())
             );
         }
 
@@ -92,7 +93,9 @@ const Transactions = () => {
 
         // Type filter
         if (filters.type !== 'all') {
-            filtered = filtered.filter(transaction => transaction.type === filters.type);
+            filtered = filtered.filter(transaction =>
+                transaction.transaction_type === filters.type || transaction.type === filters.type
+            );
         }
 
         // Date range filter
@@ -118,9 +121,10 @@ const Transactions = () => {
                     break;
             }
 
-            filtered = filtered.filter(transaction =>
-                new Date(transaction.created_at) >= filterDate
-            );
+            filtered = filtered.filter(transaction => {
+                const transactionDate = new Date(transaction.transaction_date || transaction.created_at);
+                return transactionDate >= filterDate;
+            });
         }
 
         // Sort
@@ -129,20 +133,24 @@ const Transactions = () => {
 
             switch (filters.sortBy) {
                 case 'created_at':
-                    aValue = new Date(a.created_at);
-                    bValue = new Date(b.created_at);
+                    aValue = new Date(a.transaction_date || a.created_at);
+                    bValue = new Date(b.transaction_date || b.created_at);
                     break;
                 case 'amount':
                     aValue = a.total_amount || 0;
                     bValue = b.total_amount || 0;
                     break;
                 case 'symbol':
-                    aValue = a.symbol.toLowerCase();
-                    bValue = b.symbol.toLowerCase();
+                    aValue = (a.symbol || '').toLowerCase();
+                    bValue = (b.symbol || '').toLowerCase();
+                    break;
+                case 'type':
+                    aValue = (a.transaction_type || a.type || '').toLowerCase();
+                    bValue = (b.transaction_type || b.type || '').toLowerCase();
                     break;
                 default:
-                    aValue = new Date(a.created_at);
-                    bValue = new Date(b.created_at);
+                    aValue = new Date(a.transaction_date || a.created_at);
+                    bValue = new Date(b.transaction_date || b.created_at);
             }
 
             if (filters.sortOrder === 'asc') {
@@ -158,13 +166,25 @@ const Transactions = () => {
     const handleCreateTransaction = async (transactionData) => {
         try {
             console.log('[Transactions] Creating transaction with data:', transactionData);
-            const newTransaction = await transactionAPI.createTransaction(transactionData);
+            const response = await transactionAPI.createTransaction(transactionData);
+            console.log('[Transactions] Create response:', response);
+
+            // Handle different response formats
+            let newTransaction = response;
+
             setTransactions(prev => [newTransaction, ...prev]);
             setShowCreateModal(false);
             toast.success('Transaction created successfully');
+
+            // Refresh data to ensure consistency
+            setTimeout(() => {
+                loadData();
+            }, 500);
         } catch (error) {
             console.error('Failed to create transaction:', error);
-            toast.error('Failed to create transaction');
+            const errorMessage = error.response?.data?.detail || error.message || 'Failed to create transaction';
+            toast.error(errorMessage);
+            throw error; // Re-throw so the modal can handle it
         }
     };
 
@@ -176,11 +196,6 @@ const Transactions = () => {
 
             // Handle different response formats
             let updatedTransaction = response;
-            if (response.transaction) {
-                updatedTransaction = response.transaction;
-            } else if (response.data) {
-                updatedTransaction = response.data;
-            }
 
             setTransactions(prev => prev.map(t => t.id === transactionId ? updatedTransaction : t));
             setShowEditModal(false);
@@ -228,14 +243,18 @@ const Transactions = () => {
 
     const getTransactionStats = () => {
         const totalTransactions = filteredTransactions.length;
-        const buyTransactions = filteredTransactions.filter(t => t.type === 'buy').length;
-        const sellTransactions = filteredTransactions.filter(t => t.type === 'sell').length;
+        const buyTransactions = filteredTransactions.filter(t =>
+            t.transaction_type === 'buy' || t.type === 'buy'
+        ).length;
+        const sellTransactions = filteredTransactions.filter(t =>
+            t.transaction_type === 'sell' || t.type === 'sell'
+        ).length;
         const totalVolume = filteredTransactions.reduce((sum, t) => sum + (t.total_amount || 0), 0);
         const totalBuys = filteredTransactions
-            .filter(t => t.type === 'buy')
+            .filter(t => t.transaction_type === 'buy' || t.type === 'buy')
             .reduce((sum, t) => sum + (t.total_amount || 0), 0);
         const totalSells = filteredTransactions
-            .filter(t => t.type === 'sell')
+            .filter(t => t.transaction_type === 'sell' || t.type === 'sell')
             .reduce((sum, t) => sum + (t.total_amount || 0), 0);
 
         return {

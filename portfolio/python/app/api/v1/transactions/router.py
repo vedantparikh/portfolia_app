@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.auth.dependencies import (
     get_current_active_user,
@@ -159,8 +159,13 @@ async def get_user_transactions(
         return []
 
     # Build query
-    query = db.query(TransactionModel).filter(
-        TransactionModel.portfolio_id.in_(portfolio_ids)
+    query = (
+        db.query(TransactionModel)
+        .options(
+            joinedload(TransactionModel.portfolio),  # Eagerly load the portfolio
+            joinedload(TransactionModel.asset),      # Eagerly load the asset
+        )
+        .filter(TransactionModel.portfolio_id.in_(portfolio_ids))
     )
 
     if portfolio_id:

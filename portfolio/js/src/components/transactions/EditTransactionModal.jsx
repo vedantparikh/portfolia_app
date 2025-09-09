@@ -6,7 +6,7 @@ import { ClientSideAssetSearch } from '../shared';
 const EditTransactionModal = ({ isOpen, onClose, transaction, portfolios, onUpdate }) => {
     const [formData, setFormData] = useState({
         portfolio_id: '',
-        type: 'buy',
+        transaction_type: 'buy',
         symbol: '',
         asset_id: '',
         quantity: '',
@@ -22,7 +22,7 @@ const EditTransactionModal = ({ isOpen, onClose, transaction, portfolios, onUpda
         if (transaction) {
             setFormData({
                 portfolio_id: transaction.portfolio_id || '',
-                type: transaction.type || 'buy',
+                transaction_type: transaction.transaction_type || transaction.type || 'buy',
                 symbol: transaction.symbol || '',
                 asset_id: transaction.asset_id || '',
                 quantity: transaction.quantity || '',
@@ -121,7 +121,7 @@ const EditTransactionModal = ({ isOpen, onClose, transaction, portfolios, onUpda
 
             const transactionData = {
                 portfolio_id: parseInt(formData.portfolio_id),
-                type: formData.type,
+                transaction_type: formData.transaction_type,
                 asset_id: parseInt(formData.asset_id),
                 quantity: parseFloat(formData.quantity),
                 price: parseFloat(formData.price),
@@ -150,7 +150,7 @@ const EditTransactionModal = ({ isOpen, onClose, transaction, portfolios, onUpda
                 <div className="flex items-center justify-between p-6 border-b border-dark-700">
                     <div className="flex items-center space-x-3">
                         <div className="w-10 h-10 bg-primary-600/20 rounded-lg flex items-center justify-center">
-                            {formData.type === 'buy' ? (
+                            {formData.transaction_type === 'buy' ? (
                                 <TrendingUp size={20} className="text-success-400" />
                             ) : (
                                 <TrendingDown size={20} className="text-danger-400" />
@@ -179,8 +179,8 @@ const EditTransactionModal = ({ isOpen, onClose, transaction, portfolios, onUpda
                         <div className="grid grid-cols-2 gap-3">
                             <button
                                 type="button"
-                                onClick={() => setFormData(prev => ({ ...prev, type: 'buy' }))}
-                                className={`p-4 rounded-lg border-2 transition-colors ${formData.type === 'buy'
+                                onClick={() => setFormData(prev => ({ ...prev, transaction_type: 'buy' }))}
+                                className={`p-4 rounded-lg border-2 transition-colors ${formData.transaction_type === 'buy'
                                     ? 'border-success-400 bg-success-400/10 text-success-400'
                                     : 'border-dark-600 bg-dark-800 text-gray-300 hover:border-dark-500'
                                     }`}
@@ -195,8 +195,8 @@ const EditTransactionModal = ({ isOpen, onClose, transaction, portfolios, onUpda
                             </button>
                             <button
                                 type="button"
-                                onClick={() => setFormData(prev => ({ ...prev, type: 'sell' }))}
-                                className={`p-4 rounded-lg border-2 transition-colors ${formData.type === 'sell'
+                                onClick={() => setFormData(prev => ({ ...prev, transaction_type: 'sell' }))}
+                                className={`p-4 rounded-lg border-2 transition-colors ${formData.transaction_type === 'sell'
                                     ? 'border-danger-400 bg-danger-400/10 text-danger-400'
                                     : 'border-dark-600 bg-dark-800 text-gray-300 hover:border-dark-500'
                                     }`}
@@ -356,7 +356,7 @@ const EditTransactionModal = ({ isOpen, onClose, transaction, portfolios, onUpda
                                 <span className="text-sm font-medium text-gray-300">Total Amount</span>
                             </div>
                             <span className="text-xl font-bold text-gray-100">
-                                {formData.type === 'buy' ? '-' : '+'}${totalAmount.toFixed(2)}
+                                {formData.transaction_type === 'buy' ? '-' : '+'}${totalAmount.toFixed(2)}
                             </span>
                         </div>
                         <div className="text-xs text-gray-500 mt-1">
