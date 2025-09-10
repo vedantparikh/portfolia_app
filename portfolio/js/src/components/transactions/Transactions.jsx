@@ -250,13 +250,22 @@ const Transactions = () => {
         const sellTransactions = filteredTransactions.filter(t =>
             t.transaction_type === 'sell' || t.type === 'sell'
         ).length;
-        const totalVolume = filteredTransactions.reduce((sum, t) => sum + (t.total_amount || 0), 0);
+        const totalVolume = filteredTransactions.reduce((sum, t) => {
+            const amount = parseFloat(t.total_amount) || 0;
+            return sum + Math.abs(amount); // Use absolute value for total volume
+        }, 0);
         const totalBuys = filteredTransactions
-            .filter(t => t.transaction_type === 'buy' || t.type === 'buy')
-            .reduce((sum, t) => sum + (t.total_amount || 0), 0);
+            .filter(t => (t.transaction_type === 'buy' || t.type === 'buy'))
+            .reduce((sum, t) => {
+                const amount = parseFloat(t.total_amount) || 0;
+                return sum + Math.abs(amount);
+            }, 0);
         const totalSells = filteredTransactions
-            .filter(t => t.transaction_type === 'sell' || t.type === 'sell')
-            .reduce((sum, t) => sum + (t.total_amount || 0), 0);
+            .filter(t => (t.transaction_type === 'sell' || t.type === 'sell'))
+            .reduce((sum, t) => {
+                const amount = parseFloat(t.total_amount) || 0;
+                return sum + Math.abs(amount);
+            }, 0);
 
         return {
             totalTransactions,
@@ -397,7 +406,10 @@ const Transactions = () => {
                                 <div>
                                     <p className="text-sm text-gray-400">Total Volume</p>
                                     <p className="text-2xl font-bold text-gray-100">
-                                        ${stats.totalVolume.toLocaleString()}
+                                        ${(stats.totalVolume || 0).toLocaleString('en-US', {
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2
+                                        })}
                                     </p>
                                 </div>
                                 <div className="w-12 h-12 bg-warning-600/20 rounded-lg flex items-center justify-center">
@@ -410,9 +422,12 @@ const Transactions = () => {
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-sm text-gray-400">Net Flow</p>
-                                    <p className={`text-2xl font-bold ${(stats.totalBuys - stats.totalSells) >= 0 ? 'text-success-400' : 'text-danger-400'
+                                    <p className={`text-2xl font-bold ${(stats.totalSells - stats.totalBuys) >= 0 ? 'text-success-400' : 'text-danger-400'
                                         }`}>
-                                        ${(stats.totalBuys - stats.totalSells).toLocaleString()}
+                                        ${(stats.totalSells - stats.totalBuys).toLocaleString('en-US', {
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2
+                                        })}
                                     </p>
                                 </div>
                                 <div className="w-12 h-12 bg-gray-600/20 rounded-lg flex items-center justify-center">

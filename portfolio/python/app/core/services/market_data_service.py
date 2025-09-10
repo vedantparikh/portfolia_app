@@ -630,6 +630,8 @@ class MarketDataService:
         except Exception as e:
             logger.error(f"Error getting ticker info for {symbol}: {e}")
             return None
+    
+    
 
 
 # Global instance

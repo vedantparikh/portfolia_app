@@ -25,6 +25,7 @@ from app.core.schemas.portfolio import (
     TransactionCreate,
     TransactionUpdate,
 )
+from app.core.services.market_data_service import MarketDataService
 
 
 class PortfolioService:
@@ -32,6 +33,7 @@ class PortfolioService:
 
     def __init__(self, db: Session):
         self.db = db
+        self.market_data_service = MarketDataService()
 
     # Portfolio CRUD Operations
     def create_portfolio(
@@ -152,14 +154,14 @@ class PortfolioService:
         )
 
         # Calculate initial P&L if current price is available
-        self._update_asset_pnl(portfolio_asset)
+        portfolio_asset = self._update_asset_pnl(portfolio_asset)
 
         self.db.add(portfolio_asset)
         self.db.commit()
         self.db.refresh(portfolio_asset)
         return portfolio_asset
 
-    def _update_asset_pnl(self, portfolio_asset: PortfolioAsset) -> None:
+    def _update_asset_pnl(self, portfolio_asset: PortfolioAsset) -> PortfolioAsset:
         """Update unrealized P&L for a portfolio asset."""
         # Get current asset price
         current_price = (
@@ -168,9 +170,14 @@ class PortfolioService:
             .order_by(desc(AssetPrice.date))
             .first()
         )
+        close_price = current_price.close_price if current_price else None
+        if not current_price:
+            asset = self.db.query(Asset).filter(Asset.id == portfolio_asset.asset_id).first()
+            if asset:
+                close_price = self.market_data_service.get_current_price(asset.symbol)
 
         if current_price:
-            current_value = float(current_price.close_price) * float(
+            current_value = float(close_price) * float(
                 portfolio_asset.quantity
             )
             portfolio_asset.current_value = Decimal(str(current_value))
@@ -186,6 +193,7 @@ class PortfolioService:
                 portfolio_asset.unrealized_pnl_percent = Decimal(str(pnl_percent))
             else:
                 portfolio_asset.unrealized_pnl_percent = Decimal("0")
+        return portfolio_asset
 
     def update_portfolio_asset(
         self,
@@ -231,7 +239,7 @@ class PortfolioService:
 
         # Update P&L if not manually set
         if asset_data.current_value is None and asset_data.unrealized_pnl is None:
-            self._update_asset_pnl(portfolio_asset)
+            portfolio_asset = self._update_asset_pnl(portfolio_asset)
 
         # Note: last_updated is handled by SQLAlchemy onupdate trigger
         self.db.commit()
@@ -297,9 +305,11 @@ class PortfolioService:
         result = []
         for portfolio_asset, asset in assets:
             # Update P&L if needed
-            if portfolio_asset.current_value is None:
-                self._update_asset_pnl(portfolio_asset)
-                self.db.commit()
+            # if portfolio_asset.current_value is None:
+            portfolio_asset = self._update_asset_pnl(portfolio_asset)
+            self.db.refresh(portfolio_asset)
+            self.db.commit()
+
 
             asset_details = PortfolioAssetWithDetails(
                 id=portfolio_asset.id,
@@ -411,7 +421,8 @@ class PortfolioService:
 
         # Update P&L after transaction
         if portfolio_asset and portfolio_asset in self.db:
-            self._update_asset_pnl(portfolio_asset)
+            portfolio_asset = self._update_asset_pnl(portfolio_asset)
+            self.db.refresh(portfolio_asset)
 
         # Note: last_updated is handled by SQLAlchemy onupdate trigger
         self.db.commit()

@@ -132,7 +132,7 @@ const TransactionCard = ({ transaction, onEdit, onDelete }) => {
                         <div className="flex items-center space-x-2 mb-1">
                             {getTransactionArrow(transaction.transaction_type)}
                             <span className={`text-lg font-semibold ${getTransactionColor(transaction.transaction_type)}`}>
-                                {(transaction.transaction_type) === 'buy' ? '-' : '+'}{formatCurrency(transaction.total_amount || 0)}
+                                {(transaction.transaction_type || transaction.type) === 'buy' ? '-' : '+'}{formatCurrency(Math.abs(transaction.total_amount) || 0)}
                             </span>
                         </div>
                         <div className="text-sm text-gray-400">

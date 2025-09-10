@@ -42,7 +42,7 @@ const api = axios.create({
 api.interceptors.request.use(
     (config) => {
         // Get the access token from browser storage or use the provided token
-        const token = localStorage.getItem('access_token') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwiZW1haWwiOiJ2ZG50cGFyaWtoQGdtYWlsLmNvbSIsInVzZXJuYW1lIjoiYnViYmx5IiwiZXhwIjoxNzU3MzY5MjI4LCJ0eXBlIjoiYWNjZXNzIn0.-k_-21j21qHH6tvGVE-csiixlixusubgKBPrsDu9TjY';
+        const token = localStorage.getItem('access_token') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwiZW1haWwiOiJ2ZG50cGFyaWtoQGdtYWlsLmNvbSIsInVzZXJuYW1lIjoiYnViYmx5IiwiZXhwIjoxNzU3NDM0OTY1LCJ0eXBlIjoiYWNjZXNzIn0.-e1V9N0ehRJ6inUrP349pA5ANH5nku6Rrhwt2Ix5clo';
         
         if (token) {
             // If token exists, add it to the request headers

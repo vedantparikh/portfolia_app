@@ -9,8 +9,9 @@ import {
 } from 'lucide-react';
 import React from 'react';
 
-const PortfolioCard = ({ portfolio, stats, onEdit, onDelete }) => {
+const PortfolioCard = ({ portfolio, stats, onEdit, onDelete, onAddPosition, onViewDetails }) => {
     const formatCurrency = (amount) => {
+        if (amount === null || amount === undefined || isNaN(amount)) return '$0.00';
         return new Intl.NumberFormat('en-US', {
             style: 'currency',
             currency: 'USD',
@@ -20,26 +21,51 @@ const PortfolioCard = ({ portfolio, stats, onEdit, onDelete }) => {
     };
 
     const formatPercentage = (value) => {
+        if (value === null || value === undefined || isNaN(value)) return '0.00%';
         return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
     };
 
     const getChangeColor = (value) => {
+        if (!value || isNaN(value)) return 'text-gray-400';
         if (value > 0) return 'text-success-400';
         if (value < 0) return 'text-danger-400';
         return 'text-gray-400';
     };
 
     const getChangeIcon = (value) => {
+        if (!value || isNaN(value)) return null;
         if (value > 0) return <TrendingUp size={16} className="text-success-400" />;
         if (value < 0) return <TrendingDown size={16} className="text-danger-400" />;
         return null;
     };
 
     const handleDelete = () => {
-        if (window.confirm(`Are you sure you want to delete "${portfolio.name}"? This action cannot be undone.`)) {
+        if (window.confirm(`Are you sure you want to delete "${portfolio?.name || 'this portfolio'}"? This action cannot be undone.`)) {
             onDelete(portfolio.id);
         }
     };
+
+    const handleAddPosition = () => {
+        if (onAddPosition) {
+            onAddPosition(portfolio);
+        }
+    };
+
+    const handleViewDetails = () => {
+        if (onViewDetails) {
+            onViewDetails(portfolio);
+        }
+    };
+
+    if (!portfolio) {
+        return (
+            <div className="card p-6">
+                <div className="text-center text-gray-400">
+                    No portfolio selected
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="card p-6">
@@ -155,10 +181,18 @@ const PortfolioCard = ({ portfolio, stats, onEdit, onDelete }) => {
             {/* Quick Actions */}
             <div className="mt-6 pt-6 border-t border-dark-700">
                 <div className="flex space-x-3">
-                    <button className="flex-1 btn-primary text-sm py-2">
+                    <button
+                        onClick={handleAddPosition}
+                        className="flex-1 btn-primary text-sm py-2"
+                        title="Add a new position to this portfolio"
+                    >
                         Add Position
                     </button>
-                    <button className="flex-1 btn-outline text-sm py-2">
+                    <button
+                        onClick={handleViewDetails}
+                        className="flex-1 btn-outline text-sm py-2"
+                        title="View detailed portfolio information"
+                    >
                         View Details
                     </button>
                 </div>

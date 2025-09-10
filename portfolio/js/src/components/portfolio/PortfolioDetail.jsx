@@ -2,13 +2,17 @@ import {
     Activity,
     Download,
     Minus,
-    Plus
+    Plus,
+    RefreshCw
 } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { portfolioAPI } from '../../services/api';
 
 const PortfolioDetail = ({ portfolio, stats, transactions }) => {
     const [showAllTransactions, setShowAllTransactions] = useState(false);
     const [transactionFilter, setTransactionFilter] = useState('all');
+    const [holdings, setHoldings] = useState([]);
+    const [loadingHoldings, setLoadingHoldings] = useState(false);
 
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('en-US', {
@@ -53,17 +57,95 @@ const PortfolioDetail = ({ portfolio, stats, transactions }) => {
         ? filteredTransactions
         : filteredTransactions.slice(0, 10);
 
-    // Mock holdings data - in a real app, this would come from the API
-    const mockHoldings = [
-        { symbol: 'AAPL', name: 'Apple Inc.', quantity: 10, avgPrice: 150.00, currentPrice: 175.50, value: 1755.00, change: 16.67 },
-        { symbol: 'GOOGL', name: 'Alphabet Inc.', quantity: 5, avgPrice: 2800.00, currentPrice: 2950.00, value: 14750.00, change: 5.36 },
-        { symbol: 'MSFT', name: 'Microsoft Corporation', quantity: 8, avgPrice: 300.00, currentPrice: 320.00, value: 2560.00, change: 6.67 },
-        { symbol: 'TSLA', name: 'Tesla Inc.', quantity: 3, avgPrice: 800.00, currentPrice: 750.00, value: 2250.00, change: -6.25 },
-        { symbol: 'NVDA', name: 'NVIDIA Corporation', quantity: 6, avgPrice: 400.00, currentPrice: 450.00, value: 2700.00, change: 12.50 }
-    ];
+    // Load portfolio holdings
+    useEffect(() => {
+        if (portfolio && portfolio.id) {
+            loadHoldings();
+        }
+    }, [portfolio]);
 
-    const totalHoldingsValue = mockHoldings.reduce((sum, holding) => sum + holding.value, 0);
-    const totalCost = mockHoldings.reduce((sum, holding) => sum + (holding.quantity * holding.avgPrice), 0);
+    const loadHoldings = async () => {
+        if (!portfolio || !portfolio.id) return;
+
+        try {
+            setLoadingHoldings(true);
+            console.log('[PortfolioDetail] Loading holdings for portfolio:', portfolio.id);
+
+            // Try to get holdings from the API
+            const response = await portfolioAPI.getPortfolio(portfolio.id);
+            console.log('[PortfolioDetail] Portfolio response:', response);
+
+            // Mock holdings data fallback - replace with real API data when available
+            const mockHoldings = [
+                {
+                    id: 1,
+                    symbol: 'AAPL',
+                    name: 'Apple Inc.',
+                    quantity: 10,
+                    avgPrice: 150.00,
+                    currentPrice: 175.50,
+                    value: 1755.00,
+                    change: 16.67,
+                    gainLoss: 255.00
+                },
+                {
+                    id: 2,
+                    symbol: 'GOOGL',
+                    name: 'Alphabet Inc.',
+                    quantity: 5,
+                    avgPrice: 2800.00,
+                    currentPrice: 2950.00,
+                    value: 14750.00,
+                    change: 5.36,
+                    gainLoss: 750.00
+                },
+                {
+                    id: 3,
+                    symbol: 'MSFT',
+                    name: 'Microsoft Corporation',
+                    quantity: 8,
+                    avgPrice: 300.00,
+                    currentPrice: 320.00,
+                    value: 2560.00,
+                    change: 6.67,
+                    gainLoss: 160.00
+                },
+                {
+                    id: 4,
+                    symbol: 'TSLA',
+                    name: 'Tesla Inc.',
+                    quantity: 3,
+                    avgPrice: 800.00,
+                    currentPrice: 750.00,
+                    value: 2250.00,
+                    change: -6.25,
+                    gainLoss: -150.00
+                },
+                {
+                    id: 5,
+                    symbol: 'NVDA',
+                    name: 'NVIDIA Corporation',
+                    quantity: 6,
+                    avgPrice: 400.00,
+                    currentPrice: 450.00,
+                    value: 2700.00,
+                    change: 12.50,
+                    gainLoss: 300.00
+                }
+            ];
+
+            setHoldings(mockHoldings);
+        } catch (error) {
+            console.warn('[PortfolioDetail] Failed to load holdings:', error);
+            // Set empty holdings on error
+            setHoldings([]);
+        } finally {
+            setLoadingHoldings(false);
+        }
+    };
+
+    const totalHoldingsValue = holdings.reduce((sum, holding) => sum + (holding.value || 0), 0);
+    const totalCost = holdings.reduce((sum, holding) => sum + ((holding.quantity || 0) * (holding.avgPrice || 0)), 0);
     const totalGainLoss = totalHoldingsValue - totalCost;
     const totalGainLossPercent = totalCost > 0 ? (totalGainLoss / totalCost) * 100 : 0;
 
@@ -74,6 +156,14 @@ const PortfolioDetail = ({ portfolio, stats, transactions }) => {
                 <div className="flex items-center justify-between mb-6">
                     <h3 className="text-lg font-semibold text-gray-100">Holdings</h3>
                     <div className="flex items-center space-x-2">
+                        <button
+                            onClick={loadHoldings}
+                            disabled={loadingHoldings}
+                            className="btn-outline text-sm flex items-center space-x-2"
+                        >
+                            <RefreshCw size={16} className={loadingHoldings ? 'animate-spin' : ''} />
+                            <span>Refresh</span>
+                        </button>
                         <button className="btn-outline text-sm flex items-center space-x-2">
                             <Download size={16} />
                             <span>Export</span>
@@ -100,40 +190,55 @@ const PortfolioDetail = ({ portfolio, stats, transactions }) => {
                             </tr>
                         </thead>
                         <tbody>
-                            {mockHoldings.map((holding, index) => (
-                                <tr key={index} className="border-b border-dark-800 hover:bg-dark-800/50 transition-colors">
-                                    <td className="py-3 px-4">
-                                        <span className="font-medium text-gray-100">{holding.symbol}</span>
-                                    </td>
-                                    <td className="py-3 px-4">
-                                        <span className="text-gray-300">{holding.name}</span>
-                                    </td>
-                                    <td className="py-3 px-4 text-right">
-                                        <span className="text-gray-100">{holding.quantity}</span>
-                                    </td>
-                                    <td className="py-3 px-4 text-right">
-                                        <span className="text-gray-100">{formatCurrency(holding.avgPrice)}</span>
-                                    </td>
-                                    <td className="py-3 px-4 text-right">
-                                        <span className="text-gray-100">{formatCurrency(holding.currentPrice)}</span>
-                                    </td>
-                                    <td className="py-3 px-4 text-right">
-                                        <span className="text-gray-100 font-medium">{formatCurrency(holding.value)}</span>
-                                    </td>
-                                    <td className="py-3 px-4 text-right">
-                                        <span className={`font-medium ${holding.change >= 0 ? 'text-success-400' : 'text-danger-400'
-                                            }`}>
-                                            {holding.change >= 0 ? '+' : ''}{formatCurrency(holding.value - (holding.quantity * holding.avgPrice))}
-                                        </span>
-                                    </td>
-                                    <td className="py-3 px-4 text-right">
-                                        <span className={`font-medium ${holding.change >= 0 ? 'text-success-400' : 'text-danger-400'
-                                            }`}>
-                                            {holding.change >= 0 ? '+' : ''}{holding.change.toFixed(2)}%
-                                        </span>
+                            {loadingHoldings ? (
+                                <tr>
+                                    <td colSpan="8" className="py-8 text-center">
+                                        <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-primary-400" />
+                                        <span className="text-gray-400">Loading holdings...</span>
                                     </td>
                                 </tr>
-                            ))}
+                            ) : holdings.length === 0 ? (
+                                <tr>
+                                    <td colSpan="8" className="py-8 text-center">
+                                        <span className="text-gray-400">No holdings found in this portfolio</span>
+                                    </td>
+                                </tr>
+                            ) : (
+                                holdings.map((holding, index) => (
+                                    <tr key={index} className="border-b border-dark-800 hover:bg-dark-800/50 transition-colors">
+                                        <td className="py-3 px-4">
+                                            <span className="font-medium text-gray-100">{holding.symbol}</span>
+                                        </td>
+                                        <td className="py-3 px-4">
+                                            <span className="text-gray-300">{holding.name}</span>
+                                        </td>
+                                        <td className="py-3 px-4 text-right">
+                                            <span className="text-gray-100">{holding.quantity}</span>
+                                        </td>
+                                        <td className="py-3 px-4 text-right">
+                                            <span className="text-gray-100">{formatCurrency(holding.avgPrice)}</span>
+                                        </td>
+                                        <td className="py-3 px-4 text-right">
+                                            <span className="text-gray-100">{formatCurrency(holding.currentPrice)}</span>
+                                        </td>
+                                        <td className="py-3 px-4 text-right">
+                                            <span className="text-gray-100 font-medium">{formatCurrency(holding.value)}</span>
+                                        </td>
+                                        <td className="py-3 px-4 text-right">
+                                            <span className={`font-medium ${(holding.gainLoss || 0) >= 0 ? 'text-success-400' : 'text-danger-400'
+                                                }`}>
+                                                {(holding.gainLoss || 0) >= 0 ? '+' : ''}{formatCurrency(holding.gainLoss || 0)}
+                                            </span>
+                                        </td>
+                                        <td className="py-3 px-4 text-right">
+                                            <span className={`font-medium ${(holding.change || 0) >= 0 ? 'text-success-400' : 'text-danger-400'
+                                                }`}>
+                                                {(holding.change || 0) >= 0 ? '+' : ''}{(holding.change || 0).toFixed(2)}%
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
                         </tbody>
                         <tfoot>
                             <tr className="border-t border-dark-700">
@@ -248,10 +353,10 @@ const PortfolioDetail = ({ portfolio, stats, transactions }) => {
                 <div className="card p-6">
                     <h3 className="text-lg font-semibold text-gray-100 mb-4">Asset Allocation</h3>
                     <div className="space-y-4">
-                        {mockHoldings.map((holding, index) => {
-                            const percentage = (holding.value / totalHoldingsValue) * 100;
+                        {holdings.length > 0 ? holdings.map((holding, index) => {
+                            const percentage = totalHoldingsValue > 0 ? ((holding.value || 0) / totalHoldingsValue) * 100 : 0;
                             return (
-                                <div key={index} className="space-y-2">
+                                <div key={holding.id || index} className="space-y-2">
                                     <div className="flex items-center justify-between">
                                         <span className="text-sm font-medium text-gray-100">{holding.symbol}</span>
                                         <span className="text-sm text-gray-400">{percentage.toFixed(1)}%</span>
@@ -259,12 +364,16 @@ const PortfolioDetail = ({ portfolio, stats, transactions }) => {
                                     <div className="w-full bg-dark-700 rounded-full h-2">
                                         <div
                                             className="bg-primary-400 h-2 rounded-full transition-all duration-300"
-                                            style={{ width: `${percentage}%` }}
+                                            style={{ width: `${Math.min(percentage, 100)}%` }}
                                         />
                                     </div>
                                 </div>
                             );
-                        })}
+                        }) : (
+                            <div className="text-center text-gray-400 py-8">
+                                No holdings to display allocation for
+                            </div>
+                        )}
                     </div>
                 </div>
 
