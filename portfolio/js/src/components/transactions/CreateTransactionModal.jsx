@@ -9,6 +9,7 @@ import {
     Merge,
     Plus,
     Repeat,
+    Save,
     TrendingDown,
     TrendingUp,
     X,
@@ -17,9 +18,9 @@ import {
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
-import { marketAPI } from '../../services/api';
+import { assetAPI, marketAPI } from '../../services/api';
 import assetCache from '../../services/assetCache';
-import { ClientSideAssetSearch } from '../shared';
+import { ClientSideAssetSearch, SymbolSearch } from '../shared';
 
 const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
     const { isAuthenticated } = useAuth();  // Get the authentication status
@@ -42,6 +43,19 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
     const [isCreatingAsset, setIsCreatingAsset] = useState(false);
     const [fetchingPrice, setFetchingPrice] = useState(false);
     const [showAllTransactionTypes, setShowAllTransactionTypes] = useState(false);
+    const [showAssetCreationForm, setShowAssetCreationForm] = useState(false);
+    const [assetFormData, setAssetFormData] = useState({
+        symbol: '',
+        name: '',
+        asset_type: 'EQUITY',
+        exchange: '',
+        sector: '',
+        industry: '',
+        country: '',
+        description: '',
+        is_active: true
+    });
+    const [assetCreationLoading, setAssetCreationLoading] = useState(false);
 
     // Transaction types configuration
     const transactionTypes = [
@@ -355,6 +369,77 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
         return (quantity * price) + fees;
     };
 
+    const handleAssetInputChange = (e) => {
+        const { name, value } = e.target;
+        setAssetFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleAssetSymbolChange = (value) => {
+        setAssetFormData(prev => ({ ...prev, symbol: value }));
+    };
+
+    const handleAssetSymbolSelect = (suggestion) => {
+        setAssetFormData(prev => ({
+            ...prev,
+            symbol: suggestion.symbol,
+            name: suggestion.long_name || suggestion.short_name || suggestion.name,
+            exchange: suggestion.exchange,
+            asset_type: suggestion.quote_type.toUpperCase(),
+            sector: suggestion.sector,
+            industry: suggestion.industry,
+            country: suggestion.country,
+        }));
+    };
+
+    const handleCreateAsset = async () => {
+        if (!assetFormData.symbol || !assetFormData.name || !assetFormData.asset_type) {
+            toast.error('Please fill in all required fields (Symbol, Name, Asset Type)');
+            return;
+        }
+
+        try {
+            setAssetCreationLoading(true);
+            
+            // Create the asset
+            const createdAsset = await assetAPI.createAsset(assetFormData);
+            
+            // Update the transaction form with the new asset
+            setFormData(prev => ({
+                ...prev,
+                asset_id: createdAsset.id,
+                symbol: createdAsset.symbol
+            }));
+            
+            setSelectedAsset(createdAsset);
+            setShowAssetCreationForm(false);
+            
+            // Clear asset form
+            setAssetFormData({
+                symbol: '',
+                name: '',
+                asset_type: 'EQUITY',
+                exchange: '',
+                sector: '',
+                industry: '',
+                country: '',
+                description: '',
+                is_active: true
+            });
+            
+            toast.success('Asset created successfully and selected for transaction');
+            
+            // Try to fetch current price for the new asset
+            if (createdAsset.symbol) {
+                await fetchCurrentPrice(createdAsset.symbol);
+            }
+        } catch (error) {
+            console.error('Failed to create asset:', error);
+            toast.error('Failed to create asset');
+        } finally {
+            setAssetCreationLoading(false);
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
 
@@ -380,13 +465,15 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
                 // Continue with the updated asset_id
                 formData.asset_id = cachedAsset.id;
             } else {
-                toast.error(`Asset "${formData.symbol}" not found. Please select an asset from the search results or add it first in the Assets section.`);
+                // Show option to create asset instead of just error
+                setShowAssetCreationForm(true);
+                toast.error(`Asset "${formData.symbol}" not found. You can create it using the form below.`);
                 return;
             }
         }
 
         if (!formData.asset_id) {
-            toast.error('Please select an asset from the search results. If the asset doesn\'t exist, add it first in the Assets section.');
+            toast.error('Please select an asset from the search results or create a new one.');
             return;
         }
 
@@ -595,10 +682,176 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
                             </div>
                         )}
 
-                        {/* Help Text */}
-                        <div className="mt-2 text-xs text-gray-500">
-                            If the asset doesn't exist, add it first in the Assets section.
+                        {/* Help Text and Create Asset Button */}
+                        <div className="mt-2 flex items-center justify-between">
+                            <div className="text-xs text-gray-500">
+                                If the asset doesn't exist, you can create it below.
+                            </div>
+                            {!showAssetCreationForm && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowAssetCreationForm(true);
+                                        setAssetFormData(prev => ({ ...prev, symbol: formData.symbol }));
+                                        // Trigger symbol search when opening the form
+                                        if (formData.symbol) {
+                                            handleAssetSymbolChange(formData.symbol);
+                                        }
+                                    }}
+                                    className="text-xs text-primary-400 hover:text-primary-300 transition-colors flex items-center space-x-1"
+                                >
+                                    <Plus size={12} />
+                                    <span>Create New Asset</span>
+                                </button>
+                            )}
                         </div>
+
+                        {/* Asset Creation Form */}
+                        {showAssetCreationForm && (
+                            <div className="mt-4 p-4 bg-dark-800 rounded-lg border border-dark-600">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-gray-100">Create New Asset</h3>
+                                        <p className="text-sm text-gray-400">Create the asset "{formData.symbol}" and use it for this transaction</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowAssetCreationForm(false)}
+                                        className="p-2 text-gray-400 hover:text-gray-300 transition-colors"
+                                    >
+                                        <X size={16} />
+                                    </button>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="md:col-span-2">
+                                            <label className="block text-sm font-medium text-gray-300 mb-2">Symbol <span className="text-red-400">*</span></label>
+                                            <SymbolSearch 
+                                                value={assetFormData.symbol} 
+                                                onChange={handleAssetSymbolChange} 
+                                                onSelect={handleAssetSymbolSelect} 
+                                                placeholder="e.g., AAPL, BTC" 
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-300 mb-2">Asset Name <span className="text-red-400">*</span></label>
+                                            <input
+                                                type="text"
+                                                name="name"
+                                                value={assetFormData.name}
+                                                onChange={handleAssetInputChange}
+                                                placeholder="e.g., Apple Inc., Bitcoin"
+                                                className="input-field w-full"
+                                                required
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-300 mb-2">Asset Type <span className="text-red-400">*</span></label>
+                                            <select
+                                                name="asset_type"
+                                                value={assetFormData.asset_type}
+                                                onChange={handleAssetInputChange}
+                                                className="input-field w-full"
+                                                required
+                                            >
+                                                <option value="EQUITY">Equity (Stock)</option>
+                                                <option value="ETF">ETF</option>
+                                                <option value="CRYPTOCURRENCY">Cryptocurrency</option>
+                                                <option value="MUTUALFUND">Mutual Fund</option>
+                                                <option value="COMMODITY">Commodity</option>
+                                                <option value="INDEX">Index</option>
+                                                <option value="CASH">Cash</option>
+                                                <option value="BOND">Bond</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-300 mb-2">Exchange <span className="text-gray-500">(Optional)</span></label>
+                                            <input
+                                                type="text"
+                                                name="exchange"
+                                                value={assetFormData.exchange}
+                                                onChange={handleAssetInputChange}
+                                                placeholder="e.g., NMS, NASDAQ, NYSE"
+                                                className="input-field w-full"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-300 mb-2">Sector <span className="text-gray-500">(Optional)</span></label>
+                                            <input
+                                                type="text"
+                                                name="sector"
+                                                value={assetFormData.sector}
+                                                onChange={handleAssetInputChange}
+                                                placeholder="e.g., Technology, Healthcare"
+                                                className="input-field w-full"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-300 mb-2">Industry <span className="text-gray-500">(Optional)</span></label>
+                                            <input
+                                                type="text"
+                                                name="industry"
+                                                value={assetFormData.industry}
+                                                onChange={handleAssetInputChange}
+                                                placeholder="e.g., Consumer Electronics, Software"
+                                                className="input-field w-full"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-300 mb-2">Country <span className="text-gray-500">(Optional)</span></label>
+                                            <input
+                                                type="text"
+                                                name="country"
+                                                value={assetFormData.country}
+                                                onChange={handleAssetInputChange}
+                                                placeholder="e.g., United States, Canada"
+                                                className="input-field w-full"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">Description <span className="text-gray-500">(Optional)</span></label>
+                                        <textarea
+                                            name="description"
+                                            value={assetFormData.description}
+                                            onChange={handleAssetInputChange}
+                                            placeholder="Detailed description of the asset..."
+                                            rows={2}
+                                            className="input-field w-full resize-none"
+                                        />
+                                    </div>
+                                    <div className="flex items-center justify-end space-x-3 pt-4 border-t border-dark-700">
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowAssetCreationForm(false)}
+                                            className="btn-secondary"
+                                            disabled={assetCreationLoading}
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={handleCreateAsset}
+                                            className="btn-primary flex items-center space-x-2"
+                                            disabled={assetCreationLoading}
+                                        >
+                                            {assetCreationLoading ? (
+                                                <>
+                                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                    <span>Creating...</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Save size={16} />
+                                                    <span>Create Asset</span>
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                     {/* Amount, Quantity and Price */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

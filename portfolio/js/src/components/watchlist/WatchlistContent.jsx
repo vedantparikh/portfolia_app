@@ -15,7 +15,6 @@ import React, { useEffect, useState } from 'react';
 import { DragDropContext, Draggable, Droppable } from 'react-beautiful-dnd';
 import toast from 'react-hot-toast';
 import { watchlistAPI } from '../../services/api';
-import { LoadingSpinner } from '../shared';
 import EditSymbolModal from './EditSymbolModal';
 
 // WatchlistContent component - displays the symbols table with search, sort, and refresh controls
@@ -42,10 +41,9 @@ const WatchlistContent = ({
     // ===== STATE MANAGEMENT =====
     // useState is a React Hook that lets you add state to functional components
     // Each useState call returns an array with two elements: [currentValue, setterFunction]
-
+    const [loadingItems, setLoadingItems] = useState(true);
     // Search functionality state
     const [searchTerm, setSearchTerm] = useState(''); // Current search input value
-    const [loadingItems, setLoadingItems] = useState(false); // Loading state for watchlist items
 
     // Sorting functionality state
     const [sortBy, setSortBy] = useState('symbol'); // Which column to sort by
@@ -292,13 +290,11 @@ const WatchlistContent = ({
     // Show loading state when loading watchlist items
     if (loadingItems) {
         return (
-            <div className="flex-1 flex items-center justify-center">
-                <LoadingSpinner
-                    size="lg"
-                    color="primary"
-                    text="Loading watchlist items..."
-                    centered
-                />
+            <div className="min-h-screen gradient-bg flex items-center justify-center">
+                <div className="text-center">
+                    <RefreshCw className="w-8 h-8 text-primary-400 animate-spin mx-auto mb-4" />
+                    <p className="text-gray-400">Loading watchlist items...</p>
+                </div>
             </div>
         );
     }
