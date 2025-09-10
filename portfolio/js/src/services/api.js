@@ -529,7 +529,7 @@ export const userAssetsAPI = {
         const portfolioAssetData = {
             portfolio_id: portfolioId,
             asset_id: assetId,
-            quantity: assetData.quantity || 1,
+            quantity: assetData.quantity || 0,
             cost_basis: assetData.purchase_price || 0
         };
         

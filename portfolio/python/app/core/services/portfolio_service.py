@@ -104,7 +104,7 @@ class PortfolioService:
         return False
 
     # Portfolio Asset Management
-    def add_asset_to_portfolio(
+    async def add_asset_to_portfolio(
         self, portfolio_id: int, asset_data: PortfolioAssetCreate, user_id: int
     ) -> Optional[PortfolioAsset]:
         """Add an asset to a portfolio."""
@@ -138,7 +138,7 @@ class PortfolioService:
             existing_asset.cost_basis_total = new_cost_basis_total
 
             # Update current value and P&L if available
-            self._update_asset_pnl(existing_asset)
+            await self._update_asset_pnl(existing_asset)
 
             self.db.commit()
             self.db.refresh(existing_asset)
@@ -154,14 +154,14 @@ class PortfolioService:
         )
 
         # Calculate initial P&L if current price is available
-        portfolio_asset = self._update_asset_pnl(portfolio_asset)
+        portfolio_asset = await self._update_asset_pnl(portfolio_asset)
 
         self.db.add(portfolio_asset)
         self.db.commit()
         self.db.refresh(portfolio_asset)
         return portfolio_asset
 
-    def _update_asset_pnl(self, portfolio_asset: PortfolioAsset) -> PortfolioAsset:
+    async def _update_asset_pnl(self, portfolio_asset: PortfolioAsset) -> PortfolioAsset:
         """Update unrealized P&L for a portfolio asset."""
         # Get current asset price
         current_price = (
@@ -174,9 +174,9 @@ class PortfolioService:
         if not current_price:
             asset = self.db.query(Asset).filter(Asset.id == portfolio_asset.asset_id).first()
             if asset:
-                close_price = self.market_data_service.get_current_price(asset.symbol)
+                close_price = await self.market_data_service.get_current_price(asset.symbol)
 
-        if current_price:
+        if close_price:
             current_value = float(close_price) * float(
                 portfolio_asset.quantity
             )
@@ -195,7 +195,7 @@ class PortfolioService:
                 portfolio_asset.unrealized_pnl_percent = Decimal("0")
         return portfolio_asset
 
-    def update_portfolio_asset(
+    async def update_portfolio_asset(
         self,
         portfolio_id: int,
         asset_id: int,
@@ -239,7 +239,7 @@ class PortfolioService:
 
         # Update P&L if not manually set
         if asset_data.current_value is None and asset_data.unrealized_pnl is None:
-            portfolio_asset = self._update_asset_pnl(portfolio_asset)
+            portfolio_asset = await self._update_asset_pnl(portfolio_asset)
 
         # Note: last_updated is handled by SQLAlchemy onupdate trigger
         self.db.commit()
@@ -287,7 +287,7 @@ class PortfolioService:
             .all()
         )
 
-    def get_portfolio_assets_with_details(
+    async def get_portfolio_assets_with_details(
         self, portfolio_id: int, user_id: int
     ) -> List[PortfolioAssetWithDetails]:
         """Get portfolio assets with additional asset information."""
@@ -304,11 +304,10 @@ class PortfolioService:
 
         result = []
         for portfolio_asset, asset in assets:
-            # Update P&L if needed
-            # if portfolio_asset.current_value is None:
-            portfolio_asset = self._update_asset_pnl(portfolio_asset)
-            self.db.refresh(portfolio_asset)
+            portfolio_asset = await self._update_asset_pnl(portfolio_asset)
+            self.db.add(portfolio_asset)
             self.db.commit()
+            self.db.refresh(portfolio_asset)
 
 
             asset_details = PortfolioAssetWithDetails(
@@ -366,7 +365,7 @@ class PortfolioService:
 
         return transaction
 
-    def _update_portfolio_asset_from_transaction(
+    async def _update_portfolio_asset_from_transaction(
         self, portfolio_id: int, asset_id: int, transaction: Transaction
     ):
         """Update portfolio asset based on transaction."""
@@ -421,7 +420,7 @@ class PortfolioService:
 
         # Update P&L after transaction
         if portfolio_asset and portfolio_asset in self.db:
-            portfolio_asset = self._update_asset_pnl(portfolio_asset)
+            portfolio_asset = await self._update_asset_pnl(portfolio_asset)
             self.db.refresh(portfolio_asset)
 
         # Note: last_updated is handled by SQLAlchemy onupdate trigger
@@ -559,7 +558,7 @@ class PortfolioService:
         # Use utility function for performance calculation
         return get_portfolio_performance_summary(self.db, portfolio_id, days)
 
-    def get_portfolio_holdings(
+    async def get_portfolio_holdings(
         self, portfolio_id: int, user_id: int
     ) -> List[PortfolioHolding]:
         """Get detailed portfolio holdings with current values."""
@@ -576,7 +575,7 @@ class PortfolioService:
             if asset_info:
                 # Update P&L if needed
                 if asset.current_value is None:
-                    self._update_asset_pnl(asset)
+                    await self._update_asset_pnl(asset)
                     self.db.commit()
 
                 holding = PortfolioHolding(
@@ -645,7 +644,7 @@ class PortfolioService:
             total_value=round(total_value, 2),
         )
 
-    def refresh_portfolio_values(self, portfolio_id: int, user_id: int) -> bool:
+    async def refresh_portfolio_values(self, portfolio_id: int, user_id: int) -> bool:
         """Refresh current values and P&L for all assets in a portfolio."""
         portfolio = self.get_portfolio(portfolio_id, user_id)
         if not portfolio:
@@ -658,7 +657,7 @@ class PortfolioService:
             old_current_value = asset.current_value
             old_unrealized_pnl = asset.unrealized_pnl
 
-            self._update_asset_pnl(asset)
+            await self._update_asset_pnl(asset)
 
             if (
                 asset.current_value != old_current_value

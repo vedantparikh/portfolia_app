@@ -52,8 +52,10 @@ const ClientSideAssetSearch = ({
             if (query && query.length >= 2) {
                 const filtered = assetCache.filterAssets(query, 8);
                 setFilteredAssets(filtered);
+                setShowSuggestionsDropdown(true);
             } else {
                 setFilteredAssets([]);
+                setShowSuggestionsDropdown(false);
             }
         }, 200); // Reduced debounce time since filtering is now in-memory
     }, []);
@@ -143,10 +145,10 @@ const ClientSideAssetSearch = ({
 
     // Handle input focus
     const handleFocus = useCallback(() => {
-        if (value && filteredAssets.length > 0) {
+        if (value && value.length >= 2) {
             setShowSuggestionsDropdown(true);
         }
-    }, [value, filteredAssets.length]);
+    }, [value]);
 
     // Handle input blur
     const handleBlur = useCallback(() => {
