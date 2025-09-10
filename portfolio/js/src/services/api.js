@@ -42,7 +42,7 @@ const api = axios.create({
 api.interceptors.request.use(
     (config) => {
         // Get the access token from browser storage or use the provided token
-        const token = localStorage.getItem('access_token') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwiZW1haWwiOiJ2ZG50cGFyaWtoQGdtYWlsLmNvbSIsInVzZXJuYW1lIjoiYnViYmx5IiwiZXhwIjoxNzU3MjQwMjU2LCJ0eXBlIjoiYWNjZXNzIn0.cIv6aS09FEJjUpX1-Lovt_4W4xUgN2lURlD7Nat95R4';
+        const token = localStorage.getItem('access_token') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwiZW1haWwiOiJ2ZG50cGFyaWtoQGdtYWlsLmNvbSIsInVzZXJuYW1lIjoiYnViYmx5IiwiZXhwIjoxNzU3NDM0OTY1LCJ0eXBlIjoiYWNjZXNzIn0.-e1V9N0ehRJ6inUrP349pA5ANH5nku6Rrhwt2Ix5clo';
         
         if (token) {
             // If token exists, add it to the request headers
@@ -394,8 +394,11 @@ export const marketAPI = {
       Returns: Server response with latest market data
     */
     getStockLatestData: async (symbols) => {
-        // Use the symbol-data endpoint which we know works
-        const response = await api.get(`/stock/symbol-data?name=${symbols}`);
+        // Convert array to comma-separated string if needed
+        const symbolsParam = Array.isArray(symbols) ? symbols.join(',') : symbols;
+        const response = await api.get(`/stock/stock-latest-data`, {
+            params: { symbols: symbolsParam }
+        });
         return response.data;
     },
 };
@@ -526,7 +529,7 @@ export const userAssetsAPI = {
         const portfolioAssetData = {
             portfolio_id: portfolioId,
             asset_id: assetId,
-            quantity: assetData.quantity || 1,
+            quantity: assetData.quantity || 0,
             cost_basis: assetData.purchase_price || 0
         };
         

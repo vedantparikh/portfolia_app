@@ -147,9 +147,12 @@ const AssetModal = ({ asset, mode = 'view', onClose, onSave }) => {
         setFormData(prev => ({
             ...prev,
             symbol: suggestion.symbol,
-            name: suggestion.longname || suggestion.shortname || suggestion.name,
+            name: suggestion.long_name || suggestion.short_name || suggestion.name,
             exchange: suggestion.exchange,
-            asset_type: suggestion.quoteType.toUpperCase(),
+            asset_type: suggestion.quote_type.toUpperCase(),
+            sector: suggestion.sector,
+            industry: suggestion.industry,
+            country: suggestion.country,
         }));
     };
 

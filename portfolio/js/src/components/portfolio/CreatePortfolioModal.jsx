@@ -24,8 +24,24 @@ const CreatePortfolioModal = ({ onClose, onCreate }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
+        // Validation
         if (!formData.name.trim()) {
             toast.error('Portfolio name is required');
+            return;
+        }
+
+        if (formData.name.trim().length < 2) {
+            toast.error('Portfolio name must be at least 2 characters long');
+            return;
+        }
+
+        if (formData.initial_cash && parseFloat(formData.initial_cash) < 0) {
+            toast.error('Initial cash cannot be negative');
+            return;
+        }
+
+        if (formData.target_return && (parseFloat(formData.target_return) < 0 || parseFloat(formData.target_return) > 100)) {
+            toast.error('Target return must be between 0% and 100%');
             return;
         }
 
@@ -34,16 +50,18 @@ const CreatePortfolioModal = ({ onClose, onCreate }) => {
 
             const portfolioData = {
                 name: formData.name.trim(),
-                description: formData.description.trim(),
+                description: formData.description.trim() || '',
                 initial_cash: formData.initial_cash ? parseFloat(formData.initial_cash) : 0,
                 target_return: formData.target_return ? parseFloat(formData.target_return) : null,
-                risk_tolerance: formData.risk_tolerance,
-                is_public: formData.is_public
+                risk_tolerance: formData.risk_tolerance || 'moderate',
+                is_public: formData.is_public || false
             };
 
+            console.log('[CreatePortfolioModal] Submitting portfolio data:', portfolioData);
             await onCreate(portfolioData);
         } catch (error) {
             console.error('Error creating portfolio:', error);
+            toast.error('Failed to create portfolio. Please try again.');
         } finally {
             setLoading(false);
         }

@@ -15,6 +15,7 @@ from app.core.database.models.portfolio_analytics import (
     PortfolioRiskMetrics,
 )
 from app.core.schemas.portfolio import PortfolioHolding
+from app.core.services.portfolio_service import PortfolioService
 
 
 class PortfolioDashboardService:
@@ -23,7 +24,7 @@ class PortfolioDashboardService:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_dashboard_overview(self, portfolio_id: int, user_id: int) -> Dict[str, Any]:
+    async def get_dashboard_overview(self, portfolio_id: int, user_id: int) -> Dict[str, Any]:
         """Get comprehensive dashboard overview for a portfolio."""
         # Get portfolio basic info
         portfolio = (
@@ -42,7 +43,7 @@ class PortfolioDashboardService:
             raise ValueError("Portfolio not found")
 
         # Get current holdings
-        holdings = self._get_portfolio_holdings(portfolio_id)
+        holdings = await self._get_portfolio_holdings(portfolio_id)
         
         # Calculate basic metrics
         total_value = sum(float(h.current_value or h.cost_basis_total) for h in holdings)
@@ -85,7 +86,7 @@ class PortfolioDashboardService:
             "recent_activity": recent_activity,
         }
 
-    def _get_portfolio_holdings(self, portfolio_id: int) -> List[PortfolioHolding]:
+    async def _get_portfolio_holdings(self, portfolio_id: int) -> List[PortfolioHolding]:
         """Get detailed portfolio holdings."""
         holdings_data = (
             self.db.query(PortfolioAsset, Asset)
@@ -98,7 +99,7 @@ class PortfolioDashboardService:
         for portfolio_asset, asset in holdings_data:
             # Update P&L if needed
             if portfolio_asset.current_value is None:
-                self._update_asset_pnl(portfolio_asset)
+                await self._update_asset_pnl(portfolio_asset)
 
             holding = PortfolioHolding(
                 asset_id=asset.id,
@@ -256,13 +257,13 @@ class PortfolioDashboardService:
 
         return activity
 
-    def _update_asset_pnl(self, portfolio_asset: PortfolioAsset) -> None:
+    async def _update_asset_pnl(self, portfolio_asset: PortfolioAsset) -> None:
         """Update unrealized P&L for a portfolio asset."""
         # This would integrate with your existing market data service
         # For now, we'll use a simplified approach
-        from app.core.services.portfolio_service import PortfolioService
+
         portfolio_service = PortfolioService(self.db)
-        portfolio_service._update_asset_pnl(portfolio_asset)
+        await portfolio_service._update_asset_pnl(portfolio_asset)
 
     def get_portfolio_performance_chart_data(
         self, portfolio_id: int, days: int = 30

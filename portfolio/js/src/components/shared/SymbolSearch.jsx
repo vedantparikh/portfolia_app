@@ -71,7 +71,9 @@ const SymbolSearch = ({
         try {
             const results = await marketAPI.searchSymbols(value.trim());
             setSuggestions(results || []);
-            setShowSuggestionsDropdown(true);
+            if (results && results.length > 0) {
+                setShowSuggestionsDropdown(true);
+            }
         } catch (error) {
             console.error('Failed to search symbols:', error);
             setSuggestions([]);
@@ -101,8 +103,11 @@ const SymbolSearch = ({
     };
 
     const handleFocus = () => {
-        if (value && suggestions.length > 0) {
+        if (value && value.length >= 2 && suggestions.length > 0) {
             setShowSuggestionsDropdown(true);
+        } else if (value && value.length >= 2) {
+            // Trigger search if we have a value but no suggestions yet
+            performSymbolSearch(value);
         }
     };
 

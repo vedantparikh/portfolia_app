@@ -1,6 +1,7 @@
-import { Database, Search, TrendingUp } from 'lucide-react';
-import React, { useEffect, useRef, useState } from 'react';
-import { assetAPI, marketAPI } from '../../services/api';
+import { Database, Search } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { marketAPI } from '../../services/api';
+import assetCache from '../../services/assetCache';
 import LoadingSpinner from './LoadingSpinner';
 
 const ClientSideAssetSearch = ({
@@ -10,88 +11,120 @@ const ClientSideAssetSearch = ({
     onPriceUpdate,
     placeholder = "Search assets...",
     disabled = false,
-    showSuggestions = true
+    showSuggestions = true,
+    preloadAssets = false
 }) => {
-    const [allAssets, setAllAssets] = useState([]);
     const [filteredAssets, setFilteredAssets] = useState([]);
     const [showSuggestionsDropdown, setShowSuggestionsDropdown] = useState(false);
     const [loading, setLoading] = useState(false);
     const [searching, setSearching] = useState(false);
-    const [selectedAsset, setSelectedAsset] = useState(null);
     const inputRef = useRef(null);
     const dropdownRef = useRef(null);
+    const debounceTimeoutRef = useRef(null);
 
-    // Fetch all assets on component mount
+    // Subscribe to asset cache updates and preload if needed
     useEffect(() => {
-        fetchAllAssets();
+        // Subscribe to cache updates
+        const unsubscribe = assetCache.subscribe(({ isLoading: cacheLoading }) => {
+            setLoading(cacheLoading);
+        });
+
+        // Preload assets if requested or if this is a transaction-related component
+        if (preloadAssets) {
+            assetCache.preloadAssets();
+        }
+
+        return () => {
+            unsubscribe();
+            if (debounceTimeoutRef.current) {
+                clearTimeout(debounceTimeoutRef.current);
+            }
+        };
+    }, [preloadAssets]);
+
+    // Debounced filter function using asset cache
+    const debouncedFilter = useCallback((query) => {
+        if (debounceTimeoutRef.current) {
+            clearTimeout(debounceTimeoutRef.current);
+        }
+
+        debounceTimeoutRef.current = setTimeout(() => {
+            if (query && query.length >= 2) {
+                const filtered = assetCache.filterAssets(query, 8);
+                setFilteredAssets(filtered);
+                setShowSuggestionsDropdown(true);
+            } else {
+                setFilteredAssets([]);
+                setShowSuggestionsDropdown(false);
+            }
+        }, 200); // Reduced debounce time since filtering is now in-memory
     }, []);
 
-    // Filter assets based on search query
+    // Filter assets based on search query with debouncing
     useEffect(() => {
-        if (value && value.length >= 2) {
-            filterAssets(value);
-        } else {
-            setFilteredAssets([]);
-        }
-    }, [value, allAssets]);
+        debouncedFilter(value);
+    }, [value, debouncedFilter]);
 
-    const fetchAllAssets = async () => {
-        try {
-            setLoading(true);
-            const response = await assetAPI.getAssets({ limit: 1000 }); // Get all assets
-            setAllAssets(response || []);
-        } catch (error) {
-            console.error('Failed to fetch assets:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const filterAssets = (query) => {
-        if (!query || query.length < 2) {
-            setFilteredAssets([]);
-            return;
-        }
-
-        const searchTerm = query.toLowerCase();
-        const filtered = allAssets.filter(asset =>
-            asset.symbol.toLowerCase().includes(searchTerm) ||
-            (asset.name && asset.name.toLowerCase().includes(searchTerm))
-        );
-
-        // Limit to 10 results for better performance
-        setFilteredAssets(filtered.slice(0, 10));
-    };
-
-    const fetchCurrentPrice = async (symbol) => {
+    const fetchCurrentPrice = useCallback(async (symbol) => {
         try {
             setSearching(true);
-            const priceData = await marketAPI.getStockLatestData([symbol]);
+            console.log(`[ClientSideAssetSearch] Fetching price for symbol: ${symbol}`);
 
-            if (priceData && priceData.length > 0) {
+            // Use the stock-latest-data endpoint with symbols as query parameter
+            const priceData = await marketAPI.getStockLatestData(symbol);
+
+            console.log(`[ClientSideAssetSearch] Price data received:`, priceData);
+
+            if (priceData && Array.isArray(priceData) && priceData.length > 0) {
                 // Get the latest data point (first in the array)
                 const latestData = priceData[0];
-                if (onPriceUpdate) {
+                const price = parseFloat(latestData.latest_price || latestData.Close || latestData.close || latestData.price);
+
+                if (onPriceUpdate && !isNaN(price)) {
+                    console.log(`[ClientSideAssetSearch] Updating price: ${price} for ${symbol}`);
                     onPriceUpdate({
                         symbol: symbol,
-                        price: parseFloat(latestData.Close),
-                        currency: 'USD',
-                        date: latestData.Date,
-                        name: symbol,
-                        exchange: 'NMS',
-                        market_cap: null,
-                        pe_ratio: null,
-                        dividend_yield: null,
-                        beta: null
+                        price: price,
+                        currency: latestData.currency || 'USD',
+                        date: latestData.latest_date || latestData.Date || latestData.date,
+                        name: latestData.name || symbol,
+                        exchange: latestData.exchange || latestData.Exchange || 'NMS',
+                        market_cap: latestData.market_cap || latestData.MarketCap || null,
+                        pe_ratio: latestData.pe_ratio || latestData.PE || null,
+                        dividend_yield: latestData.dividend_yield || latestData.DividendYield || null,
+                        beta: latestData.beta || latestData.Beta || null
+                    });
+                } else {
+                    console.warn(`[ClientSideAssetSearch] Invalid price data for ${symbol}:`, latestData);
+                }
+            } else if (priceData && typeof priceData === 'object' && !Array.isArray(priceData)) {
+                // Handle single object response
+                const price = parseFloat(priceData.latest_price || priceData.Close || priceData.close || priceData.price);
+
+                if (onPriceUpdate && !isNaN(price)) {
+                    console.log(`[ClientSideAssetSearch] Updating price (object): ${price} for ${symbol}`);
+                    onPriceUpdate({
+                        symbol: symbol,
+                        price: price,
+                        currency: priceData.currency || 'USD',
+                        date: priceData.latest_date || priceData.Date || priceData.date,
+                        name: priceData.name || symbol,
+                        exchange: priceData.exchange || priceData.Exchange || 'NMS',
+                        market_cap: priceData.market_cap || priceData.MarketCap || null,
+                        pe_ratio: priceData.pe_ratio || priceData.PE || null,
+                        dividend_yield: priceData.dividend_yield || priceData.DividendYield || null,
+                        beta: priceData.beta || priceData.Beta || null
                     });
                 }
+            } else {
+                console.warn(`[ClientSideAssetSearch] No valid price data found for ${symbol}`);
             }
         } catch (error) {
-            console.error('Failed to fetch current price:', error);
+            console.error(`[ClientSideAssetSearch] Failed to fetch current price for ${symbol}:`, error);
         } finally {
             setSearching(false);
         }
-    };
+    }, [onPriceUpdate]);
 
     // Handle input change
     const handleInputChange = (e) => {
@@ -100,8 +133,7 @@ const ClientSideAssetSearch = ({
     };
 
     // Handle suggestion click
-    const handleSuggestionClick = (asset) => {
-        setSelectedAsset(asset);
+    const handleSuggestionClick = useCallback((asset) => {
         if (onSelect) {
             onSelect(asset);
         }
@@ -109,22 +141,22 @@ const ClientSideAssetSearch = ({
 
         // Fetch current price for the selected asset
         fetchCurrentPrice(asset.symbol);
-    };
+    }, [onSelect, fetchCurrentPrice]);
 
     // Handle input focus
-    const handleFocus = () => {
-        if (value && filteredAssets.length > 0) {
+    const handleFocus = useCallback(() => {
+        if (value && value.length >= 2) {
             setShowSuggestionsDropdown(true);
         }
-    };
+    }, [value]);
 
     // Handle input blur
-    const handleBlur = () => {
+    const handleBlur = useCallback(() => {
         // Delay hiding to allow clicking on suggestions
         setTimeout(() => {
             setShowSuggestionsDropdown(false);
         }, 200);
-    };
+    }, []);
 
     // Handle key navigation
     const handleKeyDown = (e) => {
@@ -155,23 +187,19 @@ const ClientSideAssetSearch = ({
         }
     };
 
-    // Get suggestion icon
-    const getSuggestionIcon = (asset) => {
-        return (
-            <div className="w-8 h-8 bg-primary-600/20 rounded-lg flex items-center justify-center">
-                <Database size={16} className="text-primary-400" />
-            </div>
-        );
-    };
+    // Memoized suggestion icon
+    const getSuggestionIcon = useMemo(() => (
+        <div className="w-8 h-8 bg-primary-600/20 rounded-lg flex items-center justify-center">
+            <Database size={16} className="text-primary-400" />
+        </div>
+    ), []);
 
-    // Get suggestion badge
-    const getSuggestionBadge = (asset) => {
-        return (
-            <span className="text-xs px-2 py-1 bg-primary-600/20 text-primary-400 rounded">
-                Your Asset
-            </span>
-        );
-    };
+    // Memoized suggestion badge
+    const getSuggestionBadge = useMemo(() => (
+        <span className="text-xs px-2 py-1 bg-primary-600/20 text-primary-400 rounded">
+            Your Asset
+        </span>
+    ), []);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -229,11 +257,11 @@ const ClientSideAssetSearch = ({
                                 onClick={() => handleSuggestionClick(asset)}
                                 className="w-full flex items-center space-x-3 px-4 py-3 text-left text-gray-300 hover:bg-dark-700 transition-colors"
                             >
-                                {getSuggestionIcon(asset)}
+                                {getSuggestionIcon}
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center space-x-2">
                                         <div className="font-mono text-sm font-medium">{asset.symbol}</div>
-                                        {getSuggestionBadge(asset)}
+                                        {getSuggestionBadge}
                                     </div>
                                     <div className="text-xs text-gray-500 truncate">
                                         {asset.name}
@@ -271,32 +299,6 @@ const ClientSideAssetSearch = ({
                 </div>
             )}
 
-            {/* Selected Asset Info */}
-            {selectedAsset && (
-                <div className="mt-2 p-3 bg-dark-800 rounded-lg border border-dark-600">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-primary-600/20 rounded-lg flex items-center justify-center">
-                                <TrendingUp size={16} className="text-primary-400" />
-                            </div>
-                            <div>
-                                <div className="font-mono text-sm font-medium text-gray-100">
-                                    {selectedAsset.symbol}
-                                </div>
-                                <div className="text-xs text-gray-400">
-                                    {selectedAsset.name}
-                                </div>
-                                <div className="text-xs text-gray-500">
-                                    {selectedAsset.exchange} • {selectedAsset.asset_type}
-                                </div>
-                            </div>
-                        </div>
-                        <div className="text-xs text-gray-400">
-                            {searching ? 'Fetching price...' : 'Price updated'}
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };

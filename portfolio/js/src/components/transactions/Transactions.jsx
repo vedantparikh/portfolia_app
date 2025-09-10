@@ -13,15 +13,12 @@ import {
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { portfolioAPI, transactionAPI } from '../../services/api';
+import assetCache from '../../services/assetCache';
 import { Sidebar } from '../shared';
-import AssetTransactionTest from './AssetTransactionTest';
-import ClientSideSearchTest from './ClientSideSearchTest';
 import CreateTransactionModal from './CreateTransactionModal';
 import EditTransactionModal from './EditTransactionModal';
 import TransactionCard from './TransactionCard';
 import TransactionFilters from './TransactionFilters';
-import TransactionIntegrationTest from './TransactionIntegrationTest';
-import TransactionsTest from './TransactionsTest';
 
 const Transactions = () => {
     const [transactions, setTransactions] = useState([]);
@@ -42,9 +39,11 @@ const Transactions = () => {
         sortOrder: 'desc'
     });
 
-    // Load data on component mount
+    // Load data on component mount and preload assets
     useEffect(() => {
         loadData();
+        // Preload assets in the background for faster transaction creation
+        assetCache.preloadAssets();
     }, []);
 
     // Filter transactions when search query or filters change
@@ -66,7 +65,7 @@ const Transactions = () => {
                 order_by: 'created_at',
                 order: 'desc'
             });
-            setTransactions(transactionsResponse.transactions || []);
+            setTransactions(transactionsResponse || []);
         } catch (error) {
             console.error('Failed to load data:', error);
             toast.error('Failed to load transaction data');
@@ -81,8 +80,10 @@ const Transactions = () => {
         // Search filter
         if (searchQuery) {
             filtered = filtered.filter(transaction =>
-                transaction.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                transaction.portfolio_name?.toLowerCase().includes(searchQuery.toLowerCase())
+                (transaction.asset.symbol || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (transaction.asset.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (transaction.portfolio.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (transaction.notes || '').toLowerCase().includes(searchQuery.toLowerCase())
             );
         }
 
@@ -93,7 +94,9 @@ const Transactions = () => {
 
         // Type filter
         if (filters.type !== 'all') {
-            filtered = filtered.filter(transaction => transaction.type === filters.type);
+            filtered = filtered.filter(transaction =>
+                transaction.transaction_type === filters.type || transaction.type === filters.type
+            );
         }
 
         // Date range filter
@@ -119,9 +122,10 @@ const Transactions = () => {
                     break;
             }
 
-            filtered = filtered.filter(transaction =>
-                new Date(transaction.created_at) >= filterDate
-            );
+            filtered = filtered.filter(transaction => {
+                const transactionDate = new Date(transaction.transaction_date || transaction.created_at);
+                return transactionDate >= filterDate;
+            });
         }
 
         // Sort
@@ -130,20 +134,24 @@ const Transactions = () => {
 
             switch (filters.sortBy) {
                 case 'created_at':
-                    aValue = new Date(a.created_at);
-                    bValue = new Date(b.created_at);
+                    aValue = new Date(a.transaction_date || a.created_at);
+                    bValue = new Date(b.transaction_date || b.created_at);
                     break;
                 case 'amount':
                     aValue = a.total_amount || 0;
                     bValue = b.total_amount || 0;
                     break;
                 case 'symbol':
-                    aValue = a.symbol.toLowerCase();
-                    bValue = b.symbol.toLowerCase();
+                    aValue = (a.symbol || '').toLowerCase();
+                    bValue = (b.symbol || '').toLowerCase();
+                    break;
+                case 'type':
+                    aValue = (a.transaction_type || a.type || '').toLowerCase();
+                    bValue = (b.transaction_type || b.type || '').toLowerCase();
                     break;
                 default:
-                    aValue = new Date(a.created_at);
-                    bValue = new Date(b.created_at);
+                    aValue = new Date(a.transaction_date || a.created_at);
+                    bValue = new Date(b.transaction_date || b.created_at);
             }
 
             if (filters.sortOrder === 'asc') {
@@ -159,13 +167,25 @@ const Transactions = () => {
     const handleCreateTransaction = async (transactionData) => {
         try {
             console.log('[Transactions] Creating transaction with data:', transactionData);
-            const newTransaction = await transactionAPI.createTransaction(transactionData);
+            const response = await transactionAPI.createTransaction(transactionData);
+            console.log('[Transactions] Create response:', response);
+
+            // Handle different response formats
+            let newTransaction = response;
+
             setTransactions(prev => [newTransaction, ...prev]);
             setShowCreateModal(false);
             toast.success('Transaction created successfully');
+
+            // Refresh data to ensure consistency
+            setTimeout(() => {
+                loadData();
+            }, 500);
         } catch (error) {
             console.error('Failed to create transaction:', error);
-            toast.error('Failed to create transaction');
+            const errorMessage = error.response?.data?.detail || error.message || 'Failed to create transaction';
+            toast.error(errorMessage);
+            throw error; // Re-throw so the modal can handle it
         }
     };
 
@@ -177,11 +197,6 @@ const Transactions = () => {
 
             // Handle different response formats
             let updatedTransaction = response;
-            if (response.transaction) {
-                updatedTransaction = response.transaction;
-            } else if (response.data) {
-                updatedTransaction = response.data;
-            }
 
             setTransactions(prev => prev.map(t => t.id === transactionId ? updatedTransaction : t));
             setShowEditModal(false);
@@ -229,15 +244,28 @@ const Transactions = () => {
 
     const getTransactionStats = () => {
         const totalTransactions = filteredTransactions.length;
-        const buyTransactions = filteredTransactions.filter(t => t.type === 'buy').length;
-        const sellTransactions = filteredTransactions.filter(t => t.type === 'sell').length;
-        const totalVolume = filteredTransactions.reduce((sum, t) => sum + (t.total_amount || 0), 0);
+        const buyTransactions = filteredTransactions.filter(t =>
+            t.transaction_type === 'buy' || t.type === 'buy'
+        ).length;
+        const sellTransactions = filteredTransactions.filter(t =>
+            t.transaction_type === 'sell' || t.type === 'sell'
+        ).length;
+        const totalVolume = filteredTransactions.reduce((sum, t) => {
+            const amount = parseFloat(t.total_amount) || 0;
+            return sum + Math.abs(amount); // Use absolute value for total volume
+        }, 0);
         const totalBuys = filteredTransactions
-            .filter(t => t.type === 'buy')
-            .reduce((sum, t) => sum + (t.total_amount || 0), 0);
+            .filter(t => (t.transaction_type === 'buy' || t.type === 'buy'))
+            .reduce((sum, t) => {
+                const amount = parseFloat(t.total_amount) || 0;
+                return sum + Math.abs(amount);
+            }, 0);
         const totalSells = filteredTransactions
-            .filter(t => t.type === 'sell')
-            .reduce((sum, t) => sum + (t.total_amount || 0), 0);
+            .filter(t => (t.transaction_type === 'sell' || t.type === 'sell'))
+            .reduce((sum, t) => {
+                const amount = parseFloat(t.total_amount) || 0;
+                return sum + Math.abs(amount);
+            }, 0);
 
         return {
             totalTransactions,
@@ -327,7 +355,7 @@ const Transactions = () => {
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                             <input
                                 type="text"
-                                placeholder="Search transactions by symbol or portfolio..."
+                                placeholder="Search transactions by symbol, asset name, or portfolio..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="input-field w-full pl-10 pr-4 py-3"
@@ -378,7 +406,10 @@ const Transactions = () => {
                                 <div>
                                     <p className="text-sm text-gray-400">Total Volume</p>
                                     <p className="text-2xl font-bold text-gray-100">
-                                        ${stats.totalVolume.toLocaleString()}
+                                        ${(stats.totalVolume || 0).toLocaleString('en-US', {
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2
+                                        })}
                                     </p>
                                 </div>
                                 <div className="w-12 h-12 bg-warning-600/20 rounded-lg flex items-center justify-center">
@@ -391,9 +422,12 @@ const Transactions = () => {
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-sm text-gray-400">Net Flow</p>
-                                    <p className={`text-2xl font-bold ${(stats.totalBuys - stats.totalSells) >= 0 ? 'text-success-400' : 'text-danger-400'
+                                    <p className={`text-2xl font-bold ${(stats.totalSells - stats.totalBuys) >= 0 ? 'text-success-400' : 'text-danger-400'
                                         }`}>
-                                        ${(stats.totalBuys - stats.totalSells).toLocaleString()}
+                                        ${(stats.totalSells - stats.totalBuys).toLocaleString('en-US', {
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2
+                                        })}
                                     </p>
                                 </div>
                                 <div className="w-12 h-12 bg-gray-600/20 rounded-lg flex items-center justify-center">
@@ -432,17 +466,6 @@ const Transactions = () => {
                                 </button>
                             </div>
 
-                            {/* Debug Test Component */}
-                            <TransactionsTest />
-
-                            {/* Integration Test Component */}
-                            <TransactionIntegrationTest />
-
-                            {/* Simplified Asset Transaction Test */}
-                            <AssetTransactionTest />
-
-                            {/* Client-Side Search Test */}
-                            <ClientSideSearchTest />
                         </div>
                     ) : (
                         <div className="space-y-4">

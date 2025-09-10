@@ -6,14 +6,14 @@ from datetime import datetime
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.auth.dependencies import (
     get_current_active_user,
     get_current_verified_user,
 )
 from app.core.database.connection import get_db
-from app.core.database.models import Portfolio, PortfolioAsset, User
+from app.core.database.models import Portfolio, PortfolioAsset, User, TransactionType
 from app.core.database.models import Transaction as TransactionModel
 from app.core.schemas.portfolio import Transaction as TransactionSchema
 from app.core.schemas.portfolio import TransactionCreate, TransactionUpdate
@@ -55,6 +55,7 @@ async def create_transaction(
         price=transaction_data.price,
         transaction_date=transaction_data.transaction_date or datetime.utcnow(),
         fees=transaction_data.fees or 0,
+        total_amount=transaction_data.total_amount,
     )
 
     db.add(new_transaction)
@@ -70,7 +71,7 @@ async def create_transaction(
         .first()
     )
 
-    if transaction_data.transaction_type == "buy":
+    if transaction_data.transaction_type == TransactionType.BUY:
         if portfolio_asset:
             # Update existing holding
             total_quantity = portfolio_asset.quantity + transaction_data.quantity
@@ -91,7 +92,7 @@ async def create_transaction(
             )
             db.add(portfolio_asset)
 
-    elif transaction_data.transaction_type == "sell":
+    elif transaction_data.transaction_type == TransactionType.SELL:
         if not portfolio_asset or portfolio_asset.quantity < transaction_data.quantity:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -109,7 +110,7 @@ async def create_transaction(
             # Remove holding if all shares sold
             db.delete(portfolio_asset)
 
-    elif transaction_data.transaction_type == "dividend":
+    elif transaction_data.transaction_type == TransactionType.DIVIDEND:
         # Dividends don't affect quantity, just record the transaction
         pass
 
@@ -158,8 +159,13 @@ async def get_user_transactions(
         return []
 
     # Build query
-    query = db.query(TransactionModel).filter(
-        TransactionModel.portfolio_id.in_(portfolio_ids)
+    query = (
+        db.query(TransactionModel)
+        .options(
+            joinedload(TransactionModel.portfolio),  # Eagerly load the portfolio
+            joinedload(TransactionModel.asset),      # Eagerly load the asset
+        )
+        .filter(TransactionModel.portfolio_id.in_(portfolio_ids))
     )
 
     if portfolio_id:

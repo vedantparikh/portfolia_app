@@ -29,7 +29,7 @@ async def get_portfolio_dashboard_overview(
     dashboard_service = PortfolioDashboardService(db)
 
     try:
-        overview = dashboard_service.get_dashboard_overview(
+        overview = await dashboard_service.get_dashboard_overview(
             portfolio_id, current_user.id
         )
         return PortfolioDashboard(**overview)
@@ -85,7 +85,7 @@ async def get_portfolio_holdings(
     dashboard_service = PortfolioDashboardService(db)
 
     try:
-        overview = dashboard_service.get_dashboard_overview(
+        overview = await dashboard_service.get_dashboard_overview(
             portfolio_id, current_user.id
         )
         return {
@@ -109,7 +109,7 @@ async def get_portfolio_recent_activity(
     dashboard_service = PortfolioDashboardService(db)
 
     try:
-        overview = dashboard_service.get_dashboard_overview(
+        overview = await dashboard_service.get_dashboard_overview(
             portfolio_id, current_user.id
         )
         return {

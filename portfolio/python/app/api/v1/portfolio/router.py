@@ -156,7 +156,7 @@ async def add_asset_to_portfolio(
 ):
     """Add an asset to a portfolio (user must own the portfolio)."""
     portfolio_service = PortfolioService(db)
-    portfolio_asset = portfolio_service.add_asset_to_portfolio(
+    portfolio_asset = await portfolio_service.add_asset_to_portfolio(
         portfolio_id, asset_data, current_user.id
     )
 
@@ -190,7 +190,7 @@ async def get_portfolio_assets_with_details(
 ):
     """Get portfolio assets with detailed information including current values and P&L."""
     portfolio_service = PortfolioService(db)
-    assets = portfolio_service.get_portfolio_assets_with_details(
+    assets = await portfolio_service.get_portfolio_assets_with_details(
         portfolio_id, current_user.id
     )
     return assets
@@ -206,7 +206,7 @@ async def update_portfolio_asset(
 ):
     """Update an asset in a portfolio (user must own the portfolio)."""
     portfolio_service = PortfolioService(db)
-    portfolio_asset = portfolio_service.update_portfolio_asset(
+    portfolio_asset = await portfolio_service.update_portfolio_asset(
         portfolio_id, asset_id, asset_update, current_user.id
     )
 
@@ -310,7 +310,7 @@ async def get_portfolio_holdings(
 ):
     """Get detailed portfolio holdings with current values and P&L."""
     portfolio_service = PortfolioService(db)
-    holdings = portfolio_service.get_portfolio_holdings(portfolio_id, current_user.id)
+    holdings = await portfolio_service.get_portfolio_holdings(portfolio_id, current_user.id)
     return holdings
 
 
@@ -349,7 +349,7 @@ async def refresh_portfolio_values(
 ):
     """Refresh current values and P&L for all assets in a portfolio."""
     portfolio_service = PortfolioService(db)
-    success = portfolio_service.refresh_portfolio_values(portfolio_id, current_user.id)
+    success = await portfolio_service.refresh_portfolio_values(portfolio_id, current_user.id)
 
     if not success:
         raise HTTPException(
@@ -429,7 +429,7 @@ async def add_asset_to_portfolio_legacy(
     )
 
     portfolio_service = PortfolioService(db)
-    portfolio_asset = portfolio_service.add_asset_to_portfolio(
+    portfolio_asset = await portfolio_service.add_asset_to_portfolio(
         portfolio_id, portfolio_asset_data, current_user.id
     )
 

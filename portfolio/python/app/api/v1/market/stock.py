@@ -23,7 +23,11 @@ from app.core.logging_config import (
     log_error_with_context,
 )
 from app.core.schemas.market import MarketData
-from app.core.schemas.market_data import SymbolSearchResult, YFinanceDataResponse
+from app.core.schemas.market_data import (
+    SymbolSearchResult,
+    YFinanceDataResponse,
+    YFinancePriceData,
+)
 from app.core.services.market_data_service import market_data_service
 
 logger = get_logger(__name__)
@@ -123,7 +127,9 @@ async def get_symbols(
                     short_name=quote.get("shortName") or quote.get("shortname"),
                     long_name=quote.get("longName") or quote.get("longname"),
                     quote_type=quote.get("quoteType") or quote.get("quotetype"),
-                    exchange=quote.get("exchDisp") or quote.get("exchdisp") or quote.get("exchange"),
+                    exchange=quote.get("exchDisp")
+                    or quote.get("exchdisp")
+                    or quote.get("exchange"),
                     market=quote.get("market"),
                     currency=quote.get("currency"),
                     sector=quote.get("sectorDisp") or quote.get("sector"),
@@ -204,9 +210,6 @@ async def get_symbol_data_fresh(
             raise HTTPException(
                 status_code=404, detail=f"No fresh data available for symbol {name}"
             )
-
-        # Convert DataFrame to JSON-serializable format
-        from app.core.schemas.market_data import YFinancePriceData
 
         price_data = []
         for _, row in data.iterrows():
@@ -355,7 +358,7 @@ async def get_symbol_data(
 
 @router.get("/stock-latest-data", response_model=List[MarketData])
 async def get_stock_latest_data(
-    symbols: List[str],
+    symbols: str,
     request: Request,
     current_user=Depends(get_current_user),
 ) -> List[Optional[MarketData]]:
@@ -363,16 +366,19 @@ async def get_stock_latest_data(
     Get the latest stock data for a specific symbol.
 
     """
+    client_ip = get_client_ip(request) if request else "unknown"
     log_api_request(
         logger,
         "GET",
         "/stock-latest-data",
         current_user.id,
-        f"Fetching tickers: {symbols}",
+        client_ip,
+        symbols=symbols,
     )
     start_time = time.time()
     try:
-        data = await market_data_service.get_stock_latest_data(symbols)
+        symbols_list = symbols.split(",")
+        data = await market_data_service.get_stock_latest_data(symbols_list)
         response_time = time.time() - start_time
         log_api_response(logger, "GET", "/stock-latest-data", 200, response_time)
         return data
