@@ -50,7 +50,7 @@ const PortfolioDetail = ({ portfolio, stats, transactions }) => {
 
     const filteredTransactions = transactions.filter(transaction => {
         if (transactionFilter === 'all') return true;
-        return transaction.type === transactionFilter;
+        return transaction.transaction_type === transactionFilter;
     });
 
     const displayedTransactions = showAllTransactions
@@ -293,21 +293,21 @@ const PortfolioDetail = ({ portfolio, stats, transactions }) => {
                             <div key={transaction.id} className="flex items-center justify-between p-4 bg-dark-800 rounded-lg hover:bg-dark-700 transition-colors">
                                 <div className="flex items-center space-x-4">
                                     <div className="flex items-center justify-center w-10 h-10 bg-dark-700 rounded-lg">
-                                        {getTransactionIcon(transaction.type)}
+                                        {getTransactionIcon(transaction.transaction_type)}
                                     </div>
                                     <div>
                                         <p className="text-sm font-medium text-gray-100">
-                                            {transaction.type.toUpperCase()} {transaction.symbol}
+                                            {transaction.transaction_type.toUpperCase()} {transaction.symbol}
                                         </p>
                                         <p className="text-xs text-gray-400">
                                             {formatDate(transaction.created_at)}
                                         </p>
                                     </div>
-                                </div>
+                                </div>  
 
                                 <div className="text-right">
-                                    <p className={`text-sm font-medium ${getTransactionColor(transaction.type)}`}>
-                                        {transaction.type === 'buy' ? '-' : '+'}{formatCurrency(transaction.total_amount)}
+                                    <p className={`text-sm font-medium ${getTransactionColor(transaction.transaction_type)}`}>
+                                        {transaction.transaction_type === 'buy' ? '-' : '+'}{formatCurrency(transaction.total_amount)}
                                     </p>
                                     <p className="text-xs text-gray-400">
                                         {transaction.quantity} @ {formatCurrency(transaction.price)}

@@ -312,19 +312,22 @@ const Assets = () => {
 
     const handleAssetSave = async (assetData) => {
         try {
+            let savedAsset;
             if (modalMode === 'create') {
-                await userAssetsAPI.createUserAsset(assetData);
+                savedAsset = await userAssetsAPI.createUserAsset(assetData);
                 toast.success('Asset added successfully');
             } else if (modalMode === 'edit') {
-                await userAssetsAPI.updateUserAsset(selectedAsset.id, assetData);
+                savedAsset = await userAssetsAPI.updateUserAsset(selectedAsset.id, assetData);
                 toast.success('Asset updated successfully');
             }
             loadAssets(); // Reload assets
             setShowModal(false);
             setSelectedAsset(null);
+            return savedAsset; // Return the saved asset for transaction creation
         } catch (error) {
             console.error('Failed to save asset:', error);
             toast.error(`Failed to ${modalMode === 'create' ? 'create' : 'update'} asset`);
+            throw error; // Re-throw error so AssetModal can handle it
         }
     };
 
