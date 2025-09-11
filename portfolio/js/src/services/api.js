@@ -277,7 +277,7 @@ export const portfolioAPI = {
     */
     getPortfolios: async () => {
         const response = await api.get('/portfolios');
-        return response.data;
+        return response.data.portfolios || response.data || [];
     },
 
     /* 
@@ -329,6 +329,88 @@ export const portfolioAPI = {
         const response = await api.get(`/portfolios/${id}/summary`);
         return response.data;
     },
+
+    /* 
+      GET PORTFOLIO HOLDINGS - Get detailed portfolio holdings with current values and P&L
+      Parameters: id (string or number)
+      Returns: Server response with portfolio holdings data
+    */
+    getPortfolioHoldings: async (id) => {
+        const response = await api.get(`/portfolios/${id}/holdings`);
+        return response.data;
+    },
+
+    /* 
+      GET PORTFOLIO PERFORMANCE - Get portfolio performance metrics over a specified period
+      Parameters: id (string or number), days (number)
+      Returns: Server response with portfolio performance data
+    */
+    getPortfolioPerformance: async (id, days = 30) => {
+        const response = await api.get(`/portfolios/${id}/performance`, {
+            params: { days }
+        });
+        return response.data;
+    },
+
+    /* 
+      REFRESH PORTFOLIO VALUES - Refresh current values and P&L for all assets in a portfolio
+      Parameters: id (string or number)
+      Returns: Server response with refresh status
+    */
+    refreshPortfolioValues: async (id) => {
+        const response = await api.post(`/portfolios/${id}/refresh`);
+        return response.data;
+    },
+
+    /* 
+      GET PORTFOLIO ASSETS - Get all assets in a portfolio
+      Parameters: id (string or number)
+      Returns: Server response with portfolio assets
+    */
+    getPortfolioAssets: async (id) => {
+        const response = await api.get(`/portfolios/${id}/assets`);
+        return response.data;
+    },
+
+    /* 
+      GET PORTFOLIO ASSETS WITH DETAILS - Get portfolio assets with detailed information
+      Parameters: id (string or number)
+      Returns: Server response with detailed portfolio assets
+    */
+    getPortfolioAssetsWithDetails: async (id) => {
+        const response = await api.get(`/portfolios/${id}/assets/details`);
+        return response.data;
+    },
+
+    /* 
+      ADD ASSET TO PORTFOLIO - Add an asset to a portfolio
+      Parameters: id (string or number), assetData (object)
+      Returns: Server response with added asset data
+    */
+    addAssetToPortfolio: async (id, assetData) => {
+        const response = await api.post(`/portfolios/${id}/assets`, assetData);
+        return response.data;
+    },
+
+    /* 
+      UPDATE PORTFOLIO ASSET - Update an asset in a portfolio
+      Parameters: portfolioId (string or number), assetId (string or number), assetData (object)
+      Returns: Server response with updated asset data
+    */
+    updatePortfolioAsset: async (portfolioId, assetId, assetData) => {
+        const response = await api.put(`/portfolios/${portfolioId}/assets/${assetId}`, assetData);
+        return response.data;
+    },
+
+    /* 
+      REMOVE ASSET FROM PORTFOLIO - Remove an asset from a portfolio
+      Parameters: portfolioId (string or number), assetId (string or number)
+      Returns: Server response confirming removal
+    */
+    removeAssetFromPortfolio: async (portfolioId, assetId) => {
+        const response = await api.delete(`/portfolios/${portfolioId}/assets/${assetId}`);
+        return response.data;
+    },
 };
 
 /* 
@@ -378,15 +460,6 @@ export const marketAPI = {
         return response.data;
     },
 
-    /* 
-      GET CURRENT PRICE - Get current price for a symbol
-      Parameters: symbol (string) - Stock symbol to get price for
-      Returns: Server response with current price data
-    */
-    getCurrentPrice: async (symbol) => {
-        const response = await api.get(`/stock/price/${symbol}`);
-        return response.data;
-    },
 
     /* 
       GET STOCK LATEST DATA - Get latest market data for symbols
@@ -398,6 +471,60 @@ export const marketAPI = {
         const symbolsParam = Array.isArray(symbols) ? symbols.join(',') : symbols;
         const response = await api.get(`/stock/stock-latest-data`, {
             params: { symbols: symbolsParam }
+        });
+        return response.data;
+    },
+
+    /* 
+      GET BULK PRICES - Get current prices for multiple symbols
+      Parameters: symbols (array of strings) - Stock symbols to get prices for
+      Returns: Server response with bulk prices data
+    */
+    getBulkPrices: async (symbols) => {
+        const response = await api.get('/market-data/prices/bulk', {
+            params: { symbols: Array.isArray(symbols) ? symbols : [symbols] }
+        });
+        return response.data;
+    },
+
+    /* 
+      GET CURRENT PRICE - Get current price for a single symbol
+      Parameters: symbol (string) - Stock symbol to get price for
+      Returns: Server response with current price data
+    */
+    getCurrentPrice: async (symbol) => {
+        const response = await api.get(`/market-data/ticker/${symbol}/price`);
+        return response.data;
+    },
+
+    /* 
+      GET TICKER INFO - Get comprehensive ticker information
+      Parameters: symbol (string) - Stock symbol to get info for
+      Returns: Server response with ticker information
+    */
+    getTickerInfo: async (symbol) => {
+        const response = await api.get(`/market-data/ticker/${symbol}/info`);
+        return response.data;
+    },
+
+    /* 
+      GET TICKER DATA - Get historical market data for a ticker
+      Parameters: symbol (string), params (period, interval)
+      Returns: Server response with historical data
+    */
+    getTickerData: async (symbol, params = {}) => {
+        const response = await api.get(`/market-data/ticker/${symbol}`, { params });
+        return response.data;
+    },
+
+    /* 
+      SEARCH SYMBOLS - Search for stock symbols
+      Parameters: query (string), limit (number)
+      Returns: Server response with search results
+    */
+    searchSymbols: async (query, limit = 10) => {
+        const response = await api.get('/market-data/search', {
+            params: { query, limit }
         });
         return response.data;
     },
@@ -440,9 +567,10 @@ export const userAssetsAPI = {
         for (const portfolio of portfolios) {
             try {
                 const assetsResponse = await api.get(`/portfolios/${portfolio.id}/assets/details`);
-                if (assetsResponse.data && assetsResponse.data.length > 0) {
+                const assets = assetsResponse.data;
+                if (assets && assets.length > 0) {
                     // Transform portfolio assets to match the expected format
-                    const transformedAssets = assetsResponse.data.map(asset => ({
+                    const transformedAssets = assets.map(asset => ({
                         id: asset.id,
                         symbol: asset.symbol,
                         name: asset.asset_name,
@@ -503,8 +631,8 @@ export const userAssetsAPI = {
                 params: { symbol: assetData.symbol, limit: 1 } 
             });
             
-            if (existingAssets.data && existingAssets.data.length > 0) {
-                assetId = existingAssets.data[0].id;
+            if (existingAssets && existingAssets.length > 0) {
+                assetId = existingAssets[0].id;
             } else {
                 // Create new asset
                 const assetResponse = await api.post('/assets', {
@@ -518,7 +646,7 @@ export const userAssetsAPI = {
                     description: assetData.description,
                     is_active: true
                 });
-                assetId = assetResponse.data.id;
+                assetId = assetResponse.id;
             }
         } catch (error) {
             console.error('Failed to create/find asset:', error);
@@ -534,7 +662,7 @@ export const userAssetsAPI = {
         };
         
         const response = await api.post(`/portfolios/${portfolioId}/assets`, portfolioAssetData);
-        return response.data;
+        return response;
     },
 
     /* 
@@ -555,7 +683,7 @@ export const userAssetsAPI = {
         for (const portfolio of portfolios) {
             try {
                 const response = await api.get(`/portfolios/${portfolio.id}/assets/${id}`);
-                return response.data;
+                return response;
             } catch (error) {
                 // Continue searching in other portfolios
                 continue;
@@ -589,7 +717,7 @@ export const userAssetsAPI = {
         for (const portfolio of portfolios) {
             try {
                 const response = await api.put(`/portfolios/${portfolio.id}/assets/${id}`, portfolioAssetData);
-                return response.data;
+                return response;
             } catch (error) {
                 // Continue searching in other portfolios
                 continue;
@@ -617,7 +745,7 @@ export const userAssetsAPI = {
         for (const portfolio of portfolios) {
             try {
                 const response = await api.delete(`/portfolios/${portfolio.id}/assets/${id}`);
-                return response.data;
+                return response;
             } catch (error) {
                 // Continue searching in other portfolios
                 continue;
@@ -699,7 +827,7 @@ export const assetAPI = {
     */
     getAssets: async (params = {}) => {
         const response = await api.get('/assets', { params });
-        return response.data;
+        return response;
     },
 
     /* 
@@ -709,7 +837,7 @@ export const assetAPI = {
     */
     createAsset: async (assetData) => {
         const response = await api.post('/assets', assetData);
-        return response.data;
+        return response;
     },
 
     /* 
@@ -719,7 +847,7 @@ export const assetAPI = {
     */
     getAsset: async (id) => {
         const response = await api.get(`/assets/${id}`);
-        return response.data;
+        return response;
     },
 
     /* 
@@ -729,7 +857,7 @@ export const assetAPI = {
     */
     updateAsset: async (id, assetData) => {
         const response = await api.put(`/assets/${id}`, assetData);
-        return response.data;
+        return response;
     },
 
     /* 
@@ -739,7 +867,7 @@ export const assetAPI = {
     */
     deleteAsset: async (id) => {
         const response = await api.delete(`/assets/${id}`);
-        return response.data;
+        return response;
     },
 
     /* 
@@ -749,7 +877,7 @@ export const assetAPI = {
     */
     searchAssets: async (query) => {
         const response = await api.get(`/assets/search/${query}`);
-        return response.data;
+        return response;
     },
 
     /* 
@@ -759,7 +887,7 @@ export const assetAPI = {
     */
     getAssetPrices: async (id, params = {}) => {
         const response = await api.get(`/assets/${id}/prices`, { params });
-        return response.data;
+        return response;
     },
 };
 
@@ -775,7 +903,7 @@ export const transactionAPI = {
     */
     getTransactions: async (params = {}) => {
         const response = await api.get('/transactions', { params });
-        return response.data;
+        return response.data.transactions || response.data || [];
     },
 
     /* 
@@ -785,7 +913,7 @@ export const transactionAPI = {
     */
     getPortfolioTransactions: async (portfolioId, params = {}) => {
         const response = await api.get(`/portfolios/${portfolioId}/transactions`, { params });
-        return response.data;
+        return response.data.transactions || response.data || [];
     },
 
     /* 
@@ -829,12 +957,12 @@ export const transactionAPI = {
     },
 
     /* 
-      GET TRANSACTION HISTORY - Get detailed transaction history
-      Parameters: params (object with date range, filters, etc.)
-      Returns: Server response with transaction history data
+      GET TRANSACTION SUMMARY - Get transaction summary for a portfolio
+      Parameters: portfolioId (string or number), params (date range)
+      Returns: Server response with transaction summary data
     */
-    getTransactionHistory: async (params = {}) => {
-        const response = await api.get('/transactions/history', { params });
+    getTransactionSummary: async (portfolioId, params = {}) => {
+        const response = await api.get(`/transactions/${portfolioId}/summary`, { params });
         return response.data;
     },
 };
@@ -845,12 +973,188 @@ export const transactionAPI = {
 */
 export const analyticsAPI = {
     /* 
-      GET PORTFOLIO PERFORMANCE - Get performance analytics for a portfolio
-      Parameters: portfolioId (string or number), params (date range, metrics)
-      Returns: Server response with performance data and charts
+      GET PORTFOLIO ANALYTICS SUMMARY - Get comprehensive portfolio analytics summary
+      Parameters: portfolioId (string or number)
+      Returns: Server response with analytics summary data
     */
-    getPortfolioPerformance: async (portfolioId, params = {}) => {
-        const response = await api.get(`/analytics/performance/${portfolioId}`, { params });
+    getPortfolioAnalyticsSummary: async (portfolioId) => {
+        const response = await api.get(`/analytics/portfolios/${portfolioId}/summary`);
+        return response.data;
+    },
+
+    /* 
+      GET PORTFOLIO PERFORMANCE HISTORY - Get portfolio performance history
+      Parameters: portfolioId (string or number), days (number)
+      Returns: Server response with performance history data
+    */
+    getPortfolioPerformanceHistory: async (portfolioId, days = 30) => {
+        const response = await api.get(`/analytics/portfolios/${portfolioId}/performance/history`, {
+            params: { days }
+        });
+        return response.data;
+    },
+
+    /* 
+      CREATE PERFORMANCE SNAPSHOT - Create a performance snapshot for a portfolio
+      Parameters: portfolioId (string or number), snapshotDate (string)
+      Returns: Server response with snapshot data
+    */
+    createPerformanceSnapshot: async (portfolioId, snapshotDate = null) => {
+        const response = await api.post(`/analytics/portfolios/${portfolioId}/performance/snapshot`, {}, {
+            params: snapshotDate ? { snapshot_date: snapshotDate } : {}
+        });
+        return response.data;
+    },
+
+    /* 
+      GET PORTFOLIO RISK ANALYSIS - Get portfolio risk analysis
+      Parameters: portfolioId (string or number)
+      Returns: Server response with risk analysis data
+    */
+    getPortfolioRiskAnalysis: async (portfolioId) => {
+        const response = await api.get(`/analytics/portfolios/${portfolioId}/risk`);
+        return response.data;
+    },
+
+    /* 
+      CALCULATE PORTFOLIO RISK - Calculate comprehensive risk metrics for a portfolio
+      Parameters: portfolioId (string or number), calculationDate (string)
+      Returns: Server response with risk calculation data
+    */
+    calculatePortfolioRisk: async (portfolioId, calculationDate = null) => {
+        const response = await api.post(`/analytics/portfolios/${portfolioId}/risk/calculate`, {}, {
+            params: calculationDate ? { calculation_date: calculationDate } : {}
+        });
+        return response.data;
+    },
+
+    /* 
+      GET PORTFOLIO ALLOCATIONS - Get portfolio target allocations
+      Parameters: portfolioId (string or number)
+      Returns: Server response with allocation data
+    */
+    getPortfolioAllocations: async (portfolioId) => {
+        const response = await api.get(`/analytics/portfolios/${portfolioId}/allocations`);
+        return response.data;
+    },
+
+    /* 
+      SET PORTFOLIO ALLOCATIONS - Set target allocations for a portfolio
+      Parameters: portfolioId (string or number), allocations (array)
+      Returns: Server response with allocation data
+    */
+    setPortfolioAllocations: async (portfolioId, allocations) => {
+        const response = await api.post(`/analytics/portfolios/${portfolioId}/allocations`, allocations);
+        return response.data;
+    },
+
+    /* 
+      ANALYZE PORTFOLIO ALLOCATION - Analyze portfolio allocation and detect drift
+      Parameters: portfolioId (string or number)
+      Returns: Server response with allocation analysis data
+    */
+    analyzePortfolioAllocation: async (portfolioId) => {
+        const response = await api.get(`/analytics/portfolios/${portfolioId}/allocations/analysis`);
+        return response.data;
+    },
+
+    /* 
+      GET REBALANCING RECOMMENDATIONS - Get rebalancing recommendations for a portfolio
+      Parameters: portfolioId (string or number)
+      Returns: Server response with rebalancing recommendations
+    */
+    getRebalancingRecommendations: async (portfolioId) => {
+        const response = await api.get(`/analytics/portfolios/${portfolioId}/rebalancing/recommendations`);
+        return response.data;
+    },
+
+    /* 
+      GET PORTFOLIO BENCHMARKS - Get portfolio benchmarks
+      Parameters: portfolioId (string or number)
+      Returns: Server response with benchmark data
+    */
+    getPortfolioBenchmarks: async (portfolioId) => {
+        const response = await api.get(`/analytics/portfolios/${portfolioId}/benchmarks`);
+        return response.data;
+    },
+
+    /* 
+      ADD PORTFOLIO BENCHMARK - Add a benchmark to a portfolio
+      Parameters: portfolioId (string or number), benchmarkData (object)
+      Returns: Server response with benchmark data
+    */
+    addPortfolioBenchmark: async (portfolioId, benchmarkData) => {
+        const response = await api.post(`/analytics/portfolios/${portfolioId}/benchmarks`, benchmarkData);
+        return response.data;
+    },
+
+    /* 
+      GET REBALANCING EVENTS - Get rebalancing events for a portfolio
+      Parameters: portfolioId (string or number), days (number)
+      Returns: Server response with rebalancing events data
+    */
+    getRebalancingEvents: async (portfolioId, days = 90) => {
+        const response = await api.get(`/analytics/portfolios/${portfolioId}/rebalancing/events`, {
+            params: { days }
+        });
+        return response.data;
+    },
+
+    /* 
+      CREATE REBALANCING EVENT - Create a rebalancing event for a portfolio
+      Parameters: portfolioId (string or number), eventData (object)
+      Returns: Server response with event data
+    */
+    createRebalancingEvent: async (portfolioId, eventData) => {
+        const response = await api.post(`/analytics/portfolios/${portfolioId}/rebalancing/events`, eventData);
+        return response.data;
+    },
+
+    /* 
+      GET PORTFOLIO PERFORMANCE COMPARISON - Get portfolio performance comparison with benchmark
+      Parameters: portfolioId (string or number), benchmarkId (string or number), days (number)
+      Returns: Server response with performance comparison data
+    */
+    getPortfolioPerformanceComparison: async (portfolioId, benchmarkId = null, days = 30) => {
+        const response = await api.get(`/analytics/portfolios/${portfolioId}/performance/comparison`, {
+            params: { benchmark_id: benchmarkId, days }
+        });
+        return response.data;
+    },
+
+    /* 
+      GET ASSET CORRELATIONS - Get asset correlations
+      Parameters: asset1Id (string or number), asset2Id (string or number), days (number)
+      Returns: Server response with correlation data
+    */
+    getAssetCorrelations: async (asset1Id = null, asset2Id = null, days = 30) => {
+        const response = await api.get('/analytics/assets/correlations', {
+            params: { asset1_id: asset1Id, asset2_id: asset2Id, days }
+        });
+        return response.data;
+    },
+
+    /* 
+      CALCULATE ASSET METRICS - Calculate comprehensive metrics for an asset
+      Parameters: assetId (string or number), calculationDate (string)
+      Returns: Server response with asset metrics data
+    */
+    calculateAssetMetrics: async (assetId, calculationDate = null) => {
+        const response = await api.post(`/analytics/assets/${assetId}/metrics`, {}, {
+            params: calculationDate ? { calculation_date: calculationDate } : {}
+        });
+        return response.data;
+    },
+
+    /* 
+      GET ASSET METRICS - Get asset performance metrics history
+      Parameters: assetId (string or number), days (number)
+      Returns: Server response with asset metrics history data
+    */
+    getAssetMetrics: async (assetId, days = 30) => {
+        const response = await api.get(`/analytics/assets/${assetId}/metrics`, {
+            params: { days }
+        });
         return response.data;
     },
 };
@@ -869,7 +1173,7 @@ export const watchlistAPI = {
         const response = await api.get('/watchlists', { 
             params: { include_items: includeItems } 
         });
-        return response.data;
+        return response.data.watchlists || response.data || [];
     },
 
     /* 

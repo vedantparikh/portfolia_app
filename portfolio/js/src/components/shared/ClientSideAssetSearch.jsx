@@ -78,7 +78,7 @@ const ClientSideAssetSearch = ({
             if (priceData && Array.isArray(priceData) && priceData.length > 0) {
                 // Get the latest data point (first in the array)
                 const latestData = priceData[0];
-                const price = parseFloat(latestData.latest_price || latestData.Close || latestData.close || latestData.price);
+                const price = parseFloat(latestData.latest_price);
 
                 if (onPriceUpdate && !isNaN(price)) {
                     console.log(`[ClientSideAssetSearch] Updating price: ${price} for ${symbol}`);
@@ -86,35 +86,16 @@ const ClientSideAssetSearch = ({
                         symbol: symbol,
                         price: price,
                         currency: latestData.currency || 'USD',
-                        date: latestData.latest_date || latestData.Date || latestData.date,
+                        date: latestData.latest_date,
                         name: latestData.name || symbol,
-                        exchange: latestData.exchange || latestData.Exchange || 'NMS',
-                        market_cap: latestData.market_cap || latestData.MarketCap || null,
-                        pe_ratio: latestData.pe_ratio || latestData.PE || null,
-                        dividend_yield: latestData.dividend_yield || latestData.DividendYield || null,
-                        beta: latestData.beta || latestData.Beta || null
+                        exchange: latestData.exchange || 'NMS',
+                        market_cap: latestData.market_cap || null,
+                        pe_ratio: latestData.pe_ratio || null,
+                        dividend_yield: latestData.dividend_yield || null,
+                        beta: latestData.beta || null
                     });
                 } else {
                     console.warn(`[ClientSideAssetSearch] Invalid price data for ${symbol}:`, latestData);
-                }
-            } else if (priceData && typeof priceData === 'object' && !Array.isArray(priceData)) {
-                // Handle single object response
-                const price = parseFloat(priceData.latest_price || priceData.Close || priceData.close || priceData.price);
-
-                if (onPriceUpdate && !isNaN(price)) {
-                    console.log(`[ClientSideAssetSearch] Updating price (object): ${price} for ${symbol}`);
-                    onPriceUpdate({
-                        symbol: symbol,
-                        price: price,
-                        currency: priceData.currency || 'USD',
-                        date: priceData.latest_date || priceData.Date || priceData.date,
-                        name: priceData.name || symbol,
-                        exchange: priceData.exchange || priceData.Exchange || 'NMS',
-                        market_cap: priceData.market_cap || priceData.MarketCap || null,
-                        pe_ratio: priceData.pe_ratio || priceData.PE || null,
-                        dividend_yield: priceData.dividend_yield || priceData.DividendYield || null,
-                        beta: priceData.beta || priceData.Beta || null
-                    });
                 }
             } else {
                 console.warn(`[ClientSideAssetSearch] No valid price data found for ${symbol}`);

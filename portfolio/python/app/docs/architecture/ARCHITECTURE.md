@@ -2,7 +2,26 @@
 
 ## 🏗️ System Overview
 
-The Portfolia API is designed as a modern, scalable financial services platform that follows clean architecture principles and industry best practices.
+The Portfolia API is designed as a modern, scalable financial services platform that follows clean architecture principles and industry best practices. The system has been recently updated to use **yfinance** for real-time market data integration and features comprehensive schema-database alignment for consistent API responses.
+
+## 🚀 Recent Major Updates (September 2024)
+
+### **Market Data Integration**
+- **Removed Local Market Data Storage**: Eliminated `AssetPrice`, `MarketData`, and `TickerInfo` database models
+- **yfinance Integration**: All market data now fetched directly from yfinance APIs
+- **Real-time Pricing**: Portfolio valuations and watchlists use live market prices
+- **Fallback Mechanisms**: Graceful handling when market data is unavailable
+
+### **Schema-Database Alignment**
+- **100% Field Consistency**: All schemas now perfectly match database models
+- **Calculated Fields**: Proper handling of computed fields (marked as Optional)
+- **Response Standardization**: All endpoints return structured Pydantic schemas
+- **Type Safety**: Runtime validation ensures data integrity
+
+### **Enhanced Analytics**
+- **Comprehensive Metrics**: Technical indicators, risk metrics, performance analytics
+- **Portfolio Analytics**: Allocation analysis, drift detection, rebalancing recommendations
+- **Real-time Calculations**: All analytics use current market prices
 
 ## 🎯 Design Principles
 

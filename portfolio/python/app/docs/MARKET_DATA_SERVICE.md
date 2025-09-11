@@ -2,363 +2,413 @@
 
 ## Overview
 
-The Market Data Service is a robust, reliable system for fetching, storing, and serving financial market data. It addresses the reliability issues with external APIs like yfinance by implementing a local data store with automatic fallback mechanisms.
+The Market Data Service is a modern, lightweight system for fetching real-time financial market data using **yfinance** as the primary data source. The service has been completely redesigned to eliminate local data storage and provide direct access to live market data.
 
-## Architecture
+## 🚀 Architecture (Updated September 2024)
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Market Data   │    │   Data Service   │    │   Main API      │
-│   Service       │    │   (Scheduler)    │    │                 │
-│                 │    │                  │    │                 │
-│ • Fetches data  │◄──►│ • Daily updates  │◄──►│ • Serves data   │
-│ • Stores in DB  │    │ • Fallback logic │    │ • Uses local    │
-│ • Handles errors│    │ • Data validation│    │   data first    │
+│   yfinance API  │    │   Market Data    │    │   Portfolio     │
+│                 │    │   Service        │    │   Services      │
+│ • Live prices   │◄──►│                  │◄──►│                 │
+│ • Historical    │    │ • Real-time      │    │ • Valuations    │
+│ • Company info  │    │ • Caching        │    │ • Analytics     │
+│ • Fundamentals  │    │ • Error handling │    │ • Watchlists    │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
 ```
 
 ## Key Features
 
-### 1. **Reliable Data Fetching**
+### 1. **Real-time Data Fetching**
+- **Direct yfinance Integration**: No local storage, always fresh data
 - **Retry Logic**: Automatic retry with exponential backoff
-- **Multiple Data Sources**: yfinance as primary, local database as fallback
-- **Error Handling**: Graceful degradation when external APIs fail
+- **Error Handling**: Graceful degradation when APIs are unavailable
+- **Caching**: Intelligent caching to minimize API calls
 
-### 2. **Local Data Storage**
-- **Daily Market Data**: OHLCV data stored locally
-- **Ticker Information**: Company details and metadata
-- **Data Logging**: Complete audit trail of all operations
+### 2. **Comprehensive Data Coverage**
+- **Current Prices**: Real-time stock prices and market data
+- **Historical Data**: OHLCV data for any time period
+- **Company Information**: Fundamentals, sector, industry data
+- **Market Status**: Trading hours and market state
 
-### 3. **Automatic Updates**
-- **Scheduled Updates**: Daily updates at market close + 2 hours
-- **Batch Processing**: Efficient processing of multiple tickers
-- **Failed Update Retry**: Automatic retry of failed updates every 6 hours
+### 3. **Performance Optimization**
+- **Bulk Operations**: Efficient fetching of multiple symbols
+- **Smart Caching**: Configurable TTL for different data types
+- **Rate Limiting**: Respects API limits and prevents throttling
+- **Async Operations**: Non-blocking data fetching
 
-### 4. **Smart Fallback System**
-- **Fresh Data Priority**: Always try to get latest data first
-- **Local Data Backup**: Serve stored data when external APIs fail
-- **Data Quality Monitoring**: Track data freshness and reliability
-
-## Database Schema
-
-### TickerInfo Table
-```sql
-CREATE TABLE ticker_info (
-    id SERIAL PRIMARY KEY,
-    symbol VARCHAR(20) UNIQUE NOT NULL,
-    name VARCHAR(255),
-    company_name VARCHAR(500),
-    sector VARCHAR(100),
-    industry VARCHAR(100),
-    exchange VARCHAR(20),
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-```
-
-### MarketData Table
-```sql
-CREATE TABLE market_data (
-    id SERIAL PRIMARY KEY,
-    ticker_id INTEGER REFERENCES ticker_info(id),
-    date DATE NOT NULL,
-    open_price DECIMAL NOT NULL,
-    high_price DECIMAL NOT NULL,
-    low_price DECIMAL NOT NULL,
-    close_price DECIMAL NOT NULL,
-    volume INTEGER NOT NULL,
-    adjusted_close DECIMAL NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(ticker_id, date)
-);
-```
-
-### DataUpdateLog Table
-```sql
-CREATE TABLE data_update_log (
-    id SERIAL PRIMARY KEY,
-    ticker_symbol VARCHAR(20) NOT NULL,
-    operation VARCHAR(50) NOT NULL,
-    status VARCHAR(20) NOT NULL,
-    records_processed INTEGER DEFAULT 0,
-    error_message VARCHAR(1000),
-    execution_time_ms INTEGER,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-```
+### 4. **Fallback Mechanisms**
+- **Graceful Degradation**: Returns cached data when API fails
+- **Default Values**: Sensible defaults when data unavailable
+- **Error Logging**: Comprehensive error tracking and monitoring
 
 ## API Endpoints
 
 ### Market Data Endpoints
 
-#### 1. **Get Ticker Data with Fallback**
+#### 1. **Get Ticker Data**
 ```http
 GET /api/v1/market-data/ticker/{symbol}
 ```
-- **Description**: Get market data with automatic fallback to local data
+- **Description**: Get historical market data for a symbol
 - **Parameters**:
   - `symbol`: Stock symbol (e.g., AAPL)
-  - `period`: Data period (1y, 2y, max, etc.)
-  - `interval`: Data interval (1d, 1h, etc.)
-  - `use_fallback`: Enable/disable fallback (default: true)
+  - `period`: Data period (1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max)
+  - `interval`: Data interval (1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo)
 
-#### 2. **Get Local Ticker Data**
-```http
-GET /api/v1/market-data/ticker/{symbol}/local
+**Response**:
+```json
+{
+  "symbol": "AAPL",
+  "period": "1y",
+  "interval": "1d",
+  "data_points": 252,
+  "data": [
+    {
+      "date": "2024-01-01T00:00:00Z",
+      "open": 150.00,
+      "high": 155.00,
+      "low": 148.00,
+      "close": 152.00,
+      "volume": 50000000,
+      "dividends": 0.0,
+      "stock_splits": 0.0
+    }
+  ]
+}
 ```
-- **Description**: Get data from local database only
-- **Parameters**:
-  - `symbol`: Stock symbol
-  - `start_date`: Start date for range
-  - `end_date`: End date for range
-  - `limit`: Maximum records to return
 
-#### 3. **Update Ticker Data**
+#### 2. **Get Current Price**
 ```http
-POST /api/v1/market-data/ticker/{symbol}/update
+GET /api/v1/market-data/ticker/{symbol}/price
 ```
-- **Description**: Manually update data for a specific ticker
-- **Parameters**:
-  - `symbol`: Stock symbol
-  - `force_update`: Force update even if data is recent
+- **Description**: Get current price for a symbol
+- **Response**:
+```json
+{
+  "symbol": "AAPL",
+  "price": 152.34,
+  "currency": "USD",
+  "timestamp": "2024-09-11T15:30:00Z"
+}
+```
 
-#### 4. **Get Data Quality Info**
+#### 3. **Get Bulk Prices**
 ```http
-GET /api/v1/market-data/ticker/{symbol}/quality
+GET /api/v1/market-data/prices/bulk?symbols=AAPL,GOOGL,MSFT
 ```
-- **Description**: Get information about data freshness and quality
+- **Description**: Get current prices for multiple symbols
+- **Response**:
+```json
+{
+  "prices": {
+    "AAPL": 152.34,
+    "GOOGL": 2750.00,
+    "MSFT": 310.50
+  },
+  "timestamp": "2024-09-11T15:30:00Z"
+}
+```
 
-#### 5. **Update All Tickers**
+#### 4. **Get Ticker Information**
 ```http
-POST /api/v1/market-data/update/all
+GET /api/v1/market-data/ticker/{symbol}/info
 ```
-- **Description**: Update data for all active tickers
-- **Parameters**:
-  - `tickers`: Optional list of specific tickers
+- **Description**: Get comprehensive company information
+- **Response**:
+```json
+{
+  "symbol": "AAPL",
+  "name": "Apple Inc.",
+  "sector": "Technology",
+  "industry": "Consumer Electronics",
+  "market_cap": 2500000000000,
+  "pe_ratio": 25.5,
+  "dividend_yield": 0.005,
+  "beta": 1.2,
+  "currency": "USD",
+  "exchange": "NASDAQ"
+}
+```
 
-#### 6. **Get Active Tickers**
+#### 5. **Get Market Status**
 ```http
-GET /api/v1/market-data/tickers/active
+GET /api/v1/market-data/market-status
 ```
-- **Description**: Get list of all active tickers
+- **Description**: Get current market status and trading hours
 
-#### 7. **Get Service Status**
+#### 6. **Get Supported Periods/Intervals**
 ```http
-GET /api/v1/market-data/status
+GET /api/v1/market-data/supported-periods
+GET /api/v1/market-data/supported-intervals
 ```
-- **Description**: Get service health and recent operations
+- **Description**: Get list of supported periods and intervals
 
-#### 8. **Scheduler Control**
-```http
-POST /api/v1/market-data/scheduler/start
-POST /api/v1/market-data/scheduler/stop
+## Service Implementation
+
+### MarketDataService Class
+
+```python
+class MarketDataService:
+    """Service for fetching market data using yfinance."""
+    
+    def __init__(self):
+        self.max_retries = 3
+        self.retry_delay = 5  # seconds
+        self.cache_ttl = 300  # 5 minutes
+    
+    async def get_current_price(self, symbol: str) -> Optional[float]:
+        """Get current price for a symbol."""
+        
+    async def get_multiple_current_prices(self, symbols: List[str]) -> Dict[str, float]:
+        """Get current prices for multiple symbols."""
+        
+    async def fetch_ticker_data(
+        self,
+        symbol: str,
+        period: str = "max",
+        interval: str = "1d",
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+    ) -> Optional[pd.DataFrame]:
+        """Fetch historical data for a symbol."""
+        
+    async def get_ticker_info(self, symbol: str) -> Optional[Dict[str, Any]]:
+        """Get company information for a symbol."""
+        
+    async def get_stock_data_for_symbols(self, symbols: List[str]) -> List[Dict[str, Any]]:
+        """Get stock data for multiple symbols."""
+        
+    def search_symbols(self, query: str, limit: int = 10) -> List[Dict[str, str]]:
+        """Search for stock symbols."""
+        
+    def get_market_status(self) -> Dict[str, Any]:
+        """Get current market status."""
 ```
-- **Description**: Start/stop the automatic data scheduler
-
-### Stock Endpoints (Updated)
-
-#### 1. **Get Stock Data with Fallback**
-```http
-GET /api/v1/stock/symbol-data
-```
-- **Description**: Get stock data using the new fallback service
-- **Parameters**:
-  - `name`: Stock symbol
-  - `period`: Data period
-  - `interval`: Data interval
-  - `use_fallback`: Enable fallback (default: true)
-
-#### 2. **Get Local Stock Data**
-```http
-GET /api/v1/stock/symbol-data/local
-```
-- **Description**: Get stock data from local database only
 
 ## Configuration
 
 ### Environment Variables
 ```bash
-# Database
-POSTGRES_DB=portfolia
-POSTGRES_USER=portfolia_user
-POSTGRES_PASSWORD=your_password
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
+# API Settings
+API_PORT=8000
+DEBUG=True
 
-# Redis
+# Cache Settings
 REDIS_HOST=localhost
 REDIS_PORT=6379
 REDIS_DB=0
 
-# API Settings
-API_PORT=8000
-DEBUG=True
+# Market Data Settings
+MARKET_DATA_CACHE_TTL=300  # 5 minutes
+MARKET_DATA_MAX_RETRIES=3
+MARKET_DATA_RETRY_DELAY=5
 ```
 
-### Scheduler Configuration
+### Default Parameters
 ```python
-class DataScheduler:
-    def __init__(self):
-        self.update_interval_hours = 24      # Daily updates
-        self.batch_size = 10                 # Process 10 tickers at once
-        self.retry_failed_after_hours = 6    # Retry failed updates every 6 hours
+# Default period and interval for yfinance calls
+DEFAULT_PERIOD = "max"
+DEFAULT_INTERVAL = "1d"
+
+# Supported periods
+SUPPORTED_PERIODS = [
+    "1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "ytd", "max"
+]
+
+# Supported intervals
+SUPPORTED_INTERVALS = [
+    "1m", "2m", "5m", "15m", "30m", "60m", "90m", "1h", "1d", "5d", "1wk", "1mo", "3mo"
+]
 ```
 
 ## Usage Examples
 
-### 1. **Basic Data Retrieval**
+### 1. **Portfolio Valuation**
 ```python
-from services.market_data_service import market_data_service
+from app.core.services.market_data_service import market_data_service
 
-# Get data with fallback
-data = await market_data_service.get_data_with_fallback("AAPL", "1y", "1d")
+# Get current prices for portfolio assets
+symbols = ["AAPL", "GOOGL", "MSFT"]
+prices = await market_data_service.get_multiple_current_prices(symbols)
 
-# Get local data only
-local_data = await market_data_service.get_market_data("AAPL")
+# Calculate portfolio value
+total_value = 0
+for symbol, quantity in portfolio_holdings.items():
+    current_price = prices.get(symbol, 0)
+    total_value += current_price * quantity
 ```
 
-### 2. **Manual Updates**
+### 2. **Watchlist Updates**
 ```python
-from services.data_scheduler import data_scheduler
+# Update watchlist with real-time data
+watchlist_symbols = ["AAPL", "TSLA", "NVDA"]
+stock_data = await market_data_service.get_stock_data_for_symbols(watchlist_symbols)
 
-# Update specific tickers
-results = await data_scheduler.manual_update(["AAPL", "GOOGL", "MSFT"])
-
-# Update all tickers
-all_results = await data_scheduler.manual_update()
+for data in stock_data:
+    # Update watchlist item with current price and info
+    update_watchlist_item(data["symbol"], data["latest_price"], data["name"])
 ```
 
-### 3. **Data Quality Monitoring**
+### 3. **Technical Analysis**
 ```python
-# Check data freshness
-quality = await market_data_service.get_data_quality_info("AAPL")
-print(f"Data age: {quality['data_age_days']} days")
-print(f"Is fresh: {quality['is_fresh']}")
+# Get historical data for analysis
+data = await market_data_service.fetch_ticker_data(
+    symbol="AAPL",
+    period="1y",
+    interval="1d"
+)
+
+# Calculate technical indicators
+sma_20 = data["Close"].rolling(20).mean()
+rsi = calculate_rsi(data["Close"])
 ```
 
-## Deployment
+## Integration Points
 
-### Docker Compose
-```yaml
-data-service:
-  build: 
-    context: ./python/api
-    dockerfile: Dockerfile
-  command: ["python", "start_data_service.py"]
-  depends_on:
-    postgres:
-      condition: service_healthy
-    redis:
-      condition: service_healthy
-  volumes:
-    - ./python/api/app:/app/app:delegated
-    - ./python/api/schemas:/app/schemas:delegated
-    - ./python/api/services:/app/services:delegated
+### 1. **Portfolio Service**
+- Real-time portfolio valuations
+- P&L calculations using current prices
+- Performance tracking and analytics
+
+### 2. **Watchlist Service**
+- Live price updates for watchlist items
+- Price change calculations
+- Alert triggering based on price movements
+
+### 3. **Analytics Service**
+- Technical indicator calculations
+- Risk metric computations
+- Performance benchmarking
+
+### 4. **Asset Search Service**
+- Symbol lookup and validation
+- Company information retrieval
+- Market data enrichment
+
+## Error Handling
+
+### 1. **API Failures**
+```python
+try:
+    price = await market_data_service.get_current_price("AAPL")
+except Exception as e:
+    logger.error(f"Failed to get price for AAPL: {e}")
+    # Use cached price or fallback to cost basis
+    price = get_cached_price("AAPL") or asset.cost_basis
 ```
 
-### Standalone Service
-```bash
-# Start the data service
-python start_data_service.py
-
-# Or as a background process
-nohup python start_data_service.py > data_service.log 2>&1 &
+### 2. **Data Validation**
+```python
+def validate_market_data(data: pd.DataFrame) -> bool:
+    """Validate market data quality."""
+    if data is None or data.empty:
+        return False
+    
+    # Check for required columns
+    required_columns = ["Open", "High", "Low", "Close", "Volume"]
+    if not all(col in data.columns for col in required_columns):
+        return False
+    
+    # Check for reasonable price ranges
+    if (data["Close"] <= 0).any():
+        return False
+    
+    return True
 ```
 
-## Monitoring and Logging
-
-### Log Levels
-- **INFO**: Normal operations, successful updates
-- **WARNING**: Non-critical issues, retries
-- **ERROR**: Failed operations, database errors
-
-### Key Metrics
-- **Update Success Rate**: Percentage of successful updates
-- **Data Freshness**: Age of latest data for each ticker
-- **API Response Times**: Performance of external API calls
-- **Error Rates**: Frequency of different types of failures
-
-### Health Checks
-- **Database Connectivity**: PostgreSQL connection status
-- **Service Status**: Scheduler running state
-- **Data Quality**: Freshness of stored data
-- **Recent Operations**: Last 24 hours of activity
-
-## Troubleshooting
-
-### Common Issues
-
-#### 1. **External API Failures**
-- **Symptom**: High error rates in update logs
-- **Solution**: Check network connectivity, API rate limits
-- **Fallback**: Service automatically uses local data
-
-#### 2. **Database Connection Issues**
-- **Symptom**: Service fails to start or update
-- **Solution**: Verify PostgreSQL is running, check credentials
-- **Monitoring**: Health checks will detect connection issues
-
-#### 3. **Data Staleness**
-- **Symptom**: Old data being served
-- **Solution**: Check scheduler status, manually trigger updates
-- **Prevention**: Monitor data quality endpoints
-
-### Debug Commands
-```bash
-# Check service status
-curl http://localhost:8000/api/v1/market-data/status
-
-# Check data quality for a ticker
-curl http://localhost:8000/api/v1/market-data/ticker/AAPL/quality
-
-# Manually trigger update
-curl -X POST "http://localhost:8000/api/v1/market-data/ticker/AAPL/update"
-
-# View recent logs
-docker logs data-service --tail 100
+### 3. **Graceful Degradation**
+```python
+async def get_price_with_fallback(symbol: str) -> float:
+    """Get price with fallback to cached data."""
+    try:
+        # Try to get fresh price
+        price = await market_data_service.get_current_price(symbol)
+        if price:
+            cache_price(symbol, price)
+            return price
+    except Exception as e:
+        logger.warning(f"Failed to get fresh price for {symbol}: {e}")
+    
+    # Fallback to cached price
+    cached_price = get_cached_price(symbol)
+    if cached_price:
+        return cached_price
+    
+    # Last resort: return 0 or raise exception
+    raise ValueError(f"No price data available for {symbol}")
 ```
 
 ## Performance Considerations
 
-### 1. **Batch Processing**
-- Process multiple tickers simultaneously
-- Configurable batch size for optimal performance
-- Rate limiting to avoid overwhelming external APIs
+### 1. **Caching Strategy**
+- **Price Caching**: 5-minute TTL for current prices
+- **Info Caching**: 1-hour TTL for company information
+- **Historical Data**: 15-minute TTL for recent data
 
-### 2. **Database Optimization**
-- Indexed queries for fast data retrieval
-- Composite indexes for common query patterns
-- Efficient upsert operations for data updates
+### 2. **Batch Operations**
+- Use `yf.Tickers()` for multiple symbols
+- Process symbols in batches of 10-20
+- Implement concurrent fetching with proper rate limiting
 
-### 3. **Caching Strategy**
-- Redis for session and temporary data
-- Local database for persistent market data
-- Smart fallback to minimize external API calls
+### 3. **Rate Limiting**
+- Respect yfinance API limits
+- Implement exponential backoff
+- Use connection pooling for efficiency
 
-## Future Enhancements
+## Monitoring and Logging
 
-### 1. **Additional Data Sources**
-- Alpha Vantage API integration
-- IEX Cloud data feeds
-- Polygon.io real-time data
+### Key Metrics
+- **API Response Times**: Track yfinance API performance
+- **Cache Hit Rates**: Monitor caching effectiveness
+- **Error Rates**: Track API failures and fallbacks
+- **Data Freshness**: Monitor age of cached data
 
-### 2. **Advanced Analytics**
-- Technical indicators calculation
-- Pattern recognition algorithms
-- Risk assessment metrics
+### Log Levels
+- **INFO**: Successful data fetches, cache hits
+- **WARNING**: API slowness, cache misses, fallbacks
+- **ERROR**: API failures, data validation errors
 
-### 3. **Real-time Updates**
-- WebSocket connections for live data
-- Push notifications for price alerts
-- Streaming data processing
+### Health Checks
+```python
+async def health_check() -> Dict[str, Any]:
+    """Check market data service health."""
+    try:
+        # Test basic functionality
+        test_price = await market_data_service.get_current_price("AAPL")
+        
+        return {
+            "status": "healthy",
+            "yfinance_accessible": test_price is not None,
+            "cache_status": "operational",
+            "last_check": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        return {
+            "status": "unhealthy",
+            "error": str(e),
+            "last_check": datetime.utcnow().isoformat()
+        }
+```
 
-### 4. **Machine Learning**
-- Predictive models for price movements
-- Anomaly detection in market data
-- Automated trading signals
+## Migration from Local Storage
+
+### What Was Removed
+- **Database Tables**: `asset_prices`, `market_data`, `ticker_info`, `data_update_log`
+- **Scheduled Updates**: No more daily data synchronization
+- **Local Fallback**: No local database backup
+
+### What Was Added
+- **Real-time Fetching**: Direct yfinance integration
+- **Smart Caching**: Redis-based caching for performance
+- **Enhanced Error Handling**: Robust fallback mechanisms
+
+### Migration Benefits
+- **Always Fresh Data**: No stale data issues
+- **Reduced Complexity**: Simpler architecture
+- **Lower Storage Costs**: No database storage for market data
+- **Better Performance**: Direct API access with caching
 
 ## Conclusion
 
-The Market Data Service provides a robust, reliable foundation for financial data operations. By implementing local storage with intelligent fallback mechanisms, it ensures data availability even when external APIs are unreliable. The automatic scheduling and monitoring capabilities make it suitable for production environments requiring consistent market data access.
+The updated Market Data Service provides a modern, efficient approach to financial data access. By leveraging yfinance directly with intelligent caching and error handling, it delivers real-time data while maintaining high performance and reliability. The elimination of local storage reduces complexity while ensuring data freshness for all portfolio and analytics operations.

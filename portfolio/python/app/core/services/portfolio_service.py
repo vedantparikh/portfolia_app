@@ -1,30 +1,29 @@
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
 
-from sqlalchemy import and_, desc
+from sqlalchemy import and_
+from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
-from app.core.database.models import (
-    Asset,
-    AssetPrice,
-    Portfolio,
-    PortfolioAsset,
-    Transaction,
-    TransactionType,
-)
+from app.core.database.models import Asset
+from app.core.database.models import Portfolio
+from app.core.database.models import PortfolioAsset
+from app.core.database.models import Transaction
+from app.core.database.models import TransactionType
 from app.core.database.utils import get_portfolio_performance_summary
-from app.core.schemas.portfolio import (
-    PortfolioAssetCreate,
-    PortfolioAssetUpdate,
-    PortfolioAssetWithDetails,
-    PortfolioCreate,
-    PortfolioHolding,
-    PortfolioStatistics,
-    PortfolioSummary,
-    PortfolioUpdate,
-    TransactionCreate,
-    TransactionUpdate,
-)
+from app.core.schemas.portfolio import PortfolioAssetCreate
+from app.core.schemas.portfolio import PortfolioAssetUpdate
+from app.core.schemas.portfolio import PortfolioAssetWithDetails
+from app.core.schemas.portfolio import PortfolioCreate
+from app.core.schemas.portfolio import PortfolioHolding
+from app.core.schemas.portfolio import PortfolioStatistics
+from app.core.schemas.portfolio import PortfolioSummary
+from app.core.schemas.portfolio import PortfolioUpdate
+from app.core.schemas.portfolio import TransactionCreate
+from app.core.schemas.portfolio import TransactionUpdate
 from app.core.services.market_data_service import MarketDataService
 
 
@@ -161,38 +160,50 @@ class PortfolioService:
         self.db.refresh(portfolio_asset)
         return portfolio_asset
 
-    async def _update_asset_pnl(self, portfolio_asset: PortfolioAsset) -> PortfolioAsset:
-        """Update unrealized P&L for a portfolio asset."""
-        # Get current asset price
-        current_price = (
-            self.db.query(AssetPrice)
-            .filter(AssetPrice.asset_id == portfolio_asset.asset_id)
-            .order_by(desc(AssetPrice.date))
-            .first()
-        )
-        close_price = current_price.close_price if current_price else None
-        if not current_price:
-            asset = self.db.query(Asset).filter(Asset.id == portfolio_asset.asset_id).first()
-            if asset:
-                close_price = await self.market_data_service.get_current_price(asset.symbol)
-
-        if close_price:
-            current_value = float(close_price) * float(
-                portfolio_asset.quantity
+    async def _update_asset_pnl(
+        self, portfolio_asset: PortfolioAsset
+    ) -> PortfolioAsset:
+        """Update unrealized P&L for a portfolio asset using real-time data from yfinance."""
+        try:
+            # Get asset information
+            asset = (
+                self.db.query(Asset)
+                .filter(Asset.id == portfolio_asset.asset_id)
+                .first()
             )
-            portfolio_asset.current_value = Decimal(str(current_value))
+            if not asset:
+                return portfolio_asset
 
-            # Calculate unrealized P&L
-            cost_basis_total = float(portfolio_asset.cost_basis_total)
-            unrealized_pnl = current_value - cost_basis_total
-            portfolio_asset.unrealized_pnl = Decimal(str(unrealized_pnl))
+            # Get current price from yfinance
+            current_price = await self.market_data_service.get_current_price(
+                asset.symbol
+            )
 
-            # Calculate P&L percentage
-            if cost_basis_total > 0:
-                pnl_percent = (unrealized_pnl / cost_basis_total) * 100
-                portfolio_asset.unrealized_pnl_percent = Decimal(str(pnl_percent))
+            if current_price:
+                current_value = float(current_price) * float(portfolio_asset.quantity)
+                portfolio_asset.current_value = Decimal(str(current_value))
+
+                # Calculate unrealized P&L
+                cost_basis_total = float(portfolio_asset.cost_basis_total)
+                unrealized_pnl = current_value - cost_basis_total
+                portfolio_asset.unrealized_pnl = Decimal(str(unrealized_pnl))
+
+                # Calculate P&L percentage
+                if cost_basis_total > 0:
+                    pnl_percent = (unrealized_pnl / cost_basis_total) * 100
+                    portfolio_asset.unrealized_pnl_percent = Decimal(str(pnl_percent))
+                else:
+                    portfolio_asset.unrealized_pnl_percent = Decimal("0")
             else:
-                portfolio_asset.unrealized_pnl_percent = Decimal("0")
+                # If we can't get current price, keep existing values or set to None
+                portfolio_asset.current_value = None
+                portfolio_asset.unrealized_pnl = None
+                portfolio_asset.unrealized_pnl_percent = None
+
+        except Exception as e:
+            # Log error but don't fail the operation
+            print(f"Error updating P&L for asset {portfolio_asset.asset_id}: {e}")
+
         return portfolio_asset
 
     async def update_portfolio_asset(
@@ -308,7 +319,6 @@ class PortfolioService:
             self.db.add(portfolio_asset)
             self.db.commit()
             self.db.refresh(portfolio_asset)
-
 
             asset_details = PortfolioAssetWithDetails(
                 id=portfolio_asset.id,

@@ -32,9 +32,6 @@ import { Toaster } from 'react-hot-toast';
 // - Routes: Container for all our routes
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 
-// Import test components - these are for testing API functionality
-import ComprehensiveTest from './components/ComprehensiveTest';
-import ComprehensiveTestWithAuth from './components/ComprehensiveTestWithAuth';
 
 // Import main feature components
 import Assets from './components/assets/Assets'; // Page for viewing market assets
@@ -151,23 +148,6 @@ function App() {
               }
             />
 
-            {/* Test pages - for developers to test API functionality */}
-            <Route
-              path="/test"
-              element={
-                <ProtectedRoute>
-                  <ComprehensiveTest />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/test-auth"
-              element={
-                <ProtectedRoute>
-                  <ComprehensiveTestWithAuth />
-                </ProtectedRoute>
-              }
-            />
 
             {/* 
               ROOT ROUTE - When someone visits the main URL (like "localhost:3000/")

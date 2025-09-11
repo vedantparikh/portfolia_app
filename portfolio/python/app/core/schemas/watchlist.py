@@ -1,8 +1,13 @@
-from datetime import datetime, timezone
+from datetime import datetime
+from datetime import timezone
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+from pydantic import Field
 
 
 class WatchlistBase(BaseModel):
@@ -41,11 +46,17 @@ class WatchlistResponse(WatchlistBase):
     user_id: int
     is_default: bool
     sort_order: int
-    item_count: int
-    total_gain_loss: Optional[Decimal] = None
-    total_gain_loss_percent: Optional[Decimal] = None
     created_at: datetime
     updated_at: datetime
+
+    # Calculated fields (not in database)
+    item_count: Optional[int] = Field(None, description="Number of items in watchlist")
+    total_gain_loss: Optional[Decimal] = Field(
+        None, description="Total gain/loss across all items"
+    )
+    total_gain_loss_percent: Optional[Decimal] = Field(
+        None, description="Total gain/loss percentage"
+    )
 
     class Config:
         from_attributes = True
@@ -96,18 +107,22 @@ class WatchlistItemResponse(WatchlistItemBase):
     added_date: datetime
     updated_at: datetime
 
-    # Performance data
+    # Performance data (from database)
     added_price: Optional[Decimal] = None
     current_price: Optional[Decimal] = None
     price_change_since_added: Optional[Decimal] = None
     price_change_percent_since_added: Optional[Decimal] = None
-    days_since_added: Optional[int] = None
 
-    # Alert settings
+    # Alert settings (from database)
     alerts_enabled: bool
     alert_price_high: Optional[Decimal] = None
     alert_price_low: Optional[Decimal] = None
     alert_price_change_percent: Optional[Decimal] = None
+
+    # Calculated fields (not in database)
+    days_since_added: Optional[int] = Field(
+        None, description="Days since item was added"
+    )
 
     class Config:
         from_attributes = True

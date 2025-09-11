@@ -1,18 +1,15 @@
 import enum
 
-from sqlalchemy import (
-    Boolean,
-    Column,
-    DateTime,
-    Enum,
-    ForeignKey,
-    Index,
-    Integer,
-    Numeric,
-    String,
-    Text,
-    text,
-)
+from sqlalchemy import Boolean
+from sqlalchemy import Column
+from sqlalchemy import DateTime
+from sqlalchemy import Enum
+from sqlalchemy import ForeignKey
+from sqlalchemy import Index
+from sqlalchemy import Integer
+from sqlalchemy import String
+from sqlalchemy import Text
+from sqlalchemy import text
 from sqlalchemy.orm import relationship
 
 from app.core.database.connection import Base
@@ -73,9 +70,6 @@ class Asset(Base):
 
     # Relationships
     user = relationship("User", back_populates="assets")
-    prices = relationship(
-        "AssetPrice", back_populates="asset", cascade="all, delete-orphan"
-    )
     portfolio_holdings = relationship(
         "PortfolioAsset", back_populates="asset", cascade="all, delete-orphan"
     )
@@ -115,41 +109,6 @@ class Asset(Base):
         Index("idx_assets_sector", "sector"),
         Index("idx_assets_country", "country"),
         Index("idx_assets_active", "is_active"),
-    )
-
-
-class AssetPrice(Base):
-    """Historical asset price data."""
-
-    __tablename__ = "asset_prices"
-
-    id = Column(Integer, primary_key=True, index=True)
-    asset_id = Column(
-        Integer, ForeignKey("assets.id", ondelete="CASCADE"), nullable=False
-    )
-    date = Column(DateTime(timezone=True), nullable=False)
-    open_price = Column(Numeric(20, 4), nullable=True)
-    high_price = Column(Numeric(20, 4), nullable=True)
-    low_price = Column(Numeric(20, 4), nullable=True)
-    close_price = Column(Numeric(20, 4), nullable=False)
-    volume = Column(Numeric(20, 0), nullable=True)
-    adjusted_close = Column(
-        Numeric(20, 4), nullable=True
-    )  # Adjusted for splits/dividends
-    dividend_amount = Column(Numeric(20, 4), nullable=True)
-    split_ratio = Column(Numeric(10, 6), nullable=True)
-    created_at = Column(
-        DateTime(timezone=True), server_default=text("NOW()"), nullable=False
-    )
-
-    # Relationships
-    asset = relationship("Asset", back_populates="prices")
-
-    # Indexes for performance
-    __table_args__ = (
-        Index("idx_asset_prices_asset_id", "asset_id"),
-        Index("idx_asset_prices_date", "date"),
-        Index("idx_asset_prices_asset_date", "asset_id", "date", unique=True),
     )
 
 

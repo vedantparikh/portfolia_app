@@ -1,42 +1,101 @@
 """
-Market Data Service
-Handles fetching, storing, and serving daily market data with fallback to local data.
+Market Data Service - yfinance only
+Handles fetching real-time market data from yfinance without database storage.
 """
 
 import asyncio
 import logging
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
 
-import pandas as pd
-import yfinance as yf
-from sqlalchemy import and_, desc, select
-from sqlalchemy.orm import Session
-
-from app.core.database.connection import get_db_session
-from app.core.database.models.market_data import MarketData, TickerInfo
-from app.core.schemas.market import MarketData as MarketDataSchema
+import pandas as pd  # type: ignore
+import yfinance as yf  # type: ignore
 
 logger = logging.getLogger(__name__)
 
 
 class MarketDataService:
-    """Service for managing market data operations."""
+    """Service for managing market data operations using yfinance only."""
 
     def __init__(self) -> None:
         self.max_retries = 3
         self.retry_delay = 5  # seconds
 
     async def get_current_price(self, symbol: str) -> Optional[float]:
-        """Get current price of a ticker."""
+        """Get current price of a ticker from yfinance."""
         try:
             ticker = yf.Ticker(symbol)
-            return ticker.info.get("currentPrice", None) or ticker.info.get(
-                "regularMarketPrice", None
+            info = ticker.info
+
+            # Try multiple price fields in order of preference
+            price = (
+                info.get("currentPrice")
+                or info.get("regularMarketPrice")
+                or info.get("previousClose")
+                or info.get("open")
             )
-        except Exception as e:
-            logger.error(f"Error getting current price for {symbol}: {e}")
+
+            if price is not None:
+                return float(price)
+
+            # If info doesn't have price, try getting it from history
+            hist = ticker.history(period="1d")
+            if not hist.empty:
+                return float(hist["Close"].iloc[-1])
+
             return None
+
+        except Exception as e:
+            logger.error("Error getting current price for %s: %s", symbol, e)
+            return None
+
+    async def get_multiple_current_prices(
+        self, symbols: List[str]
+    ) -> Dict[str, Optional[float]]:
+        """Get current prices for multiple symbols efficiently."""
+        try:
+            # Use yfinance Tickers for bulk fetching
+            tickers = yf.Tickers(" ".join(symbols))
+            results = {}
+
+            for symbol in symbols:
+                try:
+                    ticker = tickers.tickers[symbol]
+                    info = ticker.info
+
+                    price = (
+                        info.get("currentPrice")
+                        or info.get("regularMarketPrice")
+                        or info.get("previousClose")
+                        or info.get("open")
+                    )
+
+                    if price is not None:
+                        results[symbol] = float(price)
+                    else:
+                        # Fallback to history
+                        hist = ticker.history(period="1d")
+                        if not hist.empty:
+                            results[symbol] = float(hist["Close"].iloc[-1])
+                        else:
+                            results[symbol] = None
+
+                except Exception as e:
+                    logger.error("Error getting price for %s: %s", symbol, e)
+                    results[symbol] = None
+
+            return results
+
+        except Exception as e:
+            logger.error("Error getting multiple prices: %s", e)
+            # Fallback to individual requests
+            results = {}
+            for symbol in symbols:
+                results[symbol] = await self.get_current_price(symbol)
+            return results
 
     async def fetch_ticker_data(
         self,
@@ -45,593 +104,296 @@ class MarketDataService:
         interval: str = "1d",
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
-        ticker: Optional[yf.Ticker] = None,
     ) -> Optional[pd.DataFrame]:
         """
         Fetch ticker data from yfinance with retry logic.
 
-        Always fetches maximum available data for 1d interval to ensure comprehensive coverage.
-        Note: yfinance default behavior returns only ~30 days, so we explicitly use period="max".
-
         Args:
             symbol: Stock symbol
-            period: Data period (default: "max" for maximum available data - typically 40+ years)
-            interval: Data interval (default: "1d" for daily data)
+            period: Data period (1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max)
+            interval: Data interval (1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo)
+            start_date: Start date (YYYY-MM-DD)
+            end_date: End date (YYYY-MM-DD)
 
         Returns:
             DataFrame with market data or None if failed
         """
         for attempt in range(self.max_retries):
             try:
-                logger.info(f"Fetching data for {symbol} (attempt {attempt + 1})")
+                logger.info("Fetching data for %s (attempt %d)", symbol, attempt + 1)
 
-                if ticker is None:
-                    ticker = yf.Ticker(symbol)
+                ticker = yf.Ticker(symbol)
 
-                data = ticker.history(
-                    period=period, interval=interval, start=start_date, end=end_date
-                )
+                if start_date and end_date:
+                    data = ticker.history(
+                        start=start_date, end=end_date, interval=interval
+                    )
+                else:
+                    data = ticker.history(period=period, interval=interval)
 
                 if not isinstance(data, pd.DataFrame) or data.empty:
-                    logger.warning(f"No data returned for {symbol}")
+                    logger.warning("No data returned for %s", symbol)
                     return None
 
-                logger.info(
-                    f"Successfully fetched {len(data)} records for {symbol} (max period)"
-                )
+                logger.info("Successfully fetched %d records for %s", len(data), symbol)
+
+                # Reset index to make Date a column
                 data = data.reset_index()
+
+                # Ensure we have the expected columns
+                expected_columns = ["Date", "Open", "High", "Low", "Close", "Volume"]
+                if not all(col in data.columns for col in expected_columns):
+                    logger.warning("Missing expected columns in data for %s", symbol)
+                    return None
+
+                # Sort by date descending (most recent first)
                 data = data.sort_values(by="Date", ascending=False)
 
                 return data
 
             except Exception as e:
-                logger.error(f"Attempt {attempt + 1} failed for {symbol}: {e}")
+                logger.error("Attempt %d failed for %s: %s", attempt + 1, symbol, e)
                 if attempt < self.max_retries - 1:
                     await asyncio.sleep(self.retry_delay)
                 else:
-                    logger.error(f"All attempts failed for {symbol}")
+                    logger.error("All attempts failed for %s", symbol)
                     return None
-
-    async def store_market_data(
-        self, symbol: str, data: pd.DataFrame, session: Session, append: bool = False
-    ) -> bool:
-        """
-        Store market data in the database.
-
-        Args:
-            symbol: Stock symbol
-            data: DataFrame with market data
-            session: Database session
-            append: Whether to append data to existing records.
-            If False, existing records will be updated and new records will be added to the database.
-            If True, only new records will be added to the database.
-            Schedular, should pass False. app, should pass True for better
-            performance as its less likely to be required to be updated.
-
-        Returns:
-            True if successful, False otherwise
-        """
-        try:
-            # Get or create ticker info
-            ticker_info = await self._get_or_create_ticker(symbol, session)
-
-            if append:
-                # Get last recorded date for the ticker from the database
-                last_recorded_date = session.execute(
-                    select(MarketData)
-                    .where(MarketData.ticker_id == ticker_info.id)
-                    .order_by(desc(MarketData.date))
-                    .limit(1)
-                )
-                last_recorded_date = last_recorded_date.scalar_one_or_none()
-                if last_recorded_date:
-                    data = data[data["Date"] > last_recorded_date.date]
-            # Convert DataFrame to database records
-            records = []
-            for date, row in data.iterrows():
-                record = MarketData(
-                    ticker_id=ticker_info.id,
-                    date=date.date(),
-                    open_price=float(row["Open"]),
-                    high_price=float(row["High"]),
-                    low_price=float(row["Low"]),
-                    close_price=float(row["Close"]),
-                    volume=int(row["Volume"]),
-                    adjusted_close=(
-                        float(row["Adj Close"])
-                        if "Adj Close" in row
-                        else float(row["Close"])
-                    ),
-                    created_at=datetime.now(timezone.utc),
-                    updated_at=datetime.now(timezone.utc),
-                )
-                records.append(record)
-
-            # Bulk insert/update (upsert logic)
-            await self._upsert_market_data(records, session)
-
-            logger.info(f"Stored {len(records)} records for {symbol}")
-            return True
-
-        except Exception as e:
-            logger.error(f"Failed to store data for {symbol}: {e}")
-            return False
-
-    async def _get_or_create_ticker(self, symbol: str, session: Session) -> TickerInfo:
-        """Get existing ticker or create new one with comprehensive company information."""
-        try:
-            # Check if ticker exists
-            result = session.execute(
-                select(TickerInfo).where(TickerInfo.symbol == symbol)
-            )
-            ticker = result.scalar_one_or_none()
-
-            if ticker:
-                # Update existing ticker with fresh company info
-                logger.info(f"Updating existing ticker info for {symbol}")
-                company_info = await self._fetch_company_info(symbol)
-
-                ticker.name = company_info["name"]
-                ticker.company_name = company_info["company_name"]
-                ticker.sector = company_info["sector"]
-                ticker.industry = company_info["industry"]
-                ticker.exchange = company_info["exchange"]
-                ticker.currency = company_info["currency"]
-                ticker.updated_at = datetime.now(timezone.utc)
-
-                session.commit()
-                session.refresh(ticker)
-                return ticker
-
-            # Create new ticker with comprehensive company information
-            logger.info(f"Creating new ticker with company info for {symbol}")
-            company_info = await self._fetch_company_info(symbol)
-
-            ticker = TickerInfo(
-                symbol=symbol,
-                name=company_info["name"],
-                company_name=company_info["company_name"],
-                sector=company_info["sector"],
-                industry=company_info["industry"],
-                exchange=company_info["exchange"],
-                is_active=True,
-                created_at=datetime.now(timezone.utc),
-                updated_at=datetime.now(timezone.utc),
-            )
-            session.add(ticker)
-            session.commit()
-            session.refresh(ticker)
-
-            logger.info(f"Created ticker {symbol}: {ticker.name} ({ticker.sector})")
-            return ticker
-
-        except Exception as e:
-            logger.error(f"Error in _get_or_create_ticker for {symbol}: {e}")
-            raise
-
-    async def _upsert_market_data(
-        self, records: List[MarketData], session: Session
-    ) -> None:
-        """Upsert market data records."""
-        try:
-            for record in records:
-                # Check if record exists for this date and ticker
-                existing = session.execute(
-                    select(MarketData).where(
-                        and_(
-                            MarketData.ticker_id == record.ticker_id,
-                            MarketData.date == record.date,
-                        )
-                    )
-                )
-                existing_record = existing.scalar_one_or_none()
-
-                if existing_record:
-                    # Update existing record
-                    existing_record.open_price = record.open_price
-                    existing_record.high_price = record.high_price
-                    existing_record.low_price = record.low_price
-                    existing_record.close_price = record.close_price
-                    existing_record.volume = record.volume
-                    existing_record.adjusted_close = record.adjusted_close
-                    existing_record.updated_at = datetime.now(timezone.utc)
-                else:
-                    # Insert new record
-                    session.add(record)
-
-            session.commit()
-
-        except Exception as e:
-            logger.error(f"Error in _upsert_market_data: {e}")
-            session.rollback()
-            raise
-
-    async def get_market_data(
-        self,
-        symbol: str,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
-    ) -> Optional[pd.DataFrame]:
-        """
-        Get market data from local database.
-
-        Args:
-            symbol: Stock symbol
-            start_date: Start date for data range
-            end_date: End date for data range
-
-        Returns:
-            DataFrame with market data or None if not found
-        """
-        try:
-            async with get_db_session() as session:
-                # Get ticker info
-                result = session.execute(
-                    select(TickerInfo).where(TickerInfo.symbol == symbol)
-                )
-                ticker = result.scalar_one_or_none()
-
-                if not ticker:
-                    logger.warning(f"Ticker {symbol} not found in database")
-                    return None
-
-                # Build query
-                query = select(MarketData).where(MarketData.ticker_id == ticker.id)
-
-                if start_date:
-                    query = query.where(MarketData.date >= start_date.date())
-                if end_date:
-                    query = query.where(MarketData.date <= end_date.date())
-
-                query = query.order_by(desc(MarketData.date))
-
-                # Execute query
-                result = session.execute(query)
-                records = result.scalars().all()
-
-                if not records:
-                    logger.warning(f"No market data found for {symbol}")
-                    return None
-
-                # Convert to DataFrame
-                data = []
-                for record in records:
-                    data.append(
-                        {
-                            "Date": record.date,
-                            "Open": record.open_price,
-                            "High": record.high_price,
-                            "Low": record.low_price,
-                            "Close": record.close_price,
-                            "Volume": record.volume,
-                            "Adj Close": record.adjusted_close,
-                        }
-                    )
-
-                df = pd.DataFrame(data)
-
-                logger.info(f"Retrieved {len(df)} records for {symbol} from database")
-                return df
-
-        except Exception as e:
-            logger.error(f"Error getting market data for {symbol}: {e}")
-            return None
-
-    async def get_data_with_fallback(
-        self, symbol: str, period: str = "max", interval: str = "1d"
-    ) -> Optional[pd.DataFrame]:
-        """
-        Get market data with fallback logic.
-        ALWAYS tries to fetch from yfinance first for fresh data, falls back to local data only if yfinance fails.
-
-        Always fetches maximum available data for 1d interval to ensure comprehensive coverage.
-        Note: yfinance default behavior returns only ~30 days, so we explicitly use period="max".
-
-        Args:
-            symbol: Stock symbol
-            period: Data period (default: "max" for maximum available data - typically 40+ years)
-            interval: Data interval (default: "1d" for daily data)
-
-        Returns:
-            DataFrame with market data or None if not available
-        """
-        # Priority: yfinance API > local database
-        logger.info(
-            f"Fetching fresh data from yfinance for {symbol} {period} {interval}"
-        )
-        fresh_data = await self.fetch_ticker_data(
-            symbol=symbol, period=period, interval=interval
-        )
-
-        if fresh_data is not None:
-            # Store the fresh data in database for future fallback
-            try:
-                async with get_db_session() as session:
-                    await self.store_market_data(
-                        symbol=symbol, data=fresh_data, session=session, append=True
-                    )
-                logger.info(
-                    f"✅ Fresh data fetched and stored for {symbol} (max period: {len(fresh_data)} records)"
-                )
-                return fresh_data
-            except Exception as e:
-                logger.error(f"Failed to store fresh data for {symbol}: {e}")
-                # Still return the data even if storage failed
-                logger.info(
-                    f"Returning fresh data for {symbol} (storage failed but data is valid)"
-                )
-                return fresh_data
-
-        # Only fallback to local data if yfinance completely fails
-        logger.warning(f"yfinance failed for {symbol}, falling back to local database")
-        local_data = await self.get_market_data(symbol)
-
-        if local_data is not None:
-            logger.info(
-                f"📊 Local data retrieved for {symbol} ({len(local_data)} records) - yfinance unavailable"
-            )
-            return local_data
-
-        logger.error(
-            f"❌ No data available for {symbol} (neither yfinance nor local database)"
-        )
-        return None
-
-    async def update_all_tickers(self, symbols: List[str]) -> Dict[str, bool]:
-        """
-        Update data for all specified tickers.
-
-        Args:
-            symbols: List of stock symbols to update
-
-        Returns:
-            Dictionary with update status for each symbol
-        """
-        results = {}
-
-        for symbol in symbols:
-            try:
-                logger.info(f"Updating data for {symbol}")
-                success = await self.update_single_ticker(symbol)
-                results[symbol] = success
-            except Exception as e:
-                logger.error(f"Error updating {symbol}: {e}")
-                results[symbol] = False
-
-        return results
-
-    async def update_single_ticker(self, symbol: str) -> bool:
-        """Update data for a single ticker."""
-        try:
-            # Fetch fresh data (always max period, 1d interval for comprehensive coverage)
-            data = await self.fetch_ticker_data(symbol, "max", "1d")
-
-            if data is None:
-                logger.warning(f"No fresh data available for {symbol}")
-                return False
-
-            # Store in database
-            async with get_db_session() as session:
-                success = await self.store_market_data(symbol, data, session)
-
-            return success
-
-        except Exception as e:
-            logger.error(f"Error updating {symbol}: {e}")
-            return False
-
-    async def get_data_quality_info(self, symbol: str) -> Dict[str, Any]:
-        """
-        Get information about data quality and freshness.
-
-        Args:
-            symbol: Stock symbol
-
-        Returns:
-            Dictionary with data quality information
-        """
-        try:
-            async with get_db_session() as session:
-                # Get ticker info
-                result = session.execute(
-                    select(TickerInfo).where(TickerInfo.symbol == symbol)
-                )
-                ticker = result.scalar_one_or_none()
-
-                if not ticker:
-                    return {"error": "Ticker not found"}
-
-                # Get latest data record
-                result = session.execute(
-                    select(MarketData)
-                    .where(MarketData.ticker_id == ticker.id)
-                    .order_by(desc(MarketData.date))
-                    .limit(1)
-                )
-                latest_record = result.scalar_one_or_none()
-
-                if not latest_record:
-                    return {"error": "No data available"}
-
-                # Calculate data age
-                data_age = datetime.now(timezone.utc).date() - latest_record.date
-
-                return {
-                    "symbol": symbol,
-                    "latest_date": latest_record.date.isoformat(),
-                    "data_age_days": data_age.days,
-                    "is_fresh": data_age.days <= 1,
-                    "last_updated": latest_record.updated_at.isoformat(),
-                }
-
-        except Exception as e:
-            logger.error(f"Error getting data quality info for {symbol}: {e}")
-            return {"error": str(e)}
-
-    async def _fetch_company_info(self, symbol: str) -> Dict[str, Any]:
-        """
-        Fetch comprehensive company information from yfinance.
-
-        Args:
-            symbol: Stock symbol
-
-        Returns:
-            Dictionary with company information
-        """
-        try:
-            ticker = yf.Ticker(symbol)
-
-            # Get company info
-            info = ticker.info
-
-            company_data = {
-                "name": info.get("longName", symbol),
-                "company_name": info.get("longName", info.get("shortName", symbol)),
-                "sector": info.get("sector", None),
-                "industry": info.get("industry", None),
-                "exchange": info.get("exchange", None),
-                "market_cap": info.get("marketCap", None),
-                "country": info.get("country", None),
-                "currency": info.get("currency", None),
-                "website": info.get("website", None),
-                "business_summary": info.get("longBusinessSummary", None),
-            }
-
-            logger.info(
-                f"Fetched company info for {symbol}: {company_data['name']} ({company_data['sector']})"
-            )
-            return company_data
-
-        except Exception as e:
-            logger.warning(f"Failed to fetch company info for {symbol}: {e}")
-            # Return basic info if yfinance fails
-            return {
-                "name": symbol,
-                "company_name": symbol,
-                "sector": None,
-                "industry": None,
-                "exchange": None,
-                "market_cap": None,
-                "country": None,
-                "currency": None,
-                "website": None,
-                "business_summary": None,
-            }
-
-    async def refresh_ticker_info(self, symbol: str) -> bool:
-        """
-        Refresh company information for an existing ticker.
-
-        Args:
-            symbol: Stock symbol
-
-        Returns:
-            True if successful, False otherwise
-        """
-        try:
-            async with get_db_session() as session:
-                # Get existing ticker
-                result = session.execute(
-                    select(TickerInfo).where(TickerInfo.symbol == symbol)
-                )
-                ticker = result.scalar_one_or_none()
-
-                if not ticker:
-                    logger.warning(f"Ticker {symbol} not found in database")
-                    return False
-
-                # Fetch fresh company info
-                company_info = await self._fetch_company_info(symbol)
-
-                # Update ticker with new information
-                ticker.name = company_info["name"]
-                ticker.company_name = company_info["company_name"]
-                ticker.sector = company_info["sector"]
-                ticker.industry = company_info["industry"]
-                ticker.exchange = company_info["exchange"]
-                ticker.updated_at = datetime.now(timezone.utc)
-
-                session.commit()
-                session.refresh(ticker)
-
-                logger.info(
-                    f"Refreshed ticker info for {symbol}: {ticker.name} ({ticker.sector})"
-                )
-                return True
-
-        except Exception as e:
-            logger.error(f"Error refreshing ticker info for {symbol}: {e}")
-            return False
-
-    async def refresh_all_ticker_info(self) -> Dict[str, bool]:
-        """
-        Refresh company information for all active tickers.
-
-        Returns:
-            Dictionary with refresh status for each symbol
-        """
-        try:
-            async with get_db_session() as session:
-                # Get all active tickers
-                result = session.execute(
-                    select(TickerInfo).where(TickerInfo.is_active == True)
-                )
-                tickers = result.scalars().all()
-
-                results = {}
-                for ticker in tickers:
-                    logger.info(f"Refreshing company info for {ticker.symbol}")
-                    success = await self.refresh_ticker_info(ticker.symbol)
-                    results[ticker.symbol] = success
-
-                return results
-
-        except Exception as e:
-            logger.error(f"Error refreshing all ticker info: {e}")
-            return {}
-
-    async def get_stock_latest_data(self, symbols: List[str]) -> List[MarketData]:
-        """
-        Get the latest stock data for a specific symbols using yfinance.
-        args:
-            symbols: List[str]
-        return:
-            List[Dict[str, Any]]
-
-        """
-        tickers = yf.Tickers(tickers=symbols)
-        tickers_info = []
-        for ticker_symbol, ticker in tickers.tickers.items():
-            info = ticker.info
-            tickers_info.append(
-                MarketDataSchema(
-                    symbol=info.get("symbol", ticker_symbol),
-                    name=info.get('longname') or info.get("longName") or info.get("shortName") or info.get("shortname", "N/A"),
-                    latest_price=info.get("currentPrice", 0.0),
-                    latest_date=info.get("regularMarketTime"),
-                    market_cap=info.get("marketCap"),
-                    pe_ratio=info.get("trailingPE"),
-                    beta=info.get("beta"),
-                    currency=info.get("currency"),
-                    exchange=info.get("exchdisp") or info.get("exchDisp") or info.get("exchange"),
-                    dividend_yield=info.get("dividendYield", 0.0),
-                )
-            )
-
-        logger.info(f"Fetched {len(tickers_info)} records for {symbols}")
-        return tickers_info
 
     async def get_ticker_info(self, symbol: str) -> Optional[Dict[str, Any]]:
         """
-        Get ticker info for a specific symbol.
+        Get comprehensive ticker information from yfinance.
+
+        Args:
+            symbol: Stock symbol
+
+        Returns:
+            Dictionary with ticker information or None if failed
         """
         try:
-            return yf.Ticker(symbol).get_info()
+            ticker = yf.Ticker(symbol)
+            info = ticker.info
+
+            if not info or info.get("symbol") is None:
+                logger.warning("No info available for %s", symbol)
+                return None
+
+            # Extract and normalize the information
+            ticker_data = {
+                "symbol": info.get("symbol", symbol).upper(),
+                "longName": info.get("longName"),
+                "shortName": info.get("shortName"),
+                "sector": info.get("sector"),
+                "industry": info.get("industry"),
+                "exchange": info.get("exchange"),
+                "exchangeDisp": info.get("exchangeDisp"),
+                "currency": info.get("currency"),
+                "country": info.get("country"),
+                "quoteType": info.get("quoteType"),
+                "marketCap": info.get("marketCap"),
+                "currentPrice": info.get("currentPrice"),
+                "regularMarketPrice": info.get("regularMarketPrice"),
+                "previousClose": info.get("previousClose"),
+                "open": info.get("open"),
+                "dayLow": info.get("dayLow"),
+                "dayHigh": info.get("dayHigh"),
+                "volume": info.get("volume"),
+                "averageVolume": info.get("averageVolume"),
+                "beta": info.get("beta"),
+                "trailingPE": info.get("trailingPE"),
+                "forwardPE": info.get("forwardPE"),
+                "dividendYield": info.get("dividendYield"),
+                "payoutRatio": info.get("payoutRatio"),
+                "bookValue": info.get("bookValue"),
+                "priceToBook": info.get("priceToBook"),
+                "earningsGrowth": info.get("earningsGrowth"),
+                "revenueGrowth": info.get("revenueGrowth"),
+                "returnOnAssets": info.get("returnOnAssets"),
+                "returnOnEquity": info.get("returnOnEquity"),
+                "freeCashflow": info.get("freeCashflow"),
+                "operatingCashflow": info.get("operatingCashflow"),
+                "totalDebt": info.get("totalDebt"),
+                "totalCash": info.get("totalCash"),
+                "longBusinessSummary": info.get("longBusinessSummary"),
+                "website": info.get("website"),
+                "fullTimeEmployees": info.get("fullTimeEmployees"),
+            }
+
+            logger.info(
+                "Retrieved ticker info for %s: %s",
+                symbol,
+                ticker_data.get("longName", symbol),
+            )
+            return ticker_data
+
         except Exception as e:
-            logger.error(f"Error getting ticker info for {symbol}: {e}")
+            logger.error("Error getting ticker info for %s: %s", symbol, e)
             return None
-    
-    
+
+    async def get_stock_latest_data(self, symbols: List[str]) -> List[Dict[str, Any]]:
+        """
+        Get the latest stock data for multiple symbols.
+
+        Args:
+            symbols: List of stock symbols
+
+        Returns:
+            List of dictionaries with stock data
+        """
+        try:
+            if not symbols:
+                return []
+
+            # Use yfinance Tickers for bulk fetching
+            tickers_str = " ".join(symbols)
+            tickers = yf.Tickers(tickers_str)
+
+            results = []
+
+            for symbol in symbols:
+                try:
+                    ticker = tickers.tickers[symbol]
+                    info = ticker.info
+
+                    if not info or info.get("symbol") is None:
+                        logger.warning("No data available for %s", symbol)
+                        continue
+
+                    stock_data = {
+                        "symbol": info.get("symbol", symbol).upper(),
+                        "name": (
+                            info.get("longName") or info.get("shortName") or symbol
+                        ),
+                        "latest_price": (
+                            info.get("currentPrice")
+                            or info.get("regularMarketPrice")
+                            or info.get("previousClose")
+                            or 0.0
+                        ),
+                        "latest_date": info.get("regularMarketTime"),
+                        "market_cap": info.get("marketCap"),
+                        "pe_ratio": info.get("trailingPE"),
+                        "beta": info.get("beta"),
+                        "currency": info.get("currency"),
+                        "exchange": (info.get("exchangeDisp") or info.get("exchange")),
+                        "dividend_yield": info.get("dividendYield", 0.0),
+                        "day_change": None,  # Would need historical data to calculate
+                        "day_change_percent": None,  # Would need historical data to calculate
+                        "volume": info.get("volume"),
+                        "avg_volume": info.get("averageVolume"),
+                    }
+
+                    results.append(stock_data)
+
+                except Exception as e:
+                    logger.error("Error processing %s: %s", symbol, e)
+                    continue
+
+            logger.info(
+                "Retrieved data for %d out of %d symbols", len(results), len(symbols)
+            )
+            return results
+
+        except Exception as e:
+            logger.error("Error getting stock data for symbols %s: %s", symbols, e)
+            return []
+
+    async def search_symbols(
+        self, query: str, limit: int = 10
+    ) -> List[Dict[str, Any]]:  # noqa: ARG002
+        """
+        Search for stock symbols using yfinance.
+        Note: This is a basic implementation. For production, consider using
+        a dedicated symbol search API.
+
+        Args:
+            query: Search query
+            limit: Maximum number of results
+
+        Returns:
+            List of matching symbols with basic info
+        """
+        try:
+            # This is a simple implementation - in production you might want
+            # to use a more sophisticated search API
+
+            # Try to get info for the query as a direct symbol
+            ticker_info = await self.get_ticker_info(query.upper())
+
+            if ticker_info:
+                return [
+                    {
+                        "symbol": ticker_info["symbol"],
+                        "name": ticker_info.get("longName")
+                        or ticker_info.get("shortName"),
+                        "exchange": ticker_info.get("exchange"),
+                        "currency": ticker_info.get("currency"),
+                        "type": ticker_info.get("quoteType"),
+                    }
+                ]
+            else:
+                return []
+
+        except Exception as e:
+            logger.error("Error searching symbols for query '%s': %s", query, e)
+            return []
+
+    def get_supported_periods(self) -> List[str]:
+        """Get list of supported period values."""
+        return ["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "ytd", "max"]
+
+    def get_supported_intervals(self) -> List[str]:
+        """Get list of supported interval values."""
+        return [
+            "1m",
+            "2m",
+            "5m",
+            "15m",
+            "30m",
+            "60m",
+            "90m",
+            "1h",
+            "1d",
+            "5d",
+            "1wk",
+            "1mo",
+            "3mo",
+        ]
+
+    async def get_market_status(self) -> Dict[str, Any]:
+        """
+        Get current market status.
+        Note: This is a basic implementation using market hours.
+        """
+        try:
+            # Get current time in Eastern Time (US market timezone)
+            import pytz  # type: ignore
+
+            et = pytz.timezone("US/Eastern")
+            now_et = datetime.now(et)
+
+            # Basic market hours check (9:30 AM - 4:00 PM ET, Monday-Friday)
+            is_weekday = now_et.weekday() < 5  # Monday = 0, Friday = 4
+            market_open_time = now_et.replace(
+                hour=9, minute=30, second=0, microsecond=0
+            )
+            market_close_time = now_et.replace(
+                hour=16, minute=0, second=0, microsecond=0
+            )
+
+            is_market_hours = market_open_time <= now_et <= market_close_time
+            is_open = is_weekday and is_market_hours
+
+            return {
+                "is_open": is_open,
+                "current_time_et": now_et.isoformat(),
+                "next_open": None,  # Would need more complex logic
+                "next_close": None,  # Would need more complex logic
+                "timezone": "US/Eastern",
+            }
+
+        except Exception as e:
+            logger.error("Error getting market status: %s", e)
+            return {"is_open": None, "error": str(e)}
 
 
 # Global instance
