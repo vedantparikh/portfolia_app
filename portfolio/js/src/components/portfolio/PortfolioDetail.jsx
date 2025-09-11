@@ -72,69 +72,86 @@ const PortfolioDetail = ({ portfolio, stats, transactions }) => {
             console.log('[PortfolioDetail] Loading holdings for portfolio:', portfolio.id);
 
             // Try to get holdings from the API
-            const response = await portfolioAPI.getPortfolio(portfolio.id);
-            console.log('[PortfolioDetail] Portfolio response:', response);
+            const holdingsResponse = await portfolioAPI.getPortfolioHoldings(portfolio.id);
+            console.log('[PortfolioDetail] Holdings response:', holdingsResponse);
 
-            // Mock holdings data fallback - replace with real API data when available
-            const mockHoldings = [
-                {
-                    id: 1,
-                    symbol: 'AAPL',
-                    name: 'Apple Inc.',
-                    quantity: 10,
-                    avgPrice: 150.00,
-                    currentPrice: 175.50,
-                    value: 1755.00,
-                    change: 16.67,
-                    gainLoss: 255.00
-                },
-                {
-                    id: 2,
-                    symbol: 'GOOGL',
-                    name: 'Alphabet Inc.',
-                    quantity: 5,
-                    avgPrice: 2800.00,
-                    currentPrice: 2950.00,
-                    value: 14750.00,
-                    change: 5.36,
-                    gainLoss: 750.00
-                },
-                {
-                    id: 3,
-                    symbol: 'MSFT',
-                    name: 'Microsoft Corporation',
-                    quantity: 8,
-                    avgPrice: 300.00,
-                    currentPrice: 320.00,
-                    value: 2560.00,
-                    change: 6.67,
-                    gainLoss: 160.00
-                },
-                {
-                    id: 4,
-                    symbol: 'TSLA',
-                    name: 'Tesla Inc.',
-                    quantity: 3,
-                    avgPrice: 800.00,
-                    currentPrice: 750.00,
-                    value: 2250.00,
-                    change: -6.25,
-                    gainLoss: -150.00
-                },
-                {
-                    id: 5,
-                    symbol: 'NVDA',
-                    name: 'NVIDIA Corporation',
-                    quantity: 6,
-                    avgPrice: 400.00,
-                    currentPrice: 450.00,
-                    value: 2700.00,
-                    change: 12.50,
-                    gainLoss: 300.00
-                }
-            ];
+            // Process holdings data from API response
+            let holdings = [];
+            if (holdingsResponse && Array.isArray(holdingsResponse) && holdingsResponse.length > 0) {
+                holdings = holdingsResponse.map(holding => ({
+                    id: holding.asset_id,
+                    symbol: holding.symbol,
+                    name: holding.name,
+                    quantity: holding.quantity,
+                    avgPrice: holding.cost_basis,
+                    currentPrice: holding.current_value / holding.quantity,
+                    value: holding.current_value,
+                    change: holding.unrealized_pnl_percent,
+                    gainLoss: holding.unrealized_pnl
+                }));
+            } else {
+                // Mock holdings data fallback - replace with real API data when available
+                const mockHoldings = [
+                    {
+                        id: 1,
+                        symbol: 'AAPL',
+                        name: 'Apple Inc.',
+                        quantity: 10,
+                        avgPrice: 150.00,
+                        currentPrice: 175.50,
+                        value: 1755.00,
+                        change: 16.67,
+                        gainLoss: 255.00
+                    },
+                    {
+                        id: 2,
+                        symbol: 'GOOGL',
+                        name: 'Alphabet Inc.',
+                        quantity: 5,
+                        avgPrice: 2800.00,
+                        currentPrice: 2950.00,
+                        value: 14750.00,
+                        change: 5.36,
+                        gainLoss: 750.00
+                    },
+                    {
+                        id: 3,
+                        symbol: 'MSFT',
+                        name: 'Microsoft Corporation',
+                        quantity: 8,
+                        avgPrice: 300.00,
+                        currentPrice: 320.00,
+                        value: 2560.00,
+                        change: 6.67,
+                        gainLoss: 160.00
+                    },
+                    {
+                        id: 4,
+                        symbol: 'TSLA',
+                        name: 'Tesla Inc.',
+                        quantity: 3,
+                        avgPrice: 800.00,
+                        currentPrice: 750.00,
+                        value: 2250.00,
+                        change: -6.25,
+                        gainLoss: -150.00
+                    },
+                    {
+                        id: 5,
+                        symbol: 'NVDA',
+                        name: 'NVIDIA Corporation',
+                        quantity: 6,
+                        avgPrice: 400.00,
+                        currentPrice: 450.00,
+                        value: 2700.00,
+                        change: 12.50,
+                        gainLoss: 300.00
+                    }
+                ];
+                holdings = mockHoldings;
+            }
 
-            setHoldings(mockHoldings);
+            setHoldings(holdings);
         } catch (error) {
             console.warn('[PortfolioDetail] Failed to load holdings:', error);
             // Set empty holdings on error
@@ -303,7 +320,7 @@ const PortfolioDetail = ({ portfolio, stats, transactions }) => {
                                             {formatDate(transaction.created_at)}
                                         </p>
                                     </div>
-                                </div>  
+                                </div>
 
                                 <div className="text-right">
                                     <p className={`text-sm font-medium ${getTransactionColor(transaction.transaction_type)}`}>

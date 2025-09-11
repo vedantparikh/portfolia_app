@@ -57,6 +57,7 @@ const Transactions = () => {
 
             // Load portfolios
             const portfoliosResponse = await portfolioAPI.getPortfolios();
+            console.log('[Transactions] Portfolios response:', portfoliosResponse);
             setPortfolios(portfoliosResponse || []);
 
             // Load transactions
@@ -65,6 +66,7 @@ const Transactions = () => {
                 order_by: 'created_at',
                 order: 'desc'
             });
+            console.log('[Transactions] Transactions response:', transactionsResponse);
             setTransactions(transactionsResponse || []);
         } catch (error) {
             console.error('Failed to load data:', error);

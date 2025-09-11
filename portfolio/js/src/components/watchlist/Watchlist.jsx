@@ -86,7 +86,8 @@ const Watchlist = () => {
         try {
             setLoading(true);
             const data = await watchlistAPI.getWatchlists(false);
-            setWatchlists(data);
+            console.log('[Watchlist] Watchlists response:', data);
+            setWatchlists(data || []);
 
         } catch (error) {
             console.error('Failed to load watchlists:', error);

@@ -1,11 +1,14 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import List, Optional
+from typing import List
+from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+from pydantic import Field
 
 from app.core.database.models.asset import AssetType
-from app.core.database.models.transaction import TransactionStatus, TransactionType
+from app.core.database.models.transaction import TransactionStatus
+from app.core.database.models.transaction import TransactionType
 
 
 class PortfolioBase(BaseModel):
@@ -152,10 +155,14 @@ class TransactionBase(BaseModel):
     status: TransactionStatus = Field(default=TransactionStatus.COMPLETED)
     quantity: Decimal = Field(...)
     price: Decimal = Field(...)
-    currency: str
+    total_amount: Decimal = Field(...)
+    currency: str = Field(default="USD")
     transaction_date: datetime
-    fees: Optional[Decimal] = Field(0)
-    total_amount: Decimal = Field(0)
+    settlement_date: Optional[datetime] = None
+    notes: Optional[str] = None
+    reference_number: Optional[str] = None
+    fees: Decimal = Field(default=0)
+    taxes: Decimal = Field(default=0)
 
 
 class TransactionCreate(TransactionBase):
@@ -165,9 +172,15 @@ class TransactionCreate(TransactionBase):
 class TransactionUpdate(BaseModel):
     quantity: Optional[Decimal] = Field(None)
     price: Optional[Decimal] = Field(None)
-    transaction_date: Optional[datetime] = None
-    fees: Optional[Decimal] = Field(None)
+    total_amount: Optional[Decimal] = Field(None)
     currency: Optional[str] = None
+    transaction_date: Optional[datetime] = None
+    settlement_date: Optional[datetime] = None
+    notes: Optional[str] = None
+    reference_number: Optional[str] = None
+    fees: Optional[Decimal] = Field(None)
+    taxes: Optional[Decimal] = Field(None)
+    status: Optional[TransactionStatus] = None
 
 
 class Transaction(TransactionBase):

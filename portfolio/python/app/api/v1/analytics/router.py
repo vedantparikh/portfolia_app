@@ -3,38 +3,49 @@ Portfolio Analytics Router
 Comprehensive API endpoints for portfolio analysis, risk management, and performance tracking.
 """
 
-from datetime import datetime, timedelta
-from typing import List, Optional
+from datetime import datetime
+from datetime import timedelta
+from typing import List
+from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter
+from fastapi import Depends
+from fastapi import HTTPException
+from fastapi import Query
+from fastapi import status
 from sqlalchemy.orm import Session
 
 from app.core.auth.dependencies import get_current_active_user
 from app.core.database.connection import get_db
-from app.core.database.models import Portfolio, User
-from app.core.database.models.portfolio_analytics import (
-    AssetCorrelation,
-    AssetPerformanceMetrics,
-    PortfolioAllocation,
-    PortfolioBenchmark,
-    PortfolioPerformanceHistory,
-    PortfolioRiskMetrics,
-    RebalancingEvent,
-)
-from app.core.schemas.portfolio_analytics import (
-    PortfolioAllocationCreate,
-    PortfolioAnalyticsSummary,
-    PortfolioBenchmarkCreate,
-    PortfolioRebalancingRecommendation,
-    RebalancingEventCreate,
-)
+from app.core.database.models import Portfolio
+from app.core.database.models import User
+from app.core.database.models.portfolio_analytics import AssetCorrelation
+from app.core.database.models.portfolio_analytics import AssetPerformanceMetrics
+from app.core.database.models.portfolio_analytics import PortfolioAllocation
+from app.core.database.models.portfolio_analytics import PortfolioBenchmark
+from app.core.database.models.portfolio_analytics import PortfolioPerformanceHistory
+from app.core.database.models.portfolio_analytics import PortfolioRiskMetrics
+from app.core.database.models.portfolio_analytics import RebalancingEvent
+from app.core.schemas.portfolio_analytics import AllocationAnalysisResponse
+from app.core.schemas.portfolio_analytics import AssetMetricsResponse
+from app.core.schemas.portfolio_analytics import PerformanceComparisonResponse
+from app.core.schemas.portfolio_analytics import PerformanceSnapshotResponse
+from app.core.schemas.portfolio_analytics import PortfolioAllocationCreate
+from app.core.schemas.portfolio_analytics import PortfolioAnalyticsSummary
+from app.core.schemas.portfolio_analytics import PortfolioBenchmarkCreate
+from app.core.schemas.portfolio_analytics import PortfolioRebalancingRecommendation
+from app.core.schemas.portfolio_analytics import RebalancingEventCreate
+from app.core.schemas.portfolio_analytics import RiskCalculationResponse
 from app.core.services.portfolio_analytics_service import PortfolioAnalyticsService
 
 router = APIRouter(prefix="/analytics")
 
 
 # Portfolio Performance History
-@router.post("/portfolios/{portfolio_id}/performance/snapshot")
+@router.post(
+    "/portfolios/{portfolio_id}/performance/snapshot",
+    response_model=PerformanceSnapshotResponse,
+)
 async def create_performance_snapshot(
     portfolio_id: int,
     snapshot_date: Optional[datetime] = Query(
@@ -46,7 +57,7 @@ async def create_performance_snapshot(
     analytics_service = PortfolioAnalyticsService(db)
 
     try:
-        snapshot = analytics_service.create_performance_snapshot(
+        snapshot = await analytics_service.create_performance_snapshot(
             portfolio_id, snapshot_date
         )
         return snapshot
@@ -98,7 +109,7 @@ async def get_performance_history(
 
 
 # Asset Performance Metrics
-@router.post("/assets/{asset_id}/metrics")
+@router.post("/assets/{asset_id}/metrics", response_model=AssetMetricsResponse)
 async def calculate_asset_metrics(
     asset_id: int,
     calculation_date: Optional[datetime] = Query(
@@ -110,7 +121,9 @@ async def calculate_asset_metrics(
     analytics_service = PortfolioAnalyticsService(db)
 
     try:
-        metrics = analytics_service.calculate_asset_metrics(asset_id, calculation_date)
+        metrics = await analytics_service.calculate_asset_metrics(
+            asset_id, calculation_date
+        )
         return metrics
     except ValueError as e:
         raise HTTPException(
@@ -209,7 +222,10 @@ async def get_portfolio_allocations(
     return allocations
 
 
-@router.get("/portfolios/{portfolio_id}/allocations/analysis")
+@router.get(
+    "/portfolios/{portfolio_id}/allocations/analysis",
+    response_model=AllocationAnalysisResponse,
+)
 async def analyze_portfolio_allocation(
     portfolio_id: int,
     current_user: User = Depends(get_current_active_user),
@@ -233,13 +249,15 @@ async def analyze_portfolio_allocation(
         )
 
     analytics_service = PortfolioAnalyticsService(db)
-    analysis = analytics_service.analyze_portfolio_allocation(portfolio_id)
+    analysis = await analytics_service.analyze_portfolio_allocation(portfolio_id)
 
     return analysis
 
 
 # Portfolio Risk Analysis
-@router.post("/portfolios/{portfolio_id}/risk/calculate")
+@router.post(
+    "/portfolios/{portfolio_id}/risk/calculate", response_model=RiskCalculationResponse
+)
 async def calculate_portfolio_risk(
     portfolio_id: int,
     calculation_date: Optional[datetime] = Query(
@@ -268,7 +286,7 @@ async def calculate_portfolio_risk(
     analytics_service = PortfolioAnalyticsService(db)
 
     try:
-        risk_metrics = analytics_service.calculate_portfolio_risk_metrics(
+        risk_metrics = await analytics_service.calculate_portfolio_risk_metrics(
             portfolio_id, calculation_date
         )
         return risk_metrics
@@ -523,7 +541,7 @@ async def get_portfolio_analytics_summary(
     analytics_service = PortfolioAnalyticsService(db)
 
     try:
-        summary = analytics_service.get_portfolio_analytics_summary(portfolio_id)
+        summary = await analytics_service.get_portfolio_analytics_summary(portfolio_id)
         return PortfolioAnalyticsSummary(**summary)
     except ValueError as e:
         raise HTTPException(
@@ -558,7 +576,9 @@ async def get_rebalancing_recommendations(
         )
 
     analytics_service = PortfolioAnalyticsService(db)
-    recommendation = analytics_service.get_rebalancing_recommendation(portfolio_id)
+    recommendation = await analytics_service.get_rebalancing_recommendation(
+        portfolio_id
+    )
 
     return PortfolioRebalancingRecommendation(**recommendation)
 
@@ -590,7 +610,10 @@ async def get_asset_correlations(
 
 
 # Performance Comparison
-@router.get("/portfolios/{portfolio_id}/performance/comparison")
+@router.get(
+    "/portfolios/{portfolio_id}/performance/comparison",
+    response_model=PerformanceComparisonResponse,
+)
 async def get_portfolio_performance_comparison(
     portfolio_id: int,
     benchmark_id: Optional[int] = Query(None, description="Benchmark asset ID"),

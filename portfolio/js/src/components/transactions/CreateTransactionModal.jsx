@@ -238,21 +238,10 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
 
             if (priceData && Array.isArray(priceData) && priceData.length > 0) {
                 const latestData = priceData[0];
-                const price = parseFloat(latestData.latest_price || latestData.Close || latestData.close || latestData.price);
+                const price = parseFloat(latestData.latest_price);
 
                 if (!isNaN(price)) {
                     console.log(`[CreateTransactionModal] Setting price: ${price} for ${symbol}`);
-                    setFormData(prev => ({
-                        ...prev,
-                        price: price.toString()
-                    }));
-                    return price;
-                }
-            } else if (priceData && typeof priceData === 'object' && !Array.isArray(priceData)) {
-                const price = parseFloat(priceData.latest_price || priceData.Close || priceData.close || priceData.price);
-
-                if (!isNaN(price)) {
-                    console.log(`[CreateTransactionModal] Setting price (object): ${price} for ${symbol}`);
                     setFormData(prev => ({
                         ...prev,
                         price: price.toString()
@@ -399,20 +388,20 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
 
         try {
             setAssetCreationLoading(true);
-            
+
             // Create the asset
             const createdAsset = await assetAPI.createAsset(assetFormData);
-            
+
             // Update the transaction form with the new asset
             setFormData(prev => ({
                 ...prev,
                 asset_id: createdAsset.id,
                 symbol: createdAsset.symbol
             }));
-            
+
             setSelectedAsset(createdAsset);
             setShowAssetCreationForm(false);
-            
+
             // Clear asset form
             setAssetFormData({
                 symbol: '',
@@ -425,9 +414,9 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
                 description: '',
                 is_active: true
             });
-            
+
             toast.success('Asset created successfully and selected for transaction');
-            
+
             // Try to fetch current price for the new asset
             if (createdAsset.symbol) {
                 await fetchCurrentPrice(createdAsset.symbol);
@@ -727,11 +716,11 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="md:col-span-2">
                                             <label className="block text-sm font-medium text-gray-300 mb-2">Symbol <span className="text-red-400">*</span></label>
-                                            <SymbolSearch 
-                                                value={assetFormData.symbol} 
-                                                onChange={handleAssetSymbolChange} 
-                                                onSelect={handleAssetSymbolSelect} 
-                                                placeholder="e.g., AAPL, BTC" 
+                                            <SymbolSearch
+                                                value={assetFormData.symbol}
+                                                onChange={handleAssetSymbolChange}
+                                                onSelect={handleAssetSymbolSelect}
+                                                placeholder="e.g., AAPL, BTC"
                                             />
                                         </div>
                                         <div>

@@ -67,18 +67,8 @@ const Portfolio = () => {
             const response = await portfolioAPI.getPortfolios();
             console.log('[Portfolio] Portfolios response:', response);
 
-            // Handle different response formats
-            let portfolios = [];
-            if (response && response.portfolios) {
-                portfolios = response.portfolios;
-            } else if (Array.isArray(response)) {
-                portfolios = response;
-            } else if (response && response.data && Array.isArray(response.data)) {
-                portfolios = response.data;
-            } else if (response && typeof response === 'object' && !Array.isArray(response)) {
-                // If response is a single object, wrap it in an array
-                portfolios = [response];
-            }
+            // Use consistent API response format
+            const portfolios = Array.isArray(response) ? response : [];
 
             console.log('[Portfolio] Processed portfolios:', portfolios);
             setPortfolios(portfolios);
@@ -142,15 +132,8 @@ const Portfolio = () => {
                 });
                 console.log('[Portfolio] Transactions response:', transactionsResponse);
 
-                // Handle different response formats for transactions
-                let transactions = [];
-                if (transactionsResponse && transactionsResponse.transactions) {
-                    transactions = transactionsResponse.transactions;
-                } else if (Array.isArray(transactionsResponse)) {
-                    transactions = transactionsResponse;
-                } else if (transactionsResponse && transactionsResponse.data && Array.isArray(transactionsResponse.data)) {
-                    transactions = transactionsResponse.data;
-                }
+                // Use consistent API response format
+                const transactions = Array.isArray(transactionsResponse) ? transactionsResponse : [];
 
                 setTransactions(transactions);
             } catch (transactionError) {
@@ -177,13 +160,8 @@ const Portfolio = () => {
             const response = await portfolioAPI.createPortfolio(portfolioData);
             console.log('[Portfolio] Create response:', response);
 
-            // Handle different response formats
-            let newPortfolio = response;
-            if (response && response.portfolio) {
-                newPortfolio = response.portfolio;
-            } else if (response && response.data) {
-                newPortfolio = response.data;
-            }
+            // Use consistent API response format
+            const newPortfolio = response;
 
             setPortfolios(prev => [...prev, newPortfolio]);
             setSelectedPortfolio(newPortfolio);

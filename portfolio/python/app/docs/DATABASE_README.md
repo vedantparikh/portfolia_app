@@ -4,28 +4,56 @@
 
 This document describes the database architecture and setup for the Portfolia portfolio management application.
 
-## 🏗️ Database Architecture
+## 🏗️ Database Architecture (Updated September 2024)
+
+### 🚀 Recent Changes
+
+- **Removed Market Data Tables**: `asset_prices`, `market_data`, `ticker_info`, `data_update_log`
+- **Enhanced Analytics**: Added comprehensive portfolio analytics tables
+- **Schema Alignment**: All database models now perfectly match API schemas
+- **yfinance Integration**: Market data now fetched directly from external APIs
 
 ### Core Tables
 
 #### 1. **Users & Authentication**
-- `users` - User account information
-- `user_profiles` - Extended user profile data
-- `user_sessions` - User session management
+
+- `users` - User account information with email verification
+- `user_profiles` - Extended user profile data and preferences
+- `user_sessions` - JWT session management and tracking
 
 #### 2. **Portfolio Management**
-- `portfolios` - User investment portfolios
-- `portfolio_assets` - Assets within portfolios
-- `transactions` - Investment transactions
+
+- `portfolios` - User investment portfolios with metadata
+- `portfolio_assets` - Assets within portfolios with real-time valuations
+- `transactions` - Complete transaction history with full details
 
 #### 3. **Asset Management**
-- `assets` - Financial instruments (stocks, bonds, ETFs, etc.)
-- `asset_prices` - Historical price data
-- `market_indices` - Market benchmark indices
 
-#### 4. **Transaction Tracking**
-- `transactions` - Portfolio transactions with full details
-- `manual_entries` - Manual transaction entry tracking
+- `assets` - Financial instruments (stocks, bonds, ETFs, etc.)
+- `market_indices` - Market benchmark indices for comparisons
+- **Note**: Price data now fetched from yfinance APIs in real-time
+
+#### 4. **Portfolio Analytics** (New)
+
+- `portfolio_performance_history` - Historical performance snapshots
+- `asset_performance_metrics` - Technical indicators and metrics
+- `portfolio_allocations` - Target allocations and rebalancing rules
+- `portfolio_risk_metrics` - Risk analysis and VaR calculations
+- `asset_correlations` - Asset correlation matrices
+- `portfolio_benchmarks` - Benchmark comparisons and tracking
+- `rebalancing_events` - Portfolio rebalancing history
+
+#### 5. **Watchlist Management**
+
+- `watchlists` - User watchlists with real-time tracking
+- `watchlist_items` - Individual stocks in watchlists
+- `watchlist_alerts` - Price alerts and notifications
+- `watchlist_performance` - Historical performance tracking
+
+#### 6. **Transaction Tracking**
+
+- `transactions` - Enhanced transaction model with all fields
+- `manual_entries` - Manual transaction entry audit trail
 
 ## 🔧 Setup Instructions
 
@@ -66,6 +94,7 @@ alembic upgrade head
 ## 📊 Database Schema Details
 
 ### Users Table
+
 ```sql
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
@@ -81,6 +110,7 @@ CREATE TABLE users (
 ```
 
 ### Portfolios Table
+
 ```sql
 CREATE TABLE portfolios (
     id SERIAL PRIMARY KEY,
@@ -96,6 +126,7 @@ CREATE TABLE portfolios (
 ```
 
 ### Transactions Table
+
 ```sql
 CREATE TABLE transactions (
     id SERIAL PRIMARY KEY,
@@ -121,12 +152,14 @@ CREATE TABLE transactions (
 ## 🔐 Security Features
 
 ### Authentication
+
 - JWT-based authentication with refresh tokens
 - Password hashing using bcrypt
 - Session management with Redis
 - Role-based access control (RBAC)
 
 ### Data Protection
+
 - Foreign key constraints with CASCADE deletion
 - Input validation and sanitization
 - SQL injection prevention via SQLAlchemy ORM
@@ -135,17 +168,20 @@ CREATE TABLE transactions (
 ## 📈 Performance Optimizations
 
 ### Indexes
+
 - Primary keys on all tables
 - Foreign key indexes for joins
 - Composite indexes for common queries
 - Date-based indexes for time-series data
 
 ### Connection Pooling
+
 - SQLAlchemy connection pooling
 - Configurable pool size and overflow
 - Connection recycling and timeout handling
 
 ### Caching
+
 - Redis for session storage
 - Redis for frequently accessed data
 - Query result caching
@@ -216,6 +252,7 @@ cleaned = cleanup_expired_sessions(db)
 ### Common Issues
 
 #### Connection Errors
+
 ```bash
 # Check PostgreSQL status
 pg_isready -h localhost -p 5432 -U username
@@ -225,6 +262,7 @@ redis-cli -h localhost -p 6379 ping
 ```
 
 #### Migration Issues
+
 ```bash
 # Reset migrations (DANGEROUS - only in development)
 alembic downgrade base
@@ -236,6 +274,7 @@ alembic history
 ```
 
 #### Performance Issues
+
 ```bash
 # Check database statistics
 curl http://localhost:8080/health/detailed

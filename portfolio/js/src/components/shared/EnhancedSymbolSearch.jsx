@@ -114,7 +114,7 @@ const EnhancedSymbolSearch = ({
     const searchExistingAssets = async (query) => {
         try {
             const response = await assetAPI.searchAssets(query);
-            return response.assets || [];
+            return response.results || [];
         } catch (error) {
             console.error('Failed to search existing assets:', error);
             return [];
@@ -123,8 +123,8 @@ const EnhancedSymbolSearch = ({
 
     const searchExternalSymbols = async (query) => {
         try {
-            const results = await marketAPI.searchSymbols(query);
-            return results || [];
+            const response = await marketAPI.searchSymbols(query);
+            return response.results || [];
         } catch (error) {
             console.error('Failed to search external symbols:', error);
             return [];

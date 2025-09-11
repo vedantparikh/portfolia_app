@@ -82,6 +82,7 @@ const Assets = () => {
                 include_performance: true,
                 include_analytics: true
             });
+            console.log('[Assets] User assets response:', response);
             setAssets(response.assets || []);
         } catch (error) {
             console.error('Failed to load user assets:', error);

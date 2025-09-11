@@ -164,7 +164,7 @@ async def get_symbols(
         )
 
 
-@router.get("/symbol-data/fresh", response_model=YFinanceDataResponse)
+@router.get("/symbol-data", response_model=YFinanceDataResponse)
 async def get_symbol_data_fresh(
     name: str,
     request: Request,
@@ -238,121 +238,6 @@ async def get_symbol_data_fresh(
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Error retrieving fresh data for {name}: {str(e)}"
-        )
-
-
-@router.get("/symbol-data/local")
-async def get_symbol_data_local(
-    name: str,
-    request: Request,
-    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
-    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
-    current_user=Depends(get_optional_current_user),
-) -> Optional[Dict[str, Any]]:
-    """
-    Get stock data for a specific symbol from local database only.
-
-    Rate limited for unauthenticated users to prevent abuse.
-    """
-    # Rate limiting for unauthenticated users
-    if not current_user:
-        client_ip = get_client_ip(request) if request else "unknown"
-        if is_rate_limited(
-            client_ip, "local_data", max_attempts=20, window_seconds=3600
-        ):
-            raise HTTPException(
-                status_code=429,
-                detail="Rate limit exceeded. Please authenticate or try again later.",
-            )
-
-    start_dt = None
-    end_dt = None
-    if start_date:
-        try:
-            start_dt = datetime.strptime(start_date, "%Y-%m-%d")
-        except ValueError as e:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Invalid start_date format. Use YYYY-MM-DD: {str(e)}",
-            )
-    if end_date:
-        try:
-            end_dt = datetime.strptime(end_date, "%Y-%m-%d")
-        except Exception as e:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Invalid end_date format. Use YYYY-MM-DD: {str(e)}",
-            )
-
-    # Get data from local database
-    data = await market_data_service.get_market_data(
-        symbol=name, start_date=start_dt, end_date=end_dt
-    )
-
-    if data is None:
-        raise HTTPException(
-            status_code=404, detail=f"No local data available for symbol {name}"
-        )
-
-    result = {
-        "symbol": name.upper(),
-        "source": "local_database",
-        "data_points": len(data),
-        "data": data.reset_index().to_dict(orient="records"),
-    }
-
-    return result
-
-
-@router.get("/symbol-data")
-async def get_symbol_data(
-    name: str,
-    request: Request,
-    period: str = Query(
-        default="max",
-        description="Data period (1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max)",
-    ),
-    interval: str = Query(
-        default="1d",
-        description="Data interval (1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo)",
-    ),
-    current_user=Depends(get_optional_current_user),
-) -> Optional[Dict[str, Any]]:
-    """
-    Get stock data for a specific symbol with intelligent source selection.
-
-    Rate limited for unauthenticated users to prevent abuse.
-    """
-    # Rate limiting for unauthenticated users
-    if not current_user:
-        client_ip = get_client_ip(request) if request else "unknown"
-        if is_rate_limited(
-            client_ip, "intelligent_data", max_attempts=15, window_seconds=3600
-        ):
-            raise HTTPException(
-                status_code=429,
-                detail="Rate limit exceeded. Please authenticate or try again later.",
-            )
-
-    try:
-        # Check data quality first
-        data = await market_data_service.get_data_with_fallback(
-            symbol=name, period=period, interval=interval
-        )
-
-        result = {
-            "symbol": name.upper(),
-            "period": period,
-            "interval": interval,
-            "source": "local_database_stale",
-            "data_points": len(data) if data is not None else 0,
-            "data": data.to_dict(orient="records") if data is not None else [],
-        }
-        return result
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error retrieving data for {name}: {str(e)}"
         )
 
 

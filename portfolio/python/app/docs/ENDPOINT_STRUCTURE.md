@@ -1,198 +1,434 @@
-# Stock Data Endpoint Structure
+# Portfolia API Endpoint Structure
 
 ## Overview
 
-The Portfolia API now provides **three distinct endpoints** for retrieving stock data, giving users clear control over data sources and performance characteristics.
+The Portfolia API provides a comprehensive set of endpoints for portfolio management, market data access, and financial analytics. All endpoints follow RESTful principles and return structured JSON responses with proper HTTP status codes.
 
-## Endpoint Comparison
+## 🏗️ API Structure
 
-### 1. **Fresh Data Endpoint** - `/api/v1/stock/symbol-data/fresh`
-
-- **Purpose**: Fetch live, real-time data from yfinance API
-- **Data Source**: External yfinance API
-- **Response Time**: Slower (depends on external API)
-- **Data Freshness**: Always current
-- **Use Case**: When you need the most up-to-date market information
-- **Storage**: Automatically stores fresh data locally for future use
-
-**Example Request:**
-
-```bash
-GET /api/v1/stock/symbol-data/fresh?name=AAPL&period=max&interval=1d
+### Base URL
+```
+http://localhost:8000/api/v1
 ```
 
-**Response:**
+### Authentication
+All endpoints (except health checks) require JWT authentication:
+```http
+Authorization: Bearer <jwt_token>
+```
 
+## 📊 Core Endpoint Categories
+
+### 1. **Authentication Endpoints** - `/auth`
+
+#### User Registration & Login
+```http
+POST /auth/register          # Register new user
+POST /auth/login            # User login
+POST /auth/logout           # User logout
+POST /auth/refresh          # Refresh JWT token
+```
+
+#### Password Management
+```http
+POST /auth/forgot-password   # Request password reset
+POST /auth/reset-password    # Reset password with token
+POST /auth/change-password   # Change password (authenticated)
+```
+
+#### Email Verification
+```http
+POST /auth/verify-email      # Verify email with token
+POST /auth/resend-verification # Resend verification email
+```
+
+### 2. **Portfolio Endpoints** - `/portfolios`
+
+#### Portfolio Management
+```http
+GET    /portfolios                    # Get user portfolios
+POST   /portfolios                    # Create new portfolio
+GET    /portfolios/{id}               # Get specific portfolio
+PUT    /portfolios/{id}               # Update portfolio
+DELETE /portfolios/{id}               # Delete portfolio
+```
+
+#### Portfolio Assets
+```http
+GET    /portfolios/{id}/assets        # Get portfolio assets
+POST   /portfolios/{id}/assets        # Add asset to portfolio
+PUT    /portfolios/{id}/assets/{asset_id}  # Update portfolio asset
+DELETE /portfolios/{id}/assets/{asset_id}  # Remove asset from portfolio
+```
+
+#### Portfolio Transactions
+```http
+GET    /portfolios/{id}/transactions  # Get portfolio transactions
+POST   /portfolios/{id}/transactions  # Add new transaction
+PUT    /portfolios/{id}/transactions/{tx_id}  # Update transaction
+DELETE /portfolios/{id}/transactions/{tx_id}  # Delete transaction
+```
+
+#### Portfolio Analytics
+```http
+GET /portfolios/{id}/summary          # Portfolio summary with metrics
+GET /portfolios/{id}/performance      # Performance history
+GET /portfolios/{id}/holdings         # Current holdings with details
+```
+
+### 3. **Market Data Endpoints** - `/market-data`
+
+#### Real-time Data
+```http
+GET /market-data/ticker/{symbol}                    # Historical data
+GET /market-data/ticker/{symbol}/price              # Current price
+GET /market-data/ticker/{symbol}/info               # Company information
+GET /market-data/prices/bulk?symbols=AAPL,GOOGL    # Bulk prices
+```
+
+#### Market Information
+```http
+GET /market-data/market-status           # Market status & hours
+GET /market-data/supported-periods       # Supported data periods
+GET /market-data/supported-intervals     # Supported data intervals
+```
+
+### 4. **Asset Management** - `/assets`
+
+#### Asset Operations
+```http
+GET    /assets                 # Search/list assets
+POST   /assets                 # Create new asset
+GET    /assets/{id}            # Get asset details
+PUT    /assets/{id}            # Update asset
+DELETE /assets/{id}            # Delete asset
+GET    /assets/{id}/prices     # Get asset price history
+```
+
+#### Asset Search & Discovery
+```http
+GET /assets/search              # Advanced asset search
+GET /assets/popular             # Popular assets
+GET /assets/breakdown/sectors   # Sector breakdown
+GET /assets/breakdown/types     # Asset type breakdown
+GET /assets/breakdown/exchanges # Exchange breakdown
+GET /assets/suggestions         # Search suggestions
+```
+
+### 5. **Watchlist Endpoints** - `/watchlists`
+
+#### Watchlist Management
+```http
+GET    /watchlists                    # Get user watchlists
+POST   /watchlists                    # Create watchlist
+GET    /watchlists/{id}               # Get watchlist with items
+PUT    /watchlists/{id}               # Update watchlist
+DELETE /watchlists/{id}               # Delete watchlist
+```
+
+#### Watchlist Items
+```http
+POST   /watchlists/{id}/items         # Add item to watchlist
+PUT    /watchlists/{id}/items/{item_id}  # Update watchlist item
+DELETE /watchlists/{id}/items/{item_id}  # Remove item from watchlist
+POST   /watchlists/{id}/reorder       # Reorder watchlist items
+POST   /watchlists/{id}/bulk-add      # Add multiple symbols
+```
+
+#### Watchlist Features
+```http
+GET /watchlists/public          # Get public watchlists
+GET /watchlists/stats           # Watchlist statistics
+```
+
+**Real-time Data Parameter:**
+```http
+GET /watchlists/{id}?include_real_time_data=true
+```
+
+### 6. **Analytics Endpoints** - `/analytics`
+
+#### Portfolio Analytics
+```http
+POST /analytics/portfolios/{id}/performance/snapshot    # Create performance snapshot
+POST /analytics/assets/{id}/metrics                     # Calculate asset metrics
+GET  /analytics/portfolios/{id}/allocations/analysis    # Allocation analysis
+POST /analytics/portfolios/{id}/risk/calculate          # Risk calculation
+GET  /analytics/portfolios/{id}/performance/comparison  # Performance comparison
+GET  /analytics/portfolios/{id}/summary                 # Analytics summary
+```
+
+#### Advanced Analytics
+```http
+GET /analytics/portfolios/{id}/allocations      # Portfolio allocations
+GET /analytics/portfolios/{id}/benchmarks       # Benchmark comparisons
+GET /analytics/portfolios/{id}/rebalancing      # Rebalancing recommendations
+```
+
+### 7. **Dashboard Endpoints** - `/dashboard`
+
+#### Dashboard Data
+```http
+GET /dashboard/overview         # Dashboard overview
+GET /dashboard/performance      # Performance metrics
+GET /dashboard/alerts          # Active alerts
+GET /dashboard/recent-activity # Recent activity
+```
+
+### 8. **Statistical Indicators** - `/statistical-indicators`
+
+#### Technical Analysis
+```http
+GET /statistical-indicators/momentum/{symbol}     # Momentum indicators
+GET /statistical-indicators/trend/{symbol}        # Trend indicators
+GET /statistical-indicators/volatility/{symbol}   # Volatility indicators
+GET /statistical-indicators/volume/{symbol}       # Volume indicators
+```
+
+### 9. **Transactions** - `/transactions`
+
+#### Transaction Management
+```http
+GET    /transactions            # Get user transactions
+POST   /transactions            # Create transaction
+GET    /transactions/{id}       # Get transaction details
+PUT    /transactions/{id}       # Update transaction
+DELETE /transactions/{id}       # Delete transaction
+```
+
+### 10. **Health & Utility** - `/health`
+
+#### System Health
+```http
+GET /health                     # API health check
+GET /health/detailed            # Detailed health status
+GET /health/database            # Database connectivity
+GET /health/external-services   # External service status
+```
+
+## 📋 Request/Response Patterns
+
+### Standard Request Headers
+```http
+Content-Type: application/json
+Authorization: Bearer <jwt_token>
+Accept: application/json
+```
+
+### Standard Response Format
 ```json
 {
-  "symbol": "AAPL",
-  "period": "max",
-  "interval": "1d",
-  "source": "yfinance_fresh",
-  "data_points": 1250,
-  "data": [...]
+  "success": true,
+  "data": { ... },
+  "message": "Operation completed successfully",
+  "timestamp": "2024-09-11T15:30:00Z"
 }
 ```
 
-### 2. **Local Data Endpoint** - `/api/v1/stock/symbol-data/local`
-
-- **Purpose**: Retrieve data from local database only
-- **Data Source**: Local PostgreSQL database
-- **Response Time**: Fast (no external API calls)
-- **Data Freshness**: Depends on last update (may be hours/days old)
-- **Use Case**: When you need fast responses and can tolerate slightly older data
-- **Storage**: No external API calls, no data updates
-
-**Example Request:**
-
-```bash
-GET /api/v1/stock/symbol-data/local?name=AAPL&start_date=2024-01-01&end_date=2024-12-31&limit=100
-```
-
-**Response:**
-
+### Error Response Format
 ```json
 {
-  "symbol": "AAPL",
-  "source": "local_database",
-  "data_points": 100,
-  "data": [...]
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Invalid input data",
+    "details": { ... }
+  },
+  "timestamp": "2024-09-11T15:30:00Z"
 }
 ```
 
-### 3. **Intelligent Endpoint** - `/api/v1/stock/symbol-data`
-
-- **Purpose**: Smart data source selection based on data freshness
-- **Data Source**: Intelligent choice between local and external
-- **Response Time**: Variable (fast for fresh local data, slower for stale data)
-- **Data Freshness**: Optimized for best user experience
-- **Use Case**: Default choice for most applications
-- **Storage**: Automatically updates local data when needed
-
-**Logic:**
-
-1. If local data is fresh (< 24 hours old) → Return local data (fast)
-2. If local data is stale → Fetch fresh data from yfinance
-3. If yfinance fails → Fall back to local data (even if stale)
-4. Always store fresh data locally for future use
-
-**Example Request:**
-
-```bash
-GET /api/v1/stock/symbol-data?name=AAPL&period=max&interval=1d
-```
-
-**Response Examples:**
-
-**Fresh Local Data:**
-
+### Pagination Format
 ```json
 {
-  "symbol": "AAPL",
-  "period": "max",
-  "interval": "1d",
-  "source": "local_database_fresh",
-  "data_points": 1250,
   "data": [...],
-  "data_age_hours": 2
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 150,
+    "pages": 8,
+    "has_next": true,
+    "has_prev": false
+  }
 }
 ```
 
-**Fresh External Data:**
+## 🔧 Query Parameters
 
+### Common Parameters
+
+#### Pagination
+```http
+?page=1&limit=20&sort=created_at&order=desc
+```
+
+#### Filtering
+```http
+?start_date=2024-01-01&end_date=2024-12-31&status=active
+```
+
+#### Market Data
+```http
+?period=1y&interval=1d&include_dividends=true
+```
+
+#### Real-time Features
+```http
+?include_real_time_data=true&refresh_cache=false
+```
+
+## 📊 Response Models
+
+### Portfolio Response
+```json
+{
+  "id": 1,
+  "name": "My Portfolio",
+  "description": "Investment portfolio",
+  "currency": "USD",
+  "is_active": true,
+  "is_public": false,
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-09-11T15:30:00Z"
+}
+```
+
+### Asset Response
+```json
+{
+  "id": 1,
+  "symbol": "AAPL",
+  "name": "Apple Inc.",
+  "asset_type": "EQUITY",
+  "currency": "USD",
+  "exchange": "NASDAQ",
+  "sector": "Technology",
+  "industry": "Consumer Electronics",
+  "is_active": true,
+  "created_at": "2024-01-01T00:00:00Z"
+}
+```
+
+### Market Data Response
 ```json
 {
   "symbol": "AAPL",
-  "period": "max",
+  "period": "1y",
   "interval": "1d",
-  "source": "yfinance_fresh",
-  "data_points": 1250,
-  "data": [...]
+  "data_points": 252,
+  "data": [
+    {
+      "date": "2024-01-01T00:00:00Z",
+      "open": 150.00,
+      "high": 155.00,
+      "low": 148.00,
+      "close": 152.00,
+      "volume": 50000000,
+      "dividends": 0.0,
+      "stock_splits": 0.0
+    }
+  ]
 }
 ```
 
-**Stale Local Data (Fallback):**
-
+### Watchlist Response
 ```json
 {
-  "symbol": "AAPL",
-  "period": "max",
-  "interval": "1d",
-  "source": "local_database_stale",
-  "data_points": 1250,
-  "data": [...],
-  "data_age_hours": 48,
-  "warning": "Using stale local data - fresh data unavailable"
+  "id": 1,
+  "name": "Tech Stocks",
+  "description": "Technology companies",
+  "is_public": false,
+  "color": "#FF5733",
+  "sort_order": 0,
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-09-11T15:30:00Z",
+  "item_count": 5,
+  "total_gain_loss": 1250.50,
+  "total_gain_loss_percent": 8.5,
+  "items": [...]
 }
 ```
 
-## Market Data Router Endpoints
+## 🚀 Performance Features
 
-The market data router also provides similar endpoints for consistency:
+### Caching
+- **Market Data**: 5-minute TTL for prices, 1-hour for company info
+- **Portfolio Data**: Real-time calculations with smart caching
+- **User Sessions**: Redis-based session management
 
-- **`/api/v1/market-data/ticker/{symbol}/fresh`** - Fresh yfinance data
-- **`/api/v1/market-data/ticker/{symbol}/local`** - Local database data
-- **`/api/v1/market-data/ticker/{symbol}`** - Intelligent selection
+### Real-time Updates
+- **Live Pricing**: Direct yfinance integration
+- **Portfolio Valuations**: Real-time P&L calculations
+- **Watchlist Updates**: Live price monitoring
 
-## When to Use Each Endpoint
+### Batch Operations
+- **Bulk Price Fetching**: Multiple symbols in single request
+- **Batch Transactions**: Multiple transaction operations
+- **Bulk Watchlist Updates**: Add multiple symbols at once
 
-### Use **Fresh Data Endpoint** when:
+## 🔒 Security Features
 
-- You need real-time market information
-- Building trading applications
-- Data freshness is critical
-- You can tolerate longer response times
+### Authentication
+- **JWT Tokens**: Secure token-based authentication
+- **Token Refresh**: Automatic token renewal
+- **Session Management**: Secure session handling
 
-### Use **Local Data Endpoint** when:
+### Authorization
+- **User Isolation**: Users can only access their own data
+- **Portfolio Ownership**: Strict ownership validation
+- **Admin Endpoints**: Separate admin-only endpoints
 
-- You need fast response times
-- Building dashboards or analytics
-- Data freshness is not critical
-- You want to avoid external API rate limits
+### Data Validation
+- **Pydantic Schemas**: Runtime data validation
+- **Input Sanitization**: SQL injection prevention
+- **Rate Limiting**: API abuse prevention
 
-### Use **Intelligent Endpoint** when:
+## 📈 Analytics Features
 
-- You want the best of both worlds
-- Building general-purpose applications
-- You're unsure which endpoint to use
-- You want automatic optimization
+### Portfolio Analytics
+- **Performance Metrics**: Returns, volatility, Sharpe ratio
+- **Risk Analysis**: VaR, beta, correlation analysis
+- **Allocation Analysis**: Drift detection, rebalancing recommendations
 
-## Performance Characteristics
+### Technical Indicators
+- **Momentum**: RSI, MACD, Stochastic
+- **Trend**: Moving averages, trend lines
+- **Volatility**: Bollinger bands, ATR
+- **Volume**: Volume indicators, OBV
 
-| Endpoint    | Response Time       | Data Freshness        | External API Calls | Local Storage       |
-| ----------- | ------------------- | --------------------- | ------------------ | ------------------- |
-| `/fresh`    | Slow (2-5s)         | Always current        | Yes                | Updates local DB    |
-| `/local`    | Fast (<100ms)       | Variable (hours/days) | No                 | No updates          |
-| `/` (smart) | Variable (100ms-5s) | Optimized             | Conditional        | Updates when needed |
+### Benchmarking
+- **Index Comparison**: Compare against market indices
+- **Peer Analysis**: Compare with similar portfolios
+- **Custom Benchmarks**: User-defined benchmarks
 
-## Error Handling
+## 🛠️ Development Features
 
-All endpoints provide consistent error handling:
+### API Documentation
+- **OpenAPI/Swagger**: Interactive API documentation
+- **Schema Validation**: Automatic request/response validation
+- **Type Safety**: Full TypeScript-like type checking
 
-- **404**: No data available for the symbol
-- **500**: Internal server error
-- **400**: Invalid parameters (dates, etc.)
+### Testing
+- **Unit Tests**: Comprehensive test coverage
+- **Integration Tests**: End-to-end API testing
+- **Performance Tests**: Load and stress testing
 
-## Data Storage Strategy
+### Monitoring
+- **Health Checks**: System health monitoring
+- **Logging**: Comprehensive request/response logging
+- **Metrics**: Performance and usage metrics
 
-- **Fresh data** is automatically stored locally for future use
-- **Local data** serves as a reliable fallback
-- **Data quality** is continuously monitored
-- **Automatic updates** run daily to keep local data fresh
+## 🔄 Migration Notes
 
-## Best Practices
+### From Previous Version
+- **Removed Local Market Data**: All market data now fetched from yfinance
+- **Enhanced Schemas**: All endpoints now use proper response models
+- **Real-time Features**: Live data integration across all services
+- **Improved Analytics**: Enhanced portfolio and risk analytics
 
-1. **For real-time trading**: Use `/fresh` endpoints
-2. **For dashboards**: Use `/local` endpoints
-3. **For general applications**: Use the intelligent endpoints
-4. **Monitor data age**: Check the `data_age_hours` field
-5. **Handle warnings**: Check for `warning` fields in responses
+### Breaking Changes
+- **Market Data Endpoints**: Updated to use yfinance directly
+- **Response Formats**: All responses now use structured schemas
+- **Authentication**: Enhanced JWT token handling
 
-## Migration from Old Endpoints
-
-If you were using the old fallback endpoints:
-
-- **Old behavior**: Automatic fallback with single endpoint
-- **New behavior**: Explicit endpoint selection with intelligent defaults
-- **Backward compatibility**: The main endpoints still provide fallback logic
-- **Performance improvement**: Faster responses when fresh local data is available
+This endpoint structure provides a comprehensive, modern API for portfolio management with real-time market data integration and advanced analytics capabilities.

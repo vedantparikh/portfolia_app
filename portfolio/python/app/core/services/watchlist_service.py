@@ -1,24 +1,27 @@
-from datetime import datetime, timezone
+from datetime import datetime
+from datetime import timezone
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
 
-from sqlalchemy import and_, desc, func
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import and_
+from sqlalchemy import desc
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import joinedload
 
-from app.core.database.models.watchlist import (
-    Watchlist,
-    WatchlistAlert,
-    WatchlistItem,
-    WatchlistPerformance,
-)
+from app.core.database.models.watchlist import Watchlist
+from app.core.database.models.watchlist import WatchlistAlert
+from app.core.database.models.watchlist import WatchlistItem
+from app.core.database.models.watchlist import WatchlistPerformance
 from app.core.logging_config import get_logger
-from app.core.schemas.watchlist import (
-    WatchlistAlertCreate,
-    WatchlistCreate,
-    WatchlistItemCreate,
-    WatchlistItemUpdate,
-    WatchlistUpdate,
-)
+from app.core.schemas.watchlist import WatchlistAlertCreate
+from app.core.schemas.watchlist import WatchlistCreate
+from app.core.schemas.watchlist import WatchlistItemCreate
+from app.core.schemas.watchlist import WatchlistItemUpdate
+from app.core.schemas.watchlist import WatchlistUpdate
 from app.core.services.market_data_service import MarketDataService
 
 logger = get_logger(__name__)
@@ -372,15 +375,13 @@ class WatchlistService:
 
             # Get current market price
             try:
-                market_data = await self.market_data_service.get_market_data(
+                price = await self.market_data_service.get_current_price(
                     symbol=symbol.upper()
                 )
-                if not market_data or symbol.upper() not in market_data:
+                if not price:
                     return False
 
-                current_price = Decimal(
-                    str(market_data[symbol.upper()].get("price", 0) / 100)
-                )
+                current_price = Decimal(str(price))
 
                 # Update all items with this symbol
                 for item in items:
@@ -632,49 +633,47 @@ class WatchlistService:
             latest_data = await self.market_data_service.get_stock_latest_data(
                 symbols=symbols
             )
+
+            # Create a dictionary for faster lookup
+            data_dict = {data["symbol"]: data for data in latest_data}
+
             for item in watchlist.items:
-                for i, data in enumerate(latest_data):
-                    if data.symbol == item.symbol:
-                        item.current_price = data.latest_price
-                        item.company_name = data.name
-                        item.latest_date = data.latest_date
-                        item.market_cap = data.market_cap
-                        item.pe_ratio = data.pe_ratio
-                        item.beta = data.beta
-                        item.currency = data.currency
-                        item.exchange = data.exchange
-                        item.price_change_since_added = (
-                            data.latest_price - item.added_price
-                            if item.added_price and data.latest_price
-                            else 0
+                data = data_dict.get(item.symbol)
+                if data:
+                    # Update only fields that exist in the database model
+                    item.current_price = (
+                        Decimal(str(data["latest_price"]))
+                        if data["latest_price"]
+                        else None
+                    )
+                    if data["name"] and not item.company_name:
+                        item.company_name = data["name"]
+
+                    # Calculate price changes
+                    if item.added_price and data["latest_price"]:
+                        price_change = (
+                            Decimal(str(data["latest_price"])) - item.added_price
                         )
+                        item.price_change_since_added = price_change
                         item.price_change_percent_since_added = (
-                            (item.price_change_since_added / item.added_price) * 100
-                            if item.added_price and item.price_change_since_added
-                            else 0
-                        )
-                        item.updated_at = datetime.utcnow()
-
-                        logger.info(
-                            f"Updated watchlist item {item.symbol} with real-time data"
+                            (price_change / item.added_price) * 100
+                            if item.added_price > 0
+                            else Decimal("0")
                         )
 
-                        latest_data.remove(data)
-                        self.db.add(item)
-                        break
+                    item.updated_at = datetime.now(timezone.utc)
+                    self.db.add(item)
+
+                    logger.info(
+                        f"Updated watchlist item {item.symbol} with real-time data"
+                    )
             self.db.commit()
 
             # Refresh the watchlist to get updated data
             self.db.refresh(watchlist)
 
-            # Calculate days since added for each item
-            for item in watchlist.items:
-                if item.added_date:
-                    days_since = (datetime.now(timezone.utc) - item.added_date).days
-                    item.days_since_added = days_since
-
-            # Add item count for the watchlist
-            watchlist.item_count = len(watchlist.items)
+            # Calculate days since added for each item (this will be handled in the schema)
+            # Note: days_since_added is a calculated field in the schema, not stored in DB
 
             return watchlist
 
