@@ -7,6 +7,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
+import pandas as pd
 
 from app.core.auth.dependencies import (
     get_current_active_user,
@@ -273,21 +274,23 @@ async def get_asset_prices(
             symbol=asset.symbol, period=period, interval=interval
         )
         if not data.empty:
-            data.rename(
-                columns={
-                    "Date": "date",
-                    "Open": "open",
-                    "High": "high",
-                    "Low": "low",
-                    "Close": "close",
-                    "Volume": "volume",
-                    "Dividends": "dividends",
-                    "Stock Splits": "stock_splits",
-                },
-                inplace=True,
-            )
+            df = data[["Date", "Open", "High", "Low", "Close", "Volume", "Dividends", "Stock Splits"]].copy()
+            df["adj_close"] = data.get("Adj Close", data["Close"])
+            df.columns = ["date", "open", "high", "low", "close", "volume", "adj_close", "dividends", "stock_splits"]
+            convert_dict = {
+                'open': float,
+                'high': float,
+                'low': float,
+                'close': float,
+                'adj_close': float,
+                'volume': int,
+                'dividends': float,
+                'stock_splits': float,
+            }
+            df = df.astype(convert_dict)
+            df["date"] = pd.to_datetime(df["date"]).apply(pd.Timestamp.isoformat)
 
-        if data is None:
+        else:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"No price data available for {asset.symbol}",
@@ -298,8 +301,8 @@ async def get_asset_prices(
             "symbol": asset.symbol,
             "period": period,
             "interval": interval,
-            "data_points": len(data),
-            "data": data.to_dict(orient="records"),
+            "data_points": len(df),
+            "data": df.to_dict(orient="records"),
         }
 
     except Exception as e:

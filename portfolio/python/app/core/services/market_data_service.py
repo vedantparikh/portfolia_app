@@ -29,10 +29,10 @@ class MarketDataService:
 
             # Try multiple price fields in order of preference
             price = (
-                info.get("currentPrice")
-                or info.get("regularMarketPrice")
-                or info.get("previousClose")
-                or info.get("open")
+                    info.get("currentPrice")
+                    or info.get("regularMarketPrice")
+                    or info.get("previousClose")
+                    or info.get("open")
             )
 
             if price is not None:
@@ -50,7 +50,7 @@ class MarketDataService:
             return None
 
     async def get_multiple_current_prices(
-        self, symbols: List[str]
+            self, symbols: List[str]
     ) -> Dict[str, Optional[float]]:
         """Get current prices for multiple symbols efficiently."""
         try:
@@ -64,10 +64,10 @@ class MarketDataService:
                     info = ticker.info
 
                     price = (
-                        info.get("currentPrice")
-                        or info.get("regularMarketPrice")
-                        or info.get("previousClose")
-                        or info.get("open")
+                            info.get("currentPrice")
+                            or info.get("regularMarketPrice")
+                            or info.get("previousClose")
+                            or info.get("open")
                     )
 
                     if price is not None:
@@ -95,13 +95,13 @@ class MarketDataService:
             return results
 
     async def fetch_ticker_data(
-        self,
-        symbol: str,
-        period: str = "max",
-        interval: str = "1d",
-        start_date: Optional[str] = None,
-        end_date: Optional[str] = None,
-    ) -> Optional[pd.DataFrame]:
+            self,
+            symbol: str,
+            period: str = "max",
+            interval: str = "1d",
+            start_date: Optional[str] = None,
+            end_date: Optional[str] = None,
+    ) -> pd.DataFrame:
         """
         Fetch ticker data from yfinance with retry logic.
 
@@ -130,7 +130,7 @@ class MarketDataService:
 
                 if not isinstance(data, pd.DataFrame) or data.empty:
                     logger.warning("No data returned for %s", symbol)
-                    return None
+                    return pd.DataFrame()
 
                 logger.info("Successfully fetched %d records for %s", len(data), symbol)
 
@@ -141,7 +141,7 @@ class MarketDataService:
                 expected_columns = ["Date", "Open", "High", "Low", "Close", "Volume"]
                 if not all(col in data.columns for col in expected_columns):
                     logger.warning("Missing expected columns in data for %s", symbol)
-                    return None
+                    return pd.DataFrame()
 
                 # Sort by date descending (most recent first)
                 data = data.sort_values(by="Date", ascending=False)
@@ -154,7 +154,7 @@ class MarketDataService:
                     await asyncio.sleep(self.retry_delay)
                 else:
                     logger.error("All attempts failed for %s", symbol)
-                    return None
+                    return pd.DataFrame()
 
     async def get_ticker_info(self, symbol: str) -> Optional[Dict[str, Any]]:
         """
@@ -258,13 +258,13 @@ class MarketDataService:
                     stock_data = {
                         "symbol": info.get("symbol", symbol).upper(),
                         "name": (
-                            info.get("longName") or info.get("shortName") or symbol
+                                info.get("longName") or info.get("shortName") or symbol
                         ),
                         "latest_price": (
-                            info.get("currentPrice")
-                            or info.get("regularMarketPrice")
-                            or info.get("previousClose")
-                            or 0.0
+                                info.get("currentPrice")
+                                or info.get("regularMarketPrice")
+                                or info.get("previousClose")
+                                or 0.0
                         ),
                         "latest_date": info.get("regularMarketTime"),
                         "market_cap": info.get("marketCap"),
@@ -295,7 +295,7 @@ class MarketDataService:
             return []
 
     async def search_symbols(
-        self, query: str, limit: int = 10
+            self, query: str, limit: int = 10
     ) -> List[Dict[str, Any]]:  # noqa: ARG002
         """
         Search for stock symbols using yfinance.
@@ -321,7 +321,7 @@ class MarketDataService:
                     {
                         "symbol": ticker_info["symbol"],
                         "name": ticker_info.get("longName")
-                        or ticker_info.get("shortName"),
+                                or ticker_info.get("shortName"),
                         "exchange": ticker_info.get("exchange"),
                         "currency": ticker_info.get("currency"),
                         "type": ticker_info.get("quoteType"),

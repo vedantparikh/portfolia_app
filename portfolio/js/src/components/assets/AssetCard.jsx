@@ -3,9 +3,7 @@ import {
     ArrowUpRight,
     BarChart3,
     Edit,
-    Eye,
     MoreVertical,
-    Plus,
     Trash2,
     TrendingDown,
     TrendingUp
@@ -86,13 +84,13 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick, onEdit, onDelete, onAddT
     const handleAddToPortfolio = (e) => {
         e.stopPropagation();
         setShowMenu(false);
-        onAddToPortfolio && onAddToPortfolio(asset);
+        // Removed - no longer allowing direct portfolio addition
     };
 
     const handleViewInPortfolio = (e) => {
         e.stopPropagation();
         setShowMenu(false);
-        onViewInPortfolio && onViewInPortfolio(asset);
+        // Removed - no longer allowing direct portfolio view
     };
 
     if (viewMode === 'list') {
@@ -131,16 +129,16 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick, onEdit, onDelete, onAddT
                         </div>
 
                         <div className="text-right">
-                            <p className="text-sm text-gray-400">Quantity</p>
+                            <p className="text-sm text-gray-400">Market Cap</p>
                             <p className="text-sm font-medium text-gray-100">
-                                {asset.quantity || 'N/A'}
+                                {formatMarketCap(asset.market_cap)}
                             </p>
                         </div>
 
                         <div className="text-right">
-                            <p className="text-sm text-gray-400">Purchase Price</p>
+                            <p className="text-sm text-gray-400">Volume (24h)</p>
                             <p className="text-sm font-medium text-gray-100">
-                                {formatPrice(asset.purchase_price)}
+                                {formatVolume(asset.volume_24h)}
                             </p>
                         </div>
 
@@ -163,18 +161,14 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick, onEdit, onDelete, onAddT
                                             <span>Edit</span>
                                         </button>
                                         <button
-                                            onClick={handleAddToPortfolio}
+                                            onClick={() => {
+                                                // Navigate to detailed analysis
+                                                toast.info('Detailed analysis coming soon!');
+                                            }}
                                             className="w-full px-3 py-2 text-left text-sm text-primary-400 hover:bg-dark-700 flex items-center space-x-2"
                                         >
-                                            <Plus size={14} />
-                                            <span>Add to Portfolio</span>
-                                        </button>
-                                        <button
-                                            onClick={handleViewInPortfolio}
-                                            className="w-full px-3 py-2 text-left text-sm text-blue-400 hover:bg-dark-700 flex items-center space-x-2"
-                                        >
-                                            <Eye size={14} />
-                                            <span>View in Portfolio</span>
+                                            <BarChart3 size={14} />
+                                            <span>Detailed Analysis</span>
                                         </button>
                                         <button
                                             onClick={handleDelete}
@@ -232,18 +226,14 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick, onEdit, onDelete, onAddT
                                     <span>Edit</span>
                                 </button>
                                 <button
-                                    onClick={handleAddToPortfolio}
+                                    onClick={() => {
+                                        // Navigate to detailed analysis
+                                        toast.info('Detailed analysis coming soon!');
+                                    }}
                                     className="w-full px-3 py-2 text-left text-sm text-primary-400 hover:bg-dark-700 flex items-center space-x-2"
                                 >
-                                    <Plus size={14} />
-                                    <span>Add to Portfolio</span>
-                                </button>
-                                <button
-                                    onClick={handleViewInPortfolio}
-                                    className="w-full px-3 py-2 text-left text-sm text-blue-400 hover:bg-dark-700 flex items-center space-x-2"
-                                >
-                                    <Eye size={14} />
-                                    <span>View in Portfolio</span>
+                                    <BarChart3 size={14} />
+                                    <span>Detailed Analysis</span>
                                 </button>
                                 <button
                                     onClick={handleDelete}
@@ -277,67 +267,71 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick, onEdit, onDelete, onAddT
                 </div>
 
                 <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-400">Quantity</span>
+                    <span className="text-sm text-gray-400">Market Cap</span>
                     <span className="text-sm font-medium text-gray-100">
-                        {asset.quantity || 'N/A'}
+                        {formatMarketCap(asset.market_cap)}
                     </span>
                 </div>
 
                 <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-400">Purchase Price</span>
+                    <span className="text-sm text-gray-400">Volume (24h)</span>
                     <span className="text-sm font-medium text-gray-100">
-                        {formatPrice(asset.purchase_price)}
+                        {formatVolume(asset.volume_24h)}
                     </span>
                 </div>
 
                 <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-400">Total Value</span>
+                    <span className="text-sm text-gray-400">52W High</span>
                     <span className="text-sm font-medium text-gray-100">
-                        {asset.quantity && asset.current_price ?
-                            formatPrice(asset.quantity * asset.current_price) : 'N/A'}
+                        {formatPrice(asset.high_52w)}
                     </span>
                 </div>
 
                 <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-400">P&L</span>
-                    <div className="flex items-center space-x-1">
-                        {asset.quantity && asset.purchase_price && asset.current_price ? (
-                            <>
-                                {getChangeIcon(((asset.current_price - asset.purchase_price) / asset.purchase_price) * 100)}
-                                <span className={`text-sm font-medium ${getChangeColor(((asset.current_price - asset.purchase_price) / asset.purchase_price) * 100)}`}>
-                                    {formatPrice((asset.current_price - asset.purchase_price) * asset.quantity)}
-                                </span>
-                            </>
-                        ) : (
-                            <span className="text-sm text-gray-400">N/A</span>
-                        )}
-                    </div>
+                    <span className="text-sm text-gray-400">52W Low</span>
+                    <span className="text-sm font-medium text-gray-100">
+                        {formatPrice(asset.low_52w)}
+                    </span>
                 </div>
 
-                {/* Additional Performance Metrics */}
-                {(asset.market_cap || asset.volume_24h || asset.rsi) && (
+                {/* Technical Analysis Metrics */}
+                {(asset.rsi || asset.macd || asset.bollinger_bands || asset.volatility_20d) && (
                     <div className="pt-3 border-t border-dark-700 space-y-2">
-                        {asset.market_cap && (
-                            <div className="flex items-center justify-between">
-                                <span className="text-xs text-gray-500">Market Cap</span>
-                                <span className="text-xs text-gray-300">
-                                    {formatMarketCap(asset.market_cap)}
-                                </span>
-                            </div>
-                        )}
-                        {asset.volume_24h && (
-                            <div className="flex items-center justify-between">
-                                <span className="text-xs text-gray-500">24h Volume</span>
-                                <span className="text-xs text-gray-300">
-                                    {formatVolume(asset.volume_24h)}
-                                </span>
-                            </div>
-                        )}
                         {asset.rsi && (
                             <div className="flex items-center justify-between">
-                                <span className="text-xs text-gray-500">RSI</span>
-                                <span className={`text-xs ${asset.rsi > 70 ? 'text-danger-400' : asset.rsi < 30 ? 'text-success-400' : 'text-gray-300'}`}>
+                                <span className="text-xs text-gray-500">RSI (14)</span>
+                                <span className={`text-xs font-medium ${asset.rsi > 70 ? 'text-danger-400' : asset.rsi < 30 ? 'text-success-400' : 'text-gray-300'}`}>
                                     {asset.rsi.toFixed(1)}
+                                    {asset.rsi > 70 && <span className="text-xs text-danger-400 ml-1">(Overbought)</span>}
+                                    {asset.rsi < 30 && <span className="text-xs text-success-400 ml-1">(Oversold)</span>}
+                                </span>
+                            </div>
+                        )}
+                        {asset.macd && (
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs text-gray-500">MACD</span>
+                                <span className={`text-xs font-medium ${asset.macd > 0 ? 'text-success-400' : 'text-danger-400'}`}>
+                                    {asset.macd.toFixed(4)}
+                                </span>
+                            </div>
+                        )}
+                        {asset.bollinger_bands && (
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs text-gray-500">BB Position</span>
+                                <span className={`text-xs font-medium ${
+                                    asset.bollinger_bands > 0.8 ? 'text-danger-400' : 
+                                    asset.bollinger_bands < 0.2 ? 'text-success-400' : 'text-gray-300'
+                                }`}>
+                                    {asset.bollinger_bands > 0.8 ? 'Upper Band' : 
+                                     asset.bollinger_bands < 0.2 ? 'Lower Band' : 'Middle'}
+                                </span>
+                            </div>
+                        )}
+                        {asset.volatility_20d && (
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs text-gray-500">Volatility (20d)</span>
+                                <span className={`text-xs font-medium ${asset.volatility_20d > 0.3 ? 'text-warning-400' : 'text-gray-300'}`}>
+                                    {(asset.volatility_20d * 100).toFixed(1)}%
                                 </span>
                             </div>
                         )}

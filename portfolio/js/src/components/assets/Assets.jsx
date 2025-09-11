@@ -2,7 +2,6 @@ import {
     Activity,
     ArrowLeft,
     BarChart3,
-    DollarSign,
     Filter,
     PieChart,
     Plus,
@@ -352,15 +351,13 @@ const Assets = () => {
     };
 
     const handleAddToPortfolio = (asset) => {
-        // This would open a modal to select portfolio and add the asset
-        toast.success(`Adding ${asset.symbol} to portfolio...`);
-        // TODO: Implement portfolio selection modal
+        // Removed - no longer allowing direct portfolio addition
+        toast.info('Use Portfolio section to manage assets in specific portfolios');
     };
 
     const handleViewInPortfolio = (asset) => {
-        // This would navigate to the portfolio view showing this asset
-        toast.success(`Viewing ${asset.symbol} in portfolio...`);
-        // TODO: Implement navigation to portfolio view
+        // Removed - no longer allowing direct portfolio view
+        toast.info('Use Portfolio section to view assets in specific portfolios');
     };
 
     const getTotalStats = () => {
@@ -472,8 +469,8 @@ const Assets = () => {
                         </div>
 
                         <div className="mb-4">
-                            <h1 className="text-3xl font-bold text-gray-100 mb-2">My Assets</h1>
-                            <p className="text-gray-400">Manage your personal asset portfolio</p>
+                            <h1 className="text-3xl font-bold text-gray-100 mb-2">Asset Analysis</h1>
+                            <p className="text-gray-400">Analyze and research assets for investment decisions</p>
                         </div>
 
                         {/* Search Bar */}
@@ -489,12 +486,12 @@ const Assets = () => {
                         </div>
                     </div>
 
-                    {/* Stats Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+                    {/* Analysis Stats Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                         <div className="card p-6">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm text-gray-400">Total Assets</p>
+                                    <p className="text-sm text-gray-400">Assets Analyzed</p>
                                     <p className="text-2xl font-bold text-gray-100">{stats.totalAssets}</p>
                                 </div>
                                 <div className="w-12 h-12 bg-primary-600/20 rounded-lg flex items-center justify-center">
@@ -506,57 +503,38 @@ const Assets = () => {
                         <div className="card p-6">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm text-gray-400">Total Value</p>
-                                    <p className="text-2xl font-bold text-gray-100">
-                                        ${(stats.totalValue / 1000).toFixed(2)}K
-                                    </p>
-                                </div>
-                                <div className="w-12 h-12 bg-success-600/20 rounded-lg flex items-center justify-center">
-                                    <DollarSign size={24} className="text-success-400" />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="card p-6">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm text-gray-400">Total Invested</p>
-                                    <p className="text-2xl font-bold text-gray-100">
-                                        ${(stats.totalInvested / 1000).toFixed(2)}K
-                                    </p>
-                                </div>
-                                <div className="w-12 h-12 bg-warning-600/20 rounded-lg flex items-center justify-center">
-                                    <Activity size={24} className="text-warning-400" />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="card p-6">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm text-gray-400">P&L</p>
-                                    <p className={`text-2xl font-bold ${stats.totalPnL >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
-                                        ${(stats.totalPnL / 1000).toFixed(2)}K
-                                    </p>
-                                    <p className={`text-xs ${stats.totalPnLPercentage >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
-                                        {stats.totalPnLPercentage.toFixed(2)}%
-                                    </p>
-                                </div>
-                                <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${stats.totalPnL >= 0 ? 'bg-success-600/20' : 'bg-danger-600/20'}`}>
-                                    {stats.totalPnL >= 0 ? <TrendingUp size={24} className="text-success-400" /> : <TrendingDown size={24} className="text-danger-400" />}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="card p-6">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm text-gray-400">Winners</p>
+                                    <p className="text-sm text-gray-400">Market Leaders</p>
                                     <p className="text-2xl font-bold text-success-400">{stats.positiveAssets}</p>
-                                    <p className="text-xs text-gray-500">vs {stats.negativeAssets} losers</p>
+                                    <p className="text-xs text-gray-500">positive performers</p>
                                 </div>
                                 <div className="w-12 h-12 bg-success-600/20 rounded-lg flex items-center justify-center">
                                     <TrendingUp size={24} className="text-success-400" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="card p-6">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm text-gray-400">Market Laggards</p>
+                                    <p className="text-2xl font-bold text-danger-400">{stats.negativeAssets}</p>
+                                    <p className="text-xs text-gray-500">underperforming</p>
+                                </div>
+                                <div className="w-12 h-12 bg-danger-600/20 rounded-lg flex items-center justify-center">
+                                    <TrendingDown size={24} className="text-danger-400" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="card p-6">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm text-gray-400">Analysis Tools</p>
+                                    <p className="text-2xl font-bold text-primary-400">RSI, MACD</p>
+                                    <p className="text-xs text-gray-500">technical indicators</p>
+                                </div>
+                                <div className="w-12 h-12 bg-primary-600/20 rounded-lg flex items-center justify-center">
+                                    <Activity size={24} className="text-primary-400" />
                                 </div>
                             </div>
                         </div>
@@ -606,7 +584,10 @@ const Assets = () => {
                                 <BarChart3 className="w-16 h-16 text-gray-600 mx-auto mb-4" />
                                 <h3 className="text-xl font-semibold text-gray-300 mb-2">No assets found</h3>
                                 <p className="text-gray-500">
-                                    {searchQuery ? 'Try adjusting your search criteria' : 'No assets available at the moment'}
+                                    {searchQuery ? 'Try adjusting your search criteria' : 'No assets available for analysis'}
+                                </p>
+                                <p className="text-sm text-gray-600 mt-2">
+                                    Use this section to analyze assets before adding them to your portfolios
                                 </p>
                             </div>
                         </div>
