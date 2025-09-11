@@ -5,24 +5,22 @@ Advanced asset search and discovery API endpoints.
 
 from typing import Optional
 
-from fastapi import APIRouter
-from fastapi import Depends
-from fastapi import HTTPException
-from fastapi import Query
-from fastapi import status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.auth.dependencies import get_current_active_user
 from app.core.database.connection import get_db
 from app.core.database.models import User
 from app.core.database.models.asset import AssetType
-from app.core.schemas.market_data import AssetDetailsResponse
-from app.core.schemas.market_data import AssetSearchResponse
-from app.core.schemas.market_data import AssetTypeBreakdownResponse
-from app.core.schemas.market_data import ExchangeBreakdownResponse
-from app.core.schemas.market_data import PopularAssetsResponse
-from app.core.schemas.market_data import SearchSuggestionsResponse
-from app.core.schemas.market_data import SectorBreakdownResponse
+from app.core.schemas.market_data import (
+    AssetDetailsResponse,
+    AssetSearchResponse,
+    AssetTypeBreakdownResponse,
+    ExchangeBreakdownResponse,
+    PopularAssetsResponse,
+    SearchSuggestionsResponse,
+    SectorBreakdownResponse,
+)
 from app.core.services.asset_search_service import AssetSearchService
 
 router = APIRouter(prefix="/assets/search", tags=["asset-search"])

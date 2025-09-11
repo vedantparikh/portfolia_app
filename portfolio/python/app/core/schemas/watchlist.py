@@ -1,13 +1,8 @@
-from datetime import datetime
-from datetime import timezone
+from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 
 class WatchlistBase(BaseModel):

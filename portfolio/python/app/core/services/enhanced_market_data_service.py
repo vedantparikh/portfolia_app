@@ -4,16 +4,12 @@ Comprehensive market data service with real-time updates and caching.
 """
 
 import asyncio
-from datetime import datetime
-from datetime import timedelta
-from typing import Any
-from typing import Dict
-from typing import List
+from datetime import datetime, timedelta
+from typing import Any, Dict, List
 
 from sqlalchemy.orm import Session
 
-from app.core.database.models import Asset
-from app.core.database.models import PortfolioAsset
+from app.core.database.models import Asset, PortfolioAsset
 from app.core.services.market_data_service import market_data_service
 from app.core.services.portfolio_analytics_service import PortfolioAnalyticsService
 

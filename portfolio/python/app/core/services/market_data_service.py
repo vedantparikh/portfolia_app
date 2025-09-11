@@ -6,10 +6,7 @@ Handles fetching real-time market data from yfinance without database storage.
 import asyncio
 import logging
 from datetime import datetime
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 import pandas as pd  # type: ignore
 import yfinance as yf  # type: ignore

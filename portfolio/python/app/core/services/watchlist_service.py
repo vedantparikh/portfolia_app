@@ -1,27 +1,24 @@
-from datetime import datetime
-from datetime import timezone
+from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
-from sqlalchemy import and_
-from sqlalchemy import desc
-from sqlalchemy import func
-from sqlalchemy.orm import Session
-from sqlalchemy.orm import joinedload
+from sqlalchemy import and_, desc, func
+from sqlalchemy.orm import Session, joinedload
 
-from app.core.database.models.watchlist import Watchlist
-from app.core.database.models.watchlist import WatchlistAlert
-from app.core.database.models.watchlist import WatchlistItem
-from app.core.database.models.watchlist import WatchlistPerformance
+from app.core.database.models.watchlist import (
+    Watchlist,
+    WatchlistAlert,
+    WatchlistItem,
+    WatchlistPerformance,
+)
 from app.core.logging_config import get_logger
-from app.core.schemas.watchlist import WatchlistAlertCreate
-from app.core.schemas.watchlist import WatchlistCreate
-from app.core.schemas.watchlist import WatchlistItemCreate
-from app.core.schemas.watchlist import WatchlistItemUpdate
-from app.core.schemas.watchlist import WatchlistUpdate
+from app.core.schemas.watchlist import (
+    WatchlistAlertCreate,
+    WatchlistCreate,
+    WatchlistItemCreate,
+    WatchlistItemUpdate,
+    WatchlistUpdate,
+)
 from app.core.services.market_data_service import MarketDataService
 
 logger = get_logger(__name__)

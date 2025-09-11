@@ -5,39 +5,31 @@ Comprehensive service for portfolio analysis, risk management, and performance t
 
 import logging
 import math
-from datetime import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
-from sqlalchemy import and_
-from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
-from app.core.database.models import Portfolio
-from app.core.database.models import PortfolioAsset
-from app.core.database.models.portfolio_analytics import AssetPerformanceMetrics
-from app.core.database.models.portfolio_analytics import PortfolioAllocation
-from app.core.database.models.portfolio_analytics import PortfolioBenchmark
-from app.core.database.models.portfolio_analytics import PortfolioPerformanceHistory
-from app.core.database.models.portfolio_analytics import PortfolioRiskMetrics
-from app.core.database.models.portfolio_analytics import RiskLevel
-from app.core.schemas.portfolio_analytics import AllocationAnalysisResponse
-from app.core.schemas.portfolio_analytics import AllocationDrift
-from app.core.schemas.portfolio_analytics import AllocationItem
-from app.core.schemas.portfolio_analytics import AssetMetricsResponse
-from app.core.schemas.portfolio_analytics import PerformanceSnapshotResponse
-from app.core.schemas.portfolio_analytics import PortfolioAllocationAnalysis
-from app.core.schemas.portfolio_analytics import PortfolioAllocationCreate
-from app.core.schemas.portfolio_analytics import PortfolioAnalyticsSummary
-from app.core.schemas.portfolio_analytics import PortfolioRebalancingRecommendation
-from app.core.schemas.portfolio_analytics import RebalancingAction
-from app.core.schemas.portfolio_analytics import RiskCalculationResponse
+from app.core.database.models import Portfolio, PortfolioAsset
+from app.core.database.models.portfolio_analytics import (
+    AssetPerformanceMetrics,
+    PortfolioAllocation,
+    PortfolioPerformanceHistory,
+    PortfolioRiskMetrics,
+    RiskLevel,
+)
+from app.core.schemas.portfolio_analytics import (
+    AllocationAnalysisResponse,
+    AllocationDrift,
+    AllocationItem,
+    AssetMetricsResponse,
+    PerformanceSnapshotResponse,
+    PortfolioAllocationCreate,
+    RiskCalculationResponse,
+)
 from app.core.services.market_data_service import market_data_service
 
 logger = logging.getLogger(__name__)
@@ -380,7 +372,7 @@ class PortfolioAnalyticsService:
                     str(price_data["Volume"].rolling(20).mean().iloc[-1])
                 )
 
-        except Exception as e:
+        except Exception:
             # If calculation fails, set None values
             pass
 
@@ -419,7 +411,7 @@ class PortfolioAnalyticsService:
             drawdown = (cumulative - running_max) / running_max
             metrics["max_drawdown"] = Decimal(str(drawdown.min()))
 
-        except Exception as e:
+        except Exception:
             # If calculation fails, set None values
             pass
 
@@ -465,7 +457,7 @@ class PortfolioAnalyticsService:
                     str((current_price / price_data["Close"].iloc[-252] - 1) * 100)
                 )
 
-        except Exception as e:
+        except Exception:
             # If calculation fails, set None values
             pass
 

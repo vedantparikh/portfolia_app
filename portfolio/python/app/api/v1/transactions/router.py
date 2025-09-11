@@ -13,7 +13,7 @@ from app.core.auth.dependencies import (
     get_current_verified_user,
 )
 from app.core.database.connection import get_db
-from app.core.database.models import Portfolio, PortfolioAsset, User, TransactionType
+from app.core.database.models import Portfolio, PortfolioAsset, TransactionType, User
 from app.core.database.models import Transaction as TransactionModel
 from app.core.schemas.portfolio import Transaction as TransactionSchema
 from app.core.schemas.portfolio import TransactionCreate, TransactionUpdate

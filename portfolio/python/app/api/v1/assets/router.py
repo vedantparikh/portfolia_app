@@ -3,31 +3,23 @@ Assets management router with authentication.
 """
 
 import time
-from typing import List
-from typing import Optional
+from typing import List, Optional
 
-import yfinance as yf
-from fastapi import APIRouter
-from fastapi import Depends
-from fastapi import HTTPException
-from fastapi import Query
-from fastapi import status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.auth.dependencies import get_current_active_user
-from app.core.auth.dependencies import get_current_verified_user
+from app.core.auth.dependencies import (
+    get_current_active_user,
+    get_current_verified_user,
+)
 from app.core.database.connection import get_db
 from app.core.database.models import Asset as AssetModel
 from app.core.database.models import User
 from app.core.database.models.asset import AssetType
-from app.core.logging_config import get_logger
-from app.core.logging_config import log_api_request
-from app.core.logging_config import log_api_response
+from app.core.logging_config import get_logger, log_api_request, log_api_response
 from app.core.schemas.market_data import AssetSearchResponse
 from app.core.schemas.portfolio import Asset as AssetSchema
-from app.core.schemas.portfolio import AssetCreate
-from app.core.schemas.portfolio import AssetPrice
-from app.core.schemas.portfolio import AssetUpdate
+from app.core.schemas.portfolio import AssetCreate, AssetPrice, AssetUpdate
 from app.core.services.market_data_service import market_data_service
 
 logger = get_logger(__name__)
