@@ -639,17 +639,17 @@ class WatchlistService:
                 if data:
                     # Update only fields that exist in the database model
                     item.current_price = (
-                        Decimal(str(data["latest_price"]))
-                        if data["latest_price"]
+                        Decimal(str(data["current_price"]))
+                        if data.get("current_price")
                         else None
                     )
-                    if data["name"] and not item.company_name:
-                        item.company_name = data["name"]
+                    if data.get("short_name", data.get("long_name")) and not item.company_name:
+                        item.company_name = data.get("short_name", data.get("long_name"))
 
                     # Calculate price changes
-                    if item.added_price and data["latest_price"]:
+                    if item.added_price and data.get("current_price"):
                         price_change = (
-                            Decimal(str(data["latest_price"])) - item.added_price
+                            Decimal(str(data["current_price"])) - item.added_price
                         )
                         item.price_change_since_added = price_change
                         item.price_change_percent_since_added = (

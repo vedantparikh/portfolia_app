@@ -201,13 +201,8 @@ class MarketDataService:
         try:
             if not symbols:
                 return []
-
-            # Use yfinance Tickers for bulk fetching
-            tickers_str = " ".join(symbols)
-            tickers = yf.Tickers(tickers_str)
-
+            tickers = yf.Tickers(symbols)
             results = []
-
             for symbol in symbols:
                 try:
                     ticker = tickers.tickers[symbol]
@@ -218,7 +213,6 @@ class MarketDataService:
                         continue
 
                     stock_data = self._extract_ticker_information(ticker_info=info)
-
                     results.append(stock_data)
 
                 except Exception as e:
