@@ -170,7 +170,6 @@ const PortfolioDetail = ({ portfolio, stats, transactions }) => {
                         <thead>
                             <tr className="border-b border-dark-700">
                                 <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">Symbol</th>
-                                <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">Name</th>
                                 <th className="text-right py-3 px-4 text-sm font-medium text-gray-400">Quantity</th>
                                 <th className="text-right py-3 px-4 text-sm font-medium text-gray-400">Avg Price</th>
                                 <th className="text-right py-3 px-4 text-sm font-medium text-gray-400">Current Price</th>
@@ -198,9 +197,9 @@ const PortfolioDetail = ({ portfolio, stats, transactions }) => {
                                     <tr key={index} className="border-b border-dark-800 hover:bg-dark-800/50 transition-colors">
                                         <td className="py-3 px-4">
                                             <span className="font-medium text-gray-100">{holding.symbol}</span>
-                                        </td>
-                                        <td className="py-3 px-4">
-                                            <span className="text-gray-300">{holding.name}</span>
+                                            <p className="text-xs text-gray-400 truncate">
+                                                {holding.name || 'Unknown Company'}
+                                            </p>
                                         </td>
                                         <td className="py-3 px-4 text-right">
                                             <span className="text-gray-100">{holding.quantity}</span>

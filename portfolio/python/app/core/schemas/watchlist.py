@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, computed_field, Field
 
 
 class WatchlistBase(BaseModel):
@@ -114,22 +114,26 @@ class WatchlistItemResponse(WatchlistItemBase):
     alert_price_low: Optional[Decimal] = None
     alert_price_change_percent: Optional[Decimal] = None
 
-    # Calculated fields (not in database)
-    days_since_added: Optional[int] = Field(
-        None, description="Days since item was added"
-    )
-
     class Config:
         from_attributes = True
 
-    def calculate_days_since_added(self):
+    @computed_field
+    @property
+    def days_since_added(self) -> Optional[int]:
         """Calculates the number of days since the item was added."""
-        if self.added_date:
-            # Calculate the time difference between now and the added date
-            time_difference = datetime.now(timezone.utc) - self.added_date
+        if not self.added_date:
+            return None
 
-            # The .days attribute of a timedelta object gives the number of full days
-            self.days_since_added = time_difference.days
+        # Ensure timezone-aware comparison to prevent potential TypeErrors
+        now_utc = datetime.now(timezone.utc)
+        added_date_utc = self.added_date
+
+        # If the added_date is naive, assume it's UTC
+        if added_date_utc.tzinfo is None:
+            added_date_utc = added_date_utc.replace(tzinfo=timezone.utc)
+
+        time_difference = now_utc - added_date_utc
+        return time_difference.days
 
 
 class WatchlistWithItemsResponse(WatchlistResponse):
