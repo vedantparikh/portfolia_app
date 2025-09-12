@@ -271,6 +271,30 @@ except Exception as e:
 
     logger.error(f"❌ Full traceback: {traceback.format_exc()}")
 
+# Include portfolio calculations router
+try:
+    logger.info("🧮 Attempting to import portfolio calculations router...")
+    from api.v1.portfolio_calculations.router import router as calculations_router
+
+    logger.info("✅ Portfolio calculations router imported successfully")
+    app.include_router(
+        calculations_router,
+        prefix="/api/v1/portfolios",
+        tags=["portfolio-calculations"],
+    )
+    logger.info("✅ Portfolio calculations router included at /api/v1/portfolios")
+except ImportError as e:
+    logger.warning(f"⚠️ Could not import portfolio calculations router: {e}")
+    logger.error(f"❌ Portfolio calculations router import error details: {e}")
+    import traceback
+
+    logger.error(f"❌ Full traceback: {traceback.format_exc()}")
+except Exception as e:
+    logger.error(f"❌ Unexpected error importing portfolio calculations router: {e}")
+    import traceback
+
+    logger.error(f"❌ Full traceback: {traceback.format_exc()}")
+
 
 @app.get("/")
 async def root():
