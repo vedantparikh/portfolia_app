@@ -1,68 +1,22 @@
 import {
-    ArrowDownRight,
-    ArrowUpRight,
     BarChart3,
     Edit,
     MoreVertical,
-    Trash2,
-    TrendingDown,
-    TrendingUp
+    Trash2
 } from 'lucide-react';
 import React, { useState } from 'react';
+import {
+    formatMarketCap,
+    formatPercentage,
+    formatPrice,
+    formatVolume,
+    getChangeArrow,
+    getChangeColor,
+    getChangeIcon
+} from '../../utils/formatters.jsx';
 
 const AssetCard = ({ asset, viewMode = 'grid', onClick, onEdit, onDelete, onAddToPortfolio, onViewInPortfolio }) => {
     const [showMenu, setShowMenu] = useState(false);
-    const formatPrice = (price) => {
-        if (price === null || price === undefined) return 'N/A';
-        if (price < 0.01) return `$${price.toFixed(6)}`;
-        if (price < 1) return `$${price.toFixed(4)}`;
-        return `$${price.toFixed(2)}`;
-    };
-
-    const formatMarketCap = (marketCap) => {
-        if (!marketCap) return 'N/A';
-        if (marketCap >= 1e12) return `$${(marketCap / 1e12).toFixed(2)}T`;
-        if (marketCap >= 1e9) return `$${(marketCap / 1e9).toFixed(2)}B`;
-        if (marketCap >= 1e6) return `$${(marketCap / 1e6).toFixed(2)}M`;
-        return `$${marketCap.toFixed(0)}`;
-    };
-
-    const formatVolume = (volume) => {
-        if (!volume) return 'N/A';
-        if (volume >= 1e9) return `${(volume / 1e9).toFixed(2)}B`;
-        if (volume >= 1e6) return `${(volume / 1e6).toFixed(2)}M`;
-        return `${volume.toFixed(0)}`;
-    };
-
-    const formatPercentage = (value) => {
-        if (value === null || value === undefined) return 'N/A';
-        return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
-    };
-
-    const formatCurrency = (value) => {
-        if (value === null || value === undefined) return 'N/A';
-        if (value < 0.01) return `$${value.toFixed(6)}`;
-        if (value < 1) return `$${value.toFixed(4)}`;
-        return `$${value.toFixed(2)}`;
-    };
-
-    const getChangeColor = (change) => {
-        if (change > 0) return 'text-success-400';
-        if (change < 0) return 'text-danger-400';
-        return 'text-gray-400';
-    };
-
-    const getChangeIcon = (change) => {
-        if (change > 0) return <TrendingUp size={16} className="text-success-400" />;
-        if (change < 0) return <TrendingDown size={16} className="text-danger-400" />;
-        return null;
-    };
-
-    const getChangeArrow = (change) => {
-        if (change > 0) return <ArrowUpRight size={14} className="text-success-400" />;
-        if (change < 0) return <ArrowDownRight size={14} className="text-danger-400" />;
-        return null;
-    };
 
     const handleMenuClick = (e) => {
         e.stopPropagation();
@@ -79,18 +33,6 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick, onEdit, onDelete, onAddT
         e.stopPropagation();
         setShowMenu(false);
         onDelete && onDelete();
-    };
-
-    const handleAddToPortfolio = (e) => {
-        e.stopPropagation();
-        setShowMenu(false);
-        // Removed - no longer allowing direct portfolio addition
-    };
-
-    const handleViewInPortfolio = (e) => {
-        e.stopPropagation();
-        setShowMenu(false);
-        // Removed - no longer allowing direct portfolio view
     };
 
     if (viewMode === 'list') {
@@ -118,12 +60,12 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick, onEdit, onDelete, onAddT
                     <div className="flex items-center space-x-8">
                         <div className="text-right">
                             <p className="text-lg font-semibold text-gray-100">
-                                {formatPrice(asset.current_price)}
+                                {formatPrice(asset.detail?.current_price)}
                             </p>
                             <div className="flex items-center space-x-1">
-                                {getChangeIcon(asset.price_change_percentage_24h)}
-                                <span className={`text-sm ${getChangeColor(asset.price_change_percentage_24h)}`}>
-                                    {asset.price_change_percentage_24h ? `${asset.price_change_percentage_24h.toFixed(2)}%` : 'N/A'}
+                                {getChangeIcon(asset.detail?.price_change_percentage_24h)}
+                                <span className={`text-sm ${getChangeColor(asset.detail?.price_change_percentage_24h)}`}>
+                                    {asset.detail?.price_change_percentage_24h ? `${formatPercentage(asset.detail?.price_change_percentage_24h)}` : 'N/A'}
                                 </span>
                             </div>
                         </div>
@@ -131,19 +73,19 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick, onEdit, onDelete, onAddT
                         <div className="text-right">
                             <p className="text-sm text-gray-400">Market Cap</p>
                             <p className="text-sm font-medium text-gray-100">
-                                {formatMarketCap(asset.market_cap)}
+                                {formatMarketCap(asset.detail?.market_cap)}
                             </p>
                         </div>
 
                         <div className="text-right">
                             <p className="text-sm text-gray-400">Volume (24h)</p>
                             <p className="text-sm font-medium text-gray-100">
-                                {formatVolume(asset.volume_24h)}
+                                {formatVolume(asset.detail?.volume_24h)}
                             </p>
                         </div>
 
                         <div className="flex items-center space-x-2">
-                            {getChangeArrow(asset.price_change_percentage_24h)}
+                            {getChangeArrow(asset.detail?.price_change_percentage_24h)}
                             <div className="relative">
                                 <button
                                     onClick={handleMenuClick}
@@ -208,7 +150,7 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick, onEdit, onDelete, onAddT
                     </div>
                 </div>
                 <div className="flex items-center space-x-2">
-                    {getChangeArrow(asset.price_change_percentage_24h)}
+                    {getChangeArrow(asset.detail?.price_change_percentage_24h)}
                     <div className="relative">
                         <button
                             onClick={handleMenuClick}
@@ -253,13 +195,13 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick, onEdit, onDelete, onAddT
                     <span className="text-sm text-gray-400">Current Price</span>
                     <div className="text-right">
                         <span className="text-xl font-bold text-gray-100">
-                            {formatPrice(asset.current_price)}
+                            {formatPrice(asset.detail?.current_price)}
                         </span>
-                        {asset.price_change_percentage_24h && (
+                        {asset.detail?.price_change_percentage_24h && (
                             <div className="flex items-center space-x-1">
-                                {getChangeIcon(asset.price_change_percentage_24h)}
-                                <span className={`text-xs ${getChangeColor(asset.price_change_percentage_24h)}`}>
-                                    {formatPercentage(asset.price_change_percentage_24h)}
+                                {getChangeIcon(asset.detail?.price_change_percentage_24h)}
+                                <span className={`text-xs ${getChangeColor(asset.detail?.price_change_percentage_24h)}`}>
+                                    {formatPercentage(asset.detail?.price_change_percentage_24h)}
                                 </span>
                             </div>
                         )}
@@ -269,28 +211,28 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick, onEdit, onDelete, onAddT
                 <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-400">Market Cap</span>
                     <span className="text-sm font-medium text-gray-100">
-                        {formatMarketCap(asset.market_cap)}
+                        {formatMarketCap(asset.detail?.market_cap)}
                     </span>
                 </div>
 
                 <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-400">Volume (24h)</span>
                     <span className="text-sm font-medium text-gray-100">
-                        {formatVolume(asset.volume_24h)}
+                        {formatVolume(asset.detail?.volume_24h)}
                     </span>
                 </div>
 
                 <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-400">52W High</span>
                     <span className="text-sm font-medium text-gray-100">
-                        {formatPrice(asset.high_52w)}
+                        {formatPrice(asset.detail?.high_52w)}
                     </span>
                 </div>
 
                 <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-400">52W Low</span>
                     <span className="text-sm font-medium text-gray-100">
-                        {formatPrice(asset.low_52w)}
+                        {formatPrice(asset.detail?.low_52w)}
                     </span>
                 </div>
 
@@ -343,18 +285,18 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick, onEdit, onDelete, onAddT
             <div className="mt-4 pt-4 border-t border-dark-700">
                 <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
                     <span>24h Performance</span>
-                    <span>{asset.price_change_percentage_24h ? `${asset.price_change_percentage_24h.toFixed(2)}%` : 'N/A'}</span>
+                    <span>{asset.detail?.price_change_percentage_24h ? `${formatPercentage(asset.detail?.price_change_percentage_24h)}` : 'N/A'}</span>
                 </div>
                 <div className="w-full bg-dark-700 rounded-full h-1.5">
                     <div
-                        className={`h-1.5 rounded-full transition-all duration-300 ${asset.price_change_percentage_24h > 0
+                        className={`h-1.5 rounded-full transition-all duration-300 ${asset.detail?.price_change_percentage_24h > 0
                             ? 'bg-success-400'
-                            : asset.price_change_percentage_24h < 0
+                            : asset.detail?.price_change_percentage_24h < 0
                                 ? 'bg-danger-400'
                                 : 'bg-gray-500'
                             }`}
                         style={{
-                            width: `${Math.min(Math.abs(asset.price_change_percentage_24h || 0) * 2, 100)}%`
+                            width: `${Math.min(Math.abs(asset.detail?.price_change_percentage_24h || 0) * 2, 100)}%`
                         }}
                     />
                 </div>

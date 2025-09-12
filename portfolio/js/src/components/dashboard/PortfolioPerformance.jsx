@@ -3,11 +3,15 @@ import {
     Calendar,
     DollarSign,
     RefreshCw,
-    Target,
-    TrendingDown,
-    TrendingUp
+    Target
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
+import {
+    formatCurrency,
+    formatPercentage,
+    getChangeColor,
+    getChangeIcon
+} from '../../utils/formatters.jsx';
 
 const PortfolioPerformance = ({ portfolios }) => {
     const [performance, setPerformance] = useState({
@@ -85,30 +89,6 @@ const PortfolioPerformance = ({ portfolios }) => {
         }
     };
 
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD',
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0
-        }).format(amount);
-    };
-
-    const formatPercentage = (value) => {
-        return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
-    };
-
-    const getChangeColor = (value) => {
-        if (value > 0) return 'text-success-400';
-        if (value < 0) return 'text-danger-400';
-        return 'text-gray-400';
-    };
-
-    const getChangeIcon = (value) => {
-        if (value > 0) return <TrendingUp size={16} className="text-success-400" />;
-        if (value < 0) return <TrendingDown size={16} className="text-danger-400" />;
-        return null;
-    };
 
     if (performance.loading) {
         return (

@@ -3,11 +3,15 @@ import {
     BarChart3,
     Download,
     PieChart,
-    RefreshCw,
-    TrendingUp
+    RefreshCw
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { analyticsAPI } from '../../services/api';
+import {
+    formatCurrency,
+    formatPercentage,
+    getChangeColor
+} from '../../utils/formatters.jsx';
 
 const PortfolioChart = ({ portfolio, stats }) => {
     const [chartData, setChartData] = useState(null);
@@ -89,24 +93,6 @@ const PortfolioChart = ({ portfolio, stats }) => {
         };
     };
 
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD',
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0
-        }).format(amount);
-    };
-
-    const formatPercentage = (value) => {
-        return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
-    };
-
-    const getChangeColor = (value) => {
-        if (value > 0) return 'text-success-400';
-        if (value < 0) return 'text-danger-400';
-        return 'text-gray-400';
-    };
 
     const renderLineChart = () => {
         if (!chartData?.performance_data) return null;

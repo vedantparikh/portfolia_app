@@ -420,7 +420,7 @@ export const portfolioAPI = {
 export const marketAPI = {
     /* 
       GET ASSETS - Get list of available assets/stocks
-      Parameters: params (object with query parameters like limit, include_prices)
+      Parameters: params (object with query parameters like limit, include_detail)
       Returns: Server response with array of asset objects
     */
     getAssets: async (params = {}) => {
@@ -712,7 +712,7 @@ export const userAssetsAPI = {
 export const assetAPI = {
     /* 
       GET ASSETS - Get list of available assets/stocks
-      Parameters: params (object with query parameters like limit, include_prices)
+      Parameters: params (object with query parameters like limit, include_detail)
       Returns: Server response with array of asset objects
     */
     getAssets: async (params = {}) => {

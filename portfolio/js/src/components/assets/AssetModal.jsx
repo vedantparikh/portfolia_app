@@ -1,23 +1,27 @@
 import {
-    ArrowDownLeft,
-    ArrowUpRight,
     BarChart3,
     Edit,
     Save,
-    TrendingDown,
-    TrendingUp,
     X
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { marketAPI } from '../../services/api';
+import {
+    formatMarketCap,
+    formatPercentage,
+    formatPrice,
+    formatVolume,
+    getChangeColor,
+    getChangeIcon
+} from '../../utils/formatters.jsx';
 import { Chart, SymbolSearch } from '../shared';
 
 const AssetModal = ({ asset, mode = 'view', onClose, onSave }) => {
     const [priceHistory, setPriceHistory] = useState([]);
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('overview');
-    const [chartPeriod, setChartPeriod] = useState('1mo');
+    const [chartPeriod, setChartPeriod] = useState('30d');
     const [formData, setFormData] = useState({
         symbol: '',
         name: '',
@@ -78,7 +82,7 @@ const AssetModal = ({ asset, mode = 'view', onClose, onSave }) => {
             let interval = '1d'; // default interval
             if (chartPeriod === '1d' || chartPeriod === '5d') {
                 interval = '1m';
-            } else if (chartPeriod === '1mo' || chartPeriod === '3mo') {
+            } else if (chartPeriod === '30d' || chartPeriod === '3mo') {
                 interval = '1d';
             } else if (chartPeriod === '6mo' || chartPeriod === 'ytd') {
                 interval = '1d';
@@ -132,35 +136,6 @@ const AssetModal = ({ asset, mode = 'view', onClose, onSave }) => {
         setIsChartFullscreen(!isChartFullscreen);
     };
 
-    const formatPrice = (price) => {
-        if (price === null || price === undefined) return 'N/A';
-        if (price < 0.01) return `$${price.toFixed(6)}`;
-        if (price < 1) return `$${price.toFixed(4)}`;
-        return `$${price.toFixed(2)}`;
-    };
-
-    const formatPercentage = (value) => {
-        if (value === null || value === undefined) return 'N/A';
-        return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
-    };
-
-    const getChangeColor = (change) => {
-        if (change > 0) return 'text-success-400';
-        if (change < 0) return 'text-danger-400';
-        return 'text-gray-400';
-    };
-
-    const getChangeIcon = (change) => {
-        if (change > 0) return <TrendingUp size={16} className="text-success-400" />;
-        if (change < 0) return <TrendingDown size={16} className="text-danger-400" />;
-        return null;
-    };
-
-    const getChangeArrow = (change) => {
-        if (change > 0) return <ArrowUpRight size={14} className="text-success-400" />;
-        if (change < 0) return <ArrowDownLeft size={14} className="text-danger-400" />;
-        return null;
-    };
 
     const isCreateMode = mode === 'create';
     const isViewMode = mode === 'view';
@@ -511,13 +486,13 @@ const AssetModal = ({ asset, mode = 'view', onClose, onSave }) => {
                                             <div>
                                                 <span className="text-sm text-gray-400">Current Price</span>
                                                 <p className="text-2xl font-bold text-gray-100">
-                                                    {formatPrice(asset?.current_price)}
+                                                    {formatPrice(asset?.detail?.current_price)}
                                                 </p>
-                                                {asset?.price_change_percentage_24h && (
+                                                {asset?.detail?.price_change_percentage_24h && (
                                                     <div className="flex items-center space-x-1">
-                                                        {getChangeIcon(asset.price_change_percentage_24h)}
-                                                        <span className={`text-sm ${getChangeColor(asset.price_change_percentage_24h)}`}>
-                                                            {formatPercentage(asset.price_change_percentage_24h)}
+                                                        {getChangeIcon(asset.detail?.price_change_percentage_24h)}
+                                                        <span className={`text-sm ${getChangeColor(asset.detail?.price_change_percentage_24h)}`}>
+                                                            {formatPercentage(asset.detail?.price_change_percentage_24h)}
                                                         </span>
                                                     </div>
                                                 )}
@@ -525,13 +500,13 @@ const AssetModal = ({ asset, mode = 'view', onClose, onSave }) => {
                                             <div>
                                                 <span className="text-sm text-gray-400">Market Cap</span>
                                                 <p className="text-lg font-semibold text-gray-100">
-                                                    {asset?.market_cap ? `$${(asset.market_cap / 1e9).toFixed(2)}B` : 'N/A'}
+                                                    {asset?.detail?.market_cap ? `$${formatMarketCap(asset.detail?.market_cap / 1e9)}B` : 'N/A'}
                                                 </p>
                                             </div>
                                             <div>
                                                 <span className="text-sm text-gray-400">Volume (24h)</span>
                                                 <p className="text-lg font-semibold text-gray-100">
-                                                    {asset?.volume_24h ? `${(asset.volume_24h / 1e6).toFixed(2)}M` : 'N/A'}
+                                                    {asset?.detail?.volume_24h ? `${formatVolume(asset.detail?.volume_24h / 1e6)}M` : 'N/A'}
                                                 </p>
                                             </div>
                                         </div>

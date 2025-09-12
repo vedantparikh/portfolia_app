@@ -43,7 +43,41 @@ const Assets = () => {
 
     // Load assets on component mount
     useEffect(() => {
-        loadAssets();
+        let isMounted = true;
+        
+        const loadAssetsSafe = async () => {
+            try {
+                setLoading(true);
+                const response = await userAssetsAPI.getUserAssets({
+                    limit: 100,
+                    include_detail: true,
+                    include_performance: true,
+                    include_analytics: true
+                });
+                
+                // Only update state if component is still mounted
+                if (isMounted) {
+                    console.log('[Assets] User assets response:', response);
+                    setAssets(response.assets || []);
+                }
+            } catch (error) {
+                if (isMounted) {
+                    console.error('Failed to load user assets:', error);
+                    toast.error('Failed to load your assets');
+                }
+            } finally {
+                if (isMounted) {
+                    setLoading(false);
+                }
+            }
+        };
+        
+        loadAssetsSafe();
+        
+        // Cleanup function to prevent state updates on unmounted component
+        return () => {
+            isMounted = false;
+        };
     }, []);
 
     // Filter assets when search query or filters change
@@ -72,12 +106,13 @@ const Assets = () => {
         };
     }, [autoRefresh]);
 
+    // External loadAssets function for manual refresh and other operations
     const loadAssets = async () => {
         try {
             setLoading(true);
             const response = await userAssetsAPI.getUserAssets({
                 limit: 100,
-                include_prices: true,
+                include_detail: true,
                 include_performance: true,
                 include_analytics: true
             });

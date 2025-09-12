@@ -1,65 +1,18 @@
 import {
-    ArrowDownRight,
-    ArrowUpRight,
-    DollarSign,
     Edit,
-    Trash2,
-    TrendingDown,
-    TrendingUp
+    Trash2
 } from 'lucide-react';
 import React from 'react';
+import {
+    formatCurrency,
+    formatDate,
+    formatQuantity,
+    getTransactionArrow,
+    getTransactionColor,
+    getTransactionIcon
+} from '../../utils/formatters.jsx';
 
 const TransactionCard = ({ transaction, onEdit, onDelete }) => {
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD',
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        }).format(amount);
-    };
-
-    const formatDate = (dateString) => {
-        return new Date(dateString).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    };
-
-    const formatQuantity = (quantity) => {
-        if (!quantity) return '0';
-        const num = parseFloat(quantity);
-        if (isNaN(num)) return '0';
-        return num.toFixed(4).replace(/\.?0+$/, '');
-    };
-
-    const getTransactionIcon = (type) => {
-        const transactionType = type || 'other';
-        if (transactionType === 'buy') {
-            return <TrendingUp size={20} className="text-success-400" />;
-        } else if (transactionType === 'sell') {
-            return <TrendingDown size={20} className="text-danger-400" />;
-        }
-        return <DollarSign size={20} className="text-gray-400" />;
-    };
-
-    const getTransactionColor = (type) => {
-        if (type === 'buy') return 'text-success-400';
-        if (type === 'sell') return 'text-danger-400';
-        return 'text-gray-400';
-    };
-
-    const getTransactionArrow = (type) => {
-        if (type === 'buy') {
-            return <ArrowUpRight size={16} className="text-success-400" />;
-        } else if (type === 'sell') {
-            return <ArrowDownRight size={16} className="text-danger-400" />;
-        }
-        return null;
-    };
 
     const getStatusColor = (status) => {
         switch (status) {

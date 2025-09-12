@@ -7,11 +7,12 @@ import {
 } from 'lightweight-charts';
 import { BarChart3, Maximize2, Minimize2, RefreshCw } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { formatVolume } from '../../utils/formatters.jsx';
 
 const Chart = ({
     data = [],
     symbol = '',
-    period = '1mo',
+    period = '30d',
     onPeriodChange,
     height = 400,
     showVolume = true,
@@ -29,18 +30,6 @@ const Chart = ({
     const [isFullscreen, setIsFullscreen] = useState(false);
 
     // Helper function to format volume numbers with K/M suffixes
-    const formatVolume = (volume) => {
-        if (!volume || isNaN(volume)) return 'N/A';
-        
-        const num = Number(volume);
-        if (num >= 1000000) {
-            return (num / 1000000).toFixed(1) + 'M';
-        } else if (num >= 1000) {
-            return (num / 1000).toFixed(1) + 'K';
-        } else {
-            return num.toLocaleString();
-        }
-    };
 
     const { candlestickData, volumeData } = useMemo(() => {
         if (!data || data.length === 0) {

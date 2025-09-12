@@ -15,6 +15,11 @@ import React, { useEffect, useState } from 'react';
 import { DragDropContext, Draggable, Droppable } from 'react-beautiful-dnd';
 import toast from 'react-hot-toast';
 import { watchlistAPI } from '../../services/api';
+import {
+    formatDate,
+    formatDateTime,
+    getChangeColor
+} from '../../utils/formatters.jsx';
 import EditSymbolModal from './EditSymbolModal';
 
 // WatchlistContent component - displays the symbols table with search, sort, and refresh controls
@@ -230,46 +235,6 @@ const WatchlistContent = ({
 
     // Function to format large numbers with K, M, B suffixes
     // This makes numbers more readable (e.g., 1000000 becomes 1.0M)
-    const formatNumber = (num) => {
-        if (num >= 1e9) return (num / 1e9).toFixed(1) + 'B'; // Billions
-        if (num >= 1e6) return (num / 1e6).toFixed(1) + 'M'; // Millions
-        if (num >= 1e3) return (num / 1e3).toFixed(1) + 'K'; // Thousands
-        return num.toString(); // Return as string for smaller numbers
-    };
-
-    // Function to determine text color based on price change
-    // Green for positive, red for negative, gray for neutral
-    const getChangeColor = (change) => {
-        const changeNum = parseFloat(change); // Convert string to number
-        if (changeNum > 0) return 'text-success-400'; // Green for positive
-        if (changeNum < 0) return 'text-danger-400'; // Red for negative
-        return 'text-gray-400'; // Gray for zero or neutral
-    };
-
-    // Function to format date strings for display
-    // Converts ISO date string to readable format (e.g., "Jan 15, 2024")
-    const formatDate = (dateString) => {
-        if (!dateString) return 'N/A'; // Handle missing dates
-        const date = new Date(dateString); // Create Date object
-        return date.toLocaleDateString('en-US', {
-            month: 'short', // Short month name (Jan, Feb, etc.)
-            day: 'numeric', // Day of month (1, 2, etc.)
-            year: 'numeric' // Full year (2024)
-        });
-    };
-
-    // Function to format date and time strings for display
-    // Converts ISO date string to readable format with time (e.g., "Jan 15, 2:30 PM")
-    const formatDateTime = (dateString) => {
-        if (!dateString) return 'N/A'; // Handle missing dates
-        const date = new Date(dateString); // Create Date object
-        return date.toLocaleString('en-US', {
-            month: 'short', // Short month name
-            day: 'numeric', // Day of month
-            hour: '2-digit', // Hour in 24-hour format
-            minute: '2-digit' // Minutes with leading zero
-        });
-    };
 
     // ===== EARLY RETURN FOR MISSING DATA =====
     // If no watchlist is provided, show a message instead of the main content
