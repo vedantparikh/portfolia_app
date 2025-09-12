@@ -16,6 +16,7 @@ import { portfolioAPI, transactionAPI } from '../../services/api';
 import { Sidebar } from '../shared';
 import CreatePortfolioModal from './CreatePortfolioModal';
 import EditPortfolioModal from './EditPortfolioModal';
+import PortfolioAssets from './PortfolioAssets';
 import PortfolioCard from './PortfolioCard';
 import PortfolioChart from './PortfolioChart';
 import PortfolioDetail from './PortfolioDetail';
@@ -29,7 +30,7 @@ const Portfolio = () => {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [editingPortfolio, setEditingPortfolio] = useState(null);
-    const [viewMode, setViewMode] = useState('overview'); // overview, detail, chart
+    const [viewMode, setViewMode] = useState('overview'); // overview, detail, chart, assets
     const [portfolioStats, setPortfolioStats] = useState(null);
     const [transactions, setTransactions] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
@@ -555,6 +556,7 @@ const Portfolio = () => {
                                             ? 'bg-primary-600 text-white'
                                             : 'bg-dark-700 text-gray-400 hover:bg-dark-600'
                                             }`}
+                                        title="Overview"
                                     >
                                         <BarChart3 size={16} />
                                     </button>
@@ -564,8 +566,19 @@ const Portfolio = () => {
                                             ? 'bg-primary-600 text-white'
                                             : 'bg-dark-700 text-gray-400 hover:bg-dark-600'
                                             }`}
+                                        title="Holdings Detail"
                                     >
                                         <PieChart size={16} />
+                                    </button>
+                                    <button
+                                        onClick={() => setViewMode('assets')}
+                                        className={`p-2 rounded-lg transition-colors ${viewMode === 'assets'
+                                            ? 'bg-primary-600 text-white'
+                                            : 'bg-dark-700 text-gray-400 hover:bg-dark-600'
+                                            }`}
+                                        title="Portfolio Assets"
+                                    >
+                                        <Wallet size={16} />
                                     </button>
                                     <button
                                         onClick={() => setViewMode('chart')}
@@ -573,6 +586,7 @@ const Portfolio = () => {
                                             ? 'bg-primary-600 text-white'
                                             : 'bg-dark-700 text-gray-400 hover:bg-dark-600'
                                             }`}
+                                        title="Performance Chart"
                                     >
                                         <Activity size={16} />
                                     </button>
@@ -635,6 +649,13 @@ const Portfolio = () => {
                                             portfolio={selectedPortfolio}
                                             stats={stats}
                                             transactions={transactions}
+                                        />
+                                    )}
+
+                                    {viewMode === 'assets' && selectedPortfolio && (
+                                        <PortfolioAssets
+                                            portfolio={selectedPortfolio}
+                                            onRefresh={handleRefresh}
                                         />
                                     )}
 

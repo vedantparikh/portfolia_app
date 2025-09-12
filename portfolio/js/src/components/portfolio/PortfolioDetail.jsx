@@ -1,12 +1,17 @@
 import {
     Activity,
     Download,
-    Minus,
     Plus,
     RefreshCw
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { portfolioAPI } from '../../services/api';
+import {
+    formatCurrency,
+    formatDate,
+    getTransactionColor,
+    getTransactionIcon
+} from '../../utils/formatters.jsx';
 
 const PortfolioDetail = ({ portfolio, stats, transactions }) => {
     const [showAllTransactions, setShowAllTransactions] = useState(false);
@@ -14,39 +19,7 @@ const PortfolioDetail = ({ portfolio, stats, transactions }) => {
     const [holdings, setHoldings] = useState([]);
     const [loadingHoldings, setLoadingHoldings] = useState(false);
 
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD',
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        }).format(amount);
-    };
 
-    const formatDate = (dateString) => {
-        return new Date(dateString).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    };
-
-    const getTransactionIcon = (type) => {
-        if (type === 'buy') {
-            return <Plus size={16} className="text-success-400" />;
-        } else if (type === 'sell') {
-            return <Minus size={16} className="text-danger-400" />;
-        }
-        return <Activity size={16} className="text-gray-400" />;
-    };
-
-    const getTransactionColor = (type) => {
-        if (type === 'buy') return 'text-success-400';
-        if (type === 'sell') return 'text-danger-400';
-        return 'text-gray-400';
-    };
 
     const filteredTransactions = transactions.filter(transaction => {
         if (transactionFilter === 'all') return true;

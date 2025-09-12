@@ -195,6 +195,24 @@ except Exception as e:
 
     logger.error(f"Full traceback: {traceback.format_exc()}")
 
+# Include asset search router
+try:
+    from api.v1.assets.search_router import router as search_router
+
+    app.include_router(search_router, prefix="/api/v1", tags=["asset-search"])
+    logger.info("Search Asset router included successfully")
+except ImportError as e:
+    logger.warning(f"Could not import search router: {e}")
+    logger.error(f"Search Asset router import error details: {e}")
+    import traceback
+
+    logger.error(f"Full traceback: {traceback.format_exc()}")
+except Exception as e:
+    logger.error(f"Unexpected error importing search asset router: {e}")
+    import traceback
+
+    logger.error(f"Full traceback: {traceback.format_exc()}")
+
 # Include transactions router
 try:
     from api.v1.transactions.router import router as transactions_router

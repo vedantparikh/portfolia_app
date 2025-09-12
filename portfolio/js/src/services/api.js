@@ -420,7 +420,7 @@ export const portfolioAPI = {
 export const marketAPI = {
     /* 
       GET ASSETS - Get list of available assets/stocks
-      Parameters: params (object with query parameters like limit, include_prices)
+      Parameters: params (object with query parameters like limit, include_detail)
       Returns: Server response with array of asset objects
     */
     getAssets: async (params = {}) => {
@@ -523,8 +523,8 @@ export const marketAPI = {
       Returns: Server response with search results
     */
     searchSymbols: async (query, limit = 10) => {
-        const response = await api.get('/market-data/search', {
-            params: { query, limit }
+        const response = await api.get('/stock/symbols', {
+            params: { name: query, limit }
         });
         return response.data;
     },
@@ -541,56 +541,14 @@ export const userAssetsAPI = {
       Returns: Server response with array of user asset objects
     */
     getUserAssets: async (params = {}) => {
-        // First get all portfolios for the user
-        const portfoliosResponse = await api.get('/portfolios');
-        const portfolios = portfoliosResponse.data;
-        
-        if (!portfolios || portfolios.length === 0) {
-            // Create a default portfolio for the user
-            try {
-                const defaultPortfolio = await portfolioAPI.createPortfolio({
-                    name: 'My Portfolio',
-                    description: 'Default portfolio for asset management',
-                    currency: 'USD',
-                    is_active: true,
-                    is_public: false
-                });
-                portfolios.push(defaultPortfolio);
-            } catch (error) {
-                console.error('Failed to create default portfolio:', error);
-                return { assets: [] };
-            }
+        // Get assets directly from assets API (no portfolio dependency)
+        try {
+            const response = await api.get('/assets', { params });
+            return { assets: response.data || [] };
+        } catch (error) {
+            console.error('Failed to get assets:', error);
+            return { assets: [] };
         }
-        
-        // Get assets from all portfolios with details
-        const allAssets = [];
-        for (const portfolio of portfolios) {
-            try {
-                const assetsResponse = await api.get(`/portfolios/${portfolio.id}/assets/details`);
-                const assets = assetsResponse.data;
-                if (assets && assets.length > 0) {
-                    // Transform portfolio assets to match the expected format
-                    const transformedAssets = assets.map(asset => ({
-                        id: asset.id,
-                        symbol: asset.symbol,
-                        name: asset.asset_name,
-                        asset_type: 'EQUITY', // Default type, could be enhanced
-                        quantity: parseFloat(asset.quantity),
-                        purchase_price: parseFloat(asset.cost_basis),
-                        current_price: asset.market_value ? parseFloat(asset.market_value) / parseFloat(asset.quantity) : null,
-                        total_value: asset.market_value ? parseFloat(asset.market_value) : null,
-                        pnl: asset.total_return ? parseFloat(asset.total_return) : null,
-                        pnl_percentage: asset.total_return_percent ? parseFloat(asset.total_return_percent) : null,
-                        last_updated: asset.last_updated
-                    }));
-                    allAssets.push(...transformedAssets);
-                }
-            } catch (error) {
-                console.warn(`Failed to load assets for portfolio ${portfolio.id}:`, error);
-            }
-        }
-        
-        return { assets: allAssets };
     },
 
     /* 
@@ -599,42 +557,17 @@ export const userAssetsAPI = {
       Returns: Server response with created asset data
     */
     createUserAsset: async (assetData) => {
-        // First get all portfolios for the user
-        const portfoliosResponse = await api.get('/portfolios');
-        let portfolios = portfoliosResponse.data;
-        
-        if (!portfolios || portfolios.length === 0) {
-            // Create a default portfolio for the user
-            try {
-                const defaultPortfolio = await portfolioAPI.createPortfolio({
-                    name: 'My Portfolio',
-                    description: 'Default portfolio for asset management',
-                    currency: 'USD',
-                    is_active: true,
-                    is_public: false
-                });
-                portfolios = [defaultPortfolio];
-            } catch (error) {
-                console.error('Failed to create default portfolio:', error);
-                throw new Error('Failed to create portfolio for asset');
-            }
-        }
-        
-        // Use the first portfolio for now (in a real app, you'd let user choose)
-        const portfolioId = portfolios[0].id;
-        
-        // First, create the asset in the system if it doesn't exist
-        let assetId;
+        // Create the asset in the system for analysis purposes only (no portfolio entry)
         try {
-            // Try to find existing asset by symbol
+            // Try to find existing asset by symbol first
             const existingAssets = await api.get('/assets', { 
                 params: { symbol: assetData.symbol, limit: 1 } 
             });
             
             if (existingAssets && existingAssets.length > 0) {
-                assetId = existingAssets[0].id;
+                return existingAssets[0];
             } else {
-                // Create new asset
+                // Create new asset for analysis
                 const assetResponse = await api.post('/assets', {
                     symbol: assetData.symbol,
                     name: assetData.name,
@@ -646,51 +579,28 @@ export const userAssetsAPI = {
                     description: assetData.description,
                     is_active: true
                 });
-                assetId = assetResponse.id;
+                return assetResponse.data;
             }
         } catch (error) {
             console.error('Failed to create/find asset:', error);
             throw new Error('Failed to create asset');
         }
-        
-        // Add the asset to the portfolio
-        const portfolioAssetData = {
-            portfolio_id: portfolioId,
-            asset_id: assetId,
-            quantity: assetData.quantity || 0,
-            cost_basis: assetData.purchase_price || 0
-        };
-        
-        const response = await api.post(`/portfolios/${portfolioId}/assets`, portfolioAssetData);
-        return response;
     },
 
     /* 
-      GET USER ASSET - Get a specific user asset by ID
+      GET USER ASSET - Get a specific user asset by ID (for analysis only)
       Parameters: id (string or number)
       Returns: Server response with user asset details
     */
     getUserAsset: async (id) => {
-        // First get all portfolios for the user
-        const portfoliosResponse = await api.get('/portfolios');
-        const portfolios = portfoliosResponse.data;
-        
-        if (!portfolios || portfolios.length === 0) {
-            throw new Error('No portfolios found.');
+        // Get asset directly from assets API (no portfolio dependency)
+        try {
+            const response = await api.get(`/assets/${id}`);
+            return response.data;
+        } catch (error) {
+            console.error('Failed to get asset:', error);
+            throw new Error('Asset not found');
         }
-        
-        // Search for the asset in all portfolios
-        for (const portfolio of portfolios) {
-            try {
-                const response = await api.get(`/portfolios/${portfolio.id}/assets/${id}`);
-                return response;
-            } catch (error) {
-                // Continue searching in other portfolios
-                continue;
-            }
-        }
-        
-        throw new Error('Asset not found');
     },
 
     /* 
@@ -699,32 +609,24 @@ export const userAssetsAPI = {
       Returns: Server response with updated asset data
     */
     updateUserAsset: async (id, assetData) => {
-        // First get all portfolios for the user
-        const portfoliosResponse = await api.get('/portfolios');
-        const portfolios = portfoliosResponse.data;
-        
-        if (!portfolios || portfolios.length === 0) {
-            throw new Error('No portfolios found.');
+        // Update asset directly in assets API (no portfolio dependency)
+        try {
+            const response = await api.put(`/assets/${id}`, {
+                symbol: assetData.symbol,
+                name: assetData.name,
+                asset_type: assetData.asset_type,
+                exchange: assetData.exchange,
+                sector: assetData.sector,
+                industry: assetData.industry,
+                country: assetData.country,
+                description: assetData.description,
+                is_active: assetData.is_active
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Failed to update asset:', error);
+            throw new Error('Failed to update asset');
         }
-        
-        // Transform asset data to portfolio asset format
-        const portfolioAssetData = {
-            quantity: assetData.quantity,
-            cost_basis: assetData.purchase_price
-        };
-        
-        // Search for the asset in all portfolios and update it
-        for (const portfolio of portfolios) {
-            try {
-                const response = await api.put(`/portfolios/${portfolio.id}/assets/${id}`, portfolioAssetData);
-                return response;
-            } catch (error) {
-                // Continue searching in other portfolios
-                continue;
-            }
-        }
-        
-        throw new Error('Asset not found');
     },
 
     /* 
@@ -733,26 +635,14 @@ export const userAssetsAPI = {
       Returns: Server response confirming deletion
     */
     deleteUserAsset: async (id) => {
-        // First get all portfolios for the user
-        const portfoliosResponse = await api.get('/portfolios');
-        const portfolios = portfoliosResponse.data;
-        
-        if (!portfolios || portfolios.length === 0) {
-            throw new Error('No portfolios found.');
+        // Delete asset directly from assets API (no portfolio dependency)
+        try {
+            const response = await api.delete(`/assets/${id}`);
+            return response.data;
+        } catch (error) {
+            console.error('Failed to delete asset:', error);
+            throw new Error('Failed to delete asset');
         }
-        
-        // Search for the asset in all portfolios and delete it
-        for (const portfolio of portfolios) {
-            try {
-                const response = await api.delete(`/portfolios/${portfolio.id}/assets/${id}`);
-                return response;
-            } catch (error) {
-                // Continue searching in other portfolios
-                continue;
-            }
-        }
-        
-        throw new Error('Asset not found');
     },
 
     /* 
@@ -822,7 +712,7 @@ export const userAssetsAPI = {
 export const assetAPI = {
     /* 
       GET ASSETS - Get list of available assets/stocks
-      Parameters: params (object with query parameters like limit, include_prices)
+      Parameters: params (object with query parameters like limit, include_detail)
       Returns: Server response with array of asset objects
     */
     getAssets: async (params = {}) => {

@@ -7,6 +7,7 @@ import {
 } from 'lightweight-charts';
 import { BarChart3, Maximize2, Minimize2, RefreshCw } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { formatVolume } from '../../utils/formatters.jsx';
 
 const Chart = ({
     data = [],
@@ -28,26 +29,52 @@ const Chart = ({
     const chartContainerRef = useRef(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
 
+    // Helper function to format volume numbers with K/M suffixes
+
     const { candlestickData, volumeData } = useMemo(() => {
         if (!data || data.length === 0) {
             return { candlestickData: [], volumeData: [] };
         }
         const sortedData = [...data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-        const cData = sortedData.map(item => ({
-            time: new Date(item.date).getTime() / 1000,
-            open: item.open,
-            high: item.high,
-            low: item.low,
-            close: item.close,
-            volume: item.volume,
-        }));
+        const cData = sortedData.map(item => {
+            const open = Number(item.open);
+            const high = Number(item.high);
+            const low = Number(item.low);
+            const close = Number(item.close);
+            const volume = Number(item.volume);
+            
+            // Validate that all values are valid numbers
+            if (isNaN(open) || isNaN(high) || isNaN(low) || isNaN(close) || isNaN(volume)) {
+                console.warn('Invalid data point:', item);
+                return null;
+            }
+            
+            return {
+                time: new Date(item.date).getTime() / 1000,
+                open: open,
+                high: high,
+                low: low,
+                close: close,
+                volume: volume,
+            };
+        }).filter(Boolean); // Remove any null entries
 
-        const vData = sortedData.map(item => ({
-            time: new Date(item.date).getTime() / 1000,
-            value: item.volume,
-            color: item.close >= item.open ? 'rgba(34, 197, 94, 0.5)' : 'rgba(239, 68, 68, 0.5)',
-        }));
+        const vData = sortedData.map(item => {
+            const volume = Number(item.volume);
+            const close = Number(item.close);
+            const open = Number(item.open);
+            
+            if (isNaN(volume) || isNaN(close) || isNaN(open)) {
+                return null;
+            }
+            
+            return {
+                time: new Date(item.date).getTime() / 1000,
+                value: volume,
+                color: close >= open ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)', // Very opaque volume bars
+            };
+        }).filter(Boolean);
 
         return { candlestickData: cData, volumeData: vData };
     }, [data]);
@@ -157,6 +184,10 @@ const Chart = ({
                 return;
             }
 
+            // Get volume data from the original candlestick data
+            const originalData = candlestickData.find(item => item.time === data.time);
+            const volume = originalData ? originalData.volume : null;
+
             const date = new Date(data.time * 1000).toLocaleDateString();
             const time = new Date(data.time * 1000).toLocaleTimeString();
             let tooltipContent = '';
@@ -168,7 +199,7 @@ const Chart = ({
                         <div class="flex justify-between"><span class="text-gray-400">High:</span><span class="text-success-400">$${data.high?.toFixed(2) || 'N/A'}</span></div>
                         <div class="flex justify-between"><span class="text-gray-400">Low:</span><span class="text-danger-400">$${data.low?.toFixed(2) || 'N/A'}</span></div>
                         <div class="flex justify-between"><span class="text-gray-400">Close:</span><span class="text-gray-200">$${data.close?.toFixed(2) || 'N/A'}</span></div>
-                        <div class="flex justify-between"><span class="text-gray-400">Volume:</span><span class="text-gray-200">${data.volume || 'N/A'}</span></div>
+                        <div class="flex justify-between"><span class="text-gray-400">Volume:</span><span class="text-gray-200">${formatVolume(volume)}</span></div>
                         <div class="flex justify-between"><span class="text-gray-400">Change:</span><span class="${data.close >= data.open ? 'text-success-400' : 'text-danger-400'}">${data.close && data.open ? ((data.close - data.open) / data.open * 100).toFixed(2) + '%' : 'N/A'}</span></div>
                     </div>
                 `;
@@ -178,6 +209,7 @@ const Chart = ({
                     <div class="space-y-1 text-xs">
                         <div class="flex justify-between"><span class="text-gray-400">Time:</span><span class="text-gray-200">${time}</span></div>
                         <div class="flex justify-between"><span class="text-gray-400">Price:</span><span class="text-primary-400">$${data.value?.toFixed(2) || 'N/A'}</span></div>
+                        <div class="flex justify-between"><span class="text-gray-400">Volume:</span><span class="text-gray-200">${formatVolume(volume)}</span></div>
                     </div>
                 `;
             }

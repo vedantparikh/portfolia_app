@@ -3,41 +3,17 @@ import {
     Calendar,
     Edit,
     Settings,
-    Trash2,
-    TrendingDown,
-    TrendingUp
+    Trash2
 } from 'lucide-react';
 import React from 'react';
+import {
+    formatCurrency,
+    formatPercentage,
+    getChangeColor,
+    getChangeIcon
+} from '../../utils/formatters.jsx';
 
 const PortfolioCard = ({ portfolio, stats, onEdit, onDelete, onAddPosition, onViewDetails }) => {
-    const formatCurrency = (amount) => {
-        if (amount === null || amount === undefined || isNaN(amount)) return '$0.00';
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD',
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        }).format(amount);
-    };
-
-    const formatPercentage = (value) => {
-        if (value === null || value === undefined || isNaN(value)) return '0.00%';
-        return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
-    };
-
-    const getChangeColor = (value) => {
-        if (!value || isNaN(value)) return 'text-gray-400';
-        if (value > 0) return 'text-success-400';
-        if (value < 0) return 'text-danger-400';
-        return 'text-gray-400';
-    };
-
-    const getChangeIcon = (value) => {
-        if (!value || isNaN(value)) return null;
-        if (value > 0) return <TrendingUp size={16} className="text-success-400" />;
-        if (value < 0) return <TrendingDown size={16} className="text-danger-400" />;
-        return null;
-    };
 
     const handleDelete = () => {
         if (window.confirm(`Are you sure you want to delete "${portfolio?.name || 'this portfolio'}"? This action cannot be undone.`)) {

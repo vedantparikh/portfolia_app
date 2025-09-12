@@ -116,10 +116,22 @@ class AssetUpdate(BaseModel):
     is_active: Optional[bool] = Field(None)
 
 
+class AssetDetail(BaseModel):
+    current_price: Optional[Decimal] = Field(None)
+    market_cap: Optional[Decimal] = Field(None)
+    day_low: Optional[Decimal] = Field(None)
+    day_high: Optional[Decimal] = Field(None)
+    low_52w: Optional[Decimal] = Field(None)
+    high_52w: Optional[Decimal] = Field(None)
+    volume_24h: Optional[Decimal] = Field(None)
+    price_change_percentage_24h: Optional[Decimal] = Field(None)
+
+
 class Asset(AssetBase):
     id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
+    detail: Optional[AssetDetail] = {}
 
     class Config:
         from_attributes = True

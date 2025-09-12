@@ -29,10 +29,10 @@ class MarketDataService:
 
             # Try multiple price fields in order of preference
             price = (
-                info.get("currentPrice")
-                or info.get("regularMarketPrice")
-                or info.get("previousClose")
-                or info.get("open")
+                    info.get("currentPrice")
+                    or info.get("regularMarketPrice")
+                    or info.get("previousClose")
+                    or info.get("open")
             )
 
             if price is not None:
@@ -50,7 +50,7 @@ class MarketDataService:
             return None
 
     async def get_multiple_current_prices(
-        self, symbols: List[str]
+            self, symbols: List[str]
     ) -> Dict[str, Optional[float]]:
         """Get current prices for multiple symbols efficiently."""
         try:
@@ -64,10 +64,10 @@ class MarketDataService:
                     info = ticker.info
 
                     price = (
-                        info.get("currentPrice")
-                        or info.get("regularMarketPrice")
-                        or info.get("previousClose")
-                        or info.get("open")
+                            info.get("currentPrice")
+                            or info.get("regularMarketPrice")
+                            or info.get("previousClose")
+                            or info.get("open")
                     )
 
                     if price is not None:
@@ -95,13 +95,13 @@ class MarketDataService:
             return results
 
     async def fetch_ticker_data(
-        self,
-        symbol: str,
-        period: str = "max",
-        interval: str = "1d",
-        start_date: Optional[str] = None,
-        end_date: Optional[str] = None,
-    ) -> Optional[pd.DataFrame]:
+            self,
+            symbol: str,
+            period: str = "max",
+            interval: str = "1d",
+            start_date: Optional[str] = None,
+            end_date: Optional[str] = None,
+    ) -> pd.DataFrame:
         """
         Fetch ticker data from yfinance with retry logic.
 
@@ -130,7 +130,7 @@ class MarketDataService:
 
                 if not isinstance(data, pd.DataFrame) or data.empty:
                     logger.warning("No data returned for %s", symbol)
-                    return None
+                    return pd.DataFrame()
 
                 logger.info("Successfully fetched %d records for %s", len(data), symbol)
 
@@ -141,7 +141,7 @@ class MarketDataService:
                 expected_columns = ["Date", "Open", "High", "Low", "Close", "Volume"]
                 if not all(col in data.columns for col in expected_columns):
                     logger.warning("Missing expected columns in data for %s", symbol)
-                    return None
+                    return pd.DataFrame()
 
                 # Sort by date descending (most recent first)
                 data = data.sort_values(by="Date", ascending=False)
@@ -154,7 +154,7 @@ class MarketDataService:
                     await asyncio.sleep(self.retry_delay)
                 else:
                     logger.error("All attempts failed for %s", symbol)
-                    return None
+                    return pd.DataFrame()
 
     async def get_ticker_info(self, symbol: str) -> Optional[Dict[str, Any]]:
         """
@@ -175,45 +175,7 @@ class MarketDataService:
                 return None
 
             # Extract and normalize the information
-            ticker_data = {
-                "symbol": info.get("symbol", symbol).upper(),
-                "longName": info.get("longName"),
-                "shortName": info.get("shortName"),
-                "sector": info.get("sector"),
-                "industry": info.get("industry"),
-                "exchange": info.get("exchange"),
-                "exchangeDisp": info.get("exchangeDisp"),
-                "currency": info.get("currency"),
-                "country": info.get("country"),
-                "quoteType": info.get("quoteType"),
-                "marketCap": info.get("marketCap"),
-                "currentPrice": info.get("currentPrice"),
-                "regularMarketPrice": info.get("regularMarketPrice"),
-                "previousClose": info.get("previousClose"),
-                "open": info.get("open"),
-                "dayLow": info.get("dayLow"),
-                "dayHigh": info.get("dayHigh"),
-                "volume": info.get("volume"),
-                "averageVolume": info.get("averageVolume"),
-                "beta": info.get("beta"),
-                "trailingPE": info.get("trailingPE"),
-                "forwardPE": info.get("forwardPE"),
-                "dividendYield": info.get("dividendYield"),
-                "payoutRatio": info.get("payoutRatio"),
-                "bookValue": info.get("bookValue"),
-                "priceToBook": info.get("priceToBook"),
-                "earningsGrowth": info.get("earningsGrowth"),
-                "revenueGrowth": info.get("revenueGrowth"),
-                "returnOnAssets": info.get("returnOnAssets"),
-                "returnOnEquity": info.get("returnOnEquity"),
-                "freeCashflow": info.get("freeCashflow"),
-                "operatingCashflow": info.get("operatingCashflow"),
-                "totalDebt": info.get("totalDebt"),
-                "totalCash": info.get("totalCash"),
-                "longBusinessSummary": info.get("longBusinessSummary"),
-                "website": info.get("website"),
-                "fullTimeEmployees": info.get("fullTimeEmployees"),
-            }
+            ticker_data = self._extract_ticker_information(ticker_info=info)
 
             logger.info(
                 "Retrieved ticker info for %s: %s",
@@ -255,29 +217,7 @@ class MarketDataService:
                         logger.warning("No data available for %s", symbol)
                         continue
 
-                    stock_data = {
-                        "symbol": info.get("symbol", symbol).upper(),
-                        "name": (
-                            info.get("longName") or info.get("shortName") or symbol
-                        ),
-                        "latest_price": (
-                            info.get("currentPrice")
-                            or info.get("regularMarketPrice")
-                            or info.get("previousClose")
-                            or 0.0
-                        ),
-                        "latest_date": info.get("regularMarketTime"),
-                        "market_cap": info.get("marketCap"),
-                        "pe_ratio": info.get("trailingPE"),
-                        "beta": info.get("beta"),
-                        "currency": info.get("currency"),
-                        "exchange": (info.get("exchangeDisp") or info.get("exchange")),
-                        "dividend_yield": info.get("dividendYield", 0.0),
-                        "day_change": None,  # Would need historical data to calculate
-                        "day_change_percent": None,  # Would need historical data to calculate
-                        "volume": info.get("volume"),
-                        "avg_volume": info.get("averageVolume"),
-                    }
+                    stock_data = self._extract_ticker_information(ticker_info=info)
 
                     results.append(stock_data)
 
@@ -295,7 +235,7 @@ class MarketDataService:
             return []
 
     async def search_symbols(
-        self, query: str, limit: int = 10
+            self, query: str, limit: int = 10
     ) -> List[Dict[str, Any]]:  # noqa: ARG002
         """
         Search for stock symbols using yfinance.
@@ -321,7 +261,7 @@ class MarketDataService:
                     {
                         "symbol": ticker_info["symbol"],
                         "name": ticker_info.get("longName")
-                        or ticker_info.get("shortName"),
+                                or ticker_info.get("shortName"),
                         "exchange": ticker_info.get("exchange"),
                         "currency": ticker_info.get("currency"),
                         "type": ticker_info.get("quoteType"),
@@ -391,6 +331,66 @@ class MarketDataService:
         except Exception as e:
             logger.error("Error getting market status: %s", e)
             return {"is_open": None, "error": str(e)}
+
+    def _extract_ticker_information(self, ticker_info: Dict[str, Any]) -> Dict[str, Any]:
+        # Extract and normalize the information
+        ticker_data = {
+            "symbol": ticker_info.get("symbol").upper(),
+            "long_name": ticker_info.get("longName"),
+            "short_name": ticker_info.get("shortName"),
+            "sector": ticker_info.get("sector"),
+            "industry": ticker_info.get("industry"),
+            "exchange": ticker_info.get("exchangeDisp", ticker_info.get("exchange")),
+            "currency": ticker_info.get("currency"),
+            "country": ticker_info.get("country"),
+            "quote_type": ticker_info.get("quoteType"),
+            "market_cap": ticker_info.get("marketCap"),
+            "current_price": ticker_info.get("currentPrice", ticker_info.get("regularMarketPrice")),
+            "price_change_percentage_24h": ticker_info.get('regularMarketChangePercent', 0),
+            "previous_close": ticker_info.get("previousClose"),
+            "open": ticker_info.get("open"),
+            "day_low": ticker_info.get("dayLow"),
+            "low_52w": ticker_info.get('fiftyTwoWeekLow'),
+            "high_52w": ticker_info.get('fiftyTwoWeekHigh'),
+            "day_high": ticker_info.get("dayHigh"),
+            "volume": ticker_info.get("volume"),
+            "average_volume": ticker_info.get("averageVolume"),
+            "volume_24h": ticker_info.get("regularMarketVolume"),
+            "beta": ticker_info.get("beta"),
+            "trailing_PE": ticker_info.get("trailingPE"),
+            "forward_PE": ticker_info.get("forwardPE"),
+            "dividend_yield": ticker_info.get("dividendYield"),
+            "payout_ratio": ticker_info.get("payoutRatio"),
+            "book_value": ticker_info.get("bookValue"),
+            "price_to_book": ticker_info.get("priceToBook"),
+            "earnings_growth": ticker_info.get("earningsGrowth"),
+            "revenue_growth": ticker_info.get("revenueGrowth"),
+            "return_on_assets": ticker_info.get("returnOnAssets"),
+            "return_on_equity": ticker_info.get("returnOnEquity"),
+            "free_cashflow": ticker_info.get("freeCashflow"),
+            "operating_cashflow": ticker_info.get("operatingCashflow"),
+            "total_debt": ticker_info.get("totalDebt"),
+            "total_cash": ticker_info.get("totalCash"),
+            "long_business_summary": ticker_info.get("longBusinessSummary"),
+            "website": ticker_info.get("website"),
+            "full_time_employees": ticker_info.get("fullTimeEmployees"),
+        }
+        return ticker_data
+
+    async def get_symbols_info(self, symbols: List[str]) -> Dict[str, Any]:
+
+        tickers = yf.Tickers(symbols)
+        result = {}
+        for ticker in tickers.tickers.values():
+            try:
+                info = ticker.info
+                if info.get('regularMarketPrice') is None:
+                    logger.warning("Error getting info for symbol: %s", info.get('symbol'))
+                    continue
+                result[info.get('symbol')] = self._extract_ticker_information(ticker_info=info)
+            except Exception as e:
+                logger.error("Error processing ticker info: %s. Error: %s", ticker.ticker, e)
+        return result
 
 
 # Global instance
