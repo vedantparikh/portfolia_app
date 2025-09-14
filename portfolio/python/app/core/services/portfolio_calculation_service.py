@@ -11,15 +11,25 @@ Supports period-based calculations and benchmark comparisons.
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from datetime import datetime
+from datetime import timedelta
+from datetime import timezone
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Tuple
 
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
-from pyxirr import xirr  # type: ignore
+import pyxirr  # type: ignore
 from sqlalchemy.orm import Session
 
-from app.core.database.models import Asset, Portfolio, PortfolioAsset, Transaction, TransactionType
+from app.core.database.models import Asset
+from app.core.database.models import Portfolio
+from app.core.database.models import PortfolioAsset
+from app.core.database.models import Transaction
+from app.core.database.models import TransactionType
 from app.core.services.market_data_service import MarketDataService
 
 logger = logging.getLogger(__name__)
@@ -110,15 +120,23 @@ class PortfolioCalculationService:
         current_value = self._get_current_portfolio_value(portfolio_id)
 
         # Calculate different return metrics
-        cagr = self._calculate_cagr(transactions, current_value, start_date, end_date)
+        cagr = await self._calculate_cagr(
+            portfolio_id, transactions, current_value, start_date, end_date
+        )
         xirr_value = self._calculate_xirr(transactions, current_value, end_date)
-        twr = await self._calculate_twr(portfolio_id, transactions, current_value, start_date, end_date)
+        twr = await self._calculate_twr(
+            portfolio_id, transactions, current_value, start_date, end_date
+        )
         mwr = self._calculate_mwr(transactions, current_value, start_date, end_date)
 
         # Calculate additional metrics
-        volatility = await self._calculate_volatility(portfolio_id, start_date, end_date)
+        volatility = await self._calculate_volatility(
+            portfolio_id, start_date, end_date
+        )
         sharpe_ratio = self._calculate_sharpe_ratio(twr, volatility)
-        max_drawdown = await self._calculate_max_drawdown(portfolio_id, start_date, end_date)
+        max_drawdown = await self._calculate_max_drawdown(
+            portfolio_id, start_date, end_date
+        )
 
         return {
             "portfolio_id": portfolio_id,
@@ -182,14 +200,14 @@ class PortfolioCalculationService:
         current_asset_value = self._get_current_asset_value(portfolio_id, asset_id)
 
         # Calculate metrics for the asset
-        cagr = self._calculate_asset_cagr(
-            asset_transactions, current_asset_value, start_date, end_date
+        cagr = await self._calculate_asset_cagr(
+            portfolio_id, asset_transactions, current_asset_value, start_date, end_date
         )
         xirr_value = self._calculate_asset_xirr(
             asset_transactions, current_asset_value, end_date
         )
-        twr = self._calculate_asset_twr(
-            asset_transactions, current_asset_value, start_date, end_date
+        twr = await self._calculate_asset_twr(
+            portfolio_id, asset_transactions, current_asset_value, start_date, end_date
         )
         mwr = self._calculate_asset_mwr(
             asset_transactions, current_asset_value, start_date, end_date
@@ -394,117 +412,116 @@ class PortfolioCalculationService:
     ) -> pd.DataFrame:
         """
         Calculate daily portfolio values using historical price data from yfinance.
-        
+
         This method reconstructs the portfolio value for each day by:
         1. Getting all transactions up to each date
         2. Calculating holdings for each date
         3. Getting historical prices for all assets
         4. Computing daily portfolio values
-        
+
         Returns:
             DataFrame with columns: Date, PortfolioValue, DailyReturn
         """
         try:
             # Get all transactions for the portfolio
             all_transactions = self._get_transactions(portfolio_id, None, end_date)
-            
+
             if not all_transactions:
                 return pd.DataFrame()
-            
+
             # Determine the actual start date
             if start_date is None:
                 start_date = min(t.transaction_date for t in all_transactions).date()
             else:
                 start_date = start_date.date()
-            
+
             end_date = end_date.date()
-            
+
             # Get all unique assets in the portfolio
             asset_ids = list(set(t.asset_id for t in all_transactions))
             assets = {}
-            
+
             for asset_id in asset_ids:
                 asset = self.db.query(Asset).filter(Asset.id == asset_id).first()
                 if asset:
                     assets[asset_id] = asset
-            
+
             # Get historical price data for all assets
             asset_prices = {}
             for asset_id, asset in assets.items():
                 try:
                     price_data = await self.market_data_service.fetch_ticker_data(
-                        symbol=asset.symbol,
-                        period="max",
-                        interval="1d"
+                        symbol=asset.symbol, period="max", interval="1d"
                     )
-                    
+
                     if not price_data.empty:
                         # Convert to proper format and index by date
-                        price_data['Date'] = pd.to_datetime(price_data['Date']).dt.date
-                        price_data = price_data.set_index('Date')
+                        price_data["Date"] = pd.to_datetime(price_data["Date"]).dt.date
+                        price_data = price_data.set_index("Date")
                         asset_prices[asset_id] = price_data
-                        
+
                 except Exception as e:
-                    logger.warning("Could not fetch price data for asset %s: %s", asset.symbol, e)
+                    logger.warning(
+                        "Could not fetch price data for asset %s: %s", asset.symbol, e
+                    )
                     continue
-            
+
             if not asset_prices:
                 logger.error("No price data available for any assets")
                 return pd.DataFrame()
-            
+
             # Create date range
-            date_range = pd.date_range(start=start_date, end=end_date, freq='D')
+            date_range = pd.date_range(start=start_date, end=end_date, freq="D")
             portfolio_values = []
-            
+
             for current_date in date_range:
                 current_date = current_date.date()
-                
+
                 # Skip weekends (markets are closed)
                 if current_date.weekday() >= 5:  # Saturday = 5, Sunday = 6
                     continue
-                
+
                 # Calculate holdings as of this date
                 holdings = self._calculate_holdings_as_of_date(
                     all_transactions, current_date
                 )
-                
+
                 if not holdings:
                     continue
-                
+
                 # Calculate portfolio value for this date
                 portfolio_value = 0.0
-                
+
                 for asset_id, quantity in holdings.items():
                     if asset_id in asset_prices and quantity > 0:
                         # Get the price for this date (or closest available)
                         price = self._get_price_for_date(
                             asset_prices[asset_id], current_date
                         )
-                        
+
                         if price is not None:
                             portfolio_value += quantity * price
-                
+
                 if portfolio_value > 0:
-                    portfolio_values.append({
-                        'Date': current_date,
-                        'PortfolioValue': portfolio_value
-                    })
-            
+                    portfolio_values.append(
+                        {"Date": current_date, "PortfolioValue": portfolio_value}
+                    )
+
             if not portfolio_values:
                 return pd.DataFrame()
-            
+
             # Create DataFrame and calculate daily returns
             df = pd.DataFrame(portfolio_values)
-            df = df.sort_values('Date')
-            
+            df = df.sort_values("Date")
+
             # Calculate daily returns
-            df['DailyReturn'] = df['PortfolioValue'].pct_change()
-            
+            df["DailyReturn"] = df["PortfolioValue"].pct_change()
+
             # Remove the first row (NaN return)
             df = df.dropna()
-            
+
             return df
-            
+
         except Exception as e:
             logger.error("Error calculating daily portfolio values: %s", e)
             return pd.DataFrame()
@@ -516,41 +533,40 @@ class PortfolioCalculationService:
     ) -> Dict[int, float]:
         """
         Calculate asset holdings as of a specific date.
-        
+
         Args:
             transactions: All transactions for the portfolio
             as_of_date: Date to calculate holdings for
-            
+
         Returns:
             Dictionary mapping asset_id to quantity held
         """
         holdings = {}
-        
+
         # Filter transactions up to the specified date
         relevant_transactions = [
-            t for t in transactions 
-            if t.transaction_date.date() <= as_of_date
+            t for t in transactions if t.transaction_date.date() <= as_of_date
         ]
-        
+
         # Sort by date to process in chronological order
         relevant_transactions.sort(key=lambda t: t.transaction_date)
-        
+
         for transaction in relevant_transactions:
             asset_id = transaction.asset_id
             quantity = float(transaction.quantity)
-            
+
             if asset_id not in holdings:
                 holdings[asset_id] = 0.0
-            
+
             if transaction.transaction_type == TransactionType.BUY:
                 holdings[asset_id] += quantity
             elif transaction.transaction_type == TransactionType.SELL:
                 holdings[asset_id] -= quantity
-                
+
                 # Remove asset if quantity becomes zero or negative
                 if holdings[asset_id] <= 0:
                     holdings.pop(asset_id, None)
-        
+
         return holdings
 
     def _get_price_for_date(
@@ -560,44 +576,47 @@ class PortfolioCalculationService:
     ) -> Optional[float]:
         """
         Get the closing price for a specific date, using the closest available date if exact date not found.
-        
+
         Args:
             price_data: DataFrame with price data indexed by date
             target_date: Target date to get price for
-            
+
         Returns:
             Closing price or None if not available
         """
         try:
             # Try exact date first
             if target_date in price_data.index:
-                return float(price_data.loc[target_date, 'Close'])
-            
+                return float(price_data.loc[target_date, "Close"])
+
             # Find the closest date before target_date
             available_dates = price_data.index
             valid_dates = [d for d in available_dates if d <= target_date]
-            
+
             if valid_dates:
                 closest_date = max(valid_dates)
-                return float(price_data.loc[closest_date, 'Close'])
-            
+                return float(price_data.loc[closest_date, "Close"])
+
             return None
-            
+
         except Exception as e:
             logger.warning("Error getting price for date %s: %s", target_date, e)
             return None
 
-    def _calculate_cagr(
+    async def _calculate_cagr(
         self,
+        portfolio_id: int,
         transactions: List[Transaction],
         current_value: float,
         start_date: Optional[datetime],
         end_date: datetime,
     ) -> Optional[float]:
-        """Calculate Compound Annual Growth Rate."""
+        """Calculate Compound Annual Growth Rate using actual market values."""
         try:
-            # Get initial investment (first buy transaction or start of period value)
-            initial_value = self._calculate_initial_value(transactions, start_date)
+            # Get initial market value (not cost basis) at period start
+            initial_value = await self._calculate_initial_market_value(
+                portfolio_id, transactions, start_date
+            )
 
             if initial_value <= 0 or current_value <= 0:
                 return None
@@ -653,7 +672,7 @@ class PortfolioCalculationService:
                 return None
 
             # Calculate XIRR
-            xirr_result = xirr(dates, amounts)
+            xirr_result = pyxirr.xirr(dates, amounts)
 
             if xirr_result is None:
                 return None
@@ -674,7 +693,7 @@ class PortfolioCalculationService:
     ) -> Optional[float]:
         """
         Calculate Time-Weighted Return using daily portfolio values.
-        
+
         TWR eliminates the impact of cash flows by calculating returns
         between transaction dates and geometrically linking them.
         """
@@ -683,32 +702,36 @@ class PortfolioCalculationService:
             daily_values = await self._calculate_daily_portfolio_values(
                 portfolio_id, start_date, end_date
             )
-            
+
             if daily_values.empty or len(daily_values) < 2:
-                logger.warning("Insufficient data for TWR calculation, using simple method")
-                return self._calculate_simple_twr(transactions, current_value, start_date, end_date)
-            
+                logger.warning(
+                    "Insufficient data for TWR calculation, using simple method"
+                )
+                return await self._calculate_simple_twr(
+                    portfolio_id, transactions, current_value, start_date, end_date
+                )
+
             # Get transaction dates for cash flow adjustments
             transaction_dates = set()
             for transaction in transactions:
                 if start_date is None or transaction.transaction_date >= start_date:
                     if transaction.transaction_date <= end_date:
                         transaction_dates.add(transaction.transaction_date.date())
-            
+
             # Calculate TWR by geometrically linking daily returns
             # but adjusting for cash flows on transaction dates
-            daily_returns = daily_values['DailyReturn'].dropna()
-            
+            daily_returns = daily_values["DailyReturn"].dropna()
+
             if len(daily_returns) == 0:
                 return None
-            
+
             # For precise TWR, we should adjust for cash flows
             # For now, use the geometric mean of daily returns
             # This is a good approximation when cash flows are small relative to portfolio size
-            
+
             # Calculate cumulative return
             cumulative_return = (1 + daily_returns).prod() - 1
-            
+
             # Annualize if period is more than one year
             days = len(daily_returns)
             if days > 252:  # More than one trading year
@@ -716,27 +739,33 @@ class PortfolioCalculationService:
                 twr = ((1 + cumulative_return) ** (1 / years)) - 1
             else:
                 twr = cumulative_return
-            
+
             return float(twr * 100)  # Return as percentage
 
         except Exception as e:
             logger.error("Error calculating TWR: %s", e)
-            return self._calculate_simple_twr(transactions, current_value, start_date, end_date)
+            return await self._calculate_simple_twr(
+                portfolio_id, transactions, current_value, start_date, end_date
+            )
 
-    def _calculate_simple_twr(
+    async def _calculate_simple_twr(
         self,
+        portfolio_id: int,
         transactions: List[Transaction],
         current_value: float,
         start_date: Optional[datetime],
         end_date: datetime,
     ) -> Optional[float]:
-        """Fallback simple TWR calculation when daily data is not available."""
+        """Fallback simple TWR calculation using actual market values when daily data is not available."""
         try:
-            initial_value = self._calculate_initial_value(transactions, start_date)
+            # Use actual market value at period start, not cost basis
+            initial_value = await self._calculate_initial_market_value(
+                portfolio_id, transactions, start_date
+            )
             if initial_value <= 0:
                 return None
 
-            # Simple TWR calculation
+            # Simple TWR calculation using market values
             total_return = (current_value / initial_value) - 1
 
             # Annualize if period is more than one year
@@ -776,7 +805,7 @@ class PortfolioCalculationService:
     ) -> Optional[float]:
         """
         Calculate portfolio volatility using daily returns from historical data.
-        
+
         Returns annualized volatility as a percentage.
         """
         try:
@@ -784,23 +813,23 @@ class PortfolioCalculationService:
             daily_values = await self._calculate_daily_portfolio_values(
                 portfolio_id, start_date, end_date
             )
-            
+
             if daily_values.empty or len(daily_values) < 2:
                 logger.warning("Insufficient data for volatility calculation")
                 return None
-            
+
             # Calculate daily returns (already calculated in daily_values)
-            daily_returns = daily_values['DailyReturn'].dropna()
-            
+            daily_returns = daily_values["DailyReturn"].dropna()
+
             if len(daily_returns) < 2:
                 return None
-            
+
             # Calculate standard deviation of daily returns
             daily_volatility = daily_returns.std()
-            
+
             # Annualize volatility (assuming 252 trading days per year)
             annualized_volatility = daily_volatility * np.sqrt(252)
-            
+
             # Convert to percentage
             return float(annualized_volatility * 100)
 
@@ -835,7 +864,7 @@ class PortfolioCalculationService:
     ) -> Optional[float]:
         """
         Calculate maximum drawdown using daily portfolio values.
-        
+
         Maximum drawdown is the largest peak-to-trough decline in portfolio value.
         Returns the drawdown as a percentage.
         """
@@ -844,22 +873,22 @@ class PortfolioCalculationService:
             daily_values = await self._calculate_daily_portfolio_values(
                 portfolio_id, start_date, end_date
             )
-            
+
             if daily_values.empty or len(daily_values) < 2:
                 logger.warning("Insufficient data for max drawdown calculation")
                 return None
-            
-            portfolio_values = daily_values['PortfolioValue']
-            
+
+            portfolio_values = daily_values["PortfolioValue"]
+
             # Calculate running maximum (peak values)
             running_max = portfolio_values.expanding().max()
-            
+
             # Calculate drawdown at each point
             drawdowns = (portfolio_values - running_max) / running_max
-            
+
             # Find maximum drawdown (most negative value)
             max_drawdown = drawdowns.min()
-            
+
             # Convert to positive percentage
             return float(abs(max_drawdown) * 100)
 
@@ -869,15 +898,42 @@ class PortfolioCalculationService:
 
     # Asset-specific calculation methods (similar to portfolio methods but for single assets)
 
-    def _calculate_asset_cagr(
+    async def _calculate_asset_cagr(
         self,
+        portfolio_id: int,
         transactions: List[Transaction],
         current_value: float,
         start_date: Optional[datetime],
         end_date: datetime,
     ) -> Optional[float]:
         """Calculate CAGR for a specific asset."""
-        return self._calculate_cagr(transactions, current_value, start_date, end_date)
+        # For individual assets, we'll use cost basis as fallback since we don't have
+        # individual asset daily values. This is a limitation that would require
+        # asset-specific daily value tracking to fix properly.
+        try:
+            initial_value = self._calculate_cost_basis_at_date(transactions, start_date)
+
+            if initial_value <= 0 or current_value <= 0:
+                return None
+
+            # Calculate period in years
+            if start_date:
+                years = (end_date - start_date).days / 365.25
+            else:
+                # Use first transaction date
+                first_transaction = min(transactions, key=lambda t: t.transaction_date)
+                years = (end_date - first_transaction.transaction_date).days / 365.25
+
+            if years <= 0:
+                return None
+
+            # CAGR = (Ending Value / Beginning Value)^(1/number of years) - 1
+            cagr = (current_value / initial_value) ** (1 / years) - 1
+            return float(cagr * 100)  # Return as percentage
+
+        except Exception as e:
+            logger.error("Error calculating asset CAGR: %s", e)
+            return None
 
     def _calculate_asset_xirr(
         self,
@@ -888,15 +944,42 @@ class PortfolioCalculationService:
         """Calculate XIRR for a specific asset."""
         return self._calculate_xirr(transactions, current_value, end_date)
 
-    def _calculate_asset_twr(
+    async def _calculate_asset_twr(
         self,
+        portfolio_id: int,
         transactions: List[Transaction],
         current_value: float,
         start_date: Optional[datetime],
         end_date: datetime,
     ) -> Optional[float]:
         """Calculate TWR for a specific asset."""
-        return self._calculate_twr(transactions, current_value, start_date, end_date)
+        # For individual assets, we use cost basis since we don't track daily asset values
+        # This is a limitation - proper asset TWR would require daily asset value tracking
+        try:
+            initial_value = self._calculate_cost_basis_at_date(transactions, start_date)
+            if initial_value <= 0:
+                return None
+
+            # Simple TWR calculation using cost basis (limitation)
+            total_return = (current_value / initial_value) - 1
+
+            # Annualize if period is more than one year
+            if start_date:
+                years = (end_date - start_date).days / 365.25
+            else:
+                first_transaction = min(transactions, key=lambda t: t.transaction_date)
+                years = (end_date - first_transaction.transaction_date).days / 365.25
+
+            if years > 1:
+                twr = ((1 + total_return) ** (1 / years)) - 1
+            else:
+                twr = total_return
+
+            return float(twr * 100)  # Return as percentage
+
+        except Exception as e:
+            logger.error("Error calculating asset TWR: %s", e)
+            return None
 
     def _calculate_asset_mwr(
         self,
@@ -974,13 +1057,12 @@ class PortfolioCalculationService:
     ) -> Optional[float]:
         """Calculate CAGR for benchmark."""
         try:
-            initial_investment = sum(
-                t["total_amount"]
-                for t in transactions
-                if t["transaction_type"] == "BUY"
-            )
+            # Calculate net investment (BUY + SELL)
+            # Note: BUY amounts are positive (+1000), SELL amounts are already negative (-800)
+            # So we simply sum them: +1000 + (-800) = +200 (correct net investment)
+            net_investment = sum(t["total_amount"] for t in transactions)
 
-            if initial_investment <= 0 or current_value <= 0:
+            if net_investment <= 0 or current_value <= 0:
                 return None
 
             if start_date:
@@ -994,7 +1076,7 @@ class PortfolioCalculationService:
             if years <= 0:
                 return None
 
-            cagr = (current_value / initial_investment) ** (1 / years) - 1
+            cagr = (current_value / net_investment) ** (1 / years) - 1
             return float(cagr * 100)
 
         except Exception as e:
@@ -1010,14 +1092,10 @@ class PortfolioCalculationService:
         """Calculate XIRR for benchmark."""
         try:
             dates = [t["transaction_date"] for t in transactions]
-            amounts = [
-                (
-                    -t["total_amount"]
-                    if t["transaction_type"] == "BUY"
-                    else t["total_amount"]
-                )
-                for t in transactions
-            ]
+            # Fix: Simply invert all amounts since they're already correctly signed
+            # BUY (+1000) becomes -1000 (outflow)
+            # SELL (-800) becomes +800 (inflow)
+            amounts = [-t["total_amount"] for t in transactions]
 
             dates.append(end_date)
             amounts.append(current_value)
@@ -1025,7 +1103,7 @@ class PortfolioCalculationService:
             if len(dates) < 2:
                 return None
 
-            xirr_result = xirr(dates, amounts)
+            xirr_result = pyxirr.xirr(dates, amounts)
             return float(xirr_result * 100) if xirr_result is not None else None
 
         except Exception as e:
@@ -1041,16 +1119,15 @@ class PortfolioCalculationService:
     ) -> Optional[float]:
         """Calculate TWR for benchmark."""
         try:
-            initial_investment = sum(
-                t["total_amount"]
-                for t in transactions
-                if t["transaction_type"] == "BUY"
-            )
+            # Calculate net investment (BUY + SELL)
+            # Note: BUY amounts are positive (+1000), SELL amounts are already negative (-800)
+            # So we simply sum them: +1000 + (-800) = +200 (correct net investment)
+            net_investment = sum(t["total_amount"] for t in transactions)
 
-            if initial_investment <= 0:
+            if net_investment <= 0:
                 return None
 
-            total_return = (current_value / initial_investment) - 1
+            total_return = (current_value / net_investment) - 1
 
             if start_date:
                 years = (end_date - start_date).days / 365.25
@@ -1138,10 +1215,15 @@ class PortfolioCalculationService:
 
             total_value = 0.0
             for asset in assets:
-                if asset.current_value:
+                if asset.current_value is not None and asset.current_value > 0:
                     total_value += float(asset.current_value)
-                else:
+                elif asset.cost_basis_total is not None:
+                    # Fallback to cost basis if current value is not available
                     total_value += float(asset.cost_basis_total)
+                else:
+                    logger.warning(
+                        f"No value available for asset {asset.asset_id} in portfolio {portfolio_id}"
+                    )
 
             return total_value
 
@@ -1162,10 +1244,15 @@ class PortfolioCalculationService:
             )
 
             if asset:
-                if asset.current_value:
+                if asset.current_value is not None and asset.current_value > 0:
                     return float(asset.current_value)
-                else:
+                elif asset.cost_basis_total is not None:
+                    # Fallback to cost basis if current value is not available
                     return float(asset.cost_basis_total)
+                else:
+                    logger.warning(
+                        f"No value available for asset {asset_id} in portfolio {portfolio_id}"
+                    )
 
             return 0.0
 
@@ -1173,15 +1260,59 @@ class PortfolioCalculationService:
             logger.error("Error getting current asset value: %s", e)
             return 0.0
 
-    def _calculate_initial_value(
+    async def _calculate_initial_market_value(
+        self,
+        portfolio_id: int,
+        transactions: List[Transaction],
+        start_date: Optional[datetime],
+    ) -> float:
+        """Calculate actual market value of portfolio at period start date."""
+        try:
+            if start_date is None:
+                # For inception period, use cost basis of first transaction
+                if transactions:
+                    first_transaction = min(
+                        transactions, key=lambda t: t.transaction_date
+                    )
+                    return float(first_transaction.total_amount)
+                return 0.0
+
+            # Get daily portfolio values to find market value at start date
+            daily_values = await self._calculate_daily_portfolio_values(
+                portfolio_id, None, start_date
+            )
+
+            if daily_values.empty:
+                # Fallback to cost basis calculation if no daily data available
+                return self._calculate_cost_basis_at_date(transactions, start_date)
+
+            # Find the portfolio value closest to start_date
+            start_date_only = start_date.date()
+            daily_values["Date"] = pd.to_datetime(daily_values["Date"]).dt.date
+
+            # Get the last available value before or on start_date
+            valid_dates = daily_values[daily_values["Date"] <= start_date_only]
+
+            if not valid_dates.empty:
+                return float(valid_dates.iloc[-1]["PortfolioValue"])
+            else:
+                # If no data before start_date, use cost basis
+                return self._calculate_cost_basis_at_date(transactions, start_date)
+
+        except Exception as e:
+            logger.error("Error calculating initial market value: %s", e)
+            # Fallback to cost basis calculation
+            return self._calculate_cost_basis_at_date(transactions, start_date)
+
+    def _calculate_cost_basis_at_date(
         self,
         transactions: List[Transaction],
         start_date: Optional[datetime],
     ) -> float:
-        """Calculate initial portfolio value for the period."""
+        """Calculate cost basis (net investment) up to a specific date - fallback method."""
         try:
             if start_date:
-                # Get transactions before start date to calculate initial value
+                # Get transactions before start date to calculate cost basis
                 initial_transactions = [
                     t for t in transactions if t.transaction_date < start_date
                 ]
@@ -1205,7 +1336,7 @@ class PortfolioCalculationService:
             return max(net_investment, 0.0)
 
         except Exception as e:
-            logger.error("Error calculating initial value: %s", e)
+            logger.error("Error calculating cost basis at date: %s", e)
             return 0.0
 
     def _find_closest_price(

@@ -131,10 +131,11 @@ strict_equality = true
 [tool.pytest.ini_options]
 minversion = "6.0"
 addopts = "-ra -q --strict-markers --strict-config"
-testpaths = ["tests"]
+testpaths = ["tests", "app/tests"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+pythonpath = ["."]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "unit: marks tests as unit tests",
