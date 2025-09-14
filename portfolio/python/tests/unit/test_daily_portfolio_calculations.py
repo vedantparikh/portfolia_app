@@ -6,22 +6,18 @@ Tests the enhanced portfolio calculation service with daily values.
 
 import asyncio
 from datetime import datetime
-from datetime import timedelta
 from decimal import Decimal
-from unittest.mock import AsyncMock
-from unittest.mock import Mock
-from unittest.mock import patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from app.core.database.models import Asset
-from app.core.database.models import Portfolio
-from app.core.database.models import Transaction
-from app.core.database.models import TransactionType
-from app.core.services.portfolio_calculation_service import PeriodType
-from app.core.services.portfolio_calculation_service import PortfolioCalculationService
+from app.core.database.models import Asset, Portfolio, Transaction, TransactionType
+from app.core.services.portfolio_calculation_service import (
+    PeriodType,
+    PortfolioCalculationService,
+)
 
 
 class TestDailyPortfolioCalculations:

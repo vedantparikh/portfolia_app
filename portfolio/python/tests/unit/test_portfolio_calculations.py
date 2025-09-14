@@ -4,19 +4,17 @@ Tests for Portfolio Calculation Service
 Tests for CAGR, XIRR, TWR, and MWR calculations.
 """
 
-from datetime import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta
 from decimal import Decimal
-from unittest.mock import Mock
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
-from app.core.database.models import Portfolio
-from app.core.database.models import Transaction
-from app.core.database.models import TransactionType
-from app.core.services.portfolio_calculation_service import PeriodType
-from app.core.services.portfolio_calculation_service import PortfolioCalculationService
+from app.core.database.models import Portfolio, Transaction, TransactionType
+from app.core.services.portfolio_calculation_service import (
+    PeriodType,
+    PortfolioCalculationService,
+)
 
 
 class TestPortfolioCalculationService:

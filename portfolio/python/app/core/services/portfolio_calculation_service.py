@@ -11,25 +11,21 @@ Supports period-based calculations and benchmark comparisons.
 """
 
 import logging
-from datetime import datetime
-from datetime import timedelta
-from datetime import timezone
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Tuple
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 import pyxirr  # type: ignore
 from sqlalchemy.orm import Session
 
-from app.core.database.models import Asset
-from app.core.database.models import Portfolio
-from app.core.database.models import PortfolioAsset
-from app.core.database.models import Transaction
-from app.core.database.models import TransactionType
+from app.core.database.models import (
+    Asset,
+    Portfolio,
+    PortfolioAsset,
+    Transaction,
+    TransactionType,
+)
 from app.core.services.market_data_service import MarketDataService
 
 logger = logging.getLogger(__name__)

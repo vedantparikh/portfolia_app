@@ -9,9 +9,7 @@ This script validates the accuracy of portfolio calculations by:
 """
 
 import asyncio
-import math
 from datetime import datetime
-from datetime import timedelta
 
 import numpy as np
 import pandas as pd
@@ -56,7 +54,7 @@ def validate_xirr_calculation():
     xirr_result1 = xirr(dates1, amounts1)
     expected_xirr1 = 0.2351  # Approximately 23.51%
 
-    print(f"  Test Case 1:")
+    print("  Test Case 1:")
     print(f"  Dates: {[d.strftime('%Y-%m-%d') for d in dates1]}")
     print(f"  Cash flows: {amounts1}")
     print(f"  Expected XIRR: {expected_xirr1:.2%}")
@@ -81,9 +79,9 @@ def validate_xirr_calculation():
 
     xirr_result2 = xirr(dates2, amounts2)
 
-    print(f"  Test Case 2 (Monthly investments):")
-    print(f"  Monthly investment: $1,000 for 12 months")
-    print(f"  Final value: $15,000")
+    print("  Test Case 2 (Monthly investments):")
+    print("  Monthly investment: $1,000 for 12 months")
+    print("  Final value: $15,000")
     print(f"  Calculated XIRR: {xirr_result2:.2%}")
 
     # XIRR should be positive (profit made)
@@ -110,7 +108,7 @@ def validate_volatility_calculation():
     # Annualize volatility
     annualized_vol = daily_vol * np.sqrt(252)
 
-    print(f"  Sample size: 252 daily returns")
+    print("  Sample size: 252 daily returns")
     print(f"  Daily volatility: {daily_vol:.4f}")
     print(f"  Annualized volatility: {annualized_vol:.2%}")
 
