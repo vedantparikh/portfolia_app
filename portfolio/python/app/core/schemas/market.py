@@ -32,9 +32,9 @@ class StockData(BaseModel):
 
 class MarketData(BaseModel):
     symbol: str
-    name: str
-    latest_price: Decimal
-    latest_date: Optional[datetime] = None
+    short_name: Optional[str] = None
+    long_name: Optional[str]
+    current_price: Decimal
     market_cap: Optional[int] = None
     pe_ratio: Optional[Decimal] = None
     currency: Optional[str] = None

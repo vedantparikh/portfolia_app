@@ -11,7 +11,7 @@ Supports period-based calculations and benchmark comparisons.
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np  # type: ignore
@@ -19,13 +19,7 @@ import pandas as pd  # type: ignore
 from pyxirr import xirr  # type: ignore
 from sqlalchemy.orm import Session
 
-from app.core.database.models import (
-    Asset,
-    Portfolio,
-    PortfolioAsset,
-    Transaction,
-    TransactionType,
-)
+from app.core.database.models import Asset, Portfolio, PortfolioAsset, Transaction, TransactionType
 from app.core.services.market_data_service import MarketDataService
 
 logger = logging.getLogger(__name__)
@@ -49,7 +43,7 @@ class PeriodType:
     ) -> Optional[datetime]:
         """Get start date for a given period."""
         if base_date is None:
-            base_date = datetime.now()
+            base_date = datetime.now(timezone.utc)
 
         if period == cls.LAST_3_MONTHS:
             return base_date - timedelta(days=90)
@@ -98,7 +92,7 @@ class PortfolioCalculationService:
             Dictionary containing all performance metrics
         """
         if end_date is None:
-            end_date = datetime.now()
+            end_date = datetime.now(timezone.utc)
 
         start_date = PeriodType.get_start_date(period, end_date)
 
@@ -142,7 +136,7 @@ class PortfolioCalculationService:
                 "sharpe_ratio": sharpe_ratio,
                 "max_drawdown": max_drawdown,
             },
-            "calculation_date": datetime.now(),
+            "calculation_date": datetime.now(timezone.utc).isoformat(),
         }
 
     async def calculate_asset_performance(
@@ -167,7 +161,7 @@ class PortfolioCalculationService:
             Dictionary containing asset performance metrics
         """
         if end_date is None:
-            end_date = datetime.now()
+            end_date = datetime.now(timezone.utc)
 
         start_date = PeriodType.get_start_date(period, end_date)
 
@@ -219,7 +213,7 @@ class PortfolioCalculationService:
                 "twr": twr,
                 "mwr": mwr,
             },
-            "calculation_date": datetime.now(),
+            "calculation_date": datetime.now(timezone.utc).isoformat(),
         }
 
     async def calculate_benchmark_performance(
@@ -242,7 +236,7 @@ class PortfolioCalculationService:
             Dictionary containing benchmark performance metrics
         """
         if end_date is None:
-            end_date = datetime.now()
+            end_date = datetime.now(timezone.utc)
 
         start_date = PeriodType.get_start_date(period, end_date)
 
@@ -305,7 +299,7 @@ class PortfolioCalculationService:
                     "twr": twr,
                     "mwr": mwr,
                 },
-                "calculation_date": datetime.now(),
+                "calculation_date": datetime.now(timezone.utc).isoformat(),
             }
 
         except Exception as e:
@@ -334,13 +328,13 @@ class PortfolioCalculationService:
             Dictionary containing comparison metrics
         """
         # Get portfolio performance
-        portfolio_performance = self.calculate_portfolio_performance(
+        portfolio_performance = await self.calculate_portfolio_performance(
             portfolio_id, user_id, period, end_date
         )
 
         # Get portfolio transactions to replicate investment schedule
         if end_date is None:
-            end_date = datetime.now()
+            end_date = datetime.now(timezone.utc)
 
         start_date = PeriodType.get_start_date(period, end_date)
         transactions = self._get_transactions(portfolio_id, start_date, end_date)

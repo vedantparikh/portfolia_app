@@ -4,7 +4,7 @@ Authentication utilities for password hashing, JWT tokens, and security.
 
 import secrets
 import string
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Tuple, Union
 
 from fastapi import HTTPException, status
@@ -203,7 +203,7 @@ def store_reset_token(
         token_data = {
             "user_id": user_id,
             "user_email": user_email,
-            "created_at": datetime.now().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "is_used": False,
         }
 
@@ -330,7 +330,7 @@ def store_verification_token(
         token_data = {
             "user_id": user_id,
             "user_email": user_email,
-            "created_at": datetime.now().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "is_used": False,
         }
 

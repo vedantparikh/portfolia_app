@@ -302,10 +302,8 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
             asset_id: asset.id
         }));
 
-        // Automatically fetch current price for the selected asset
-        if (asset.symbol) {
-            await fetchCurrentPrice(asset.symbol);
-        }
+        // Price fetching is handled by the ClientSideAssetSearch component
+        // via the onPriceUpdate callback
     };
 
     const handleSymbolChange = (value) => {
@@ -334,7 +332,15 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
     };
 
     const handlePriceUpdate = (priceData) => {
+        console.log('[CreateTransactionModal] Price update received:', priceData);
+
+        // Update fetching state if provided
+        if (priceData.isFetching !== undefined) {
+            setFetchingPrice(priceData.isFetching);
+        }
+
         if (priceData && priceData.price) {
+            console.log(`[CreateTransactionModal] Setting price: ${priceData.price} for ${priceData.symbol}`);
             setFormData(prev => ({
                 ...prev,
                 price: priceData.price.toString()
@@ -638,9 +644,9 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
                             onChange={handleSymbolChange}
                             onSelect={handleSymbolSelect}
                             onPriceUpdate={handlePriceUpdate}
-                            placeholder="Search your assets..."
+                            placeholder="Search assets..."
                             disabled={loading}
-                            showSuggestions={isAuthenticated}
+                            showSuggestions={true}
                             preloadAssets={true}
                         />
 

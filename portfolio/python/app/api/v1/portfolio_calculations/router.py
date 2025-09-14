@@ -37,7 +37,7 @@ from app.core.services.portfolio_calculation_service import (
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/calculations", tags=["Portfolio Calculations"])
+router = APIRouter(prefix="/calculations")
 
 
 @router.get("/periods", response_model=AvailablePeriodsResponse)
