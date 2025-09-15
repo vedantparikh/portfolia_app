@@ -3,7 +3,8 @@ import {
     BarChart3,
     Download,
     PieChart,
-    RefreshCw
+    RefreshCw,
+    TrendingUp
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { analyticsAPI } from '../../services/api';
