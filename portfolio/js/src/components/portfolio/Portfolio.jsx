@@ -13,6 +13,7 @@ import {
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { portfolioAPI, transactionAPI } from '../../services/api';
+import PortfolioPerformanceMetrics from "./PortfolioPerformanceMetrics";
 import { Sidebar } from '../shared';
 import CreatePortfolioModal from './CreatePortfolioModal';
 import EditPortfolioModal from './EditPortfolioModal';
@@ -20,9 +21,6 @@ import PortfolioAssets from './PortfolioAssets';
 import PortfolioCard from './PortfolioCard';
 import PortfolioChart from './PortfolioChart';
 import PortfolioDetail from './PortfolioDetail';
-import PortfolioPerformanceMetrics from './PortfolioPerformanceMetrics';
-import PortfolioTest from './PortfolioTest';
-import PortfolioTestControls from './PortfolioTestControls';
 
 const Portfolio = () => {
     const [portfolios, setPortfolios] = useState([]);
@@ -446,12 +444,6 @@ const Portfolio = () => {
                                     <span>Create Portfolio</span>
                                 </button>
                             </div>
-
-                            {/* Portfolio Test Controls */}
-                            <PortfolioTestControls onPortfolioUpdate={loadPortfolios} />
-
-                            {/* Debug Test Component */}
-                            <PortfolioTest />
 
                             {/* Debug Info */}
                             <div className="card p-6">

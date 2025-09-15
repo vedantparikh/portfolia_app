@@ -25,7 +25,7 @@ export const formatCurrency = (amount, options = {}) => {
     if (amount === null || amount === undefined || isNaN(amount)) {
         return options.defaultValue || '$0.00';
     }
-    
+
     const defaultOptions = {
         style: 'currency',
         currency: 'USD',
@@ -33,7 +33,7 @@ export const formatCurrency = (amount, options = {}) => {
         maximumFractionDigits: 2,
         ...options
     };
-    
+
     return new Intl.NumberFormat('en-US', defaultOptions).format(amount);
 };
 
@@ -62,10 +62,10 @@ export const formatVolume = (volume, options = {}) => {
     if (volume === null || volume === undefined) return 'N/A';
     const numericVolume = parseFloat(volume);
     if (isNaN(numericVolume)) return 'N/A';
-    
+
     const { includePrefix = false, precision = 2 } = options;
     const prefix = includePrefix ? '$' : '';
-    
+
     if (numericVolume >= 1e9) return `${prefix}${(numericVolume / 1e9).toFixed(precision)}B`;
     if (numericVolume >= 1e6) return `${prefix}${(numericVolume / 1e6).toFixed(precision)}M`;
     if (numericVolume >= 1e3) return `${prefix}${(numericVolume / 1e3).toFixed(precision)}K`;
@@ -88,15 +88,15 @@ export const formatPercentage = (value, options = {}) => {
         // or return a more descriptive value like Infinity.
         return numericValue > 0 ? '+Infinity%' : '-Infinity%';
     }
-    
-    const { 
-        showSign = true, 
-        precision = 2, 
-        defaultValue = '0.00%' 
+
+    const {
+        showSign = true,
+        precision = 2,
+        defaultValue = '0.00%'
     } = options;
-    
+
     if (numericValue === 0 && defaultValue) return defaultValue;
-    
+
     const sign = showSign && numericValue > 0 ? '+' : '';
     return `${sign}${numericValue.toFixed(precision)}%`;
 };
@@ -111,10 +111,10 @@ export const formatNumber = (num, options = {}) => {
     if (num === null || num === undefined) return 'N/A';
     const numericNum = parseFloat(num);
     if (isNaN(numericNum)) return 'N/A';
-    
+
     const { precision = 1, includePrefix = false } = options;
     const prefix = includePrefix ? '$' : '';
-    
+
     if (numericNum >= 1e9) return `${prefix}${(numericNum / 1e9).toFixed(precision)}B`;
     if (numericNum >= 1e6) return `${prefix}${(numericNum / 1e6).toFixed(precision)}M`;
     if (numericNum >= 1e3) return `${prefix}${(numericNum / 1e3).toFixed(precision)}K`;
@@ -131,16 +131,16 @@ export const formatQuantity = (quantity, options = {}) => {
     if (quantity === null || quantity === undefined) return 'N/A';
     const numericQuantity = parseFloat(quantity);
     if (isNaN(numericQuantity)) return 'N/A';
-    
+
     const { precision = 4, showCommas = true } = options;
-    
+
     if (showCommas) {
         return numericQuantity.toLocaleString('en-US', {
             minimumFractionDigits: 0,
             maximumFractionDigits: precision
         });
     }
-    
+
     return numericQuantity.toFixed(precision);
 };
 
@@ -152,15 +152,15 @@ export const formatQuantity = (quantity, options = {}) => {
  */
 export const formatDate = (dateString, options = {}) => {
     if (!dateString) return 'N/A';
-    
+
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return 'N/A';
-    
+
     const {
         format = 'short', // 'short', 'long', 'time', 'datetime'
         timezone = 'en-US'
     } = options;
-    
+
     switch (format) {
         case 'short':
             return date.toLocaleDateString(timezone, {
@@ -199,12 +199,12 @@ export const formatDate = (dateString, options = {}) => {
  */
 export const formatDateTime = (dateString, options = {}) => {
     if (!dateString) return 'N/A';
-    
+
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return 'N/A';
-    
+
     const { timezone = 'en-US' } = options;
-    
+
     return date.toLocaleString(timezone, {
         month: 'short',
         day: 'numeric',
@@ -220,16 +220,16 @@ export const formatDateTime = (dateString, options = {}) => {
  * @returns {string} CSS color class
  */
 export const getChangeColor = (change, options = {}) => {
-    const { 
+    const {
         positiveColor = 'text-success-400',
         negativeColor = 'text-danger-400',
         neutralColor = 'text-gray-400'
     } = options;
-    
+
     if (change === null || change === undefined) return neutralColor;
     const numericChange = parseFloat(change);
     if (isNaN(numericChange)) return neutralColor;
-    
+
     if (numericChange > 0) return positiveColor;
     if (numericChange < 0) return negativeColor;
     return neutralColor;
@@ -242,18 +242,18 @@ export const getChangeColor = (change, options = {}) => {
  * @returns {React.Component|null} Change icon component
  */
 export const getChangeIcon = (change, options = {}) => {
-    const { 
+    const {
         size = 16,
         positiveIcon: PositiveIcon = TrendingUp,
         negativeIcon: NegativeIcon = TrendingDown,
         positiveClassName = 'text-success-400',
         negativeClassName = 'text-danger-400'
     } = options;
-    
+
     if (change === null || change === undefined) return null;
     const numericChange = parseFloat(change);
     if (isNaN(numericChange)) return null;
-    
+
     if (numericChange > 0) return <PositiveIcon size={size} className={positiveClassName} />;
     if (numericChange < 0) return <NegativeIcon size={size} className={negativeClassName} />;
     return null;
@@ -266,18 +266,18 @@ export const getChangeIcon = (change, options = {}) => {
  * @returns {React.Component|null} Change arrow component
  */
 export const getChangeArrow = (change, options = {}) => {
-    const { 
+    const {
         size = 14,
         positiveArrow: PositiveArrow = ArrowUpRight,
         negativeArrow: NegativeArrow = ArrowDownRight,
         positiveClassName = 'text-success-400',
         negativeClassName = 'text-danger-400'
     } = options;
-    
+
     if (change === null || change === undefined) return null;
     const numericChange = parseFloat(change);
     if (isNaN(numericChange)) return null;
-    
+
     if (numericChange > 0) return <PositiveArrow size={size} className={positiveClassName} />;
     if (numericChange < 0) return <NegativeArrow size={size} className={negativeClassName} />;
     return null;
@@ -290,18 +290,18 @@ export const getChangeArrow = (change, options = {}) => {
  * @returns {React.Component|null} Change arrow component
  */
 export const getChangeArrowLeft = (change, options = {}) => {
-    const { 
+    const {
         size = 14,
         positiveArrow: PositiveArrow = ArrowUpRight,
         negativeArrow: NegativeArrow = ArrowDownLeft,
         positiveClassName = 'text-success-400',
         negativeClassName = 'text-danger-400'
     } = options;
-    
+
     if (change === null || change === undefined) return null;
     const numericChange = parseFloat(change);
     if (isNaN(numericChange)) return null;
-    
+
     if (numericChange > 0) return <PositiveArrow size={size} className={positiveClassName} />;
     if (numericChange < 0) return <NegativeArrow size={size} className={negativeClassName} />;
     return null;
@@ -317,9 +317,9 @@ export const formatCompactCurrency = (amount, options = {}) => {
     if (amount === null || amount === undefined || isNaN(amount)) {
         return options.defaultValue || '$0';
     }
-    
+
     const { precision = 0 } = options;
-    
+
     return new Intl.NumberFormat('en-US', {
         style: 'currency',
         currency: 'USD',
@@ -339,15 +339,15 @@ export const formatCompactPercentage = (value, options = {}) => {
     if (value === null || value === undefined) return 'N/A';
     const numericValue = parseFloat(value);
     if (isNaN(numericValue)) return 'N/A';
-    
-    const { 
-        showSign = true, 
+
+    const {
+        showSign = true,
         precision = 1,
-        defaultValue = '0%' 
+        defaultValue = '0%'
     } = options;
-    
+
     if (numericValue === 0 && defaultValue) return defaultValue;
-    
+
     const sign = showSign && numericValue > 0 ? '+' : '';
     return `${sign}${numericValue.toFixed(precision)}%`;
 };
@@ -359,7 +359,7 @@ export const formatCompactPercentage = (value, options = {}) => {
  * @returns {React.Component|null} Transaction icon component
  */
 export const getTransactionIcon = (type, options = {}) => {
-    const { 
+    const {
         size = 16,
         buyIcon: BuyIcon = Plus,
         sellIcon: SellIcon = Minus,
@@ -368,7 +368,7 @@ export const getTransactionIcon = (type, options = {}) => {
         sellClassName = 'text-danger-400',
         otherClassName = 'text-gray-400'
     } = options;
-    
+
     switch (type?.toLowerCase()) {
         case 'buy':
         case 'purchase':
@@ -388,12 +388,12 @@ export const getTransactionIcon = (type, options = {}) => {
  * @returns {string} CSS color class
  */
 export const getTransactionColor = (type, options = {}) => {
-    const { 
+    const {
         buyColor = 'text-success-400',
         sellColor = 'text-danger-400',
         otherColor = 'text-gray-400'
     } = options;
-    
+
     switch (type?.toLowerCase()) {
         case 'buy':
         case 'purchase':
@@ -413,7 +413,7 @@ export const getTransactionColor = (type, options = {}) => {
  * @returns {React.Component|null} Transaction arrow component
  */
 export const getTransactionArrow = (type, options = {}) => {
-    const { 
+    const {
         size = 16,
         buyArrow: BuyArrow = ArrowUpRight,
         sellArrow: SellArrow = ArrowDownRight,
@@ -422,7 +422,7 @@ export const getTransactionArrow = (type, options = {}) => {
         sellClassName = 'text-danger-400',
         otherClassName = 'text-gray-400'
     } = options;
-    
+
     switch (type?.toLowerCase()) {
         case 'buy':
         case 'purchase':
@@ -433,4 +433,28 @@ export const getTransactionArrow = (type, options = {}) => {
         default:
             return <OtherArrow size={size} className={otherClassName} />;
     }
+};
+
+
+export const formatMetricValue = (value, isPercentage = false) => {
+    if (value === null || value === undefined) return "N/A";
+    if (isPercentage) {
+        return formatPercentage(value);
+    }
+    return formatCurrency(value);
+};
+
+
+export const getMetricColor = (value) => {
+    if (value === null || value === undefined) return "text-gray-400";
+    return value >= 0 ? "text-success-400" : "text-danger-400";
+};
+
+export const getMetricIcon = (value) => {
+    if (value === null || value === undefined) return null;
+    return value >= 0 ? (
+        <TrendingUp size={16} className="text-success-400" />
+    ) : (
+        <TrendingDown size={16} className="text-danger-400" />
+    );
 };

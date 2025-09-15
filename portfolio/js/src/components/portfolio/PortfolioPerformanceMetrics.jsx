@@ -12,7 +12,7 @@ import PropTypes from "prop-types";
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { marketAPI, portfolioCalculationsAPI } from "../../services/api";
-import { formatCurrency, formatPercentage } from "../../utils/formatters.jsx";
+import { formatCurrency, formatPercentage, formatMetricValue, getMetricColor, getMetricIcon } from "../../utils/formatters.jsx";
 import SymbolSearch from "../shared/SymbolSearch";
 
 const PortfolioPerformanceMetrics = ({ portfolio }) => {
@@ -201,27 +201,6 @@ const PortfolioPerformanceMetrics = ({ portfolio }) => {
     setShowMultiPeriod(!showMultiPeriod);
   };
 
-  const getMetricColor = (value) => {
-    if (value === null || value === undefined) return "text-gray-400";
-    return value >= 0 ? "text-success-400" : "text-danger-400";
-  };
-
-  const getMetricIcon = (value) => {
-    if (value === null || value === undefined) return null;
-    return value >= 0 ? (
-      <TrendingUp size={16} className="text-success-400" />
-    ) : (
-      <TrendingDown size={16} className="text-danger-400" />
-    );
-  };
-
-  const formatMetricValue = (value, isPercentage = false) => {
-    if (value === null || value === undefined) return "N/A";
-    if (isPercentage) {
-      return formatPercentage(value);
-    }
-    return formatCurrency(value);
-  };
 
   if (!portfolio) {
     return (
@@ -276,13 +255,12 @@ const PortfolioPerformanceMetrics = ({ portfolio }) => {
         {/* Calculation Status for Main Performance */}
         {calculationStatus && !showBenchmarkComparison && (
           <div
-            className={`p-4 rounded-lg mb-4 ${
-              calculationStatus === "calculating"
+            className={`p-4 rounded-lg mb-4 ${calculationStatus === "calculating"
                 ? "bg-warning-600/20 border border-warning-600/30"
                 : calculationStatus === "completed"
-                ? "bg-success-600/20 border border-success-600/30"
-                : "bg-danger-600/20 border border-danger-600/30"
-            }`}
+                  ? "bg-success-600/20 border border-success-600/30"
+                  : "bg-danger-600/20 border border-danger-600/30"
+              }`}
           >
             <div className="flex items-center space-x-3">
               {calculationStatus === "calculating" && (
@@ -296,13 +274,12 @@ const PortfolioPerformanceMetrics = ({ portfolio }) => {
               )}
               <div>
                 <p
-                  className={`text-sm font-medium ${
-                    calculationStatus === "calculating"
+                  className={`text-sm font-medium ${calculationStatus === "calculating"
                       ? "text-warning-400"
                       : calculationStatus === "completed"
-                      ? "text-success-400"
-                      : "text-danger-400"
-                  }`}
+                        ? "text-success-400"
+                        : "text-danger-400"
+                    }`}
                 >
                   {calculationStatus === "calculating" &&
                     "Calculating Performance Metrics"}
@@ -418,11 +395,10 @@ const PortfolioPerformanceMetrics = ({ portfolio }) => {
           </div>
 
           <div
-            className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 transition-all duration-300 ${
-              expandedMetrics
+            className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 transition-all duration-300 ${expandedMetrics
                 ? "max-h-96 opacity-100"
                 : "max-h-0 opacity-0 overflow-hidden"
-            }`}
+              }`}
           >
             {/* Volatility */}
             <div className="space-y-1">
@@ -497,9 +473,8 @@ const PortfolioPerformanceMetrics = ({ portfolio }) => {
               <>
                 <ChevronDown
                   size={16}
-                  className={`transition-transform ${
-                    showMultiPeriod ? "rotate-180" : ""
-                  }`}
+                  className={`transition-transform ${showMultiPeriod ? "rotate-180" : ""
+                    }`}
                 />
                 <span>{showMultiPeriod ? "Hide Details" : "Show Details"}</span>
               </>
@@ -513,13 +488,12 @@ const PortfolioPerformanceMetrics = ({ portfolio }) => {
             {/* Multi-Period Calculation Status */}
             {multiPeriodCalculationStatus && (
               <div
-                className={`p-4 rounded-lg ${
-                  multiPeriodCalculationStatus === "calculating"
+                className={`p-4 rounded-lg ${multiPeriodCalculationStatus === "calculating"
                     ? "bg-warning-600/20 border border-warning-600/30"
                     : multiPeriodCalculationStatus === "completed"
-                    ? "bg-success-600/20 border border-success-600/30"
-                    : "bg-danger-600/20 border border-danger-600/30"
-                }`}
+                      ? "bg-success-600/20 border border-success-600/30"
+                      : "bg-danger-600/20 border border-danger-600/30"
+                  }`}
               >
                 <div className="flex items-center space-x-3">
                   {multiPeriodCalculationStatus === "calculating" && (
@@ -533,13 +507,12 @@ const PortfolioPerformanceMetrics = ({ portfolio }) => {
                   )}
                   <div>
                     <p
-                      className={`text-sm font-medium ${
-                        multiPeriodCalculationStatus === "calculating"
+                      className={`text-sm font-medium ${multiPeriodCalculationStatus === "calculating"
                           ? "text-warning-400"
                           : multiPeriodCalculationStatus === "completed"
-                          ? "text-success-400"
-                          : "text-danger-400"
-                      }`}
+                            ? "text-success-400"
+                            : "text-danger-400"
+                        }`}
                     >
                       {multiPeriodCalculationStatus === "calculating" &&
                         "Calculating Multi-Period Metrics"}
@@ -841,13 +814,12 @@ const PortfolioPerformanceMetrics = ({ portfolio }) => {
             {/* Calculation Status */}
             {calculationStatus && (
               <div
-                className={`p-4 rounded-lg ${
-                  calculationStatus === "calculating"
+                className={`p-4 rounded-lg ${calculationStatus === "calculating"
                     ? "bg-warning-600/20 border border-warning-600/30"
                     : calculationStatus === "completed"
-                    ? "bg-success-600/20 border border-success-600/30"
-                    : "bg-danger-600/20 border border-danger-600/30"
-                }`}
+                      ? "bg-success-600/20 border border-success-600/30"
+                      : "bg-danger-600/20 border border-danger-600/30"
+                  }`}
               >
                 <div className="flex items-center space-x-3">
                   {calculationStatus === "calculating" && (
@@ -861,13 +833,12 @@ const PortfolioPerformanceMetrics = ({ portfolio }) => {
                   )}
                   <div>
                     <p
-                      className={`text-sm font-medium ${
-                        calculationStatus === "calculating"
+                      className={`text-sm font-medium ${calculationStatus === "calculating"
                           ? "text-warning-400"
                           : calculationStatus === "completed"
-                          ? "text-success-400"
-                          : "text-danger-400"
-                      }`}
+                            ? "text-success-400"
+                            : "text-danger-400"
+                        }`}
                     >
                       {calculationStatus === "calculating" &&
                         "Calculation in Progress"}
@@ -1085,11 +1056,10 @@ const PortfolioPerformanceMetrics = ({ portfolio }) => {
                     </div>
                     <div className="text-center mt-4">
                       <p
-                        className={`text-lg font-semibold ${
-                          benchmarkData.comparison?.outperforming
+                        className={`text-lg font-semibold ${benchmarkData.comparison?.outperforming
                             ? "text-success-400"
                             : "text-danger-400"
-                        }`}
+                          }`}
                       >
                         {benchmarkData.comparison?.outperforming
                           ? "Portfolio is Outperforming"

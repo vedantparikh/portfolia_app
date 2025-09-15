@@ -64,31 +64,35 @@ class PortfolioAnalyticsService:
         self, portfolio_id: int, force_refresh: bool = False
     ) -> PerformanceSnapshotResponse:
         """Get portfolio performance snapshot, auto-refreshing with yfinance if stale."""
+        # If force refresh is requested, always create new snapshot
+        if force_refresh:
+            logger.info(f"Force refreshing performance snapshot for portfolio {portfolio_id}")
+            return await self.create_performance_snapshot(portfolio_id, datetime.utcnow())
+        
         # Check for existing fresh snapshot first
-        if not force_refresh:
-            existing_snapshot = (
-                self.db.query(PortfolioPerformanceHistory)
-                .filter(PortfolioPerformanceHistory.portfolio_id == portfolio_id)
-                .order_by(PortfolioPerformanceHistory.snapshot_date.desc())
-                .first()
+        existing_snapshot = (
+            self.db.query(PortfolioPerformanceHistory)
+            .filter(PortfolioPerformanceHistory.portfolio_id == portfolio_id)
+            .order_by(PortfolioPerformanceHistory.snapshot_date.desc())
+            .first()
+        )
+
+        if existing_snapshot and self._is_data_fresh(
+            existing_snapshot.created_at, self.portfolio_performance_freshness_hours
+        ):
+            # Return existing fresh data
+            return PerformanceSnapshotResponse(
+                id=existing_snapshot.id,
+                portfolio_id=existing_snapshot.portfolio_id,
+                snapshot_date=existing_snapshot.snapshot_date,
+                total_value=existing_snapshot.total_value,
+                total_cost_basis=existing_snapshot.total_cost_basis,
+                total_unrealized_pnl=existing_snapshot.total_unrealized_pnl,
+                total_unrealized_pnl_percent=existing_snapshot.total_unrealized_pnl_percent,
+                created_at=existing_snapshot.created_at,
             )
 
-            if existing_snapshot and self._is_data_fresh(
-                existing_snapshot.created_at, self.portfolio_performance_freshness_hours
-            ):
-                # Return existing fresh data
-                return PerformanceSnapshotResponse(
-                    id=existing_snapshot.id,
-                    portfolio_id=existing_snapshot.portfolio_id,
-                    snapshot_date=existing_snapshot.snapshot_date,
-                    total_value=existing_snapshot.total_value,
-                    total_cost_basis=existing_snapshot.total_cost_basis,
-                    total_unrealized_pnl=existing_snapshot.total_unrealized_pnl,
-                    total_unrealized_pnl_percent=existing_snapshot.total_unrealized_pnl_percent,
-                    created_at=existing_snapshot.created_at,
-                )
-
-        # Data is stale or force refresh requested - create new snapshot
+        # Data is stale - create new snapshot
         return await self.create_performance_snapshot(portfolio_id, datetime.utcnow())
 
     async def create_performance_snapshot(
@@ -224,7 +228,7 @@ class PortfolioAnalyticsService:
     async def _get_portfolio_daily_returns(
         self, portfolio_id: int, start_date: datetime, end_date: datetime
     ) -> pd.Series:
-        """Get daily portfolio returns using yfinance data."""
+        """Get daily portfolio returns using yfinance historical data."""
         # Get portfolio assets
         portfolio_assets = (
             self.db.query(PortfolioAsset)
@@ -235,86 +239,142 @@ class PortfolioAnalyticsService:
         if not portfolio_assets:
             return pd.Series()
 
-        # For now, return a simplified series based on current values
-        # In a full implementation, you'd fetch historical data for each asset
-        # and calculate portfolio values over time
-
-        # Get current portfolio value as a baseline
-        total_current_value = 0
+        # Fetch historical data for each asset and calculate portfolio values
+        portfolio_values = {}
+        total_weights = 0
+        
         for asset in portfolio_assets:
             if asset.asset and asset.asset.symbol:
-                current_price = await market_data_service.get_current_price(
-                    asset.asset.symbol
-                )
-                if current_price:
-                    total_current_value += float(current_price) * float(asset.quantity)
-                else:
-                    total_current_value += float(asset.cost_basis_total)
+                try:
+                    # Get historical price data
+                    end_date_str = end_date.strftime("%Y-%m-%d")
+                    start_date_str = start_date.strftime("%Y-%m-%d")
+                    
+                    price_data = await market_data_service.fetch_ticker_data(
+                        symbol=asset.asset.symbol,
+                        start_date=start_date_str,
+                        end_date=end_date_str,
+                        interval="1d",
+                    )
+                    
+                    if price_data is not None and len(price_data) > 0:
+                        # Calculate asset value over time
+                        asset_quantities = float(asset.quantity)
+                        
+                        for _, row in price_data.iterrows():
+                            date = row["Date"]
+                            if isinstance(date, str):
+                                date = datetime.strptime(date[:10], "%Y-%m-%d").date()
+                            elif hasattr(date, 'date'):
+                                date = date.date()
+                            
+                            asset_value = float(row["Close"]) * asset_quantities
+                            
+                            if date not in portfolio_values:
+                                portfolio_values[date] = 0
+                            portfolio_values[date] += asset_value
+                        
+                        total_weights += float(asset.cost_basis_total)
+                    else:
+                        # Fallback to cost basis if no historical data
+                        logger.warning(f"No historical data for {asset.asset.symbol}, using cost basis")
+                        date_range = pd.date_range(start_date, end_date, freq="D")
+                        for date in date_range:
+                            date_key = date.date()
+                            if date_key not in portfolio_values:
+                                portfolio_values[date_key] = 0
+                            portfolio_values[date_key] += float(asset.cost_basis_total)
+                        
+                except Exception as e:
+                    logger.warning(f"Failed to get historical data for {asset.asset.symbol}: {e}")
+                    # Fallback to cost basis
+                    date_range = pd.date_range(start_date, end_date, freq="D")
+                    for date in date_range:
+                        date_key = date.date()
+                        if date_key not in portfolio_values:
+                            portfolio_values[date_key] = 0
+                        portfolio_values[date_key] += float(asset.cost_basis_total)
             else:
-                total_current_value += float(asset.cost_basis_total)
+                # No symbol, use cost basis
+                date_range = pd.date_range(start_date, end_date, freq="D")
+                for date in date_range:
+                    date_key = date.date()
+                    if date_key not in portfolio_values:
+                        portfolio_values[date_key] = 0
+                    portfolio_values[date_key] += float(asset.cost_basis_total)
 
-        # Create a simple series with the current value
-        # This is a placeholder - in production you'd want historical portfolio values
-        date_range = pd.date_range(start_date, end_date, freq="D")
-        values = [total_current_value] * len(date_range)
-
-        return pd.Series(values, index=date_range)
+        # Convert to pandas Series
+        if portfolio_values:
+            sorted_dates = sorted(portfolio_values.keys())
+            values = [portfolio_values[date] for date in sorted_dates]
+            date_index = pd.to_datetime(sorted_dates)
+            return pd.Series(values, index=date_index)
+        else:
+            # Fallback: create a simple series with current portfolio value
+            total_current_value = sum(float(asset.cost_basis_total) for asset in portfolio_assets)
+            date_range = pd.date_range(start_date, end_date, freq="D")
+            values = [total_current_value] * len(date_range)
+            return pd.Series(values, index=date_range)
 
     # Asset Performance Metrics
     async def get_or_calculate_asset_metrics(
         self, asset_id: int, force_refresh: bool = False
     ) -> AssetMetricsResponse:
         """Get asset metrics, automatically refreshing with yfinance data if stale."""
+        # If force refresh is requested, always calculate new metrics
+        if force_refresh:
+            logger.info(f"Force refreshing asset metrics for asset {asset_id}")
+            return await self.calculate_asset_metrics(asset_id, datetime.utcnow())
+        
         # Check for existing fresh metrics first
-        if not force_refresh:
-            existing_metrics = (
-                self.db.query(AssetPerformanceMetrics)
-                .filter(AssetPerformanceMetrics.asset_id == asset_id)
-                .order_by(AssetPerformanceMetrics.calculation_date.desc())
-                .first()
+        existing_metrics = (
+            self.db.query(AssetPerformanceMetrics)
+            .filter(AssetPerformanceMetrics.asset_id == asset_id)
+            .order_by(AssetPerformanceMetrics.calculation_date.desc())
+            .first()
+        )
+
+        if existing_metrics and self._is_data_fresh(
+            existing_metrics.created_at, self.asset_metrics_freshness_hours
+        ):
+            # Return existing fresh data
+            return AssetMetricsResponse(
+                id=existing_metrics.id,
+                asset_id=existing_metrics.asset_id,
+                calculation_date=existing_metrics.calculation_date,
+                current_price=existing_metrics.current_price,
+                price_change=existing_metrics.price_change,
+                price_change_percent=existing_metrics.price_change_percent,
+                sma_20=existing_metrics.sma_20,
+                sma_50=existing_metrics.sma_50,
+                sma_200=existing_metrics.sma_200,
+                ema_12=existing_metrics.ema_12,
+                ema_26=existing_metrics.ema_26,
+                rsi=existing_metrics.rsi,
+                macd=existing_metrics.macd,
+                macd_signal=existing_metrics.macd_signal,
+                macd_histogram=existing_metrics.macd_histogram,
+                stochastic_k=existing_metrics.stochastic_k,
+                stochastic_d=existing_metrics.stochastic_d,
+                bollinger_upper=existing_metrics.bollinger_upper,
+                bollinger_middle=existing_metrics.bollinger_middle,
+                bollinger_lower=existing_metrics.bollinger_lower,
+                atr=existing_metrics.atr,
+                volume_sma=existing_metrics.volume_sma,
+                volume_ratio=existing_metrics.volume_ratio,
+                obv=existing_metrics.obv,
+                volatility_20d=existing_metrics.volatility_20d,
+                volatility_60d=existing_metrics.volatility_60d,
+                volatility_252d=existing_metrics.volatility_252d,
+                beta=existing_metrics.beta,
+                sharpe_ratio=existing_metrics.sharpe_ratio,
+                total_return_1m=existing_metrics.total_return_1m,
+                total_return_3m=existing_metrics.total_return_3m,
+                total_return_1y=existing_metrics.total_return_1y,
+                created_at=existing_metrics.created_at,
             )
 
-            if existing_metrics and self._is_data_fresh(
-                existing_metrics.created_at, self.asset_metrics_freshness_hours
-            ):
-                # Return existing fresh data
-                return AssetMetricsResponse(
-                    id=existing_metrics.id,
-                    asset_id=existing_metrics.asset_id,
-                    calculation_date=existing_metrics.calculation_date,
-                    current_price=existing_metrics.current_price,
-                    price_change=existing_metrics.price_change,
-                    price_change_percent=existing_metrics.price_change_percent,
-                    sma_20=existing_metrics.sma_20,
-                    sma_50=existing_metrics.sma_50,
-                    sma_200=existing_metrics.sma_200,
-                    ema_12=existing_metrics.ema_12,
-                    ema_26=existing_metrics.ema_26,
-                    rsi=existing_metrics.rsi,
-                    macd=existing_metrics.macd,
-                    macd_signal=existing_metrics.macd_signal,
-                    macd_histogram=existing_metrics.macd_histogram,
-                    stochastic_k=existing_metrics.stochastic_k,
-                    stochastic_d=existing_metrics.stochastic_d,
-                    bollinger_upper=existing_metrics.bollinger_upper,
-                    bollinger_middle=existing_metrics.bollinger_middle,
-                    bollinger_lower=existing_metrics.bollinger_lower,
-                    atr=existing_metrics.atr,
-                    volume_sma=existing_metrics.volume_sma,
-                    volume_ratio=existing_metrics.volume_ratio,
-                    obv=existing_metrics.obv,
-                    volatility_20d=existing_metrics.volatility_20d,
-                    volatility_60d=existing_metrics.volatility_60d,
-                    volatility_252d=existing_metrics.volatility_252d,
-                    beta=existing_metrics.beta,
-                    sharpe_ratio=existing_metrics.sharpe_ratio,
-                    total_return_1m=existing_metrics.total_return_1m,
-                    total_return_3m=existing_metrics.total_return_3m,
-                    total_return_1y=existing_metrics.total_return_1y,
-                    created_at=existing_metrics.created_at,
-                )
-
-        # Data is stale or force refresh requested - calculate new metrics
+        # Data is stale - calculate new metrics
         return await self.calculate_asset_metrics(asset_id, datetime.utcnow())
 
     async def calculate_asset_metrics(
@@ -690,36 +750,42 @@ class PortfolioAnalyticsService:
         self, portfolio_id: int, force_refresh: bool = False
     ) -> RiskCalculationResponse:
         """Get portfolio risk metrics, auto-refreshing with yfinance if stale."""
+        # If force refresh is requested, always calculate new metrics
+        if force_refresh:
+            logger.info(f"Force refreshing risk metrics for portfolio {portfolio_id}")
+            return await self.calculate_portfolio_risk_metrics(
+                portfolio_id, datetime.utcnow()
+            )
+        
         # Check for existing fresh risk metrics first
-        if not force_refresh:
-            existing_risk = (
-                self.db.query(PortfolioRiskMetrics)
-                .filter(PortfolioRiskMetrics.portfolio_id == portfolio_id)
-                .order_by(PortfolioRiskMetrics.calculation_date.desc())
-                .first()
+        existing_risk = (
+            self.db.query(PortfolioRiskMetrics)
+            .filter(PortfolioRiskMetrics.portfolio_id == portfolio_id)
+            .order_by(PortfolioRiskMetrics.calculation_date.desc())
+            .first()
+        )
+
+        if existing_risk and self._is_data_fresh(
+            existing_risk.created_at, self.risk_metrics_freshness_hours
+        ):
+            # Return existing fresh data
+            return RiskCalculationResponse(
+                portfolio_id=existing_risk.portfolio_id,
+                calculation_date=existing_risk.calculation_date,
+                risk_level=existing_risk.risk_level,
+                portfolio_volatility=existing_risk.portfolio_volatility,
+                var_95=existing_risk.var_95_1d,
+                var_99=existing_risk.var_99_1d,
+                expected_shortfall_95=existing_risk.cvar_95_1d,
+                expected_shortfall_99=existing_risk.cvar_99_1d,
+                max_drawdown=existing_risk.max_drawdown,
+                sharpe_ratio=existing_risk.sharpe_ratio,
+                sortino_ratio=existing_risk.sortino_ratio,
+                beta=existing_risk.portfolio_beta,
+                correlation_to_market=existing_risk.average_correlation,
             )
 
-            if existing_risk and self._is_data_fresh(
-                existing_risk.created_at, self.risk_metrics_freshness_hours
-            ):
-                # Return existing fresh data
-                return RiskCalculationResponse(
-                    portfolio_id=existing_risk.portfolio_id,
-                    calculation_date=existing_risk.calculation_date,
-                    risk_level=existing_risk.risk_level,
-                    portfolio_volatility=existing_risk.portfolio_volatility,
-                    var_95=existing_risk.var_95_1d,
-                    var_99=existing_risk.var_99_1d,
-                    expected_shortfall_95=existing_risk.cvar_95_1d,
-                    expected_shortfall_99=existing_risk.cvar_99_1d,
-                    max_drawdown=existing_risk.max_drawdown,
-                    sharpe_ratio=existing_risk.sharpe_ratio,
-                    sortino_ratio=existing_risk.sortino_ratio,
-                    beta=existing_risk.portfolio_beta,
-                    correlation_to_market=existing_risk.average_correlation,
-                )
-
-        # Data is stale or force refresh requested - calculate new metrics
+        # Data is stale - calculate new metrics
         return await self.calculate_portfolio_risk_metrics(
             portfolio_id, datetime.utcnow()
         )
@@ -1181,25 +1247,31 @@ class PortfolioAnalyticsService:
         self, asset1_id: int, asset2_id: int, force_refresh: bool = False
     ) -> AssetCorrelation:
         """Get asset correlation, auto-refreshing with yfinance if stale."""
-        # Check for existing fresh correlation first
-        if not force_refresh:
-            existing_correlation = (
-                self.db.query(AssetCorrelation)
-                .filter(
-                    AssetCorrelation.asset1_id == asset1_id,
-                    AssetCorrelation.asset2_id == asset2_id,
-                )
-                .order_by(AssetCorrelation.calculation_date.desc())
-                .first()
+        # If force refresh is requested, always calculate new correlation
+        if force_refresh:
+            logger.info(f"Force refreshing correlation between assets {asset1_id} and {asset2_id}")
+            return await self.calculate_asset_correlation(
+                asset1_id, asset2_id, datetime.utcnow()
             )
+        
+        # Check for existing fresh correlation first
+        existing_correlation = (
+            self.db.query(AssetCorrelation)
+            .filter(
+                AssetCorrelation.asset1_id == asset1_id,
+                AssetCorrelation.asset2_id == asset2_id,
+            )
+            .order_by(AssetCorrelation.calculation_date.desc())
+            .first()
+        )
 
-            if existing_correlation and self._is_data_fresh(
-                existing_correlation.created_at, self.correlation_freshness_days * 24
-            ):
-                # Return existing fresh data
-                return existing_correlation
+        if existing_correlation and self._is_data_fresh(
+            existing_correlation.created_at, self.correlation_freshness_days * 24
+        ):
+            # Return existing fresh data
+            return existing_correlation
 
-        # Data is stale or force refresh requested - calculate new correlation
+        # Data is stale - calculate new correlation
         return await self.calculate_asset_correlation(
             asset1_id, asset2_id, datetime.utcnow()
         )
@@ -1498,4 +1570,265 @@ class PortfolioAnalyticsService:
 
         except Exception as e:
             logger.error(f"Failed to get analytics dashboard summary: {e}")
+            raise
+
+    async def force_refresh_all_portfolio_data(self, portfolio_id: int) -> Dict[str, Any]:
+        """Force refresh all portfolio data from yfinance and update database."""
+        try:
+            # Get portfolio assets
+            portfolio_assets = (
+                self.db.query(PortfolioAsset)
+                .filter(PortfolioAsset.portfolio_id == portfolio_id)
+                .all()
+            )
+
+            if not portfolio_assets:
+                raise ValueError("Portfolio has no assets")
+
+            updated_data = {
+                "portfolio_id": portfolio_id,
+                "refresh_timestamp": datetime.utcnow(),
+                "assets_refreshed": 0,
+                "errors": [],
+                "performance_snapshot": None,
+                "risk_metrics": None,
+                "asset_metrics": []
+            }
+
+            # Refresh asset metrics for all portfolio assets
+            for portfolio_asset in portfolio_assets:
+                if portfolio_asset.asset and portfolio_asset.asset.symbol:
+                    try:
+                        asset_metrics = await self.calculate_asset_metrics(
+                            portfolio_asset.asset.id, datetime.utcnow()
+                        )
+                        updated_data["asset_metrics"].append({
+                            "asset_id": portfolio_asset.asset.id,
+                            "symbol": portfolio_asset.asset.symbol,
+                            "current_price": float(asset_metrics.current_price) if asset_metrics.current_price else None,
+                            "price_change_percent": float(asset_metrics.price_change_percent) if asset_metrics.price_change_percent else None,
+                            "volatility_20d": float(asset_metrics.volatility_20d) if asset_metrics.volatility_20d else None,
+                            "refreshed": True
+                        })
+                        updated_data["assets_refreshed"] += 1
+                    except Exception as e:
+                        updated_data["errors"].append(f"Asset {portfolio_asset.asset.symbol}: {str(e)}")
+
+            # Refresh portfolio performance snapshot
+            try:
+                performance_snapshot = await self.create_performance_snapshot(
+                    portfolio_id, datetime.utcnow()
+                )
+                updated_data["performance_snapshot"] = {
+                    "total_value": float(performance_snapshot.total_value) if performance_snapshot.total_value else 0,
+                    "total_unrealized_pnl": float(performance_snapshot.total_unrealized_pnl) if performance_snapshot.total_unrealized_pnl else 0,
+                    "total_unrealized_pnl_percent": float(performance_snapshot.total_unrealized_pnl_percent) if performance_snapshot.total_unrealized_pnl_percent else 0,
+                    "snapshot_date": performance_snapshot.snapshot_date
+                }
+            except Exception as e:
+                updated_data["errors"].append(f"Performance snapshot: {str(e)}")
+
+            # Refresh portfolio risk metrics
+            try:
+                risk_metrics = await self.calculate_portfolio_risk_metrics(
+                    portfolio_id, datetime.utcnow()
+                )
+                updated_data["risk_metrics"] = {
+                    "risk_level": risk_metrics.risk_level,
+                    "portfolio_volatility": float(risk_metrics.portfolio_volatility) if risk_metrics.portfolio_volatility else None,
+                    "var_95": float(risk_metrics.var_95) if risk_metrics.var_95 else None,
+                    "var_99": float(risk_metrics.var_99) if risk_metrics.var_99 else None,
+                    "calculation_date": risk_metrics.calculation_date
+                }
+            except Exception as e:
+                updated_data["errors"].append(f"Risk metrics: {str(e)}")
+
+            return updated_data
+
+        except Exception as e:
+            logger.error(f"Failed to force refresh portfolio data: {e}")
+            raise
+
+    async def bulk_update_asset_prices(self, asset_ids: List[int]) -> Dict[str, Any]:
+        """Bulk update current prices for multiple assets using yfinance."""
+        try:
+            from app.core.database.models import Asset
+
+            # Get assets
+            assets = (
+                self.db.query(Asset)
+                .filter(Asset.id.in_(asset_ids), Asset.is_active == True)
+                .all()
+            )
+
+            if not assets:
+                raise ValueError("No assets found")
+
+            # Get symbols
+            symbols = [asset.symbol for asset in assets if asset.symbol]
+            
+            if not symbols:
+                raise ValueError("No symbols found for assets")
+
+            # Bulk fetch current prices
+            current_prices = await market_data_service.get_multiple_current_prices(symbols)
+
+            updated_data = {
+                "update_timestamp": datetime.utcnow(),
+                "assets_updated": 0,
+                "price_updates": [],
+                "errors": []
+            }
+
+            # Update asset records with current prices
+            for asset in assets:
+                if asset.symbol and asset.symbol in current_prices:
+                    current_price = current_prices[asset.symbol]
+                    if current_price:
+                        try:
+                            # Update asset performance metrics with new price
+                            await self.calculate_asset_metrics(asset.id, datetime.utcnow())
+                            
+                            updated_data["price_updates"].append({
+                                "asset_id": asset.id,
+                                "symbol": asset.symbol,
+                                "current_price": current_price,
+                                "updated": True
+                            })
+                            updated_data["assets_updated"] += 1
+                        except Exception as e:
+                            updated_data["errors"].append(f"Asset {asset.symbol}: {str(e)}")
+                    else:
+                        updated_data["errors"].append(f"No price data for {asset.symbol}")
+
+            return updated_data
+
+        except Exception as e:
+            logger.error(f"Failed to bulk update asset prices: {e}")
+            raise
+
+    async def generate_historical_performance_snapshots(
+        self, portfolio_id: int, start_date: datetime, end_date: datetime
+    ) -> List[PortfolioPerformanceHistory]:
+        """Generate historical performance snapshots for a portfolio using yfinance data."""
+        try:
+            logger.info(f"Generating historical snapshots for portfolio {portfolio_id} from {start_date} to {end_date}")
+            
+            # Get portfolio assets
+            portfolio_assets = (
+                self.db.query(PortfolioAsset)
+                .filter(PortfolioAsset.portfolio_id == portfolio_id)
+                .all()
+            )
+
+            if not portfolio_assets:
+                raise ValueError("Portfolio has no assets")
+
+            # Get historical data for all assets
+            asset_historical_data = {}
+            for portfolio_asset in portfolio_assets:
+                if portfolio_asset.asset and portfolio_asset.asset.symbol:
+                    try:
+                        end_date_str = end_date.strftime("%Y-%m-%d")
+                        start_date_str = start_date.strftime("%Y-%m-%d")
+                        
+                        price_data = await market_data_service.fetch_ticker_data(
+                            symbol=portfolio_asset.asset.symbol,
+                            start_date=start_date_str,
+                            end_date=end_date_str,
+                            interval="1d",
+                        )
+                        
+                        if price_data is not None and len(price_data) > 0:
+                            asset_historical_data[portfolio_asset.asset.id] = {
+                                'data': price_data,
+                                'quantity': float(portfolio_asset.quantity),
+                                'cost_basis': float(portfolio_asset.cost_basis_total)
+                            }
+                        else:
+                            logger.warning(f"No historical data for {portfolio_asset.asset.symbol}")
+                            
+                    except Exception as e:
+                        logger.warning(f"Failed to get historical data for {portfolio_asset.asset.symbol}: {e}")
+
+            if not asset_historical_data:
+                # Create a single snapshot with current data if no historical data
+                snapshot = await self.create_performance_snapshot(portfolio_id, end_date)
+                return [snapshot]
+
+            # Generate daily snapshots
+            snapshots = []
+            current_date = start_date
+            
+            while current_date <= end_date:
+                try:
+                    # Calculate portfolio value for this date
+                    total_value = 0
+                    total_cost_basis = 0
+                    
+                    for asset_id, asset_data in asset_historical_data.items():
+                        price_data = asset_data['data']
+                        quantity = asset_data['quantity']
+                        cost_basis = asset_data['cost_basis']
+                        
+                        # Find price for this date
+                        date_str = current_date.strftime("%Y-%m-%d")
+                        matching_rows = price_data[price_data['Date'].dt.strftime("%Y-%m-%d") == date_str]
+                        
+                        if not matching_rows.empty:
+                            close_price = float(matching_rows.iloc[0]['Close'])
+                            asset_value = close_price * quantity
+                        else:
+                            # Use previous available price or cost basis
+                            prev_rows = price_data[price_data['Date'] <= current_date]
+                            if not prev_rows.empty:
+                                close_price = float(prev_rows.iloc[-1]['Close'])
+                                asset_value = close_price * quantity
+                            else:
+                                asset_value = cost_basis
+                        
+                        total_value += asset_value
+                        total_cost_basis += cost_basis
+
+                    # Calculate metrics
+                    total_unrealized_pnl = total_value - total_cost_basis
+                    total_unrealized_pnl_percent = (
+                        (total_unrealized_pnl / total_cost_basis * 100)
+                        if total_cost_basis > 0
+                        else 0
+                    )
+
+                    # Create snapshot for this date
+                    snapshot = PortfolioPerformanceHistory(
+                        portfolio_id=portfolio_id,
+                        snapshot_date=current_date,
+                        total_value=Decimal(str(total_value)),
+                        total_cost_basis=Decimal(str(total_cost_basis)),
+                        total_unrealized_pnl=Decimal(str(total_unrealized_pnl)),
+                        total_unrealized_pnl_percent=Decimal(str(total_unrealized_pnl_percent)),
+                    )
+
+                    self.db.add(snapshot)
+                    snapshots.append(snapshot)
+
+                    current_date += timedelta(days=1)
+                    
+                except Exception as e:
+                    logger.warning(f"Failed to create snapshot for {current_date}: {e}")
+                    current_date += timedelta(days=1)
+                    continue
+
+            # Commit all snapshots
+            self.db.commit()
+            
+            # Refresh all snapshots
+            for snapshot in snapshots:
+                self.db.refresh(snapshot)
+            
+            logger.info(f"Generated {len(snapshots)} historical snapshots for portfolio {portfolio_id}")
+            return snapshots
+
+        except Exception as e:
+            logger.error(f"Failed to generate historical performance snapshots: {e}")
+            self.db.rollback()
             raise
