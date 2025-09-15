@@ -40,8 +40,7 @@ class MACDStrategy:
         try:
             if round(x, digits) == round(y, digits):
                 return 1
-            else:
-                return 0
+            return 0
         except ValueError:
             return 0
 
@@ -115,7 +114,7 @@ class MACDStrategy:
                         ):
                             # Keeping the value 1 as it's a Buy call.
                             continue
-                        elif (
+                        if (
                             c
                             and (df["MACD"][i] >= df["Signal"][i] > 0)
                             and df["Close"][i] <= df["MACD_EMA"][i]

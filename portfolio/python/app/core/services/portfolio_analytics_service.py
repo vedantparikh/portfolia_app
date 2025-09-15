@@ -5,33 +5,32 @@ Comprehensive service for portfolio analysis, risk management, and performance t
 
 import logging
 import math
-from datetime import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
 from sqlalchemy.orm import Session
 
-from app.core.database.models import Portfolio
-from app.core.database.models import PortfolioAsset
-from app.core.database.models.portfolio_analytics import AssetCorrelation
-from app.core.database.models.portfolio_analytics import AssetPerformanceMetrics
-from app.core.database.models.portfolio_analytics import PortfolioAllocation
-from app.core.database.models.portfolio_analytics import PortfolioPerformanceHistory
-from app.core.database.models.portfolio_analytics import PortfolioRiskMetrics
-from app.core.database.models.portfolio_analytics import RiskLevel
-from app.core.schemas.portfolio_analytics import AllocationAnalysisResponse
-from app.core.schemas.portfolio_analytics import AllocationDrift
-from app.core.schemas.portfolio_analytics import AllocationItem
-from app.core.schemas.portfolio_analytics import AssetMetricsResponse
-from app.core.schemas.portfolio_analytics import PerformanceSnapshotResponse
-from app.core.schemas.portfolio_analytics import PortfolioAllocationCreate
-from app.core.schemas.portfolio_analytics import RiskCalculationResponse
+from app.core.database.models import Portfolio, PortfolioAsset
+from app.core.database.models.portfolio_analytics import (
+    AssetCorrelation,
+    AssetPerformanceMetrics,
+    PortfolioAllocation,
+    PortfolioPerformanceHistory,
+    PortfolioRiskMetrics,
+    RiskLevel,
+)
+from app.core.schemas.portfolio_analytics import (
+    AllocationAnalysisResponse,
+    AllocationDrift,
+    AllocationItem,
+    AssetMetricsResponse,
+    PerformanceSnapshotResponse,
+    PortfolioAllocationCreate,
+    RiskCalculationResponse,
+)
 from app.core.services.market_data_service import market_data_service
 
 logger = logging.getLogger(__name__)

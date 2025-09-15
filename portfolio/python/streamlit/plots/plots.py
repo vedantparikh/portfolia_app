@@ -40,7 +40,7 @@ class MacdRsiVolumeCandelstickChart:
         buy_list, sell_list = [], []
         flag = False
 
-        for i in range(0, len(df)):
+        for i in range(len(df)):
             if df["MACD"].iloc[i] > df["Signal"].iloc[i] and flag == False:
                 buy_list.append(df[column].iloc[i])
                 sell_list.append(np.nan)
@@ -293,7 +293,7 @@ class MacdRsiVolumeCandelstickChart:
             # height=800,
             # plot_bgcolor='#0E1117',
             # paper_bgcolor='#0E1117',
-            title={"text": "{} - Stock Dashboard".format(ticker), "y": 0.98},
+            title={"text": f"{ticker} - Stock Dashboard", "y": 0.98},
             hovermode="x unified",
             legend=dict(
                 orientation="h", xanchor="left", x=0.05, yanchor="bottom", y=1.003

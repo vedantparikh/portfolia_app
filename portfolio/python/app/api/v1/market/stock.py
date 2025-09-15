@@ -21,7 +21,7 @@ from app.core.logging_config import (
     log_api_response,
     log_error_with_context,
 )
-from app.core.schemas.market import MarketData, MajorIndex
+from app.core.schemas.market import MajorIndex, MarketData
 from app.core.schemas.market_data import (
     SymbolSearchResult,
     YFinanceDataResponse,

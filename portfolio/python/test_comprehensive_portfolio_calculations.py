@@ -631,7 +631,7 @@ def run_tests() -> bool:
             "-v",
             "--tb=short",
         ],
-        capture_output=True,
+        check=False, capture_output=True,
         text=True,
     )
 
