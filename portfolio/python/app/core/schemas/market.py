@@ -56,3 +56,8 @@ class StockQuote(BaseModel):
     price: Decimal
     volume: int
     timestamp: datetime
+
+
+class MajorIndex(BaseModel):
+    name: str
+    symbol: str
