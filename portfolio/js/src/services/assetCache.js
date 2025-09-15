@@ -101,7 +101,7 @@ class AssetCacheService {
             this.notifySubscribers();
 
             const response = await assetAPI.getAssets({ limit: 1000 });
-            this.assets = response || [];
+            this.assets = response.data || [];
             this.lastFetched = Date.now();
             this.isLoading = false;
 

@@ -7,7 +7,7 @@ import logging
 import logging.handlers
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -92,7 +92,7 @@ def setup_logging(
 
     # Determine log file path
     if log_file is None:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         log_file = f"portfolia_api_{timestamp}.log"
 
     if log_dir:

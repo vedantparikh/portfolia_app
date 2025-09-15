@@ -12,7 +12,7 @@ const ClientSideAssetSearch = ({
     placeholder = "Search assets...",
     disabled = false,
     showSuggestions = true,
-    preloadAssets = false
+    preloadAssets = true
 }) => {
     const [filteredAssets, setFilteredAssets] = useState([]);
     const [showSuggestionsDropdown, setShowSuggestionsDropdown] = useState(false);
@@ -29,7 +29,7 @@ const ClientSideAssetSearch = ({
             setLoading(cacheLoading);
         });
 
-        // Preload assets if requested or if this is a transaction-related component
+        // Preload assets if requested
         if (preloadAssets) {
             assetCache.preloadAssets();
         }
@@ -70,6 +70,11 @@ const ClientSideAssetSearch = ({
             setSearching(true);
             console.log(`[ClientSideAssetSearch] Fetching price for symbol: ${symbol}`);
 
+            // Notify parent that we're starting to fetch price
+            if (onPriceUpdate) {
+                onPriceUpdate({ isFetching: true });
+            }
+
             // Use the stock-latest-data endpoint with symbols as query parameter
             const priceData = await marketAPI.getStockLatestData(symbol);
 
@@ -78,7 +83,7 @@ const ClientSideAssetSearch = ({
             if (priceData && Array.isArray(priceData) && priceData.length > 0) {
                 // Get the latest data point (first in the array)
                 const latestData = priceData[0];
-                const price = parseFloat(latestData.latest_price);
+                const price = parseFloat(latestData.current_price);
 
                 if (onPriceUpdate && !isNaN(price)) {
                     console.log(`[ClientSideAssetSearch] Updating price: ${price} for ${symbol}`);
@@ -86,22 +91,31 @@ const ClientSideAssetSearch = ({
                         symbol: symbol,
                         price: price,
                         currency: latestData.currency || 'USD',
-                        date: latestData.latest_date,
-                        name: latestData.name || symbol,
+                        name: latestData.short_name || latestData.long_name || symbol,
                         exchange: latestData.exchange || 'NMS',
                         market_cap: latestData.market_cap || null,
                         pe_ratio: latestData.pe_ratio || null,
                         dividend_yield: latestData.dividend_yield || null,
-                        beta: latestData.beta || null
+                        beta: latestData.beta || null,
+                        isFetching: false
                     });
                 } else {
                     console.warn(`[ClientSideAssetSearch] Invalid price data for ${symbol}:`, latestData);
+                    if (onPriceUpdate) {
+                        onPriceUpdate({ isFetching: false });
+                    }
                 }
             } else {
                 console.warn(`[ClientSideAssetSearch] No valid price data found for ${symbol}`);
+                if (onPriceUpdate) {
+                    onPriceUpdate({ isFetching: false });
+                }
             }
         } catch (error) {
             console.error(`[ClientSideAssetSearch] Failed to fetch current price for ${symbol}:`, error);
+            if (onPriceUpdate) {
+                onPriceUpdate({ isFetching: false });
+            }
         } finally {
             setSearching(false);
         }
@@ -120,9 +134,11 @@ const ClientSideAssetSearch = ({
         }
         setShowSuggestionsDropdown(false);
 
-        // Fetch current price for the selected asset
-        fetchCurrentPrice(asset.symbol);
-    }, [onSelect, fetchCurrentPrice]);
+        // Fetch current price for the selected asset and update parent
+        if (onPriceUpdate) {
+            fetchCurrentPrice(asset.symbol);
+        }
+    }, [onSelect, onPriceUpdate, fetchCurrentPrice]);
 
     // Handle input focus
     const handleFocus = useCallback(() => {
