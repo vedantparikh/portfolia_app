@@ -911,6 +911,33 @@ export const analyticsAPI = {
   },
 
   /* 
+      GET PERFORMANCE SNAPSHOT - Get portfolio performance snapshot, auto-refreshing with yfinance if stale
+      Parameters: portfolioId (string or number), forceRefresh (boolean)
+      Returns: Server response with performance snapshot data
+    */
+  getPerformanceSnapshot: async (portfolioId, forceRefresh = false) => {
+    const response = await api.get(
+      `/analytics/portfolios/${portfolioId}/performance/snapshot`,
+      {
+        params: { force_refresh: forceRefresh },
+      }
+    );
+    return response.data;
+  },
+
+  /* 
+      DELETE PERFORMANCE SNAPSHOT - Delete a performance snapshot
+      Parameters: portfolioId (string or number), snapshotId (string or number)
+      Returns: Server response with deletion confirmation
+    */
+  deletePerformanceSnapshot: async (portfolioId, snapshotId) => {
+    const response = await api.delete(
+      `/analytics/portfolios/${portfolioId}/performance/${snapshotId}`
+    );
+    return response.data;
+  },
+
+  /* 
       GET PORTFOLIO PERFORMANCE HISTORY - Get portfolio performance history
       Parameters: portfolioId (string or number), days (number)
       Returns: Server response with performance history data
@@ -926,55 +953,28 @@ export const analyticsAPI = {
   },
 
   /* 
-      CREATE PERFORMANCE SNAPSHOT - Create a performance snapshot for a portfolio
-      Parameters: portfolioId (string or number), snapshotDate (string)
-      Returns: Server response with snapshot data
+      GET ASSET METRICS - Get asset metrics, automatically refreshing with yfinance if stale
+      Parameters: assetId (string or number), forceRefresh (boolean)
+      Returns: Server response with asset metrics data
     */
-  createPerformanceSnapshot: async (portfolioId, snapshotDate = null) => {
-    const response = await api.post(
-      `/analytics/portfolios/${portfolioId}/performance/snapshot`,
-      {},
-      {
-        params: snapshotDate ? { snapshot_date: snapshotDate } : {},
-      }
-    );
+  getAssetMetrics: async (assetId, forceRefresh = false) => {
+    const response = await api.get(`/analytics/assets/${assetId}/metrics`, {
+      params: { force_refresh: forceRefresh },
+    });
     return response.data;
   },
 
   /* 
-      GET PORTFOLIO RISK ANALYSIS - Get portfolio risk analysis
-      Parameters: portfolioId (string or number)
-      Returns: Server response with risk analysis data
+      GET ASSET METRICS HISTORY - Get asset performance metrics history
+      Parameters: assetId (string or number), days (number)
+      Returns: Server response with asset metrics history data
     */
-  getPortfolioRiskAnalysis: async (portfolioId) => {
-    const response = await api.get(`/analytics/portfolios/${portfolioId}/risk`);
-    return response.data;
-  },
-
-  /* 
-      CALCULATE PORTFOLIO RISK - Calculate comprehensive risk metrics for a portfolio
-      Parameters: portfolioId (string or number), calculationDate (string)
-      Returns: Server response with risk calculation data
-    */
-  calculatePortfolioRisk: async (portfolioId, calculationDate = null) => {
-    const response = await api.post(
-      `/analytics/portfolios/${portfolioId}/risk/calculate`,
-      {},
-      {
-        params: calculationDate ? { calculation_date: calculationDate } : {},
-      }
-    );
-    return response.data;
-  },
-
-  /* 
-      GET PORTFOLIO ALLOCATIONS - Get portfolio target allocations
-      Parameters: portfolioId (string or number)
-      Returns: Server response with allocation data
-    */
-  getPortfolioAllocations: async (portfolioId) => {
+  getAssetMetricsHistory: async (assetId, days = 30) => {
     const response = await api.get(
-      `/analytics/portfolios/${portfolioId}/allocations`
+      `/analytics/assets/${assetId}/metrics/history`,
+      {
+        params: { days },
+      }
     );
     return response.data;
   },
@@ -993,6 +993,43 @@ export const analyticsAPI = {
   },
 
   /* 
+      GET PORTFOLIO ALLOCATIONS - Get portfolio target allocations
+      Parameters: portfolioId (string or number)
+      Returns: Server response with allocation data
+    */
+  getPortfolioAllocations: async (portfolioId) => {
+    const response = await api.get(
+      `/analytics/portfolios/${portfolioId}/allocations`
+    );
+    return response.data;
+  },
+
+  /* 
+      UPDATE PORTFOLIO ALLOCATION - Update a specific portfolio allocation
+      Parameters: portfolioId (string or number), allocationId (string or number), allocationData (object)
+      Returns: Server response with updated allocation data
+    */
+  updatePortfolioAllocation: async (portfolioId, allocationId, allocationData) => {
+    const response = await api.put(
+      `/analytics/portfolios/${portfolioId}/allocations/${allocationId}`,
+      allocationData
+    );
+    return response.data;
+  },
+
+  /* 
+      DELETE PORTFOLIO ALLOCATION - Delete a portfolio allocation
+      Parameters: portfolioId (string or number), allocationId (string or number)
+      Returns: Server response with deletion confirmation
+    */
+  deletePortfolioAllocation: async (portfolioId, allocationId) => {
+    const response = await api.delete(
+      `/analytics/portfolios/${portfolioId}/allocations/${allocationId}`
+    );
+    return response.data;
+  },
+
+  /* 
       ANALYZE PORTFOLIO ALLOCATION - Analyze portfolio allocation and detect drift
       Parameters: portfolioId (string or number)
       Returns: Server response with allocation analysis data
@@ -1005,13 +1042,26 @@ export const analyticsAPI = {
   },
 
   /* 
-      GET REBALANCING RECOMMENDATIONS - Get rebalancing recommendations for a portfolio
-      Parameters: portfolioId (string or number)
-      Returns: Server response with rebalancing recommendations
+      GET PORTFOLIO RISK METRICS - Get portfolio risk metrics, auto-refreshing with yfinance if stale
+      Parameters: portfolioId (string or number), forceRefresh (boolean)
+      Returns: Server response with risk metrics data
     */
-  getRebalancingRecommendations: async (portfolioId) => {
-    const response = await api.get(
-      `/analytics/portfolios/${portfolioId}/rebalancing/recommendations`
+  getPortfolioRiskMetrics: async (portfolioId, forceRefresh = false) => {
+    const response = await api.get(`/analytics/portfolios/${portfolioId}/risk`, {
+      params: { force_refresh: forceRefresh },
+    });
+    return response.data;
+  },
+
+  /* 
+      ADD PORTFOLIO BENCHMARK - Add a benchmark to a portfolio
+      Parameters: portfolioId (string or number), benchmarkData (object)
+      Returns: Server response with benchmark data
+    */
+  addPortfolioBenchmark: async (portfolioId, benchmarkData) => {
+    const response = await api.post(
+      `/analytics/portfolios/${portfolioId}/benchmarks`,
+      benchmarkData
     );
     return response.data;
   },
@@ -1029,14 +1079,14 @@ export const analyticsAPI = {
   },
 
   /* 
-      ADD PORTFOLIO BENCHMARK - Add a benchmark to a portfolio
-      Parameters: portfolioId (string or number), benchmarkData (object)
-      Returns: Server response with benchmark data
+      CREATE REBALANCING EVENT - Create a rebalancing event for a portfolio
+      Parameters: portfolioId (string or number), eventData (object)
+      Returns: Server response with event data
     */
-  addPortfolioBenchmark: async (portfolioId, benchmarkData) => {
+  createRebalancingEvent: async (portfolioId, eventData) => {
     const response = await api.post(
-      `/analytics/portfolios/${portfolioId}/benchmarks`,
-      benchmarkData
+      `/analytics/portfolios/${portfolioId}/rebalancing/events`,
+      eventData
     );
     return response.data;
   },
@@ -1057,15 +1107,30 @@ export const analyticsAPI = {
   },
 
   /* 
-      CREATE REBALANCING EVENT - Create a rebalancing event for a portfolio
-      Parameters: portfolioId (string or number), eventData (object)
-      Returns: Server response with event data
+      GET REBALANCING RECOMMENDATIONS - Get rebalancing recommendations for a portfolio
+      Parameters: portfolioId (string or number)
+      Returns: Server response with rebalancing recommendations
     */
-  createRebalancingEvent: async (portfolioId, eventData) => {
-    const response = await api.post(
-      `/analytics/portfolios/${portfolioId}/rebalancing/events`,
-      eventData
+  getRebalancingRecommendations: async (portfolioId) => {
+    const response = await api.get(
+      `/analytics/portfolios/${portfolioId}/rebalancing/recommendations`
     );
+    return response.data;
+  },
+
+  /* 
+      GET ASSET CORRELATIONS - Get asset correlations, auto-refreshing with yfinance if stale
+      Parameters: asset1Id (string or number), asset2Id (string or number), forceRefresh (boolean)
+      Returns: Server response with correlation data
+    */
+  getAssetCorrelations: async (asset1Id = null, asset2Id = null, forceRefresh = false) => {
+    const response = await api.get("/analytics/assets/correlations", {
+      params: { 
+        asset1_id: asset1Id, 
+        asset2_id: asset2Id, 
+        force_refresh: forceRefresh 
+      },
+    });
     return response.data;
   },
 
@@ -1089,42 +1154,20 @@ export const analyticsAPI = {
   },
 
   /* 
-      GET ASSET CORRELATIONS - Get asset correlations
-      Parameters: asset1Id (string or number), asset2Id (string or number), days (number)
-      Returns: Server response with correlation data
+      GET USER ANALYTICS DASHBOARD - Get comprehensive analytics dashboard for the current user
+      Returns: Server response with user dashboard data
     */
-  getAssetCorrelations: async (asset1Id = null, asset2Id = null, days = 30) => {
-    const response = await api.get("/analytics/assets/correlations", {
-      params: { asset1_id: asset1Id, asset2_id: asset2Id, days },
-    });
+  getUserAnalyticsDashboard: async () => {
+    const response = await api.get("/analytics/users/dashboard");
     return response.data;
   },
 
   /* 
-      CALCULATE ASSET METRICS - Calculate comprehensive metrics for an asset
-      Parameters: assetId (string or number), calculationDate (string)
-      Returns: Server response with asset metrics data
+      GET USER ASSETS ANALYTICS - Get analytics for all user assets (including standalone assets)
+      Returns: Server response with user assets analytics data
     */
-  calculateAssetMetrics: async (assetId, calculationDate = null) => {
-    const response = await api.post(
-      `/analytics/assets/${assetId}/metrics`,
-      {},
-      {
-        params: calculationDate ? { calculation_date: calculationDate } : {},
-      }
-    );
-    return response.data;
-  },
-
-  /* 
-      GET ASSET METRICS - Get asset performance metrics history
-      Parameters: assetId (string or number), days (number)
-      Returns: Server response with asset metrics history data
-    */
-  getAssetMetrics: async (assetId, days = 30) => {
-    const response = await api.get(`/analytics/assets/${assetId}/metrics`, {
-      params: { days },
-    });
+  getUserAssetsAnalytics: async () => {
+    const response = await api.get("/analytics/users/assets");
     return response.data;
   },
 };
