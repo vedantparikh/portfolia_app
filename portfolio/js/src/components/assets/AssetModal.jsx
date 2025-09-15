@@ -176,7 +176,14 @@ const AssetModal = ({ asset, mode = 'view', onClose, onSave }) => {
                                 <div className="card p-6">
                                     <h3 className="text-lg font-semibold text-gray-100 mb-4">Search Asset</h3>
                                     <SymbolSearch
-                                        onSymbolSelect={(selectedAsset) => {
+                                        value={formData.symbol}
+                                        onChange={(value) => {
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                symbol: value
+                                            }));
+                                        }}
+                                        onSelect={(selectedAsset) => {
                                             setFormData(prev => ({
                                                 ...prev,
                                                 symbol: selectedAsset.symbol,

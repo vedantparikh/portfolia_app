@@ -82,6 +82,12 @@ export const formatPercentage = (value, options = {}) => {
     if (value === null || value === undefined) return 'N/A';
     const numericValue = parseFloat(value);
     if (isNaN(numericValue)) return 'N/A';
+
+    if (Math.abs(numericValue) >= 1e21) {
+        // You can return 'N/A' to match your other errors,
+        // or return a more descriptive value like Infinity.
+        return numericValue > 0 ? '+Infinity%' : '-Infinity%';
+    }
     
     const { 
         showSign = true, 

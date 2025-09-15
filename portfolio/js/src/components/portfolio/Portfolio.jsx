@@ -20,6 +20,7 @@ import PortfolioAssets from './PortfolioAssets';
 import PortfolioCard from './PortfolioCard';
 import PortfolioChart from './PortfolioChart';
 import PortfolioDetail from './PortfolioDetail';
+import PortfolioPerformanceMetrics from './PortfolioPerformanceMetrics';
 import PortfolioTest from './PortfolioTest';
 import PortfolioTestControls from './PortfolioTestControls';
 
@@ -30,7 +31,7 @@ const Portfolio = () => {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [editingPortfolio, setEditingPortfolio] = useState(null);
-    const [viewMode, setViewMode] = useState('overview'); // overview, detail, chart, assets
+    const [viewMode, setViewMode] = useState('overview'); // overview, detail, chart, assets, performance
     const [portfolioStats, setPortfolioStats] = useState(null);
     const [transactions, setTransactions] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
@@ -590,6 +591,16 @@ const Portfolio = () => {
                                     >
                                         <Activity size={16} />
                                     </button>
+                                    <button
+                                        onClick={() => setViewMode('performance')}
+                                        className={`p-2 rounded-lg transition-colors ${viewMode === 'performance'
+                                            ? 'bg-primary-600 text-white'
+                                            : 'bg-dark-700 text-gray-400 hover:bg-dark-600'
+                                            }`}
+                                        title="Performance Metrics"
+                                    >
+                                        <BarChart3 size={16} />
+                                    </button>
                                 </div>
                             </div>
 
@@ -663,6 +674,12 @@ const Portfolio = () => {
                                         <PortfolioChart
                                             portfolio={selectedPortfolio}
                                             stats={stats}
+                                        />
+                                    )}
+
+                                    {viewMode === 'performance' && selectedPortfolio && (
+                                        <PortfolioPerformanceMetrics
+                                            portfolio={selectedPortfolio}
                                         />
                                     )}
                                 </div>

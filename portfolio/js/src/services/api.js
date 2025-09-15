@@ -28,7 +28,7 @@ import axios from "axios";
 */
 const api = axios.create({
   baseURL: "http://localhost:8000/api/v1", // Base URL for all API calls
-  timeout: 10000, // Request timeout (10 seconds)
+  timeout: 100000, // Request timeout (100 seconds)
   headers: {
     "Content-Type": "application/json", // Tell server we're sending JSON data
   },
@@ -1125,6 +1125,184 @@ export const analyticsAPI = {
     const response = await api.get(`/analytics/assets/${assetId}/metrics`, {
       params: { days },
     });
+    return response.data;
+  },
+};
+
+/* 
+  PORTFOLIO CALCULATIONS API METHODS - Performance calculations and comparisons
+  These methods handle all portfolio calculation-related API calls
+*/
+export const portfolioCalculationsAPI = {
+  /* 
+      GET AVAILABLE PERIODS - Get list of available calculation periods
+      Returns: Server response with available periods
+    */
+  getAvailablePeriods: async () => {
+    const response = await api.get("/portfolios/calculations/periods");
+    return response.data;
+  },
+
+  /* 
+      CALCULATE PORTFOLIO PERFORMANCE - Calculate comprehensive portfolio performance metrics
+      Parameters: portfolioId (string or number), requestData (object with period, end_date, etc.)
+      Returns: Server response with portfolio performance data
+    */
+  calculatePortfolioPerformance: async (portfolioId, requestData) => {
+    const response = await api.post(
+      `/portfolios/calculations/portfolio/${portfolioId}/performance`,
+      requestData
+    );
+    return response.data;
+  },
+
+  /* 
+      GET PORTFOLIO PERFORMANCE - Get portfolio performance metrics for a specific period
+      Parameters: portfolioId (string or number), period (string), endDate (string)
+      Returns: Server response with portfolio performance data
+    */
+  getPortfolioPerformance: async (
+    portfolioId,
+    period = "inception",
+    endDate = null
+  ) => {
+    const response = await api.get(
+      `/portfolios/calculations/portfolio/${portfolioId}/performance`,
+      {
+        params: { period, end_date: endDate },
+      }
+    );
+    return response.data;
+  },
+
+  /* 
+      GET MULTI PERIOD PERFORMANCE - Calculate portfolio performance across multiple periods
+      Parameters: portfolioId (string or number), periods (array), endDate (string)
+      Returns: Server response with multi-period performance data
+    */
+      getMultiPeriodPerformance: async (
+        portfolioId,
+        periods = ["3m", "6m", "ytd", "1y", "2y", "3y", "5y", "inception"],
+        endDate = null
+      ) => {
+        
+        // Create the params object
+        const params = { periods };
+        if (endDate) {
+            params.end_date = endDate;
+        }
+    
+        const response = await api.get(
+          `/portfolios/calculations/portfolio/${portfolioId}/multi-period`,
+          {
+            params, // Your params object
+    
+            // --- THIS IS THE FIX ---
+            // Add this serializer to force the repeated-key format
+            // that FastAPI requires.
+            paramsSerializer: {
+              indexes: null // This serializes to: ?periods=3m&periods=6m...
+            }
+          }
+        );
+        return response.data;
+      },
+
+  /* 
+      CALCULATE ASSET PERFORMANCE - Calculate performance metrics for a specific asset within a portfolio
+      Parameters: portfolioId (string or number), assetId (string or number), requestData (object)
+      Returns: Server response with asset performance data
+    */
+  calculateAssetPerformance: async (portfolioId, assetId, requestData) => {
+    const response = await api.post(
+      `/portfolios/calculations/portfolio/${portfolioId}/asset/${assetId}/performance`,
+      requestData
+    );
+    return response.data;
+  },
+
+  /* 
+      GET ASSET PERFORMANCE - Get asset performance metrics for a specific period
+      Parameters: portfolioId (string or number), assetId (string or number), period (string), endDate (string)
+      Returns: Server response with asset performance data
+    */
+  getAssetPerformance: async (
+    portfolioId,
+    assetId,
+    period = "inception",
+    endDate = null
+  ) => {
+    const response = await api.get(
+      `/portfolios/calculations/portfolio/${portfolioId}/asset/${assetId}/performance`,
+      {
+        params: { period, end_date: endDate },
+      }
+    );
+    return response.data;
+  },
+
+  /* 
+      GET ASSET MULTI PERIOD PERFORMANCE - Calculate asset performance across multiple periods
+      Parameters: portfolioId (string or number), assetId (string or number), periods (array), endDate (string)
+      Returns: Server response with asset multi-period performance data
+    */
+  getAssetMultiPeriodPerformance: async (
+    portfolioId,
+    assetId,
+    periods = ["3m", "6m", "1y", "ytd", "inception"],
+    endDate = null
+  ) => {
+    const response = await api.get(
+      `/portfolios/calculations/portfolio/${portfolioId}/asset/${assetId}/multi-period`,
+      {
+        params: { periods, end_date: endDate },
+      }
+    );
+    return response.data;
+  },
+
+  /* 
+      CALCULATE BENCHMARK PERFORMANCE - Calculate hypothetical performance if money was invested in benchmark
+      Parameters: requestData (object with benchmark_symbol, investment_schedule, period, end_date)
+      Returns: Server response with benchmark performance data
+    */
+  calculateBenchmarkPerformance: async (requestData) => {
+    const response = await api.post(
+      "/portfolios/calculations/benchmark/performance",
+      requestData
+    );
+    return response.data;
+  },
+
+  /* 
+      COMPARE PORTFOLIO TO BENCHMARK - Compare portfolio performance to benchmark using same investment schedule
+      Parameters: portfolioId (string or number), benchmarkSymbol (string), period (string), endDate (string)
+      Returns: Server response with portfolio vs benchmark comparison data
+    */
+  comparePortfolioToBenchmark: async (
+    portfolioId,
+    benchmarkSymbol,
+    period = "inception",
+    endDate = null
+  ) => {
+    const response = await api.get(
+      `/portfolios/calculations/portfolio/${portfolioId}/compare/${benchmarkSymbol}`,
+      {
+        params: { period, end_date: endDate },
+      }
+    );
+    return response.data;
+  },
+
+  /* 
+      GET PORTFOLIO PERFORMANCE OVERVIEW - Get comprehensive portfolio performance overview
+      Parameters: portfolioId (string or number)
+      Returns: Server response with portfolio performance overview data
+    */
+  getPortfolioPerformanceOverview: async (portfolioId) => {
+    const response = await api.get(
+      `/portfolios/calculations/portfolio/${portfolioId}/overview`
+    );
     return response.data;
   },
 };
