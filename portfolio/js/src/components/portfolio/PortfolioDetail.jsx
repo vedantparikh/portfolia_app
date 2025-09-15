@@ -151,8 +151,6 @@ const PortfolioDetail = ({ portfolio, stats, transactions }) => {
 
   return (
     <div className="space-y-6">
-      {/* Performance Metrics */}
-      <PortfolioPerformanceMetrics portfolio={portfolio} />
 
       {/* Holdings Overview */}
       <div className="card p-6">
