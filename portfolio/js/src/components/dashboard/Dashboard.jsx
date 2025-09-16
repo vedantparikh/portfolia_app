@@ -335,7 +335,7 @@ const Dashboard = () => {
                         }
                       >
                         {getTotalGainLossPercent() >= 0 ? "+" : ""}
-                        {getTotalGainLossPercent().toFixed(2)}%
+                        {formatPercentage(getTotalGainLossPercent())}%
                       </span>
                       <span className="text-gray-400 ml-2">total return</span>
                     </div>
@@ -703,7 +703,6 @@ const Dashboard = () => {
                                   showSign: true,
                                 }
                               )}
-                              %
                             </span>
                           </div>
                           <p className="text-sm text-gray-400 mb-1">

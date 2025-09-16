@@ -1,6 +1,5 @@
 import {
     BarChart3,
-    Edit,
     MoreVertical,
     Trash2
 } from 'lucide-react';
@@ -15,18 +14,11 @@ import {
     getChangeIcon
 } from '../../utils/formatters.jsx';
 
-const AssetCard = ({ asset, viewMode = 'grid', onClick, onEdit, onDelete, onAddToPortfolio, onViewInPortfolio }) => {
-    const [showMenu, setShowMenu] = useState(false);
-
+const AssetCard = ({ asset, viewMode = 'grid', onClick, onDelete }) => {
+    const [showMenu, setShowMenu] = useState(false); 
     const handleMenuClick = (e) => {
         e.stopPropagation();
         setShowMenu(!showMenu);
-    };
-
-    const handleEdit = (e) => {
-        e.stopPropagation();
-        setShowMenu(false);
-        onEdit && onEdit();
     };
 
     const handleDelete = (e) => {
@@ -38,7 +30,8 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick, onEdit, onDelete, onAddT
     if (viewMode === 'list') {
         return (
             <div
-                className="card p-4 hover:bg-dark-800/50 transition-colors cursor-pointer relative"
+                // Use template literal and add conditional z-index
+                className={`card p-4 hover:bg-dark-800/50 transition-colors cursor-pointer relative ${showMenu ? 'z-10' : 'z-0'}`} // <-- FIX
                 onClick={onClick}
             >
                 <div className="flex items-center justify-between">
@@ -79,7 +72,7 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick, onEdit, onDelete, onAddT
 
                         <div className="text-right">
                             <p className="text-sm text-gray-400">Volume (24h)</p>
-                            <p className="text-sm font-medium text-gray-100">
+                            <p className="text-sm font-medium text-gray-100">   
                                 {formatVolume(asset.detail?.volume_24h)}
                             </p>
                         </div>
@@ -95,13 +88,7 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick, onEdit, onDelete, onAddT
                                 </button>
                                 {showMenu && (
                                     <div className="absolute right-0 top-8 bg-dark-800 border border-dark-700 rounded-lg shadow-lg z-10 min-w-40">
-                                        <button
-                                            onClick={handleEdit}
-                                            className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-dark-700 flex items-center space-x-2"
-                                        >
-                                            <Edit size={14} />
-                                            <span>Edit</span>
-                                        </button>
+                                        
                                         <button
                                             onClick={() => {
                                                 // Navigate to detailed analysis
@@ -131,7 +118,8 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick, onEdit, onDelete, onAddT
 
     return (
         <div
-            className="card p-6 hover:bg-dark-800/50 transition-all duration-200 cursor-pointer group relative"
+            // Use template literal and add conditional z-index
+            className={`card p-6 hover:bg-dark-800/50 transition-all duration-200 cursor-pointer group relative ${showMenu ? 'z-10' : 'z-0'}`} // <-- FIX
             onClick={onClick}
         >
             <div className="flex items-start justify-between mb-4">
@@ -160,13 +148,6 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick, onEdit, onDelete, onAddT
                         </button>
                         {showMenu && (
                             <div className="absolute right-0 top-8 bg-dark-800 border border-dark-700 rounded-lg shadow-lg z-10 min-w-40">
-                                <button
-                                    onClick={handleEdit}
-                                    className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-dark-700 flex items-center space-x-2"
-                                >
-                                    <Edit size={14} />
-                                    <span>Edit</span>
-                                </button>
                                 <button
                                     onClick={() => {
                                         // Navigate to detailed analysis

@@ -21,6 +21,7 @@ import PortfolioAssets from './PortfolioAssets';
 import PortfolioCard from './PortfolioCard';
 import PortfolioChart from './PortfolioChart';
 import PortfolioDetail from './PortfolioDetail';
+import { formatDateTime, formatCurrency, formatQuantity } from '../../utils/formatters';
 
 const Portfolio = () => {
     const [portfolios, setPortfolios] = useState([]);
@@ -625,16 +626,16 @@ const Portfolio = () => {
                                                                         {transaction.type} {transaction.symbol}
                                                                     </p>
                                                                     <p className="text-xs text-gray-400">
-                                                                        {new Date(transaction.created_at).toLocaleDateString()}
+                                                                        {formatDateTime(transaction.created_at)}
                                                                     </p>
                                                                 </div>
                                                                 <div className="text-right">
                                                                     <p className={`text-sm font-medium ${transaction.type === 'buy' ? 'text-success-400' : 'text-danger-400'
                                                                         }`}>
-                                                                        {transaction.type === 'buy' ? '+' : '-'}${transaction.total_amount}
+                                                                        {transaction.type === 'buy' ? '+' : '-'}{formatCurrency(transaction.total_amount)}
                                                                     </p>
                                                                     <p className="text-xs text-gray-400">
-                                                                        {transaction.quantity} @ ${transaction.price}
+                                                                        {formatQuantity(transaction.quantity)} @ {formatCurrency(transaction.price)}
                                                                     </p>
                                                                 </div>
                                                             </div>
