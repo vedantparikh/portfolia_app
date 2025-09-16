@@ -507,13 +507,37 @@ const AssetModal = ({ asset, mode = 'view', onClose, onSave }) => {
                                             <div>
                                                 <span className="text-sm text-gray-400">Market Cap</span>
                                                 <p className="text-lg font-semibold text-gray-100">
-                                                    {asset?.detail?.market_cap ? `$${formatMarketCap(asset.detail?.market_cap / 1e9)}B` : 'N/A'}
+                                                    {asset?.detail?.market_cap ? `$${formatMarketCap(asset.detail?.market_cap)}` : 'N/A'}
                                                 </p>
                                             </div>
                                             <div>
                                                 <span className="text-sm text-gray-400">Volume (24h)</span>
                                                 <p className="text-lg font-semibold text-gray-100">
-                                                    {asset?.detail?.volume_24h ? `${formatVolume(asset.detail?.volume_24h / 1e6)}M` : 'N/A'}
+                                                    {asset?.detail?.volume_24h ? `${formatVolume(asset.detail?.volume_24h)}` : 'N/A'}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <span className="text-sm text-gray-400">Day High</span>
+                                                <p className="text-lg font-semibold text-gray-100">
+                                                    {asset?.detail?.day_high ? `${formatPrice(asset.detail?.day_high)}` : 'N/A'}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <span className="text-sm text-gray-400">Day Low</span>
+                                                <p className="text-lg font-semibold text-gray-100">
+                                                    {asset?.detail?.day_low ? `${formatPrice(asset.detail?.day_low)}` : 'N/A'}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <span className="text-sm text-gray-400">52 Week High</span>
+                                                <p className="text-lg font-semibold text-gray-100">
+                                                    {asset?.detail?.high_52w ? `${formatPrice(asset.detail?.high_52w)}` : 'N/A'}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <span className="text-sm text-gray-400">52 Week Low</span>
+                                                <p className="text-lg font-semibold text-gray-100">
+                                                    {asset?.detail?.low_52w ? `${formatPrice(asset.detail?.low_52w)}` : 'N/A'}
                                                 </p>
                                             </div>
                                         </div>
