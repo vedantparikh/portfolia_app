@@ -6,7 +6,7 @@ Handles scheduled updates of market data for all tracked tickers.
 import asyncio
 import logging
 import traceback
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List
 
 import schedule
@@ -169,7 +169,7 @@ class DataScheduler:
                 latest_date = result.scalar_one_or_none()
 
                 if latest_date:
-                    data_age = datetime.utcnow().date() - latest_date
+                    data_age = datetime.now(timezone.utc).date() - latest_date
                     if data_age.days >= 1:
                         logger.info(
                             f"Latest data is {data_age.days} days old, update needed"
@@ -222,13 +222,13 @@ class DataScheduler:
 
         for ticker in tickers:
             try:
-                start_time = datetime.utcnow()
+                start_time = datetime.now(timezone.utc)
 
                 # Update the ticker (always max period, 1d interval for comprehensive coverage)
                 success = await market_data_service.update_single_ticker(ticker)
 
                 # Calculate execution time
-                execution_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+                execution_time = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
 
                 # Log the operation
                 await self._log_operation(
@@ -257,7 +257,7 @@ class DataScheduler:
         """Get failed updates from the last 6 hours."""
         try:
             async with get_db_session() as session:
-                cutoff_time = datetime.utcnow() - timedelta(
+                cutoff_time = datetime.now(timezone.utc) - timedelta(
                     hours=self.retry_failed_after_hours
                 )
 

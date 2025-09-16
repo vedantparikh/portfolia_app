@@ -4,7 +4,7 @@ Comprehensive API endpoints for portfolio analysis, risk management, and perform
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -167,7 +167,7 @@ async def get_performance_history(
         )
 
     analytics_service = PortfolioAnalyticsService(db)
-    end_date = datetime.utcnow()
+    end_date = datetime.now(timezone.utc)
     start_date = end_date - timedelta(days=days)
 
     try:
@@ -247,7 +247,7 @@ async def get_asset_metrics_history(
     db: Session = Depends(get_db),
 ):
     """Get asset performance metrics history."""
-    end_date = datetime.utcnow()
+    end_date = datetime.now(timezone.utc)
     start_date = end_date - timedelta(days=days)
 
     metrics = (
@@ -735,7 +735,7 @@ async def get_rebalancing_events(
             status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
         )
 
-    end_date = datetime.utcnow()
+    end_date = datetime.now(timezone.utc)
     start_date = end_date - timedelta(days=days)
 
     events = (
@@ -852,7 +852,7 @@ async def get_asset_correlations(
             ) from e
     else:
         # Get historical correlations and refresh recent ones
-        end_date = datetime.utcnow()
+        end_date = datetime.now(timezone.utc)
         start_date = end_date - timedelta(days=30)
 
         query = db.query(AssetCorrelation).filter(
@@ -911,7 +911,7 @@ async def get_portfolio_performance_comparison(
         )
 
     # Get portfolio performance history
-    end_date = datetime.utcnow()
+    end_date = datetime.now(timezone.utc)
     start_date = end_date - timedelta(days=days)
 
     portfolio_history = (
@@ -1005,7 +1005,7 @@ async def update_all_analytics(
         
         updated_data = {
             "user_id": current_user.id,
-            "update_timestamp": datetime.utcnow(),
+            "update_timestamp": datetime.now(timezone.utc),
             "portfolios_updated": 0,
             "assets_updated": 0,
             "errors": [],

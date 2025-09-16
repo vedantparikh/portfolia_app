@@ -5,7 +5,7 @@ Comprehensive service for portfolio analysis, risk management, and performance t
 
 import logging
 import math
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
@@ -54,7 +54,7 @@ class PortfolioAnalyticsService:
         if not last_update:
             return False
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         threshold = timedelta(hours=freshness_hours)
         return (now - last_update) < threshold
 
@@ -66,7 +66,7 @@ class PortfolioAnalyticsService:
         # If force refresh is requested, always create new snapshot
         if force_refresh:
             logger.info(f"Force refreshing performance snapshot for portfolio {portfolio_id}")
-            return await self.create_performance_snapshot(portfolio_id, datetime.utcnow())
+            return await self.create_performance_snapshot(portfolio_id, datetime.now(timezone.utc))
         
         # Check for existing fresh snapshot first
         existing_snapshot = (
@@ -92,14 +92,14 @@ class PortfolioAnalyticsService:
             )
 
         # Data is stale - create new snapshot
-        return await self.create_performance_snapshot(portfolio_id, datetime.utcnow())
+        return await self.create_performance_snapshot(portfolio_id, datetime.now(timezone.utc))
 
     async def create_performance_snapshot(
         self, portfolio_id: int, snapshot_date: Optional[datetime] = None
     ) -> PerformanceSnapshotResponse:
         """Create a performance snapshot for a portfolio."""
         if snapshot_date is None:
-            snapshot_date = datetime.utcnow()
+            snapshot_date = datetime.now(timezone.utc)
 
         # Get portfolio assets
         portfolio_assets = (
@@ -323,7 +323,7 @@ class PortfolioAnalyticsService:
         # If force refresh is requested, always calculate new metrics
         if force_refresh:
             logger.info(f"Force refreshing asset metrics for asset {asset_id}")
-            return await self.calculate_asset_metrics(asset_id, datetime.utcnow())
+            return await self.calculate_asset_metrics(asset_id, datetime.now(timezone.utc))
         
         # Check for existing fresh metrics first
         existing_metrics = (
@@ -374,14 +374,14 @@ class PortfolioAnalyticsService:
             )
 
         # Data is stale - calculate new metrics
-        return await self.calculate_asset_metrics(asset_id, datetime.utcnow())
+        return await self.calculate_asset_metrics(asset_id, datetime.now(timezone.utc))
 
     async def calculate_asset_metrics(
         self, asset_id: int, calculation_date: Optional[datetime] = None
     ) -> AssetMetricsResponse:
         """Calculate comprehensive metrics for an asset using yfinance data."""
         if calculation_date is None:
-            calculation_date = datetime.utcnow()
+            calculation_date = datetime.now(timezone.utc)
 
         # Get asset from database to get symbol
         from app.core.database.models import Asset
@@ -742,7 +742,7 @@ class PortfolioAnalyticsService:
             allocation_drift=allocation_drifts,
             total_drift_percentage=total_drift,
             rebalancing_needed=rebalancing_needed,
-            analysis_date=datetime.utcnow(),
+            analysis_date=datetime.now(timezone.utc),
         )
 
     async def get_or_calculate_portfolio_risk_metrics(
@@ -753,7 +753,7 @@ class PortfolioAnalyticsService:
         if force_refresh:
             logger.info(f"Force refreshing risk metrics for portfolio {portfolio_id}")
             return await self.calculate_portfolio_risk_metrics(
-                portfolio_id, datetime.utcnow()
+                portfolio_id, datetime.now(timezone.utc)
             )
         
         # Check for existing fresh risk metrics first
@@ -786,7 +786,7 @@ class PortfolioAnalyticsService:
 
         # Data is stale - calculate new metrics
         return await self.calculate_portfolio_risk_metrics(
-            portfolio_id, datetime.utcnow()
+            portfolio_id, datetime.now(timezone.utc)
         )
 
     async def calculate_portfolio_risk_metrics(
@@ -794,7 +794,7 @@ class PortfolioAnalyticsService:
     ) -> RiskCalculationResponse:
         """Calculate comprehensive risk metrics for a portfolio."""
         if calculation_date is None:
-            calculation_date = datetime.utcnow()
+            calculation_date = datetime.now(timezone.utc)
 
         # Get portfolio assets
         portfolio_assets = (
@@ -1059,7 +1059,7 @@ class PortfolioAnalyticsService:
             return {
                 "portfolio_id": portfolio_id,
                 "portfolio_name": portfolio.name if portfolio else "Unknown",
-                "calculation_date": datetime.utcnow(),
+                "calculation_date": datetime.now(timezone.utc),
                 "total_value": Decimal(str(total_current_value)),
                 "total_cost_basis": Decimal(str(total_cost_basis)),
                 "total_unrealized_pnl": Decimal(str(total_unrealized_pnl)),
@@ -1127,7 +1127,7 @@ class PortfolioAnalyticsService:
             if not allocation_analysis.rebalancing_needed:
                 return {
                     "portfolio_id": portfolio_id,
-                    "recommendation_date": datetime.utcnow(),
+                    "recommendation_date": datetime.now(timezone.utc),
                     "trigger_reason": "no_rebalancing_needed",
                     "current_drift": allocation_analysis.total_drift_percentage,
                     "rebalancing_actions": [],
@@ -1223,7 +1223,7 @@ class PortfolioAnalyticsService:
 
             return {
                 "portfolio_id": portfolio_id,
-                "recommendation_date": datetime.utcnow(),
+                "recommendation_date": datetime.now(timezone.utc),
                 "trigger_reason": f"allocation_drift_exceeds_threshold_{max_drift:.1f}%",
                 "current_drift": allocation_analysis.total_drift_percentage,
                 "rebalancing_actions": rebalancing_actions,
@@ -1250,7 +1250,7 @@ class PortfolioAnalyticsService:
         if force_refresh:
             logger.info(f"Force refreshing correlation between assets {asset1_id} and {asset2_id}")
             return await self.calculate_asset_correlation(
-                asset1_id, asset2_id, datetime.utcnow()
+                asset1_id, asset2_id, datetime.now(timezone.utc)
             )
         
         # Check for existing fresh correlation first
@@ -1272,7 +1272,7 @@ class PortfolioAnalyticsService:
 
         # Data is stale - calculate new correlation
         return await self.calculate_asset_correlation(
-            asset1_id, asset2_id, datetime.utcnow()
+            asset1_id, asset2_id, datetime.now(timezone.utc)
         )
 
     async def calculate_asset_correlation(
@@ -1283,7 +1283,7 @@ class PortfolioAnalyticsService:
     ) -> AssetCorrelation:
         """Calculate correlation between two assets."""
         if calculation_date is None:
-            calculation_date = datetime.utcnow()
+            calculation_date = datetime.now(timezone.utc)
 
         # Get assets from database
         from app.core.database.models import Asset
@@ -1496,7 +1496,7 @@ class PortfolioAnalyticsService:
                 for asset in user_assets
                 if asset["has_metrics"]
                 and asset["last_metrics_date"]
-                and (datetime.utcnow() - asset["last_metrics_date"]).days <= 7
+                and (datetime.now(timezone.utc) - asset["last_metrics_date"]).days <= 7
             )
 
             # Recent correlations
@@ -1506,14 +1506,14 @@ class PortfolioAnalyticsService:
                 .filter(
                     Asset.user_id == user_id,
                     AssetCorrelation.calculation_date
-                    >= datetime.utcnow() - timedelta(days=30),
+                    >= datetime.now(timezone.utc) - timedelta(days=30),
                 )
                 .count()
             )
 
             return {
                 "user_id": user_id,
-                "summary_date": datetime.utcnow(),
+                "summary_date": datetime.now(timezone.utc),
                 "portfolios": {
                     "total_count": len(user_portfolios),
                     "summaries": portfolio_summaries,
@@ -1548,7 +1548,7 @@ class PortfolioAnalyticsService:
                         .filter(
                             Portfolio.user_id == user_id,
                             PortfolioPerformanceHistory.snapshot_date
-                            >= datetime.utcnow() - timedelta(days=7),
+                            >= datetime.now(timezone.utc) - timedelta(days=7),
                         )
                         .count()
                     ),
@@ -1560,7 +1560,7 @@ class PortfolioAnalyticsService:
                         .filter(
                             Portfolio.user_id == user_id,
                             PortfolioRiskMetrics.calculation_date
-                            >= datetime.utcnow() - timedelta(days=7),
+                            >= datetime.now(timezone.utc) - timedelta(days=7),
                         )
                         .count()
                     ),
@@ -1586,7 +1586,7 @@ class PortfolioAnalyticsService:
 
             updated_data = {
                 "portfolio_id": portfolio_id,
-                "refresh_timestamp": datetime.utcnow(),
+                "refresh_timestamp": datetime.now(timezone.utc),
                 "assets_refreshed": 0,
                 "errors": [],
                 "performance_snapshot": None,
@@ -1599,7 +1599,7 @@ class PortfolioAnalyticsService:
                 if portfolio_asset.asset and portfolio_asset.asset.symbol:
                     try:
                         asset_metrics = await self.calculate_asset_metrics(
-                            portfolio_asset.asset.id, datetime.utcnow()
+                            portfolio_asset.asset.id, datetime.now(timezone.utc)
                         )
                         updated_data["asset_metrics"].append({
                             "asset_id": portfolio_asset.asset.id,
@@ -1616,7 +1616,7 @@ class PortfolioAnalyticsService:
             # Refresh portfolio performance snapshot
             try:
                 performance_snapshot = await self.create_performance_snapshot(
-                    portfolio_id, datetime.utcnow()
+                    portfolio_id, datetime.now(timezone.utc)
                 )
                 updated_data["performance_snapshot"] = {
                     "total_value": float(performance_snapshot.total_value) if performance_snapshot.total_value else 0,
@@ -1630,7 +1630,7 @@ class PortfolioAnalyticsService:
             # Refresh portfolio risk metrics
             try:
                 risk_metrics = await self.calculate_portfolio_risk_metrics(
-                    portfolio_id, datetime.utcnow()
+                    portfolio_id, datetime.now(timezone.utc)
                 )
                 updated_data["risk_metrics"] = {
                     "risk_level": risk_metrics.risk_level,
@@ -1673,7 +1673,7 @@ class PortfolioAnalyticsService:
             current_prices = await market_data_service.get_multiple_current_prices(symbols)
 
             updated_data = {
-                "update_timestamp": datetime.utcnow(),
+                "update_timestamp": datetime.now(timezone.utc),
                 "assets_updated": 0,
                 "price_updates": [],
                 "errors": []
@@ -1686,7 +1686,7 @@ class PortfolioAnalyticsService:
                     if current_price:
                         try:
                             # Update asset performance metrics with new price
-                            await self.calculate_asset_metrics(asset.id, datetime.utcnow())
+                            await self.calculate_asset_metrics(asset.id, datetime.now(timezone.utc))
                             
                             updated_data["price_updates"].append({
                                 "asset_id": asset.id,

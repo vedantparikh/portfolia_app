@@ -128,7 +128,7 @@ class WatchlistService:
             for field, value in update_data.dict(exclude_unset=True).items():
                 setattr(watchlist, field, value)
 
-            watchlist.updated_at = datetime.utcnow()
+            watchlist.updated_at = datetime.now(timezone.utc)
             self.db.commit()
             self.db.refresh(watchlist)
 
@@ -272,7 +272,7 @@ class WatchlistService:
             for field, value in update_data.dict(exclude_unset=True).items():
                 setattr(item, field, value)
 
-            item.updated_at = datetime.utcnow()
+            item.updated_at = datetime.now(timezone.utc)
             self.db.commit()
             self.db.refresh(item)
 
@@ -420,7 +420,7 @@ class WatchlistService:
         """Create a performance record for a watchlist item."""
         try:
             performance = WatchlistPerformance(
-                watchlist_item_id=item_id, date=datetime.utcnow(), price=price
+                watchlist_item_id=item_id, date=datetime.now(timezone.utc), price=price
             )
             self.db.add(performance)
         except Exception as e:
@@ -466,7 +466,7 @@ class WatchlistService:
                 if should_trigger:
                     # Trigger the alert
                     alert.is_triggered = True
-                    alert.triggered_at = datetime.utcnow()
+                    alert.triggered_at = datetime.now(timezone.utc)
                     alert.triggered_value = new_price
 
                     # Log the alert (in production, this would send notifications)

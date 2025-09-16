@@ -4,7 +4,7 @@ API endpoints for market data operations using yfinance exclusively.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -183,7 +183,7 @@ async def get_current_price(
             symbol=symbol,
             price=price,
             source="yfinance",
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
 
     except HTTPException:

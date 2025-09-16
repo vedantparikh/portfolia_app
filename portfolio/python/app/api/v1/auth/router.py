@@ -2,7 +2,7 @@
 Authentication router with user registration, login, and management endpoints.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.exc import IntegrityError
@@ -276,7 +276,7 @@ async def login_user(
         user_id=user.id,
         session_id=session_id,
         refresh_token=refresh_token,
-        expires_at=datetime.utcnow() + timedelta(days=7),
+        expires_at=datetime.now(timezone.utc) + timedelta(days=7),
         ip_address=get_client_ip(request),
         user_agent=get_user_agent(request),
     )
@@ -337,13 +337,13 @@ async def logout_user(
                 db.query(UserSession)
                 .filter(
                     UserSession.user_id == current_user.id,
-                    UserSession.expires_at > datetime.utcnow(),
+                    UserSession.expires_at > datetime.now(timezone.utc),
                 )
                 .first()
             )
 
             if session:
-                session.expires_at = datetime.utcnow()
+                session.expires_at = datetime.now(timezone.utc)
                 db.commit()
         except:
             pass
@@ -389,7 +389,7 @@ async def update_current_user(
     if profile:
         for field, value in user_update.dict(exclude_unset=True).items():
             setattr(profile, field, value)
-        profile.updated_at = datetime.utcnow()
+        profile.updated_at = datetime.now(timezone.utc)
 
     db.commit()
     db.refresh(current_user)
@@ -420,7 +420,7 @@ async def change_password(
 
     # Update password
     current_user.password_hash = get_password_hash(password_data.new_password)
-    current_user.updated_at = datetime.utcnow()
+    current_user.updated_at = datetime.now(timezone.utc)
 
     db.commit()
 
@@ -590,7 +590,7 @@ async def reset_password(
 
         # Update password
         user.password_hash = get_password_hash(password_reset.new_password)
-        user.updated_at = datetime.utcnow()
+        user.updated_at = datetime.now(timezone.utc)
 
         # Mark token as used
         mark_reset_token_used(password_reset.token)
@@ -776,11 +776,11 @@ async def delete_account(
 
     # Mark user as inactive
     current_user.is_active = False
-    current_user.updated_at = datetime.utcnow()
+    current_user.updated_at = datetime.now(timezone.utc)
 
     # Expire all sessions
     db.query(UserSession).filter(UserSession.user_id == current_user.id).update(
-        {UserSession.expires_at: datetime.utcnow()}
+        {UserSession.expires_at: datetime.now(timezone.utc)}
     )
 
     db.commit()

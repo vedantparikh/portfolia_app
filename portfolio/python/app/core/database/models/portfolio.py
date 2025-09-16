@@ -48,7 +48,9 @@ class Portfolio(Base):
         "Transaction", back_populates="portfolio", cascade="all, delete-orphan"
     )
     performance_history = relationship(
-        "PortfolioPerformanceHistory", back_populates="portfolio", cascade="all, delete-orphan"
+        "PortfolioPerformanceHistory",
+        back_populates="portfolio",
+        cascade="all, delete-orphan",
     )
     allocations = relationship(
         "PortfolioAllocation", back_populates="portfolio", cascade="all, delete-orphan"
@@ -92,6 +94,10 @@ class PortfolioAsset(Base):
     unrealized_pnl_percent = Column(
         Numeric(10, 4), nullable=True
     )  # Unrealized P&L percentage
+    realized_pnl = Column(Numeric(20, 4), nullable=True)  # Realized profit/loss
+    realized_pnl_percent = Column(
+        Numeric(10, 4), nullable=True
+    )  # Realized P&L percentage
     last_updated = Column(
         DateTime(timezone=True),
         server_default=func.now(),

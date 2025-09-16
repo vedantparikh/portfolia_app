@@ -381,13 +381,13 @@ async def health_check() -> Dict[str, Any]:
             "status": "healthy",
             "yfinance_accessible": test_price is not None,
             "cache_status": "operational",
-            "last_check": datetime.utcnow().isoformat()
+            "last_check": datetime.now(timezone.utc).isoformat()
         }
     except Exception as e:
         return {
             "status": "unhealthy",
             "error": str(e),
-            "last_check": datetime.utcnow().isoformat()
+            "last_check": datetime.now(timezone.utc).isoformat()
         }
 ```
 

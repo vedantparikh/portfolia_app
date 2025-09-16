@@ -2,7 +2,7 @@
 Asset Search Service
 Advanced asset search and discovery service with filtering and ranking.
 """
-
+from datetime import timezone
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import and_, desc, func, or_
@@ -350,7 +350,7 @@ class AssetSearchService:
         # Get price range for last 30 days
         from datetime import datetime, timedelta
 
-        end_date = datetime.utcnow()
+        end_date = datetime.now(timezone.utc)
         start_date = end_date - timedelta(days=30)
 
         price_range = (
