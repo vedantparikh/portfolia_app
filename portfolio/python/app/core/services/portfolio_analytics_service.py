@@ -32,6 +32,7 @@ from app.core.schemas.portfolio_analytics import (
     RiskCalculationResponse,
 )
 from app.core.services.market_data_service import market_data_service
+from app.core.database.models import Asset
 
 logger = logging.getLogger(__name__)
 

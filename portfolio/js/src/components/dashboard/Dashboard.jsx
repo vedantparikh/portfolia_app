@@ -21,7 +21,7 @@ import EmailVerificationPrompt from '../auth/EmailVerificationPrompt';
 import { Sidebar } from '../shared';
 import MarketInsights from './MarketInsights';
 import PortfolioPerformance from './PortfolioPerformance';
-
+import { formatQuantity, formatCurrency, formatDateTime } from '../../utils/formatters';
 const Dashboard = () => {
     const { user } = useAuth();
     const { profile } = useAuth();
@@ -71,10 +71,10 @@ const Dashboard = () => {
                 analyticsAPI.getUserAnalyticsDashboard()
             ]);
 
-            const portfolios = portfoliosResponse.status === 'fulfilled' ? portfoliosResponse.value.portfolios || [] : [];
-            const recentTransactions = transactionsResponse.status === 'fulfilled' ? transactionsResponse.value.transactions || [] : [];
-            const topAssets = assetsResponse.status === 'fulfilled' ? assetsResponse.value.assets || [] : [];
-            const watchlists = watchlistsResponse.status === 'fulfilled' ? watchlistsResponse.value.watchlists || [] : [];
+            const portfolios = portfoliosResponse.status === 'fulfilled' ? portfoliosResponse.value || [] : [];
+            const recentTransactions = transactionsResponse.status === 'fulfilled' ? transactionsResponse.value || [] : [];
+            const topAssets = assetsResponse.status === 'fulfilled' ? assetsResponse.value || [] : [];
+            const watchlists = watchlistsResponse.status === 'fulfilled' ? watchlistsResponse.value || [] : [];
             const analyticsData = analyticsResponse.status === 'fulfilled' ? analyticsResponse.value : null;
 
             // Calculate portfolio summaries
@@ -460,9 +460,9 @@ const Dashboard = () => {
                                                 {dashboardData.recentTransactions.map((transaction) => (
                                                     <div key={transaction.id} className="flex items-center justify-between p-3 bg-dark-800 rounded-lg">
                                                         <div className="flex items-center space-x-3">
-                                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${transaction.type === 'buy' ? 'bg-success-400/20' : 'bg-danger-400/20'
+                                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${transaction.transaction_type === 'buy' ? 'bg-success-400/20' : 'bg-danger-400/20'
                                                                 }`}>
-                                                                {transaction.type === 'buy' ? (
+                                                                {transaction.transaction_type === 'buy' ? (
                                                                     <TrendingUp size={16} className="text-success-400" />
                                                                 ) : (
                                                                     <TrendingDown size={16} className="text-danger-400" />
@@ -470,20 +470,23 @@ const Dashboard = () => {
                                                             </div>
                                                             <div>
                                                                 <p className="text-sm font-medium text-gray-100">
-                                                                    {transaction.type.toUpperCase()} {transaction.symbol}
+                                                                    {transaction.transaction_type.toUpperCase()} - {transaction.asset.symbol}
                                                                 </p>
                                                                 <p className="text-xs text-gray-400">
-                                                                    {new Date(transaction.created_at).toLocaleDateString()}
+                                                                    {formatDateTime(transaction.created_at)}
                                                                 </p>
                                                             </div>
                                                         </div>
+                                                        <div className="flex items-center space-x-3">
+                                                            <p className="text-sm text-gray-400">{transaction.portfolio.name}</p>
+                                                        </div>
                                                         <div className="text-right">
-                                                            <p className={`text-sm font-medium ${transaction.type === 'buy' ? 'text-success-400' : 'text-danger-400'
+                                                            <p className={`text-sm font-medium ${transaction.transaction_type === 'buy' ? 'text-success-400' : 'text-danger-400'
                                                                 }`}>
-                                                                {transaction.type === 'buy' ? '-' : '+'}${transaction.total_amount}
+                                                                {transaction.transaction_type === 'buy' ? '-' : '+'}{formatCurrency(transaction.total_amount)}
                                                             </p>
                                                             <p className="text-xs text-gray-400">
-                                                                {transaction.quantity} @ ${transaction.price}
+                                                                {formatQuantity(transaction.quantity)} @ {formatCurrency(transaction.price)}
                                                             </p>
                                                         </div>
                                                     </div>

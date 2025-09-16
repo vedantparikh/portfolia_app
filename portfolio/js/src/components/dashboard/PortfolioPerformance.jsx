@@ -3,7 +3,9 @@ import {
     Calendar,
     DollarSign,
     RefreshCw,
-    Target
+    Target,
+    TrendingUp,
+    TrendingDown
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import {
