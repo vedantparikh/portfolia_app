@@ -22,7 +22,7 @@ const AnalyticsDashboard = () => {
         loadAnalyticsData();
     }, []);
 
-    const loadAnalyticsData = async (forceRefresh = false) => {
+    const loadAnalyticsData = async (forceRefresh = true) => {
         try {
             if (forceRefresh) {
                 setRefreshing(true);

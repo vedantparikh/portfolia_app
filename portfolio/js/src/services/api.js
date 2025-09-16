@@ -915,7 +915,7 @@ export const analyticsAPI = {
       Parameters: portfolioId (string or number), forceRefresh (boolean)
       Returns: Server response with performance snapshot data
     */
-  getPerformanceSnapshot: async (portfolioId, forceRefresh = false) => {
+  getPerformanceSnapshot: async (portfolioId, forceRefresh = true) => {
     const response = await api.get(
       `/analytics/portfolios/${portfolioId}/performance/snapshot`,
       {
@@ -957,7 +957,7 @@ export const analyticsAPI = {
       Parameters: assetId (string or number), forceRefresh (boolean)
       Returns: Server response with asset metrics data
     */
-  getAssetMetrics: async (assetId, forceRefresh = false) => {
+  getAssetMetrics: async (assetId, forceRefresh = true) => {
     const response = await api.get(`/analytics/assets/${assetId}/metrics`, {
       params: { force_refresh: forceRefresh },
     });
@@ -1046,7 +1046,7 @@ export const analyticsAPI = {
       Parameters: portfolioId (string or number), forceRefresh (boolean)
       Returns: Server response with risk metrics data
     */
-  getPortfolioRiskMetrics: async (portfolioId, forceRefresh = false) => {
+  getPortfolioRiskMetrics: async (portfolioId, forceRefresh = true) => {
     const response = await api.get(`/analytics/portfolios/${portfolioId}/risk`, {
       params: { force_refresh: forceRefresh },
     });
@@ -1123,7 +1123,7 @@ export const analyticsAPI = {
       Parameters: asset1Id (string or number), asset2Id (string or number), forceRefresh (boolean)
       Returns: Server response with correlation data
     */
-  getAssetCorrelations: async (asset1Id = null, asset2Id = null, forceRefresh = false) => {
+  getAssetCorrelations: async (asset1Id = null, asset2Id = null, forceRefresh = true) => {
     const response = await api.get("/analytics/assets/correlations", {
       params: { 
         asset1_id: asset1Id, 
