@@ -163,7 +163,7 @@ class PortfolioService:
     async def _update_asset_pnl(
         self, portfolio_asset: PortfolioAsset
     ) -> PortfolioAsset:
-        """Update unrealized P&L for a portfolio asset using real-time data from yfinance."""
+        """Update unrealized P&L for a portfolio asset using real-time data."""
         try:
             # Get asset information
             asset = (
@@ -200,11 +200,117 @@ class PortfolioService:
                 portfolio_asset.unrealized_pnl = None
                 portfolio_asset.unrealized_pnl_percent = None
 
+            # Calculate realized P&L
+            realized_pnl, realized_pnl_percent = self._calculate_realized_pnl(
+                portfolio_asset.portfolio_id, portfolio_asset.asset_id
+            )
+            portfolio_asset.realized_pnl = realized_pnl
+            portfolio_asset.realized_pnl_percent = realized_pnl_percent
+
         except Exception as e:
             # Log error but don't fail the operation
             print(f"Error updating P&L for asset {portfolio_asset.asset_id}: {e}")
 
         return portfolio_asset
+
+    def _calculate_realized_pnl(
+        self, portfolio_id: int, asset_id: int
+    ) -> tuple[Decimal, Decimal]:
+        """Calculate realized P&L for a specific asset based on sell transactions."""
+        # Get all sell transactions for this asset in this portfolio
+        sell_transactions = (
+            self.db.query(Transaction)
+            .filter(
+                and_(
+                    Transaction.portfolio_id == portfolio_id,
+                    Transaction.asset_id == asset_id,
+                    Transaction.transaction_type == TransactionType.SELL,
+                )
+            )
+            .order_by(Transaction.transaction_date)
+            .all()
+        )
+
+        if not sell_transactions:
+            return Decimal("0"), Decimal("0")
+
+        # Get all buy transactions for this asset in this portfolio
+        buy_transactions = (
+            self.db.query(Transaction)
+            .filter(
+                and_(
+                    Transaction.portfolio_id == portfolio_id,
+                    Transaction.asset_id == asset_id,
+                    Transaction.transaction_type == TransactionType.BUY,
+                )
+            )
+            .order_by(Transaction.transaction_date)
+            .all()
+        )
+
+        if not buy_transactions:
+            return Decimal("0"), Decimal("0")
+
+        # Calculate realized P&L using FIFO (First In, First Out) method
+        total_realized_pnl = Decimal("0")
+        total_cost_basis_sold = Decimal("0")
+
+        # Create a copy of buy transactions to track remaining quantities
+        remaining_buys = []
+        for buy in buy_transactions:
+            remaining_buys.append(
+                {
+                    "quantity": buy.quantity,
+                    "price": buy.price,
+                    "total_amount": buy.total_amount,
+                    "date": buy.transaction_date,
+                }
+            )
+
+        # Process each sell transaction
+        for sell in sell_transactions:
+            sell_quantity = sell.quantity
+            sell_price = sell.price
+
+            # Use FIFO to match sells with buys
+            while sell_quantity > 0 and remaining_buys:
+                buy = remaining_buys[0]
+                available_quantity = buy["quantity"]
+
+                if available_quantity <= 0:
+                    remaining_buys.pop(0)
+                    continue
+
+                # Calculate how much of this sell to match with this buy
+                quantity_to_match = min(sell_quantity, available_quantity)
+
+                # Calculate cost basis for this portion
+                cost_basis_portion = (quantity_to_match / buy["quantity"]) * buy[
+                    "total_amount"
+                ]
+                total_cost_basis_sold += cost_basis_portion
+
+                # Calculate realized P&L for this portion
+                sell_proceeds = quantity_to_match * sell_price
+                realized_pnl_portion = sell_proceeds - cost_basis_portion
+                total_realized_pnl += realized_pnl_portion
+
+                # Update remaining quantities
+                sell_quantity -= quantity_to_match
+                buy["quantity"] -= quantity_to_match
+                buy["total_amount"] -= cost_basis_portion
+
+                # Remove buy if fully consumed
+                if buy["quantity"] <= 0:
+                    remaining_buys.pop(0)
+
+        # Calculate realized P&L percentage
+        if total_cost_basis_sold > 0:
+            realized_pnl_percent = (total_realized_pnl / total_cost_basis_sold) * 100
+        else:
+            realized_pnl_percent = Decimal("0")
+
+        return total_realized_pnl, realized_pnl_percent
 
     async def update_portfolio_asset(
         self,
@@ -247,6 +353,10 @@ class PortfolioService:
             portfolio_asset.unrealized_pnl = asset_data.unrealized_pnl
         if asset_data.unrealized_pnl_percent is not None:
             portfolio_asset.unrealized_pnl_percent = asset_data.unrealized_pnl_percent
+        if asset_data.realized_pnl is not None:
+            portfolio_asset.realized_pnl = asset_data.realized_pnl
+        if asset_data.realized_pnl_percent is not None:
+            portfolio_asset.realized_pnl_percent = asset_data.realized_pnl_percent
 
         # Update P&L if not manually set
         if asset_data.current_value is None and asset_data.unrealized_pnl is None:
@@ -330,6 +440,8 @@ class PortfolioService:
                 current_value=portfolio_asset.current_value,
                 unrealized_pnl=portfolio_asset.unrealized_pnl,
                 unrealized_pnl_percent=portfolio_asset.unrealized_pnl_percent,
+                realized_pnl=portfolio_asset.realized_pnl,
+                realized_pnl_percent=portfolio_asset.realized_pnl_percent,
                 last_updated=portfolio_asset.last_updated,
                 symbol=asset.symbol,
                 asset_name=asset.name,
@@ -583,10 +695,8 @@ class PortfolioService:
             # Get asset details
             asset_info = self.db.query(Asset).filter(Asset.id == asset.asset_id).first()
             if asset_info:
-                # Update P&L if needed
-                if asset.current_value is None:
-                    await self._update_asset_pnl(asset)
-                    self.db.commit()
+                asset = await self._update_asset_pnl(asset)
+                self.db.commit()
 
                 holding = PortfolioHolding(
                     asset_id=asset.asset_id,
@@ -604,6 +714,14 @@ class PortfolioService:
                     unrealized_pnl_percent=(
                         float(asset.unrealized_pnl_percent)
                         if asset.unrealized_pnl_percent
+                        else None
+                    ),
+                    realized_pnl=(
+                        float(asset.realized_pnl) if asset.realized_pnl else None
+                    ),
+                    realized_pnl_percent=(
+                        float(asset.realized_pnl_percent)
+                        if asset.realized_pnl_percent
                         else None
                     ),
                     last_updated=asset.last_updated,

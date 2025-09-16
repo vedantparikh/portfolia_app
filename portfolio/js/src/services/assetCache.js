@@ -65,7 +65,7 @@ class AssetCacheService {
      * @param {boolean} forceRefresh - Force refresh even if cache is valid
      * @returns {Promise<Array>} Array of assets
      */
-    async getAssets(forceRefresh = false) {
+    async getAssets(forceRefresh = true) {
         // Return cached data if valid and not forcing refresh
         if (!forceRefresh && this.isCacheValid()) {
             console.log('[AssetCache] Returning cached assets:', this.assets.length);

@@ -47,6 +47,8 @@ class PortfolioAssetBase(BaseModel):
     current_value: Optional[Decimal] = Field(None)
     unrealized_pnl: Optional[Decimal] = Field(None)
     unrealized_pnl_percent: Optional[Decimal] = Field(None)
+    realized_pnl: Optional[Decimal] = Field(None)
+    realized_pnl_percent: Optional[Decimal] = Field(None)
 
 
 class PortfolioAssetCreate(BaseModel):
@@ -62,6 +64,8 @@ class PortfolioAssetUpdate(BaseModel):
     current_value: Optional[Decimal] = Field(None)
     unrealized_pnl: Optional[Decimal] = Field(None)
     unrealized_pnl_percent: Optional[Decimal] = Field(None)
+    realized_pnl: Optional[Decimal] = Field(None)
+    realized_pnl_percent: Optional[Decimal] = Field(None)
 
 
 class PortfolioAsset(PortfolioAssetBase):
@@ -233,6 +237,8 @@ class PortfolioHolding(BaseModel):
     current_value: Optional[float]
     unrealized_pnl: Optional[float]
     unrealized_pnl_percent: Optional[float]
+    realized_pnl: Optional[float]
+    realized_pnl_percent: Optional[float]
     last_updated: datetime
 
 

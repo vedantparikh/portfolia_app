@@ -4,7 +4,7 @@ Comprehensive market data service with real-time updates and caching.
 """
 
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List
 
 from sqlalchemy.orm import Session
@@ -62,7 +62,7 @@ class EnhancedMarketDataService:
         cache_key = f"price_{asset.symbol}"
         if cache_key in self.cache:
             cached_data = self.cache[cache_key]
-            if datetime.utcnow() - cached_data["timestamp"] < timedelta(
+            if datetime.now(timezone.utc) - cached_data["timestamp"] < timedelta(
                 seconds=self.cache_ttl
             ):
                 return cached_data["data"]
@@ -95,10 +95,10 @@ class EnhancedMarketDataService:
                 "change": change,
                 "change_percent": change_percent,
                 "volume": ticker_info.get("volume", 0) if ticker_info else 0,
-                "updated_at": datetime.utcnow().isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
             }
 
-            self.cache[cache_key] = {"data": result, "timestamp": datetime.utcnow()}
+            self.cache[cache_key] = {"data": result, "timestamp": datetime.now(timezone.utc)}
 
             return result
 
@@ -131,7 +131,7 @@ class EnhancedMarketDataService:
         summary = {
             "indices": [],
             "market_status": "open",  # This would be determined by market hours
-            "last_updated": datetime.utcnow().isoformat(),
+            "last_updated": datetime.now(timezone.utc).isoformat(),
         }
 
         for index in indices:
@@ -283,7 +283,7 @@ class EnhancedMarketDataService:
 
     def get_cache_stats(self) -> Dict[str, Any]:
         """Get cache statistics."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         valid_entries = 0
         expired_entries = 0
 

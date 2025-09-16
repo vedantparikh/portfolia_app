@@ -1,6 +1,6 @@
 import pandas as pd
-import yfinance as yf
 from statistical_indicators.momentum_indicators import MomentumIndicators
+import yfinance as yf
 
 
 class GfsStrategy:

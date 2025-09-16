@@ -2,7 +2,7 @@
 Transactions management router with authentication.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -53,7 +53,7 @@ async def create_transaction(
         transaction_type=transaction_data.transaction_type,
         quantity=transaction_data.quantity,
         price=transaction_data.price,
-        transaction_date=transaction_data.transaction_date or datetime.utcnow(),
+        transaction_date=transaction_data.transaction_date or datetime.now(timezone.utc),
         fees=transaction_data.fees or 0,
         total_amount=transaction_data.total_amount,
     )

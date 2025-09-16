@@ -1,5 +1,5 @@
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import (
     Boolean,
@@ -145,9 +145,9 @@ class UserSession(Base):
 
     def is_expired(self) -> bool:
         """Check if session is expired."""
-        return datetime.utcnow() > self.expires_at
+        return datetime.now(timezone.utc) > self.expires_at
 
     def extend_session(self, hours: int = 24) -> None:
         """Extend session expiration time."""
-        self.expires_at = datetime.utcnow() + timedelta(hours=hours)
-        self.last_used = datetime.utcnow()
+        self.expires_at = datetime.now(timezone.utc) + timedelta(hours=hours)
+        self.last_used = datetime.now(timezone.utc)

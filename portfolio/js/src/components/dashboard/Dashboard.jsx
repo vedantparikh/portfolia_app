@@ -15,7 +15,8 @@ import {
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
-import { marketAPI, portfolioAPI, transactionAPI, watchlistAPI } from '../../services/api';
+import { analyticsAPI, marketAPI, portfolioAPI, transactionAPI, watchlistAPI } from '../../services/api';
+import { AnalyticsDashboard } from '../analytics';
 import EmailVerificationPrompt from '../auth/EmailVerificationPrompt';
 import { Sidebar } from '../shared';
 import MarketInsights from './MarketInsights';
@@ -45,7 +46,7 @@ const Dashboard = () => {
         const checkMobile = () => {
             setIsMobile(window.innerWidth < 768);
         };
-        
+
         checkMobile();
         window.addEventListener('resize', checkMobile);
         return () => window.removeEventListener('resize', checkMobile);
@@ -60,18 +61,21 @@ const Dashboard = () => {
                 portfoliosResponse,
                 transactionsResponse,
                 assetsResponse,
-                watchlistsResponse
+                watchlistsResponse,
+                analyticsResponse
             ] = await Promise.allSettled([
                 portfolioAPI.getPortfolios(),
                 transactionAPI.getTransactions({ limit: 5, order_by: 'created_at', order: 'desc' }),
                 marketAPI.getAssets({ limit: 10, sort: 'market_cap' }),
-                watchlistAPI.getWatchlists(true)
+                watchlistAPI.getWatchlists(true),
+                analyticsAPI.getUserAnalyticsDashboard()
             ]);
 
             const portfolios = portfoliosResponse.status === 'fulfilled' ? portfoliosResponse.value.portfolios || [] : [];
             const recentTransactions = transactionsResponse.status === 'fulfilled' ? transactionsResponse.value.transactions || [] : [];
             const topAssets = assetsResponse.status === 'fulfilled' ? assetsResponse.value.assets || [] : [];
             const watchlists = watchlistsResponse.status === 'fulfilled' ? watchlistsResponse.value.watchlists || [] : [];
+            const analyticsData = analyticsResponse.status === 'fulfilled' ? analyticsResponse.value : null;
 
             // Calculate portfolio summaries
             const portfolioSummaries = await Promise.allSettled(
@@ -88,6 +92,7 @@ const Dashboard = () => {
                 recentTransactions,
                 topAssets,
                 watchlists,
+                analyticsData,
                 marketStats: calculateMarketStats(topAssets),
                 loading: false
             });
@@ -545,6 +550,11 @@ const Dashboard = () => {
                                             <p className="text-sm text-gray-400">Track your favorite assets</p>
                                         </a>
                                     </div>
+                                </div>
+
+                                {/* Analytics Dashboard */}
+                                <div className="mb-8">
+                                    <AnalyticsDashboard />
                                 </div>
 
                                 {/* Advanced Dashboard Sections */}

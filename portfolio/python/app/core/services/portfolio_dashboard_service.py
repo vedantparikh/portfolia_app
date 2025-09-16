@@ -3,7 +3,7 @@ Portfolio Dashboard Service
 Comprehensive service for portfolio dashboard data aggregation and presentation.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List
 
 from sqlalchemy import and_, desc
@@ -77,7 +77,7 @@ class PortfolioDashboardService:
                 "total_pnl": round(total_pnl, 2),
                 "total_pnl_percent": round(total_pnl_percent, 2),
                 "asset_count": len(holdings),
-                "last_updated": datetime.utcnow(),
+                "last_updated": datetime.now(timezone.utc),
             },
             "performance": performance_metrics,
             "risk": risk_metrics,
@@ -269,7 +269,7 @@ class PortfolioDashboardService:
         self, portfolio_id: int, days: int = 30
     ) -> Dict[str, Any]:
         """Get portfolio performance chart data."""
-        end_date = datetime.utcnow()
+        end_date = datetime.now(timezone.utc)
         start_date = end_date - timedelta(days=days)
 
         # Get performance history
@@ -306,7 +306,7 @@ class PortfolioDashboardService:
         """Get asset performance chart data."""
         from app.core.database.models.asset import AssetPrice
 
-        end_date = datetime.utcnow()
+        end_date = datetime.now(timezone.utc)
         start_date = end_date - timedelta(days=days)
 
         # Get price data

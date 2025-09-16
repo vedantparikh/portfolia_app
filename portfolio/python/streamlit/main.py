@@ -5,8 +5,6 @@ from typing import (
 )
 
 import plotly.graph_objects as go
-import yahooquery as yq
-import yfinance as yf
 from plotly.subplots import make_subplots
 from plots import MomentumIndicatorChart, TrendIndicatorChart, VolatilityIndicatorChart
 from statistical_indicators import (
@@ -15,6 +13,8 @@ from statistical_indicators import (
     VolatilityIndicators,
 )
 from trading_strategy.trend_strategy.gfs_strategy.gfs import GfsStrategy
+import yahooquery as yq
+import yfinance as yf
 
 import streamlit as st
 

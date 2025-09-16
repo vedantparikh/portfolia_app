@@ -4,10 +4,10 @@ Test script to validate portfolio calculation logic with Portfolio 5 data.
 This script tests the actual calculation methods with realistic data.
 """
 
-import os
-import sys
 from datetime import datetime, timezone
 from decimal import Decimal
+import os
+import sys
 from unittest.mock import Mock
 
 # Add the app directory to Python path

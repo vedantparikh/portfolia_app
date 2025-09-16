@@ -9,9 +9,9 @@ This test suite validates the specific logical fixes made to the portfolio calcu
 """
 
 import asyncio
+from datetime import datetime, timezone
 import os
 import sys
-from datetime import datetime, timezone
 from typing import Any, Dict, List
 from unittest.mock import Mock
 
@@ -625,7 +625,7 @@ def run_tests():
         except Exception as e:
             failed += 1
             print(f"❌ FAILED: {test_name}")
-            print(f"   Error: {str(e)}")
+            print(f"   Error: {e!s}")
 
     print("\n" + "=" * 60)
     print(f"📊 Test Results: {passed} passed, {failed} failed")
@@ -633,9 +633,8 @@ def run_tests():
     if failed == 0:
         print("🎉 All tests passed! The logical fixes are working correctly.")
         return True
-    else:
-        print("⚠️  Some tests failed. Please review the fixes.")
-        return False
+    print("⚠️  Some tests failed. Please review the fixes.")
+    return False
 
 
 if __name__ == "__main__":

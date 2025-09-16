@@ -740,3 +740,127 @@ class PerformanceComparisonResponse(BaseModel):
     benchmark_performance: Optional[List[dict]] = Field(
         None, description="Benchmark performance data"
     )
+
+
+# Additional response schemas for endpoints
+class AssetMetricsHistoryResponse(BaseModel):
+    """Asset metrics history response."""
+    
+    asset_id: int = Field(..., description="Asset ID")
+    total_records: int = Field(..., description="Total number of records")
+    metrics: List[AssetMetricsResponse] = Field(..., description="Historical metrics")
+
+
+class PortfolioAllocationResponse(BaseModel):
+    """Portfolio allocation response."""
+    
+    id: int = Field(..., description="Allocation ID")
+    portfolio_id: int = Field(..., description="Portfolio ID") 
+    asset_id: int = Field(..., description="Asset ID")
+    target_percentage: Decimal = Field(..., description="Target allocation percentage")
+    min_percentage: Optional[Decimal] = Field(None, description="Minimum allocation percentage")
+    max_percentage: Optional[Decimal] = Field(None, description="Maximum allocation percentage")
+    rebalance_threshold: Optional[Decimal] = Field(None, description="Rebalance threshold")
+    last_rebalance_date: Optional[datetime] = Field(None, description="Last rebalance date")
+    rebalance_frequency: Optional[str] = Field(None, description="Rebalance frequency")
+    is_active: bool = Field(..., description="Whether allocation is active")
+    created_at: datetime = Field(..., description="Creation timestamp")
+    updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
+
+    class Config:
+        from_attributes = True
+
+
+class PortfolioPerformanceHistoryResponse(BaseModel):
+    """Portfolio performance history response."""
+    
+    portfolio_id: int = Field(..., description="Portfolio ID")
+    total_records: int = Field(..., description="Total number of records")
+    history: List[PortfolioPerformanceHistory] = Field(..., description="Performance history")
+
+
+class RebalancingEventResponse(BaseModel):
+    """Rebalancing event response."""
+    
+    id: int = Field(..., description="Event ID")
+    portfolio_id: int = Field(..., description="Portfolio ID")
+    event_date: datetime = Field(..., description="Event date")
+    event_type: str = Field(..., description="Event type")
+    trigger_reason: Optional[str] = Field(None, description="Trigger reason")
+    pre_rebalance_value: Decimal = Field(..., description="Pre-rebalance value")
+    post_rebalance_value: Optional[Decimal] = Field(None, description="Post-rebalance value")
+    rebalancing_cost: Optional[Decimal] = Field(None, description="Rebalancing cost")
+    tax_impact: Optional[Decimal] = Field(None, description="Tax impact")
+    status: str = Field(..., description="Event status")
+    created_at: datetime = Field(..., description="Creation timestamp")
+
+    class Config:
+        from_attributes = True
+
+
+class PortfolioBenchmarkResponse(BaseModel):
+    """Portfolio benchmark response."""
+    
+    id: int = Field(..., description="Benchmark ID")
+    portfolio_id: int = Field(..., description="Portfolio ID")
+    benchmark_asset_id: int = Field(..., description="Benchmark asset ID")
+    benchmark_name: str = Field(..., description="Benchmark name")
+    benchmark_type: str = Field(..., description="Benchmark type")
+    tracking_error: Optional[Decimal] = Field(None, description="Tracking error")
+    information_ratio: Optional[Decimal] = Field(None, description="Information ratio")
+    beta: Optional[Decimal] = Field(None, description="Beta")
+    alpha: Optional[Decimal] = Field(None, description="Alpha")
+    excess_return: Optional[Decimal] = Field(None, description="Excess return")
+    excess_return_percent: Optional[Decimal] = Field(None, description="Excess return percentage")
+    is_active: bool = Field(..., description="Whether benchmark is active")
+    is_primary: bool = Field(..., description="Whether this is primary benchmark")
+    created_at: datetime = Field(..., description="Creation timestamp")
+
+    class Config:
+        from_attributes = True
+
+
+class AssetCorrelationResponse(BaseModel):
+    """Asset correlation response."""
+    
+    id: int = Field(..., description="Correlation ID")
+    asset1_id: int = Field(..., description="First asset ID")
+    asset2_id: int = Field(..., description="Second asset ID")
+    calculation_date: datetime = Field(..., description="Calculation date")
+    correlation_1m: Optional[Decimal] = Field(None, description="1-month correlation")
+    correlation_3m: Optional[Decimal] = Field(None, description="3-month correlation")
+    correlation_6m: Optional[Decimal] = Field(None, description="6-month correlation")
+    correlation_1y: Optional[Decimal] = Field(None, description="1-year correlation")
+    correlation_3y: Optional[Decimal] = Field(None, description="3-year correlation")
+    rolling_correlation_20d: Optional[Decimal] = Field(None, description="20-day rolling correlation")
+    rolling_correlation_60d: Optional[Decimal] = Field(None, description="60-day rolling correlation")
+    p_value: Optional[Decimal] = Field(None, description="P-value")
+    is_significant: Optional[bool] = Field(None, description="Statistical significance")
+    created_at: datetime = Field(..., description="Creation timestamp")
+
+    class Config:
+        from_attributes = True
+
+
+class UserDashboardResponse(BaseModel):
+    """User analytics dashboard response."""
+    
+    user_id: int = Field(..., description="User ID")
+    summary_date: datetime = Field(..., description="Summary date")
+    portfolios: dict = Field(..., description="Portfolio summary data")
+    assets: dict = Field(..., description="Asset summary data")
+    analytics: dict = Field(..., description="Analytics summary data")
+
+
+class UserAssetsResponse(BaseModel):
+    """User assets analytics response."""
+    
+    user_id: int = Field(..., description="User ID")
+    total_assets: int = Field(..., description="Total number of assets")
+    assets: List[dict] = Field(..., description="Asset analytics data")
+
+
+class DeleteResponse(BaseModel):
+    """Standard delete response."""
+    
+    message: str = Field(..., description="Success message")

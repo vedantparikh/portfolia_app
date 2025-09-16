@@ -3,6 +3,7 @@ Database utility functions for common operations.
 """
 
 import logging
+from datetime import timezone
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import func
@@ -114,7 +115,7 @@ def get_portfolio_performance_summary(
         # Get portfolio transactions within the time period
         from datetime import datetime, timedelta
 
-        end_date = datetime.utcnow()
+        end_date = datetime.now(timezone.utc)
         start_date = end_date - timedelta(days=days)
 
         transactions = (
@@ -160,7 +161,7 @@ def cleanup_expired_sessions(db: Session) -> int:
 
         expired_sessions = (
             db.query(UserSession)
-            .filter(UserSession.expires_at < datetime.utcnow())
+            .filter(UserSession.expires_at < datetime.now(timezone.utc))
             .all()
         )
 
@@ -196,7 +197,7 @@ def get_database_stats(db: Session) -> Dict[str, Any]:
         stats["active_sessions"] = (
             db.query(UserSession)
             .filter(
-                UserSession.expires_at > datetime.utcnow(),
+                UserSession.expires_at > datetime.now(timezone.utc),
                 UserSession.is_active == True,
             )
             .count()
