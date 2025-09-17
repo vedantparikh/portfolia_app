@@ -15,7 +15,7 @@ import {
 } from '../../utils/formatters.jsx';
 
 const AssetCard = ({ asset, viewMode = 'grid', onClick, onDelete }) => {
-    const [showMenu, setShowMenu] = useState(false); 
+    const [showMenu, setShowMenu] = useState(false);
     const handleMenuClick = (e) => {
         e.stopPropagation();
         setShowMenu(!showMenu);
@@ -40,8 +40,8 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick, onDelete }) => {
                             <BarChart3 size={24} className="text-primary-400" />
                         </div>
                         <div>
-                            <h3 className="text-lg font-semibold text-gray-100">{asset.symbol}</h3>
-                            <p className="text-sm text-gray-400 truncate max-w-48">{asset.name}</p>
+                            <h3 className="text-lg font-semibold text-gray-100 truncate max-w-48">{asset.name}</h3>
+                            <p className="text-sm text-gray-400">{asset.symbol}</p>
                             {asset.asset_type && (
                                 <p className="text-xs text-primary-400 capitalize">
                                     {asset.asset_type.toLowerCase().replace('_', ' ')}
@@ -72,7 +72,7 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick, onDelete }) => {
 
                         <div className="text-right">
                             <p className="text-sm text-gray-400">Volume (24h)</p>
-                            <p className="text-sm font-medium text-gray-100">   
+                            <p className="text-sm font-medium text-gray-100">
                                 {formatVolume(asset.detail?.volume_24h)}
                             </p>
                         </div>
@@ -88,7 +88,7 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick, onDelete }) => {
                                 </button>
                                 {showMenu && (
                                     <div className="absolute right-0 top-8 bg-dark-800 border border-dark-700 rounded-lg shadow-lg z-10 min-w-40">
-                                        
+
                                         <button
                                             onClick={() => {
                                                 // Navigate to detailed analysis
@@ -128,8 +128,8 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick, onDelete }) => {
                         <BarChart3 size={24} className="text-primary-400" />
                     </div>
                     <div>
-                        <h3 className="text-lg font-semibold text-gray-100">{asset.symbol}</h3>
-                        <p className="text-sm text-gray-400 truncate max-w-32">{asset.name}</p>
+                        <h3 className="text-lg font-semibold text-gray-100 truncate max-w-32">{asset.name}</h3>
+                        <p className="text-sm text-gray-400">{asset.symbol}</p>
                         {asset.asset_type && (
                             <p className="text-xs text-primary-400 capitalize">
                                 {asset.asset_type.toLowerCase().replace('_', ' ')}
@@ -241,12 +241,11 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick, onDelete }) => {
                         {asset.bollinger_bands && (
                             <div className="flex items-center justify-between">
                                 <span className="text-xs text-gray-500">BB Position</span>
-                                <span className={`text-xs font-medium ${
-                                    asset.bollinger_bands > 0.8 ? 'text-danger-400' : 
-                                    asset.bollinger_bands < 0.2 ? 'text-success-400' : 'text-gray-300'
-                                }`}>
-                                    {asset.bollinger_bands > 0.8 ? 'Upper Band' : 
-                                     asset.bollinger_bands < 0.2 ? 'Lower Band' : 'Middle'}
+                                <span className={`text-xs font-medium ${asset.bollinger_bands > 0.8 ? 'text-danger-400' :
+                                        asset.bollinger_bands < 0.2 ? 'text-success-400' : 'text-gray-300'
+                                    }`}>
+                                    {asset.bollinger_bands > 0.8 ? 'Upper Band' :
+                                        asset.bollinger_bands < 0.2 ? 'Lower Band' : 'Middle'}
                                 </span>
                             </div>
                         )}

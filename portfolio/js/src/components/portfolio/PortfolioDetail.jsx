@@ -324,11 +324,9 @@ const PortfolioDetail = ({ portfolio, stats, transactions }) => {
                       >
                         <td className="py-3 px-4">
                           <span className="font-medium text-gray-100">
-                            {holding.symbol}
+                            {holding.name}
                           </span>
-                          <p className="text-xs text-gray-400 truncate">
-                            {holding.name || "Unknown Company"}
-                          </p>
+                          <div className="text-xs text-gray-500">{holding.symbol}</div>
                         </td>
                         <td className="py-3 px-4 text-right">
                           <span className="text-gray-100">
@@ -575,7 +573,8 @@ const PortfolioDetail = ({ portfolio, stats, transactions }) => {
                       <div key={holding.id || index} className="space-y-2">
                         <div className="flex items-center justify-between">
                           <span className="text-sm font-medium text-gray-100">
-                            {holding.symbol}
+                            {holding.name}
+                            <div className="text-xs text-gray-500">{holding.symbol}</div>
                           </span>
                           <span className="text-sm text-gray-400">
                             {percentage.toFixed(1)}%

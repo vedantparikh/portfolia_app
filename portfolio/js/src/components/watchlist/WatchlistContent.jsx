@@ -471,9 +471,9 @@ const WatchlistContent = ({
 
                                                                 {/* Symbol name and company info */}
                                                                 <div className="flex-1 min-w-0">
-                                                                    <h4 className="text-sm font-medium text-gray-100">{item.symbol}</h4>
+                                                                    <h4 className="text-sm font-medium text-gray-100">{item.company_name || 'Unknown Company'}</h4>
                                                                     <p className="text-xs text-gray-400 truncate">
-                                                                        {item.company_name || 'Unknown Company'}
+                                                                        {item.symbol}
                                                                     </p>
                                                                 </div>
                                                             </div>
