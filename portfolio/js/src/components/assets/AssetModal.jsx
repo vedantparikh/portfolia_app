@@ -142,7 +142,8 @@ const AssetModal = ({ asset, mode = 'view', onClose, onSave }) => {
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className={`bg-dark-900 rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden ${isChartFullscreen ? 'max-w-full max-h-full' : ''}`}>
+            {/* Main modal container: Added 'flex flex-col' */}
+            <div className={`bg-dark-900 rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col ${isChartFullscreen ? 'max-w-full max-h-full' : ''}`}>
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-dark-700">
                     <div className="flex items-center space-x-3">
@@ -167,10 +168,11 @@ const AssetModal = ({ asset, mode = 'view', onClose, onSave }) => {
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-y-auto">
+                {/* Content wrapper: Added min-h-0 */}
+                <div className="flex-1 flex flex-col overflow-hidden min-h-0">
                     {isCreateMode ? (
-                        /* Create Mode */
-                        <div className="p-6">
+                        /* Create Mode: Fills space and scrolls its own content */
+                        <div className="p-6 flex-1 overflow-y-auto">
                             <div className="space-y-6">
                                 {/* Symbol Search */}
                                 <div className="card p-6">
@@ -303,9 +305,9 @@ const AssetModal = ({ asset, mode = 'view', onClose, onSave }) => {
                             </div>
                         </div>
                     ) : (
-                        /* View/Edit Mode */
-                        <div className="p-6">
-                            {/* Tabs */}
+                        /* View/Edit Mode: Added min-h-0 */
+                        <div className="p-6 flex-1 flex flex-col min-h-0">
+                            {/* Tabs: Fixed at the top */}
                             <div className="flex space-x-1 mb-6 border-b border-dark-700">
                                 <button
                                     onClick={() => setActiveTab('overview')}
@@ -339,264 +341,254 @@ const AssetModal = ({ asset, mode = 'view', onClose, onSave }) => {
                                 </button>
                             </div>
 
-                            {/* Tab Content */}
-                            {activeTab === 'overview' && (
-                                <div className="space-y-6">
-                                    {/* Asset Information */}
-                                    <div className="card p-6">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <h3 className="text-lg font-semibold text-gray-100">Asset Information</h3>
-                                            {isViewMode && (
-                                                <button
-                                                    onClick={() => setIsEditing(!isEditing)}
-                                                    className="btn-outline text-sm flex items-center space-x-2"
-                                                >
-                                                    <Edit size={16} />
-                                                    <span>{isEditing ? 'Cancel' : 'Edit'}</span>
-                                                </button>
-                                            )}
-                                        </div>
-                                        
-                                        {isEditing ? (
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-300 mb-2">Symbol</label>
-                                                    <input
-                                                        type="text"
-                                                        name="symbol"
-                                                        value={formData.symbol}
-                                                        onChange={handleInputChange}
-                                                        className="input-field"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-300 mb-2">Name</label>
-                                                    <input
-                                                        type="text"
-                                                        name="name"
-                                                        value={formData.name}
-                                                        onChange={handleInputChange}
-                                                        className="input-field"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-300 mb-2">Asset Type</label>
-                                                    <select
-                                                        name="asset_type"
-                                                        value={formData.asset_type}
-                                                        onChange={handleInputChange}
-                                                        className="input-field"
+                            {/* Tab Content: Added min-h-0 */}
+                            <div className="flex-1 overflow-y-auto min-h-0">
+                                {activeTab === 'overview' && (
+                                    <div className="space-y-6">
+                                        {/* Asset Information */}
+                                        <div className="card p-6">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <h3 className="text-lg font-semibold text-gray-100">Asset Information</h3>
+                                                {isViewMode && (
+                                                    <button
+                                                        onClick={() => setIsEditing(!isEditing)}
+                                                        className="btn-outline text-sm flex items-center space-x-2"
                                                     >
-                                                        <option value="EQUITY">Stock</option>
-                                                        <option value="ETF">ETF</option>
-                                                        <option value="CRYPTOCURRENCY">Cryptocurrency</option>
-                                                        <option value="COMMODITY">Commodity</option>
-                                                        <option value="BOND">Bond</option>
-                                                        <option value="MUTUALFUND">Mutual Fund</option>
-                                                    </select>
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-300 mb-2">Exchange</label>
-                                                    <input
-                                                        type="text"
-                                                        name="exchange"
-                                                        value={formData.exchange}
-                                                        onChange={handleInputChange}
-                                                        className="input-field"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-300 mb-2">Sector</label>
-                                                    <input
-                                                        type="text"
-                                                        name="sector"
-                                                        value={formData.sector}
-                                                        onChange={handleInputChange}
-                                                        className="input-field"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-300 mb-2">Industry</label>
-                                                    <input
-                                                        type="text"
-                                                        name="industry"
-                                                        value={formData.industry}
-                                                        onChange={handleInputChange}
-                                                        className="input-field"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-300 mb-2">Country</label>
-                                                    <input
-                                                        type="text"
-                                                        name="country"
-                                                        value={formData.country}
-                                                        onChange={handleInputChange}
-                                                        className="input-field"
-                                                    />
-                                                </div>
-                                                <div className="md:col-span-2">
-                                                    <label className="block text-sm font-medium text-gray-300 mb-2">Description</label>
-                                                    <textarea
-                                                        name="description"
-                                                        value={formData.description}
-                                                        onChange={handleInputChange}
-                                                        className="input-field"
-                                                        rows={3}
-                                                    />
-                                                </div>
+                                                        <Edit size={16} />
+                                                        <span>{isEditing ? 'Cancel' : 'Edit'}</span>
+                                                    </button>
+                                                )}
                                             </div>
-                                        ) : (
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div>
-                                                    <span className="text-sm text-gray-400">Symbol</span>
-                                                    <p className="text-lg font-semibold text-gray-100">{asset?.symbol || 'N/A'}</p>
-                                                </div>
-                                                <div>
-                                                    <span className="text-sm text-gray-400">Name</span>
-                                                    <p className="text-lg font-semibold text-gray-100">{asset?.name || 'N/A'}</p>
-                                                </div>
-                                                <div>
-                                                    <span className="text-sm text-gray-400">Asset Type</span>
-                                                    <p className="text-sm text-gray-300">{asset?.asset_type || 'N/A'}</p>
-                                                </div>
-                                                <div>
-                                                    <span className="text-sm text-gray-400">Exchange</span>
-                                                    <p className="text-sm text-gray-300">{asset?.exchange || 'N/A'}</p>
-                                                </div>
-                                                <div>
-                                                    <span className="text-sm text-gray-400">Sector</span>
-                                                    <p className="text-sm text-gray-300">{asset?.sector || 'N/A'}</p>
-                                                </div>
-                                                <div>
-                                                    <span className="text-sm text-gray-400">Industry</span>
-                                                    <p className="text-sm text-gray-300">{asset?.industry || 'N/A'}</p>
-                                                </div>
-                                                <div>
-                                                    <span className="text-sm text-gray-400">Country</span>
-                                                    <p className="text-sm text-gray-300">{asset?.country || 'N/A'}</p>
-                                                </div>
-                                                {asset?.description && (
+                                            
+                                            {isEditing ? (
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-300 mb-2">Symbol</label>
+                                                        <input
+                                                            type="text"
+                                                            name="symbol"
+                                                            value={formData.symbol}
+                                                            onChange={handleInputChange}
+                                                            className="input-field"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-300 mb-2">Name</label>
+                                                        <input
+                                                            type="text"
+                                                            name="name"
+                                                            value={formData.name}
+                                                            onChange={handleInputChange}
+                                                            className="input-field"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-300 mb-2">Asset Type</label>
+                                                        <select
+                                                            name="asset_type"
+                                                            value={formData.asset_type}
+                                                            onChange={handleInputChange}
+                                                            className="input-field"
+                                                        >
+                                                            <option value="EQUITY">Stock</option>
+                                                            <option value="ETF">ETF</option>
+                                                            <option value="CRYPTOCURRENCY">Cryptocurrency</option>
+                                                            <option value="COMMODITY">Commodity</option>
+                                                            <option value="BOND">Bond</option>
+                                                            <option value="MUTUALFUND">Mutual Fund</option>
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-300 mb-2">Exchange</label>
+                                                        <input
+                                                            type="text"
+                                                            name="exchange"
+                                                            value={formData.exchange}
+                                                            onChange={handleInputChange}
+                                                            className="input-field"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-300 mb-2">Sector</label>
+                                                        <input
+                                                            type="text"
+                                                            name="sector"
+                                                            value={formData.sector}
+                                                            onChange={handleInputChange}
+                                                            className="input-field"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-300 mb-2">Industry</label>
+                                                        <input
+                                                            type="text"
+                                                            name="industry"
+                                                            value={formData.industry}
+                                                            onChange={handleInputChange}
+                                                            className="input-field"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-300 mb-2">Country</label>
+                                                        <input
+                                                            type="text"
+                                                            name="country"
+                                                            value={formData.country}
+                                                            onChange={handleInputChange}
+                                                            className="input-field"
+                                                        />
+                                                    </div>
                                                     <div className="md:col-span-2">
-                                                        <span className="text-sm text-gray-400">Description</span>
-                                                        <p className="text-sm text-gray-300">{asset.description}</p>
+                                                        <label className="block text-sm font-medium text-gray-300 mb-2">Description</label>
+                                                        <textarea
+                                                            name="description"
+                                                            value={formData.description}
+                                                            onChange={handleInputChange}
+                                                            className="input-field"
+                                                            rows={3}
+                                                        />
                                                     </div>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Market Data */}
-                                    <div className="card p-6">
-                                        <h3 className="text-lg font-semibold text-gray-100 mb-4">Market Data</h3>
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                            <div>
-                                                <span className="text-sm text-gray-400">Current Price</span>
-                                                <p className="text-2xl font-bold text-gray-100">
-                                                    {formatPrice(asset?.detail?.current_price)}
-                                                </p>
-                                                {asset?.detail?.price_change_percentage_24h && (
-                                                    <div className="flex items-center space-x-1">
-                                                        {getChangeIcon(asset.detail?.price_change_percentage_24h)}
-                                                        <span className={`text-sm ${getChangeColor(asset.detail?.price_change_percentage_24h)}`}>
-                                                            {formatPercentage(asset.detail?.price_change_percentage_24h)}
-                                                        </span>
+                                                </div>
+                                            ) : (
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div>
+                                                        <span className="text-sm text-gray-400">Symbol</span>
+                                                        <p className="text-lg font-semibold text-gray-100">{asset?.symbol || 'N/A'}</p>
                                                     </div>
-                                                )}
-                                            </div>
-                                            <div>
-                                                <span className="text-sm text-gray-400">Market Cap</span>
-                                                <p className="text-lg font-semibold text-gray-100">
-                                                    {asset?.detail?.market_cap ? `$${formatMarketCap(asset.detail?.market_cap)}` : 'N/A'}
-                                                </p>
-                                            </div>
-                                            <div>
-                                                <span className="text-sm text-gray-400">Volume (24h)</span>
-                                                <p className="text-lg font-semibold text-gray-100">
-                                                    {asset?.detail?.volume_24h ? `${formatVolume(asset.detail?.volume_24h)}` : 'N/A'}
-                                                </p>
-                                            </div>
-                                            <div>
-                                                <span className="text-sm text-gray-400">Day High</span>
-                                                <p className="text-lg font-semibold text-gray-100">
-                                                    {asset?.detail?.day_high ? `${formatPrice(asset.detail?.day_high)}` : 'N/A'}
-                                                </p>
-                                            </div>
-                                            <div>
-                                                <span className="text-sm text-gray-400">Day Low</span>
-                                                <p className="text-lg font-semibold text-gray-100">
-                                                    {asset?.detail?.day_low ? `${formatPrice(asset.detail?.day_low)}` : 'N/A'}
-                                                </p>
-                                            </div>
-                                            <div>
-                                                <span className="text-sm text-gray-400">52 Week High</span>
-                                                <p className="text-lg font-semibold text-gray-100">
-                                                    {asset?.detail?.high_52w ? `${formatPrice(asset.detail?.high_52w)}` : 'N/A'}
-                                                </p>
-                                            </div>
-                                            <div>
-                                                <span className="text-sm text-gray-400">52 Week Low</span>
-                                                <p className="text-lg font-semibold text-gray-100">
-                                                    {asset?.detail?.low_52w ? `${formatPrice(asset.detail?.low_52w)}` : 'N/A'}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {activeTab === 'chart' && (
-                                <div className="card p-6 relative">
-                                    <Chart
-                                        data={priceHistory}
-                                        symbol={asset?.symbol}
-                                        period={chartPeriod}
-                                        onPeriodChange={handlePeriodChange}
-                                        height={500}
-                                        showVolume={true}
-                                        loading={loading}
-                                        onRefresh={() => loadPriceHistory()}
-                                        showControls={true}
-                                        showPeriodSelector={true}
-                                        chartType="candlestick"
-                                        theme="dark"
-                                        enableFullscreen={true}
-                                        onFullscreenToggle={handleChartFullscreenToggle}
-                                        isFullscreen={isChartFullscreen}
-                                    />
-                                </div>
-                            )}
-
-                            {activeTab === 'analytics' && (
-                                <div className="space-y-6">
-                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                        {/* Analytics cards */}
-                                        <div className="card p-4">
-                                            <h4 className="text-sm font-medium text-gray-400 mb-2">RSI (14)</h4>
-                                            <p className={`text-2xl font-bold ${asset?.rsi > 70 ? 'text-danger-400' : asset?.rsi < 30 ? 'text-success-400' : 'text-gray-100'}`}>
-                                                {asset?.rsi ? asset.rsi.toFixed(1) : 'N/A'}
-                                            </p>
-                                            {asset?.rsi && (
-                                                <p className="text-xs text-gray-500 mt-1">
-                                                    {asset.rsi > 70 ? 'Overbought' : asset.rsi < 30 ? 'Oversold' : 'Neutral'}
-                                                </p>
+                                                    <div>
+                                                        <span className="text-sm text-gray-400">Name</span>
+                                                        <p className="text-lg font-semibold text-gray-100">{asset?.name || 'N/A'}</p>
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-sm text-gray-400">Asset Type</span>
+                                                        <p className="text-sm text-gray-300">{asset?.asset_type || 'N/A'}</p>
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-sm text-gray-400">Exchange</span>
+                                                        <p className="text-sm text-gray-300">{asset?.exchange || 'N/A'}</p>
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-sm text-gray-400">Sector</span>
+                                                        <p className="text-sm text-gray-300">{asset?.sector || 'N/A'}</p>
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-sm text-gray-400">Industry</span>
+                                                        <p className="text-sm text-gray-300">{asset?.industry || 'N/A'}</p>
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-sm text-gray-400">Country</span>
+                                                        <p className="text-sm text-gray-300">{asset?.country || 'N/A'}</p>
+                                                    </div>
+                                                    {asset?.description && (
+                                                        <div className="md:col-span-2">
+                                                            <span className="text-sm text-gray-400">Description</span>
+                                                            <p className="text-sm text-gray-300">{asset.description}</p>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             )}
                                         </div>
-                                        <div className="card p-4">
-                                            <h4 className="text-sm font-medium text-gray-400 mb-2">MACD</h4>
-                                            <p className={`text-2xl font-bold ${asset?.macd > 0 ? 'text-success-400' : 'text-danger-400'}`}>
-                                                {asset?.macd ? asset.macd.toFixed(4) : 'N/A'}
-                                            </p>
-                                        </div>
-                                        <div className="card p-4">
-                                            <h4 className="text-sm font-medium text-gray-400 mb-2">Volatility (20d)</h4>
-                                            <p className={`text-2xl font-bold ${asset?.volatility_20d > 0.3 ? 'text-warning-400' : 'text-gray-100'}`}>
-                                                {asset?.volatility_20d ? `${(asset.volatility_20d * 100).toFixed(1)}%` : 'N/A'}
-                                            </p>
+
+                                        {/* Market Data */}
+                                        <div className="card p-6">
+                                            <h3 className="text-lg font-semibold text-gray-100 mb-4">Market Data</h3>
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                <div>
+                                                    <span className="text-sm text-gray-400">Current Price</span>
+                                                    <p className="text-2xl font-bold text-gray-100">
+                                                        {formatPrice(asset?.detail?.current_price)}
+                                                    </p>
+                                                    {asset?.detail?.price_change_percentage_24h && (
+                                                        <div className="flex items-center space-x-1">
+                                                            {getChangeIcon(asset.detail?.price_change_percentage_24h)}
+                                                            <span className={`text-sm ${getChangeColor(asset.detail?.price_change_percentage_24h)}`}>
+                                                                {formatPercentage(asset.detail?.price_change_percentage_24h)}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div>
+                                                    <span className="text-sm text-gray-400">Market Cap</span>
+                                                    <p className="text-lg font-semibold text-gray-100">
+                                                        {asset?.detail?.market_cap ? `$${formatMarketCap(asset.detail?.market_cap)}` : 'N/A'}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <span className="text-sm text-gray-400">Volume (24h)</span>
+                                                    <p className="text-lg font-semibold text-gray-100">
+                                                        {asset?.detail?.volume_24h ? `${formatVolume(asset.detail?.volume_24h)}` : 'N/A'}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <span className="text-sm text-gray-400">Day High/Low</span>
+                                                    <p className="text-lg font-semibold text-gray-100">
+                                                        {asset?.detail?.day_high ? `${formatPrice(asset.detail?.day_high)} / ${formatPrice(asset.detail?.day_low)}` : 'N/A'}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <span className="text-sm text-gray-400">52 Week High/Low</span>
+                                                    <p className="text-lg font-semibold text-gray-100">
+                                                        {asset?.detail?.beta ? `${formatPrice(asset.detail?.beta)}` : 'N/A'}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            )}
+                                )}
+
+                                {activeTab === 'chart' && (
+                                    <div className="card p-6 relative">
+                                        <Chart
+                                            data={priceHistory}
+                                            symbol={asset?.symbol}
+                                            period={chartPeriod}
+                                            onPeriodChange={handlePeriodChange}
+                                            height={500}
+                                            showVolume={true}
+                                            loading={loading}
+                                            onRefresh={() => loadPriceHistory()}
+                                            showControls={true}
+                                            showPeriodSelector={true}
+                                            chartType="candlestick"
+                                            theme="dark"
+                                            enableFullscreen={true}
+                                            onFullscreenToggle={handleChartFullscreenToggle}
+                                            isFullscreen={isChartFullscreen}
+                                        />
+                                    </div>
+                                )}
+
+                                {activeTab === 'analytics' && (
+                                    <div className="space-y-6">
+                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                            {/* Analytics cards */}
+                                            <div className="card p-4">
+                                                <h4 className="text-sm font-medium text-gray-400 mb-2">RSI (14)</h4>
+                                                <p className={`text-2xl font-bold ${asset?.rsi > 70 ? 'text-danger-400' : asset?.rsi < 30 ? 'text-success-400' : 'text-gray-100'}`}>
+                                                    {asset?.rsi ? asset.rsi.toFixed(1) : 'N/A'}
+                                                </p>
+                                                {asset?.rsi && (
+                                                    <p className="text-xs text-gray-500 mt-1">
+                                                        {asset.rsi > 70 ? 'Overbought' : asset.rsi < 30 ? 'Oversold' : 'Neutral'}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <div className="card p-4">
+                                                <h4 className="text-sm font-medium text-gray-400 mb-2">MACD</h4>
+                                                <p className={`text-2xl font-bold ${asset?.macd > 0 ? 'text-success-400' : 'text-danger-400'}`}>
+                                                    {asset?.macd ? asset.macd.toFixed(4) : 'N/A'}
+                                                </p>
+                                            </div>
+                                            <div className="card p-4">
+                                                <h4 className="text-sm font-medium text-gray-400 mb-2">Volatility (20d)</h4>
+                                                <p className={`text-2xl font-bold ${asset?.volatility_20d > 0.3 ? 'text-warning-400' : 'text-gray-100'}`}>
+                                                    {asset?.volatility_20d ? `${(asset.volatility_20d * 100).toFixed(1)}%` : 'N/A'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                         </div>
                     )}
                 </div>
@@ -618,7 +610,6 @@ const AssetModal = ({ asset, mode = 'view', onClose, onSave }) => {
                 </div>
             </div>
 
-            {/* Fullscreen Chart Overlay */}
             {isChartFullscreen && (
                 <div className="fixed inset-0 z-[60] bg-dark-950 flex flex-col">
                     <div className="flex items-center justify-between p-4 border-b border-dark-700">
