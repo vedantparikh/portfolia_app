@@ -132,7 +132,7 @@ const Portfolio = () => {
           total_value: 0,
           total_cost: 0,
           day_change: 0,
-          total_holdings: 0,
+          total_assets: 0,
           total_transactions: 0,
         });
       }
@@ -343,11 +343,10 @@ const Portfolio = () => {
   const getTotalStats = () => {
     if (!portfolioStats) return null;
 
-    const totalValue = portfolioStats.total_value || 0;
-    const totalCost = portfolioStats.total_cost || 0;
-    const totalGainLoss = totalValue - totalCost;
-    const totalGainLossPercent =
-      totalCost > 0 ? (totalGainLoss / totalCost) * 100 : 0;
+    const totalValue = portfolioStats.total_current_value || 0;
+    const totalCost = portfolioStats.total_cost_basis || 0;
+    const totalGainLoss = portfolioStats.total_unrealized_pnl || 0;
+    const totalGainLossPercent = portfolioStats.total_unrealized_pnl_percent || 0;
     const dayChange = portfolioStats.day_change || 0;
     const dayChangePercent =
       totalValue > 0 ? (dayChange / totalValue) * 100 : 0;
@@ -359,7 +358,7 @@ const Portfolio = () => {
       totalGainLossPercent,
       dayChange,
       dayChangePercent,
-      totalHoldings: portfolioStats.total_holdings || 0,
+      totalHoldings: portfolioStats.total_assets || 0,
       totalTransactions: portfolioStats.total_transactions || 0,
     };
   };

@@ -11,7 +11,6 @@ import React, { useEffect, useState } from "react";
 import { analyticsAPI, portfolioAPI } from "../../services/api";
 import {
   formatCurrency,
-  formatDate,
   formatDateTime,
   getTransactionColor,
   getTransactionIcon,
