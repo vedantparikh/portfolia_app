@@ -341,7 +341,7 @@ const PortfolioChart = ({ portfolio, stats }) => {
         // Safely map only if allocations exist
         const pieData = (allocations && allocations.length > 0)
             ? allocations.map((allocation, index) => ({
-                name: allocation.asset_symbol || allocation.asset_name || `Asset ${index + 1}`,
+                name: allocation.asset_name || `Asset ${index + 1}`,
                 value: parseFloat(allocation.current_percentage) || 0,
                 color: colors[index % colors.length],
                 symbol: allocation.asset_symbol || '',
