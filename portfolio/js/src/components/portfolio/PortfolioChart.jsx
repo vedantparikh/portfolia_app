@@ -51,6 +51,7 @@ const PortfolioChart = ({ portfolio, stats }) => {
 
         try {
             setLoading(true);
+            setChartData(null); // Clear previous data
             console.log('[PortfolioChart] Loading chart data for portfolio:', portfolio.id, 'timeRange:', timeRange);
 
             // Get the current time range configuration
@@ -66,19 +67,19 @@ const PortfolioChart = ({ portfolio, stats }) => {
                     // Process the history data for chart display
                     const processedData = processHistoryData(historyResponse.history);
                     setChartData(processedData);
-                    return;
+                    return; // Successfully loaded data
                 }
             } catch (historyError) {
                 console.warn('[PortfolioChart] Failed to load performance history:', historyError);
+                // Do not load mock data, let it be null
             }
 
-            // If all API calls fail, use mock data
-            console.log('[PortfolioChart] Using mock data as fallback');
-            setChartData(generateMockData());
+            // If API fails or returns no data, chartData remains null
+            console.log('[PortfolioChart] No performance history data found or API failed.');
 
         } catch (error) {
             console.error('[PortfolioChart] Failed to load chart data:', error);
-            setChartData(generateMockData());
+            // Do not load mock data, chartData will be null
         } finally {
             setLoading(false);
         }
@@ -88,22 +89,8 @@ const PortfolioChart = ({ portfolio, stats }) => {
         if (!portfolio?.id) return;
 
         try {
+            setAllocationData(null); // Clear previous data
             console.log('[PortfolioChart] Loading allocation data for portfolio:', portfolio.id);
-
-            // Try to get portfolio allocations
-            try {
-                const allocationsResponse = await analyticsAPI.getPortfolioAllocations(portfolio.id);
-                console.log('[PortfolioChart] Allocations response:', allocationsResponse);
-
-                if (allocationsResponse && allocationsResponse.length > 0) {
-                    setAllocationData(allocationsResponse);
-                    return;
-                }
-            } catch (allocationError) {
-                console.warn('[PortfolioChart] Failed to load allocations:', allocationError);
-            }
-
-            // Fallback to portfolio holdings
             try {
                 const holdingsResponse = await portfolioAPI.getPortfolioHoldings(portfolio.id);
                 console.log('[PortfolioChart] Holdings response:', holdingsResponse);
@@ -120,18 +107,15 @@ const PortfolioChart = ({ portfolio, stats }) => {
                     }));
 
                     setAllocationData(allocations);
-                    return;
+                    return; // Successfully loaded data
                 }
             } catch (holdingsError) {
                 console.warn('[PortfolioChart] Failed to load holdings:', holdingsError);
+                // Do not load mock data, let it be null
             }
-
-            // Use mock allocation data as fallback
-            setAllocationData(generateMockAllocationData());
-
         } catch (error) {
             console.error('[PortfolioChart] Failed to load allocation data:', error);
-            setAllocationData(generateMockAllocationData());
+            // Do not load mock data, allocationData will be null
         }
     };
 
@@ -197,50 +181,6 @@ const PortfolioChart = ({ portfolio, stats }) => {
             sharpe_ratio: performanceData.metrics?.sharpe_ratio || 0,
             max_drawdown: performanceData.metrics?.max_drawdown || 0
         };
-    };
-
-    const generateMockData = () => {
-        const currentTimeRange = timeRanges.find(tr => tr.value === timeRange);
-        const days = currentTimeRange?.days || 30;
-
-        const data = [];
-        const startValue = stats?.totalValue || 100000;
-        let currentValue = startValue;
-
-        for (let i = 0; i < days; i++) {
-            const date = new Date();
-            date.setDate(date.getDate() - (days - i));
-
-            // Simulate realistic price movements
-            const change = (Math.random() - 0.5) * 0.05; // ±2.5% daily change
-            currentValue *= (1 + change);
-
-            data.push({
-                date: date.toISOString().split('T')[0],
-                value: currentValue,
-                benchmark: startValue * (1 + (i * 0.0005)) // Slight upward trend for benchmark
-            });
-        }
-
-        return {
-            performance_data: data,
-            total_return: ((currentValue - startValue) / startValue) * 100,
-            benchmark_return: ((data[data.length - 1].benchmark - startValue) / startValue) * 100,
-            volatility: Math.random() * 20 + 10, // 10-30% volatility
-            sharpe_ratio: Math.random() * 2 + 0.5, // 0.5-2.5 Sharpe ratio
-            max_drawdown: Math.random() * 15 + 5 // 5-20% max drawdown
-        };
-    };
-
-    const generateMockAllocationData = () => {
-        return [
-            { asset_symbol: 'AAPL', asset_name: 'Apple Inc.', current_percentage: 25, current_value: 25000 },
-            { asset_symbol: 'MSFT', asset_name: 'Microsoft Corp.', current_percentage: 20, current_value: 20000 },
-            { asset_symbol: 'GOOGL', asset_name: 'Alphabet Inc.', current_percentage: 15, current_value: 15000 },
-            { asset_symbol: 'TSLA', asset_name: 'Tesla Inc.', current_percentage: 10, current_value: 10000 },
-            { asset_symbol: 'AMZN', asset_name: 'Amazon.com Inc.', current_percentage: 10, current_value: 10000 },
-            { asset_symbol: 'CASH', asset_name: 'Cash', current_percentage: 20, current_value: 20000 }
-        ];
     };
 
     const renderLineChart = () => {
@@ -370,30 +310,46 @@ const PortfolioChart = ({ portfolio, stats }) => {
     };
 
     const renderPieChart = () => {
-        // Use real allocation data or fallback to mock data
-        const allocations = allocationData || generateMockAllocationData();
+        // Use real allocation data
+        const allocations = allocationData;
 
-        // Color palette for different assets
+        // Extended color palette for more distinct colors on a dark background
         const colors = [
-            'bg-primary-400',
-            'bg-success-400',
-            'bg-warning-400',
-            'bg-danger-400',
-            'bg-info-400',
-            'bg-purple-400',
-            'bg-pink-400',
-            'bg-indigo-400'
+            '#4a90e2', // Bright Blue
+            '#50e3c2', // Aqua Green
+            '#f5a623', // Orange Yellow
+            '#bd10e0', // Bright Purple
+            '#e86060', // Soft Red
+            '#51af39', // Darker Green
+            '#ffcd45', // Golden Yellow
+            '#7ed321', // Lime Green
+            '#4a4ae2', // Indigo
+            '#e24a90', // Pinkish Purple
+            '#a16b3f', // Brownish Orange
+            '#42c2ea', // Sky Blue
+            '#9b9b9b', // Light Gray
+            '#ff784f', // Coral
+            '#8f55e0', // Medium Purple
+            '#33d9b2', // Mint Green
+            '#f7d730', // Vibrant Yellow
+            '#6a4aeb', // Darker Violet
+            '#ff6f61', // Light Red
+            '#00c7b6', // Teal
         ];
 
         // Process allocation data for pie chart
-        const pieData = allocations.map((allocation, index) => ({
-            name: allocation.asset_symbol || allocation.asset_name || `Asset ${index + 1}`,
-            value: parseFloat(allocation.current_percentage) || 0,
-            color: colors[index % colors.length],
-            symbol: allocation.asset_symbol || '',
-            value_amount: parseFloat(allocation.current_value) || 0
-        })).filter(item => item.value > 0); // Only show assets with value
+        // Safely map only if allocations exist
+        const pieData = (allocations && allocations.length > 0)
+            ? allocations.map((allocation, index) => ({
+                name: allocation.asset_symbol || allocation.asset_name || `Asset ${index + 1}`,
+                value: parseFloat(allocation.current_percentage) || 0,
+                color: colors[index % colors.length],
+                symbol: allocation.asset_symbol || '',
+                value_amount: parseFloat(allocation.current_value) || 0
+            })).filter(item => item.value > 0) // Only show assets with value
+            : []; // Default to empty array if no allocations
 
+        // Single check for no data (if API data is null, empty, or all values are 0)
         if (pieData.length === 0) {
             return (
                 <div className="h-80 flex items-center justify-center">
@@ -405,43 +361,45 @@ const PortfolioChart = ({ portfolio, stats }) => {
             );
         }
 
+        let cumulativePercentage = 0;
+        const gradientStops = pieData.map(allocation => {
+            const start = cumulativePercentage;
+            const end = cumulativePercentage + allocation.value;
+            cumulativePercentage = end;
+            return `${allocation.color} ${start}% ${end}%`;
+        }).join(', ');
+
+        const pieStyle = {
+            background: `conic-gradient(${gradientStops})`,
+        };
+
         return (
             <div className="h-80 flex items-center justify-center">
                 <div className="relative w-64 h-64">
-                    {/* Simple pie chart representation */}
-                    <div className="w-full h-full rounded-full border-8 border-dark-700 relative overflow-hidden">
-                        {pieData.map((allocation, index) => {
-                            const percentage = allocation.value;
-                            const rotation = pieData.slice(0, index).reduce((sum, a) => sum + a.value, 0) * 3.6;
+                    <div
+                        className="w-full h-full rounded-full"
+                        style={pieStyle}
+                    />
 
-                            return (
-                                <div
-                                    key={index}
-                                    className={`absolute inset-0 ${allocation.color} opacity-80`}
-                                    style={{
-                                        clipPath: `polygon(50% 50%, 50% 0%, ${50 + 50 * Math.cos((rotation - 90) * Math.PI / 180)}% ${50 + 50 * Math.sin((rotation - 90) * Math.PI / 180)}%)`
-                                    }}
-                                />
-                            );
-                        })}
-                    </div>
-
-                    {/* Center text */}
                     <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="text-center">
-                            <div className="text-2xl font-bold text-gray-100">
-                                {formatCurrency(stats?.totalValue || 0)}
+                        <div className="w-40 h-40 bg-dark-800 rounded-full flex items-center justify-center">
+                            <div className="text-center">
+                                <div className="text-2xl font-bold text-gray-100">
+                                    {formatCurrency(stats?.totalValue || 0)}
+                                </div>
+                                <div className="text-sm text-gray-400">Total Value</div>
                             </div>
-                            <div className="text-sm text-gray-400">Total Value</div>
                         </div>
                     </div>
                 </div>
 
-                {/* Legend */}
                 <div className="ml-8 space-y-2 max-h-64 overflow-y-auto">
                     {pieData.map((allocation, index) => (
                         <div key={index} className="flex items-center space-x-3">
-                            <div className={`w-4 h-4 rounded ${allocation.color}`}></div>
+                            <div
+                                className="w-4 h-4 rounded"
+                                style={{ backgroundColor: allocation.color }}
+                            ></div>
                             <div className="flex-1 min-w-0">
                                 <div className="text-sm text-gray-300 truncate">{allocation.name}</div>
                                 {allocation.symbol && (
@@ -545,9 +503,11 @@ const PortfolioChart = ({ portfolio, stats }) => {
                     ) : chartData ? (
                         renderChart()
                     ) : (
+                        // This block now correctly handles the null state for chartData
                         <div className="flex items-center justify-center h-80">
                             <div className="text-center">
                                 <BarChart3 size={48} className="text-gray-500 mx-auto mb-4" />
+                                {/* --- THIS IS THE FIX --- */}
                                 <p className="text-gray-400">No chart data available</p>
                                 <button
                                     onClick={loadChartData}
@@ -562,6 +522,7 @@ const PortfolioChart = ({ portfolio, stats }) => {
             </div>
 
             {/* Performance Metrics */}
+            {/* This block will only render if chartData is successfully loaded */}
             {chartData && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <div className="card p-6">
