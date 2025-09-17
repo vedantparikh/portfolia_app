@@ -534,7 +534,7 @@ class MarketDataService:
             "price_to_book": ticker_info.get("priceToBook"),
             "earnings_growth": ticker_info.get("earningsGrowth"),
             "revenue_growth": ticker_info.get("revenueGrowth"),
-            "return_on_assets": ticker_info.get("returnOnAssets"),
+            "return_on_asset": ticker_info.get("returnOnAssets"),
             "return_on_equity": ticker_info.get("returnOnEquity"),
             "free_cashflow": ticker_info.get("freeCashflow"),
             "operating_cashflow": ticker_info.get("operatingCashflow"),

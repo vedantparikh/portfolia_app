@@ -281,14 +281,6 @@ const Assets = () => {
                     aValue = a.price_change_percentage_24h || 0;
                     bValue = b.price_change_percentage_24h || 0;
                     break;
-                case 'rsi':
-                    aValue = a.rsi || 0;
-                    bValue = b.rsi || 0;
-                    break;
-                case 'volatility_20d':
-                    aValue = a.volatility_20d || 0;
-                    bValue = b.volatility_20d || 0;
-                    break;
                 default:
                     aValue = a.symbol || '';
                     bValue = b.symbol || '';

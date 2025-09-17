@@ -1,17 +1,276 @@
 import {
     BarChart3,
     Filter,
+    MoreVertical,
     PieChart,
     RefreshCw,
     Search,
+    Trash2,
     TrendingDown,
     TrendingUp
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { portfolioAPI } from '../../services/api';
-import AssetCard from '../assets/AssetCard';
 import AssetFilters from '../assets/AssetFilters';
+
+// Custom portfolio asset display component
+const PortfolioAssetCard = ({ asset, viewMode = 'grid', onClick, onEdit, onDelete }) => {
+    const [showMenu, setShowMenu] = useState(false);
+
+    const handleMenuClick = (e) => {
+        e.stopPropagation();
+        setShowMenu(!showMenu);
+    };
+
+    const handleDelete = (e) => {
+        e.stopPropagation();
+        setShowMenu(false);
+        onDelete && onDelete();
+    };
+
+    const handleEdit = (e) => {
+        e.stopPropagation();
+        setShowMenu(false);
+        onEdit && onEdit();
+    };
+
+    if (viewMode === 'list') {
+        return (
+            <div
+                className={`card p-4 hover:bg-dark-800/50 transition-colors cursor-pointer relative ${showMenu ? 'z-10' : 'z-0'}`}
+                onClick={onClick}
+            >
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                        <div className="w-12 h-12 bg-primary-600/20 rounded-lg flex items-center justify-center">
+                            <BarChart3 size={24} className="text-primary-400" />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-semibold text-gray-100">{asset.symbol}</h3>
+                            <p className="text-sm text-gray-400 truncate max-w-48">{asset.name}</p>
+                            {asset.asset_type && (
+                                <p className="text-xs text-primary-400 capitalize">
+                                    {asset.asset_type.toLowerCase().replace('_', ' ')}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="flex items-center space-x-8">
+                        <div className="text-right">
+                            <p className="text-sm text-gray-400">Quantity</p>
+                            <p className="text-lg font-semibold text-gray-100">
+                                {asset.quantity?.toFixed(4) || '0'}
+                            </p>
+                        </div>
+
+                        <div className="text-right">
+                            <p className="text-sm text-gray-400">Purchase Price</p>
+                            <p className="text-sm font-medium text-gray-100">
+                                ${asset.purchase_price?.toFixed(2) || '0.00'}
+                            </p>
+                        </div>
+
+                        <div className="text-right">
+                            <p className="text-sm text-gray-400">Current Price</p>
+                            <p className="text-sm font-medium text-gray-100">
+                                ${asset.current_price?.toFixed(2) || '0.00'}
+                            </p>
+                        </div>
+
+                        <div className="text-right">
+                            <p className="text-sm text-gray-400">Total Value</p>
+                            <p className="text-lg font-semibold text-gray-100">
+                                ${asset.total_value?.toFixed(2) || '0.00'}
+                            </p>
+                        </div>
+
+                        <div className="text-right">
+                            <p className="text-sm text-gray-400">P&L</p>
+                            <p className={`text-sm font-medium ${(asset.pnl || 0) >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
+                                ${asset.pnl?.toFixed(2) || '0.00'}
+                            </p>
+                            <p className={`text-xs ${(asset.pnl_percentage || 0) >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
+                                {asset.pnl_percentage?.toFixed(2) || '0.00'}%
+                            </p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-sm text-gray-400">Realized P&L</p>
+                            <p className={`text-sm font-medium ${(asset.pnl || 0) >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
+                                ${asset.realized_pnl?.toFixed(2) || '0.00'}
+                            </p>
+                            <p className={`text-xs ${(asset.pnl_percentage || 0) >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
+                                {asset.realized_pnl_percentage?.toFixed(2) || '0.00'}%
+                            </p>
+                        </div>
+
+                        <div className="flex items-center space-x-2">
+                            <div className="relative">
+                                <button
+                                    onClick={handleMenuClick}
+                                    className="p-1 rounded-lg hover:bg-dark-700 transition-colors"
+                                >
+                                    <MoreVertical size={16} className="text-gray-400" />
+                                </button>
+                                {showMenu && (
+                                    <div className="absolute right-0 top-8 bg-dark-800 border border-dark-700 rounded-lg shadow-lg z-10 min-w-40">
+                                        <button
+                                            onClick={handleEdit}
+                                            className="w-full px-3 py-2 text-left text-sm text-primary-400 hover:bg-dark-700 flex items-center space-x-2"
+                                        >
+                                            <BarChart3 size={14} />
+                                            <span>Detailed Analysis</span>
+                                        </button>
+                                        <button
+                                            onClick={handleDelete}
+                                            className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-dark-700 flex items-center space-x-2"
+                                        >
+                                            <Trash2 size={14} />
+                                            <span>Remove</span>
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div
+            className={`card p-6 hover:bg-dark-800/50 transition-all duration-200 cursor-pointer group relative ${showMenu ? 'z-10' : 'z-0'}`}
+            onClick={onClick}
+        >
+            <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center space-x-3">
+                    <div className="w-12 h-12 bg-primary-600/20 rounded-lg flex items-center justify-center group-hover:bg-primary-600/30 transition-colors">
+                        <BarChart3 size={24} className="text-primary-400" />
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-semibold text-gray-100">{asset.symbol}</h3>
+                        <p className="text-sm text-gray-400 truncate max-w-32">{asset.name}</p>
+                        {asset.asset_type && (
+                            <p className="text-xs text-primary-400 capitalize">
+                                {asset.asset_type.toLowerCase().replace('_', ' ')}
+                            </p>
+                        )}
+                    </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                    <div className="relative">
+                        <button
+                            onClick={handleMenuClick}
+                            className="p-1 rounded-lg hover:bg-dark-700 transition-colors opacity-0 group-hover:opacity-100"
+                        >
+                            <MoreVertical size={16} className="text-gray-400" />
+                        </button>
+                        {showMenu && (
+                            <div className="absolute right-0 top-8 bg-dark-800 border border-dark-700 rounded-lg shadow-lg z-10 min-w-40">
+                                <button
+                                    onClick={handleEdit}
+                                    className="w-full px-3 py-2 text-left text-sm text-primary-400 hover:bg-dark-700 flex items-center space-x-2"
+                                >
+                                    <BarChart3 size={14} />
+                                    <span>Detailed Analysis</span>
+                                </button>
+                                <button
+                                    onClick={handleDelete}
+                                    className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-dark-700 flex items-center space-x-2"
+                                >
+                                    <Trash2 size={14} />
+                                    <span>Remove</span>
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-400">Quantity</span>
+                    <span className="text-lg font-bold text-gray-100">
+                        {asset.quantity?.toFixed(4) || '0'}
+                    </span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-400">Purchase Price</span>
+                    <span className="text-sm font-medium text-gray-100">
+                        ${asset.purchase_price?.toFixed(2) || '0.00'}
+                    </span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-400">Current Price</span>
+                    <span className="text-sm font-medium text-gray-100">
+                        ${asset.current_price?.toFixed(2) || '0.00'}
+                    </span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-400">Total Value</span>
+                    <span className="text-lg font-bold text-gray-100">
+                        ${asset.total_value?.toFixed(2) || '0.00'}
+                    </span>
+                </div>
+
+                {/* P&L Section */}
+                <div className="pt-3 border-t border-dark-700 space-y-2">
+                    <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-400">Unrealized P&L</span>
+                        <div className="text-right">
+                            <span className={`text-sm font-bold ${(asset.pnl || 0) >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
+                                ${asset.pnl?.toFixed(2) || '0.00'}
+                            </span>
+                            <span className={`text-xs ml-2 ${(asset.pnl_percentage || 0) >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
+                                ({asset.pnl_percentage?.toFixed(2) || '0.00'}%)
+                            </span>
+                        </div>
+                    </div>
+
+                    {asset.realized_pnl !== undefined && (
+                        <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-400">Realized P&L</span>
+                            <div className="text-right">
+                                <span className={`text-sm font-medium ${(asset.realized_pnl || 0) >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
+                                    ${asset.realized_pnl?.toFixed(2) || '0.00'}
+                                </span>
+                                <span className={`text-xs ml-2 ${(asset.realized_pnl_percentage || 0) >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
+                                    ({asset.realized_pnl_percentage?.toFixed(2) || '0.00'}%)
+                                </span>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* P&L indicator bar */}
+            <div className="mt-4 pt-4 border-t border-dark-700">
+                <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                    <span>Position Performance</span>
+                    <span>{asset.pnl_percentage ? `${asset.pnl_percentage.toFixed(2)}%` : '0.00%'}</span>
+                </div>
+                <div className="w-full bg-dark-700 rounded-full h-1.5">
+                    <div
+                        className={`h-1.5 rounded-full transition-all duration-300 ${(asset.pnl_percentage || 0) > 0
+                            ? 'bg-success-400'
+                            : (asset.pnl_percentage || 0) < 0
+                                ? 'bg-danger-400'
+                                : 'bg-gray-500'
+                            }`}
+                        style={{
+                            width: `${Math.min(Math.abs(asset.pnl_percentage || 0) * 2, 100)}%`
+                        }}
+                    />
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const PortfolioAssets = ({ portfolio, onRefresh }) => {
     const [assets, setAssets] = useState([]);
@@ -49,7 +308,7 @@ const PortfolioAssets = ({ portfolio, onRefresh }) => {
         try {
             setLoading(true);
             console.log('[PortfolioAssets] Loading assets for portfolio:', portfolio.id);
-            
+
             // Get portfolio holdings which contain the assets
             const holdingsResponse = await portfolioAPI.getPortfolioHoldings(portfolio.id);
             console.log('[PortfolioAssets] Holdings response:', holdingsResponse);
@@ -66,15 +325,12 @@ const PortfolioAssets = ({ portfolio, onRefresh }) => {
                     purchase_price: holding.cost_basis,
                     current_price: holding.current_value / holding.quantity,
                     total_value: holding.current_value,
-                    price_change_percentage_24h: holding.price_change_percentage_24h || 0,
-                    market_cap: holding.market_cap,
-                    volume_24h: holding.volume_24h,
-                    rsi: holding.rsi,
-                    volatility_20d: holding.volatility_20d,
                     purchase_date: holding.purchase_date,
                     // Calculate P&L
                     pnl: holding.unrealized_pnl,
-                    pnl_percentage: holding.unrealized_pnl_percent
+                    pnl_percentage: holding.unrealized_pnl_percent,
+                    realized_pnl: holding.realized_pnl,
+                    realized_pnl_percentage: holding.realized_pnl_percent
                 }));
             }
 
@@ -226,30 +482,6 @@ const PortfolioAssets = ({ portfolio, onRefresh }) => {
                     aValue = a.total_value || 0;
                     bValue = b.total_value || 0;
                     break;
-                case 'purchase_date':
-                    aValue = new Date(a.purchase_date || 0);
-                    bValue = new Date(b.purchase_date || 0);
-                    break;
-                case 'market_cap':
-                    aValue = a.market_cap || 0;
-                    bValue = b.market_cap || 0;
-                    break;
-                case 'volume_24h':
-                    aValue = a.volume_24h || 0;
-                    bValue = b.volume_24h || 0;
-                    break;
-                case 'price_change_percentage_24h':
-                    aValue = a.price_change_percentage_24h || 0;
-                    bValue = b.price_change_percentage_24h || 0;
-                    break;
-                case 'rsi':
-                    aValue = a.rsi || 0;
-                    bValue = b.rsi || 0;
-                    break;
-                case 'volatility_20d':
-                    aValue = a.volatility_20d || 0;
-                    bValue = b.volatility_20d || 0;
-                    break;
                 default:
                     aValue = a.symbol || '';
                     bValue = b.symbol || '';
@@ -277,7 +509,7 @@ const PortfolioAssets = ({ portfolio, onRefresh }) => {
 
     const handleRefresh = () => {
         loadPortfolioAssets();
-        onRefresh && onRefresh();
+        // Don't call onRefresh to avoid reloading all portfolios
         toast.success('Portfolio assets refreshed');
     };
 
@@ -483,7 +715,7 @@ const PortfolioAssets = ({ portfolio, onRefresh }) => {
                         : 'space-y-4'
                 }>
                     {filteredAssets.map((asset) => (
-                        <AssetCard
+                        <PortfolioAssetCard
                             key={asset.id}
                             asset={asset}
                             viewMode={viewMode}
@@ -498,14 +730,6 @@ const PortfolioAssets = ({ portfolio, onRefresh }) => {
                             onDelete={() => {
                                 // TODO: Implement delete asset functionality
                                 toast.info('Delete asset functionality coming soon!');
-                            }}
-                            onAddToPortfolio={() => {
-                                // Not applicable for portfolio assets
-                                toast.info('Asset is already in this portfolio');
-                            }}
-                            onViewInPortfolio={() => {
-                                // Not applicable for portfolio assets
-                                toast.info('Asset is already in this portfolio');
                             }}
                         />
                     ))}

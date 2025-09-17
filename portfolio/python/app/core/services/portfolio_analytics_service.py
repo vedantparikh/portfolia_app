@@ -140,7 +140,7 @@ class PortfolioAnalyticsService:
         )
 
         # Calculate performance metrics
-        performance_metrics = self._calculate_portfolio_performance_metrics(
+        performance_metrics = await self._calculate_portfolio_performance_metrics(
             portfolio_id, snapshot_date
         )
 
@@ -171,7 +171,7 @@ class PortfolioAnalyticsService:
             created_at=snapshot.created_at,
         )
 
-    def _calculate_portfolio_performance_metrics(
+    async def _calculate_portfolio_performance_metrics(
         self, portfolio_id: int, snapshot_date: datetime
     ) -> Dict[str, Any]:
         """Calculate portfolio performance metrics."""
@@ -180,7 +180,7 @@ class PortfolioAnalyticsService:
         start_date = end_date - timedelta(days=365)  # 1 year lookback
 
         # Get daily returns for the portfolio
-        daily_returns = self._get_portfolio_daily_returns(
+        daily_returns = await self._get_portfolio_daily_returns(
             portfolio_id, start_date, end_date
         )
 

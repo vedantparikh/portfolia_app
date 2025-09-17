@@ -121,6 +121,7 @@ class AssetUpdate(BaseModel):
 
 
 class AssetDetail(BaseModel):
+    open: Optional[Decimal] = Field(None)
     current_price: Optional[Decimal] = Field(None)
     market_cap: Optional[Decimal] = Field(None)
     day_low: Optional[Decimal] = Field(None)
@@ -129,6 +130,25 @@ class AssetDetail(BaseModel):
     high_52w: Optional[Decimal] = Field(None)
     volume_24h: Optional[Decimal] = Field(None)
     price_change_percentage_24h: Optional[Decimal] = Field(None)
+    beta: Optional[Decimal] = Field(None)
+    trailing_PE: Optional[Decimal] = Field(None)
+    forward_PE: Optional[Decimal] = Field(None)
+    dividend_yield: Optional[Decimal] = Field(None)
+    payout_ratio: Optional[Decimal] = Field(None)
+    # Asset Business details
+    book_value: Optional[Decimal] = Field(None)
+    price_to_book: Optional[Decimal] = Field(None)
+    earnings_growth: Optional[Decimal] = Field(None)
+    revenue_growth: Optional[Decimal] = Field(None)
+    return_on_asset: Optional[Decimal] = Field(None)
+    return_on_equity: Optional[Decimal] = Field(None)
+    free_cashflow: Optional[Decimal] = Field(None)
+    operating_cashflow: Optional[Decimal] = Field(None)
+    total_debt: Optional[Decimal] = Field(None)
+    total_cash: Optional[Decimal] = Field(None)
+    full_time_employees: Optional[Decimal] = Field(None)
+    long_business_summary: Optional[str] = Field(None)
+    website: Optional[str] = Field(None)
 
 
 class Asset(AssetBase):
