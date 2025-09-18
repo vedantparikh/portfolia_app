@@ -1,9 +1,0 @@
-streamlit==1.29.0
-pre-commit==3.3.3
-yfinance==0.2.27
-yahooquery==2.3.0
-plotly==5.15.0
-ta==0.10.2
-altair
-requests==2.31.0
-ruff==0.12.12

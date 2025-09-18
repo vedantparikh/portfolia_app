@@ -19,12 +19,7 @@ Open **3 separate terminal windows** and run:
 ./start_backend.sh
 ```
 
-**Terminal 2 - Streamlit Dashboard:**
-```bash
-./start_streamlit.sh
-```
-
-**Terminal 3 - React Frontend:**
+**Terminal 2 - React Frontend:**
 ```bash
 ./start_frontend.sh
 ```
@@ -36,13 +31,6 @@ Open **3 separate terminal windows** and run:
 cd python/api
 source venv/bin/activate
 uvicorn main:app --reload --host 0.0.0.0 --port 8080
-```
-
-**Streamlit Dashboard:**
-```bash
-cd python/streamlit
-source venv/bin/activate
-streamlit run main.py --server.port 8501 --server.address 0.0.0.0
 ```
 
 **React Frontend:**
@@ -59,8 +47,6 @@ Once all services are running, you can access:
   - **API Documentation**: http://localhost:8080/docs
   - **Alternative Docs**: http://localhost:8080/redoc
 
-- **📊 Streamlit Dashboard**: http://localhost:8501
-
 - **⚛️ React Frontend**: http://localhost:3000
 
 ## 🧪 Test the Setup
@@ -70,12 +56,7 @@ Once all services are running, you can access:
 curl http://localhost:8080/api/market/symbols?name=AAPL
 ```
 
-### 2. Test Streamlit Dashboard
-- Open http://localhost:8501 in your browser
-- Search for a stock symbol (e.g., "AAPL")
-- View the interactive charts and indicators
-
-### 3. Test React Frontend
+### 2. Test React Frontend
 - Open http://localhost:3000 in your browser
 - You should see the React app (currently a template)
 
@@ -87,7 +68,6 @@ curl http://localhost:8080/api/market/symbols?name=AAPL
 ```bash
 # Find what's using the port
 lsof -i :8080  # For backend
-lsof -i :8501  # For Streamlit
 lsof -i :3000  # For React
 
 # Kill the process
@@ -118,8 +98,7 @@ npm install
 ## 📱 Development Workflow
 
 1. **Backend Changes**: FastAPI will auto-reload when you modify Python files
-2. **Streamlit Changes**: Dashboard will auto-reload when you modify Python files
-3. **Frontend Changes**: React will hot-reload when you modify JavaScript/JSX files
+2. **Frontend Changes**: React will hot-reload when you modify JavaScript/JSX files
 
 ## 🎨 Available Features
 
@@ -128,12 +107,6 @@ npm install
 - ✅ Historical stock data
 - ✅ Technical indicators (RSI, MACD, Bollinger Bands, etc.)
 - ✅ Trading strategies (MACD, GFS)
-
-### Streamlit Dashboard
-- ✅ Interactive stock charts
-- ✅ Real-time technical analysis
-- ✅ Multi-timeframe RSI analysis
-- ✅ Beautiful Plotly visualizations
 
 ### React Frontend
 - ✅ Modern React 18 with hooks
@@ -144,10 +117,9 @@ npm install
 ## 🚀 Next Steps
 
 1. **Explore the API**: Visit http://localhost:8080/docs
-2. **Try the Dashboard**: Search for stocks in Streamlit
-3. **Develop Frontend**: Start building React components
-4. **Add Features**: Implement new technical indicators
-5. **Database Integration**: Add PostgreSQL when ready
+2. **Develop Frontend**: Start building React components
+3. **Add Features**: Implement new technical indicators
+4. **Database Integration**: Add PostgreSQL when ready
 
 ## 📞 Need Help?
 
