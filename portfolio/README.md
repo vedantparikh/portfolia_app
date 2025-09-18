@@ -34,12 +34,7 @@ The application follows a microservices architecture with three main components:
    - Trading strategy algorithms
    - Market data integration
 
-2. **Streamlit Dashboard** (`/python/streamlit/`)
-   - Interactive financial charts
-   - Real-time data visualization
-   - Technical analysis tools
-
-3. **React Frontend** (`/js/`)
+2. **React Frontend** (`/js/`)
    - Modern web interface
    - Real-time data updates
    - Responsive design
@@ -63,7 +58,6 @@ docker-compose up --build
 # Access the services:
 # - React App: http://localhost:3000
 # - FastAPI: http://localhost:8080
-# - Streamlit: http://localhost:8501
 # - PostgreSQL: localhost:5432
 ```
 
@@ -76,15 +70,6 @@ python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 uvicorn main:app --reload --host 0.0.0.0 --port 8080
-```
-
-#### Streamlit Setup
-```bash
-cd python/streamlit
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
-streamlit run main.py --server.port 8501
 ```
 
 #### Frontend Setup
@@ -134,10 +119,10 @@ portfolia_app/
 ├── portfolio/
 │   ├── python/
 │   │   ├── api/                    # FastAPI backend
-│   │   │   ├── market/            # Stock data endpoints
-│   │   │   ├── statistical_indicators/  # Technical indicators
-│   │   │   └── trading_strategy/  # Trading algorithms
-│   │   └── streamlit/             # Dashboard application
+│   │       ├── market/            # Stock data endpoints
+│   │       ├── statistical_indicators/  # Technical indicators
+│   │       └── trading_strategy/  # Trading algorithms
+│   │   
 │   ├── js/                        # React frontend (Vite)
 │   ├── docker-compose.yml         # Multi-service orchestration
 │   └── README.md                  # This file
