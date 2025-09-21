@@ -57,6 +57,9 @@ class User(Base):
     watchlist_alerts = relationship(
         "WatchlistAlert", back_populates="user", cascade="all, delete-orphan"
     )
+    analysis_configurations = relationship(
+        "AnalysisConfiguration", back_populates="user", cascade="all, delete-orphan"
+    )
 
     # Indexes for performance
     __table_args__ = (

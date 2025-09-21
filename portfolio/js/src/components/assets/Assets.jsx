@@ -7,12 +7,15 @@ import {
     Plus,
     RefreshCw,
     Search,
+    Settings,
     TrendingDown,
     TrendingUp
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { userAssetsAPI } from '../../services/api';
+import AssetAnalyticsView from '../analytics/AssetAnalyticsView';
+import IndicatorConfigurationManager from '../analytics/IndicatorConfigurationManager';
 import { Sidebar } from '../shared';
 import AssetCard from './AssetCard';
 import AssetFilters from './AssetFilters';
@@ -28,6 +31,10 @@ const Assets = () => {
     const [showFilters, setShowFilters] = useState(false);
     const [viewMode, setViewMode] = useState('grid'); // grid or list
     const [modalMode, setModalMode] = useState('view'); // view, create, edit
+    const [showAnalytics, setShowAnalytics] = useState(false);
+    const [chartData, setChartData] = useState([]);
+    const [selectedConfiguration, setSelectedConfiguration] = useState(null);
+    const [showConfigurationManager, setShowConfigurationManager] = useState(false);
     const [filters, setFilters] = useState({
         category: 'all',
         priceRange: 'all',
@@ -44,7 +51,7 @@ const Assets = () => {
     // Load assets on component mount
     useEffect(() => {
         let isMounted = true;
-        
+
         const loadAssetsSafe = async () => {
             try {
                 setLoading(true);
@@ -54,7 +61,7 @@ const Assets = () => {
                     include_performance: true,
                     include_analytics: true
                 });
-                
+
                 // Only update state if component is still mounted
                 if (isMounted) {
                     console.log('[Assets] User assets response:', response);
@@ -71,9 +78,9 @@ const Assets = () => {
                 }
             }
         };
-        
+
         loadAssetsSafe();
-        
+
         // Cleanup function to prevent state updates on unmounted component
         return () => {
             isMounted = false;
@@ -310,6 +317,32 @@ const Assets = () => {
         setSelectedAsset(asset);
         setModalMode('view');
         setShowModal(true);
+    };
+
+    const handleAnalyticsClick = async (asset) => {
+        setSelectedAsset(asset);
+        setShowAnalytics(true);
+        await loadChartData(asset);
+    };
+
+    const loadChartData = async (asset) => {
+        if (!asset?.id) return;
+
+        try {
+            // Load chart data with statistical indicators
+            const response = await userAssetsAPI.getUserAsset(asset.id);
+            // For now, we'll use mock data or existing data
+            // In a real implementation, this would call the statistical indicators API
+            setChartData(response.price_history || []);
+        } catch (error) {
+            console.error('Failed to load chart data:', error);
+            setChartData([]);
+        }
+    };
+
+    const handleConfigurationSelect = (configuration) => {
+        setSelectedConfiguration(configuration);
+        setShowConfigurationManager(false);
     };
 
     const handleCreateAsset = () => {
@@ -604,8 +637,52 @@ const Assets = () => {
                         </p>
                     </div>
 
+                    {/* Analytics View */}
+                    {showAnalytics && selectedAsset && (
+                        <div className="mb-8">
+                            <div className="flex items-center justify-between mb-4">
+                                <button
+                                    onClick={() => setShowAnalytics(false)}
+                                    className="btn-outline flex items-center space-x-2"
+                                >
+                                    <ArrowLeft size={16} />
+                                    <span>Back to Assets</span>
+                                </button>
+                                <div className="flex items-center space-x-2">
+                                    <button
+                                        onClick={() => setShowConfigurationManager(true)}
+                                        className="btn-outline flex items-center space-x-2"
+                                    >
+                                        <Settings size={16} />
+                                        <span>Manage Configurations</span>
+                                    </button>
+                                    {selectedConfiguration && (
+                                        <div className="flex items-center space-x-2">
+                                            <span className="text-sm text-gray-400">Using:</span>
+                                            <span className="text-sm font-medium text-primary-400">
+                                                {selectedConfiguration.name}
+                                            </span>
+                                            <button
+                                                onClick={() => setSelectedConfiguration(null)}
+                                                className="text-gray-400 hover:text-gray-100"
+                                            >
+                                                <X size={16} />
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            <AssetAnalyticsView
+                                asset={selectedAsset}
+                                chartData={chartData}
+                                selectedConfiguration={selectedConfiguration}
+                                onRefresh={() => loadChartData(selectedAsset)}
+                            />
+                        </div>
+                    )}
+
                     {/* Assets Grid/List */}
-                    {filteredAssets.length === 0 ? (
+                    {!showAnalytics && filteredAssets.length === 0 ? (
                         <div className="space-y-6">
                             <div className="card p-12 text-center">
                                 <BarChart3 className="w-16 h-16 text-gray-600 mx-auto mb-4" />
@@ -634,6 +711,7 @@ const Assets = () => {
                                     onDelete={() => handleDeleteAsset(asset.id)}
                                     onAddToPortfolio={handleAddToPortfolio}
                                     onViewInPortfolio={handleViewInPortfolio}
+                                    onAnalytics={() => handleAnalyticsClick(asset)}
                                 />
                             ))}
                         </div>
@@ -651,6 +729,32 @@ const Assets = () => {
                             }}
                             onSave={handleAssetSave}
                         />
+                    )}
+
+                    {/* Configuration Manager Modal */}
+                    {showConfigurationManager && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                            <div className="bg-dark-800 rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden">
+                                <div className="flex items-center justify-between p-6 border-b border-dark-700">
+                                    <h3 className="text-xl font-semibold text-gray-100">Analysis Configurations</h3>
+                                    <button
+                                        onClick={() => setShowConfigurationManager(false)}
+                                        className="text-gray-400 hover:text-gray-100"
+                                    >
+                                        <X size={24} />
+                                    </button>
+                                </div>
+                                <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+                                    <IndicatorConfigurationManager
+                                        onConfigurationSelect={handleConfigurationSelect}
+                                        selectedConfigurationId={selectedConfiguration?.id}
+                                        showCreateButton={true}
+                                        showSearch={true}
+                                        showFilters={true}
+                                    />
+                                </div>
+                            </div>
+                        </div>
                     )}
                 </div>
             </div>

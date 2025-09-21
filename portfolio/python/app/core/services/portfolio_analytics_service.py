@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 from sqlalchemy.orm import Session
 
-from app.core.database.models import Portfolio, PortfolioAsset
+from app.core.database.models import Asset, Portfolio, PortfolioAsset
 from app.core.database.models.portfolio_analytics import (
     AssetCorrelation,
     AssetPerformanceMetrics,
@@ -32,7 +32,6 @@ from app.core.schemas.portfolio_analytics import (
     RiskCalculationResponse,
 )
 from app.core.services.market_data_service import market_data_service
-from app.core.database.models import Asset
 
 logger = logging.getLogger(__name__)
 

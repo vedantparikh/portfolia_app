@@ -1173,6 +1173,207 @@ export const analyticsAPI = {
 };
 
 /* 
+  STATISTICAL INDICATORS API METHODS - Technical analysis and statistical indicators
+  These methods handle all statistical indicators and analysis configuration API calls
+*/
+export const statisticalIndicatorsAPI = {
+  /* 
+      GET AVAILABLE INDICATORS - Get all available statistical indicators
+      Returns: Server response with available indicators
+    */
+  getAvailableIndicators: async (category = null, search = null) => {
+    const params = new URLSearchParams();
+    if (category) params.append('category', category);
+    if (search) params.append('search', search);
+    
+    const response = await api.get(`/statistical-indicators/indicators?${params.toString()}`);
+    return response.data;
+  },
+
+  /* 
+      CALCULATE INDICATORS - Calculate indicators for a symbol
+      Returns: Server response with calculated indicator data
+    */
+  calculateIndicators: async (requestData) => {
+    const response = await api.post('/statistical-indicators/calculate', requestData);
+    return response.data;
+  },
+
+  /* 
+      GENERATE CHART DATA - Generate chart data with indicators
+      Returns: Server response with chart data and indicators
+    */
+  generateChartData: async (requestData) => {
+    const response = await api.post('/statistical-indicators/chart-data', requestData);
+    return response.data;
+  },
+
+  /* 
+      GET CONFIGURATIONS - Get analysis configurations
+      Returns: Server response with configurations
+    */
+  getConfigurations: async (skip = 0, limit = 100, userOnly = false) => {
+    const params = new URLSearchParams();
+    params.append('skip', skip.toString());
+    params.append('limit', limit.toString());
+    params.append('user_only', userOnly.toString());
+    
+    const response = await api.get(`/statistical-indicators/configurations?${params.toString()}`);
+    return response.data;
+  },
+
+  /* 
+      CREATE CONFIGURATION - Create a new analysis configuration
+      Returns: Server response with created configuration
+    */
+  createConfiguration: async (configurationData) => {
+    const response = await api.post('/statistical-indicators/configurations', configurationData);
+    return response.data;
+  },
+
+  /* 
+      GET CONFIGURATION - Get a specific configuration
+      Returns: Server response with configuration details
+    */
+  getConfiguration: async (configId) => {
+    const response = await api.get(`/statistical-indicators/configurations/${configId}`);
+    return response.data;
+  },
+
+  /* 
+      UPDATE CONFIGURATION - Update an analysis configuration
+      Returns: Server response with updated configuration
+    */
+  updateConfiguration: async (configId, configurationData) => {
+    const response = await api.put(`/statistical-indicators/configurations/${configId}`, configurationData);
+    return response.data;
+  },
+
+  /* 
+      DELETE CONFIGURATION - Delete an analysis configuration
+      Returns: Server response with deletion confirmation
+    */
+  deleteConfiguration: async (configId) => {
+    const response = await api.delete(`/statistical-indicators/configurations/${configId}`);
+    return response.data;
+  },
+
+  /* 
+      GENERATE REACT CHART DATA - Generate React-optimized chart data
+      Returns: Server response with React chart data
+    */
+  generateReactChartData: async (symbol, period = '6mo', interval = '1d', configurationId = null, chartType = 'candlestick', includeVolume = true) => {
+    const params = new URLSearchParams();
+    params.append('symbol', symbol);
+    params.append('period', period);
+    params.append('interval', interval);
+    if (configurationId) params.append('configuration_id', configurationId.toString());
+    params.append('chart_type', chartType);
+    params.append('include_volume', includeVolume.toString());
+    
+    const response = await api.get(`/statistical-indicators/chart-data/react?${params.toString()}`);
+    return response.data;
+  },
+
+  /* 
+      GET TEMPLATES - Get predefined analysis templates
+      Returns: Server response with available templates
+    */
+  getTemplates: async () => {
+    const response = await api.get('/statistical-indicators/templates');
+    return response.data;
+  },
+
+  /* 
+      CREATE FROM TEMPLATE - Create configuration from template
+      Returns: Server response with created configuration
+    */
+  createFromTemplate: async (templateName, customName = null) => {
+    const params = new URLSearchParams();
+    if (customName) params.append('custom_name', customName);
+    
+    const response = await api.post(`/statistical-indicators/templates/${templateName}/create?${params.toString()}`);
+    return response.data;
+  },
+
+  /* 
+      VALIDATE CONFIGURATION - Validate indicator configuration
+      Returns: Server response with validation results
+    */
+  validateConfiguration: async (configuration) => {
+    const response = await api.post('/statistical-indicators/validate', configuration);
+    return response.data;
+  },
+
+  /* 
+      DUPLICATE CONFIGURATION - Duplicate an existing configuration
+      Returns: Server response with duplicated configuration
+    */
+  duplicateConfiguration: async (configId, newName) => {
+    const params = new URLSearchParams();
+    params.append('new_name', newName);
+    
+    const response = await api.post(`/statistical-indicators/configurations/${configId}/duplicate?${params.toString()}`);
+    return response.data;
+  },
+
+  /* 
+      SEARCH CONFIGURATIONS - Search configurations by name, description, or tags
+      Returns: Server response with matching configurations
+    */
+  searchConfigurations: async (query, skip = 0, limit = 100) => {
+    const params = new URLSearchParams();
+    params.append('q', query);
+    params.append('skip', skip.toString());
+    params.append('limit', limit.toString());
+    
+    const response = await api.get(`/statistical-indicators/configurations/search?${params.toString()}`);
+    return response.data;
+  },
+
+  /* 
+      GENERATE HIGHCHARTS DATA - Generate Highcharts-compatible chart data
+      Returns: Server response with Highcharts data
+    */
+  generateHighchartsData: async (symbol, period = 'max', interval = '1d', configurationId = null) => {
+    const params = new URLSearchParams();
+    params.append('symbol', symbol);
+    params.append('period', period);
+    params.append('interval', interval);
+    if (configurationId) params.append('configuration_id', configurationId.toString());
+    
+    const response = await api.get(`/statistical-indicators/chart-data/highcharts?${params.toString()}`);
+    return response.data;
+  },
+
+  /* 
+      GET STATISTICS - Get user's configuration statistics
+      Returns: Server response with user statistics
+    */
+  getStatistics: async () => {
+    const response = await api.get('/statistical-indicators/statistics');
+    return response.data;
+  },
+
+  /* 
+      GET POPULAR CONFIGURATIONS - Get popular public configurations
+      Returns: Server response with popular configurations
+    */
+  getPopularConfigurations: async (limit = 10) => {
+    const params = new URLSearchParams();
+    params.append('limit', limit.toString());
+    
+    const response = await api.get(`/statistical-indicators/popular?${params.toString()}`);
+    return response.data;
+  },
+
+  /* 
+      GET ASSET ANALYSIS - Get comprehensive analysis for an asset
+      Returns: Server response with asset analysis data
+    */
+};
+
+/* 
   PORTFOLIO CALCULATIONS API METHODS - Performance calculations and comparisons
   These methods handle all portfolio calculation-related API calls
 */
