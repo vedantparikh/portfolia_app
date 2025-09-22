@@ -25,7 +25,7 @@ const EnhancedChart = ({
     data = [],
     symbol = '',
     period = '30d',
-    onPeriodChange = () => {}, // <-- FIX 1
+    onPeriodChange = () => {},
     height = 400,
     showVolume = true,
     loading = false,
@@ -45,6 +45,8 @@ const EnhancedChart = ({
     assetId = null,
     showReturns = true,
     enableAnalysis = true,
+    // This new prop allows the parent to pass in indicator data directly
+    indicatorOverlayData = null, 
 }) => {
     const chartContainerRef = useRef(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
@@ -64,12 +66,18 @@ const EnhancedChart = ({
         }
     }, [showIndicators, enableIndicatorConfig]);
 
-    // Load indicator data when selected indicators change
+    // Load indicator data when selected indicators change or data is passed
     useEffect(() => {
+        // If data is provided via prop, use it and skip fetching.
+        if (indicatorOverlayData) {
+            setIndicatorData(indicatorOverlayData);
+            return;
+        }
+        // Otherwise, fetch it if needed
         if (selectedIndicators.length > 0 && assetId && data.length > 0) {
             loadIndicatorData();
         }
-    }, [selectedIndicators, assetId, data]);
+    }, [selectedIndicators, assetId, data, indicatorOverlayData]);
 
     // Calculate returns data when period changes
     useEffect(() => {
@@ -92,7 +100,7 @@ const EnhancedChart = ({
     };
 
     const loadIndicatorData = async () => {
-        if (!assetId) return;
+        if (!assetId || indicatorOverlayData) return; // Don't fetch if data is passed as prop
         
         try {
             setLoadingIndicators(true);
@@ -112,11 +120,12 @@ const EnhancedChart = ({
     const calculateReturns = () => {
         if (!data || data.length === 0) return;
 
-        const sortedData = [...data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-        const firstPrice = sortedData[0]?.close || 0;
-        const lastPrice = sortedData[sortedData.length - 1]?.close || 0;
-        const highPrice = Math.max(...sortedData.map(d => d.high));
-        const lowPrice = Math.min(...sortedData.map(d => d.low));
+        // FIX: Use capitalized keys (Date, Close, High, Low)
+        const sortedData = [...data].sort((a, b) => new Date(a.Date).getTime() - new Date(b.Date).getTime());
+        const firstPrice = sortedData[0]?.Close || 0;
+        const lastPrice = sortedData[sortedData.length - 1]?.Close || 0;
+        const highPrice = Math.max(...sortedData.map(d => d.High));
+        const lowPrice = Math.min(...sortedData.map(d => d.Low));
 
         const totalReturn = firstPrice > 0 ? ((lastPrice - firstPrice) / firstPrice) * 100 : 0;
         const maxGain = firstPrice > 0 ? ((highPrice - firstPrice) / firstPrice) * 100 : 0;
@@ -137,14 +146,16 @@ const EnhancedChart = ({
         if (!data || data.length === 0) {
             return { candlestickData: [], volumeData: [] };
         }
-        const sortedData = [...data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        // FIX: Use item.Date for sorting
+        const sortedData = [...data].sort((a, b) => new Date(a.Date).getTime() - new Date(b.Date).getTime());
 
         const cData = sortedData.map(item => {
-            const open = Number(item.open);
-            const high = Number(item.high);
-            const low = Number(item.low);
-            const close = Number(item.close);
-            const volume = Number(item.volume);
+            // FIX: Use capitalized keys (Open, High, Low, Close, Volume)
+            const open = Number(item.Open);
+            const high = Number(item.High);
+            const low = Number(item.Low);
+            const close = Number(item.Close);
+            const volume = Number(item.Volume);
             
             if (isNaN(open) || isNaN(high) || isNaN(low) || isNaN(close) || isNaN(volume)) {
                 console.warn('Invalid data point:', item);
@@ -152,7 +163,7 @@ const EnhancedChart = ({
             }
             
             return {
-                time: new Date(item.date).getTime() / 1000,
+                time: new Date(item.Date).getTime() / 1000, // FIX: item.date -> item.Date
                 open: open,
                 high: high,
                 low: low,
@@ -162,16 +173,17 @@ const EnhancedChart = ({
         }).filter(Boolean);
 
         const vData = sortedData.map(item => {
-            const volume = Number(item.volume);
-            const close = Number(item.close);
-            const open = Number(item.open);
+            // FIX: Use capitalized keys (Volume, Close, Open)
+            const volume = Number(item.Volume);
+            const close = Number(item.Close);
+            const open = Number(item.Open);
             
             if (isNaN(volume) || isNaN(close) || isNaN(open)) {
                 return null;
             }
             
             return {
-                time: new Date(item.date).getTime() / 1000,
+                time: new Date(item.Date).getTime() / 1000, // FIX: item.date -> item.Date
                 value: volume,
                 color: close >= open ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)',
             };
@@ -409,7 +421,7 @@ const EnhancedChart = ({
         { value: '30d', label: '30 Days' },
         { value: '3mo', label: '3 Months' },
         { value: '6mo', label: '6 Months' },
-        { value: 'ytd', label: 'YTD' }, // <-- FIX 2
+        { value: 'ytd', label: 'YTD' },
         { value: '1y', label: '1 Year' },
         { value: '5y', label: '5 Years' },
         { value: 'max', label: 'All' }
