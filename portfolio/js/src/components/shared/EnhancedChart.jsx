@@ -55,7 +55,7 @@ const EnhancedChart = ({
     const [selectedIndicators, setSelectedIndicators] = useState(defaultIndicators);
     const [indicatorData, setIndicatorData] = useState({});
     const [showIndicatorPanel, setShowIndicatorPanel] = useState(false);
-    const [showReturnsPanel, setShowReturnsPanel] = useState(false);
+    const [showReturnsPanel, setShowReturnsPanel] = useState(true);
     const [returnsData, setReturnsData] = useState({});
     const [loadingIndicators, setLoadingIndicators] = useState(false);
 
