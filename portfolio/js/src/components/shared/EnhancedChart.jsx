@@ -88,11 +88,12 @@ const EnhancedChart = ({
 
     const loadIndicatorsData = async () => {
         try {
-            const [indicators, configurations] = await Promise.all([
+            const [indicatorResponse, configurations] = await Promise.all([
                 statisticalIndicatorsAPI.getAvailableIndicators(),
                 statisticalIndicatorsAPI.getConfigurations()
             ]);
-            setAvailableIndicators(indicators || []);
+            // FIX: Extract the 'indicators' array from the response object
+            setAvailableIndicators(indicatorResponse?.indicators || []);
             setIndicatorConfigurations(configurations || []);
         } catch (error) {
             console.error('Failed to load indicators data:', error);
@@ -383,19 +384,22 @@ const EnhancedChart = ({
     }, [candlestickData, volumeData, theme, height, showVolume, chartType, symbol, showIndicators, indicatorData]);
 
     const getIndicatorColor = (indicatorName) => {
+        // Use the 'name' from the API response (e.g., 'rsi_indicator')
         const colors = {
-            'SMA': '#ff6b6b',
-            'EMA': '#4ecdc4',
-            'RSI': '#45b7d1',
-            'MACD': '#96ceb4',
-            'BB': '#feca57',
-            'STOCH': '#ff9ff3',
-            'ADX': '#54a0ff',
-            'CCI': '#5f27cd',
-            'WILLR': '#00d2d3',
-            'ATR': '#ff9f43'
+            'sma': '#ff6b6b', // Assuming SMA is a key
+            'ema': '#4ecdc4', // Assuming EMA is a key
+            'rsi_indicator': '#45b7d1',
+            'macd_indicator': '#96ceb4',
+            'bollinger_bands_indicator': '#feca57',
+            'stoch_oscillator_indicator': '#ff9ff3',
+            'adx_indicator': '#54a0ff',
+            'cci_indicator': '#5f27cd',
+            'roc_indicator': '#00d2d3',
+            'average_true_range_indicator': '#ff9f43'
+            // Add other names from your API response as needed
         };
-        return colors[indicatorName] || '#8884d8';
+        // Fallback for names like 'SMA' if they are used
+        return colors[indicatorName] || colors[indicatorName.toLowerCase()] || '#8884d8';
     };
 
     const handleIndicatorToggle = (indicator) => {
@@ -415,6 +419,13 @@ const EnhancedChart = ({
         if (onFullscreenToggle) {
             onFullscreenToggle(newFullscreenState);
         }
+    };
+    
+    // FIX: New helper function to format the description
+    const formatIndicatorDescription = (description) => {
+        if (!description) return '';
+        // Use regex to remove " indicator" from the end of the string, case-insensitive
+        return description.replace(/ indicator$/i, "").trim();
     };
 
     const periods = [
@@ -508,7 +519,7 @@ const EnhancedChart = ({
                         </h3>
                         <button
                             onClick={() => setShowReturnsPanel(false)}
-                            className="text-gray-400 hover:text-gray-100"
+                            className="text-gray-400 hover:text-gray-1g00"
                         >
                             <X size={16} />
                         </button>
@@ -580,7 +591,8 @@ const EnhancedChart = ({
                                     className="w-3 h-3 rounded-full" 
                                     style={{ backgroundColor: getIndicatorColor(indicator.name) }}
                                 />
-                                <span>{indicator.name}</span>
+                                {/* FIX: Show formatted description instead of name */}
+                                <span>{formatIndicatorDescription(indicator.description)}</span>
                             </button>
                         ))}
                     </div>
@@ -589,24 +601,29 @@ const EnhancedChart = ({
                         <div className="mt-4 pt-4 border-t border-dark-600">
                             <p className="text-sm text-gray-400 mb-2">Active Indicators:</p>
                             <div className="flex flex-wrap gap-2">
-                                {selectedIndicators.map((indicator) => (
-                                    <span
-                                        key={indicator}
-                                        className="px-2 py-1 bg-primary-600/20 text-primary-400 text-xs rounded-full flex items-center space-x-1"
-                                    >
-                                        <div 
-                                            className="w-2 h-2 rounded-full" 
-                                            style={{ backgroundColor: getIndicatorColor(indicator) }}
-                                        />
-                                        <span>{indicator}</span>
-                                        <button
-                                            onClick={() => handleIndicatorToggle(indicator)}
-                                            className="ml-1 hover:text-primary-300"
+                                {selectedIndicators.map((indicatorName) => {
+                                    // Find the full indicator object to get its description
+                                    const indicator = availableIndicators.find(i => i.name === indicatorName);
+                                    return (
+                                        <span
+                                            key={indicatorName}
+                                            className="px-2 py-1 bg-primary-600/20 text-primary-400 text-xs rounded-full flex items-center space-x-1"
                                         >
-                                            <X size={12} />
-                                        </button>
-                                    </span>
-                                ))}
+                                            <div 
+                                                className="w-2 h-2 rounded-full" 
+                                                style={{ backgroundColor: getIndicatorColor(indicatorName) }}
+                                            />
+                                            {/* FIX: Show formatted description here as well */}
+                                            <span>{indicator ? formatIndicatorDescription(indicator.description) : indicatorName}</span>
+                                            <button
+                                                onClick={() => handleIndicatorToggle(indicatorName)}
+                                                className="ml-1 hover:text-primary-300"
+                                            >
+                                                <X size={12} />
+                                            </button>
+                                        </span>
+                                    );
+                                })}
                             </div>
                         </div>
                     )}
