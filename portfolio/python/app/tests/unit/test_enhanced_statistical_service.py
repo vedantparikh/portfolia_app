@@ -129,7 +129,7 @@ class TestEnhancedStatisticalService:
                 
                 with patch.object(service.indicator_registry, 'calculate_indicators') as mock_calculate:
                     mock_result_df = Mock()
-                    mock_result_df.to_dicts.return_value = [
+                    mock_result_df.to_dict.return_value = [
                         {
                             "Date": "2023-01-01",
                             "Close": 150.0,
@@ -206,7 +206,7 @@ class TestEnhancedStatisticalService:
                 
                 with patch.object(service.indicator_registry, 'calculate_indicators') as mock_calculate:
                     mock_result_df = Mock()
-                    mock_result_df.to_dicts.return_value = [
+                    mock_result_df.to_dict.return_value = [
                         {
                             "Date": "2023-01-01",
                             "Open": 150.0,
@@ -279,7 +279,7 @@ class TestEnhancedStatisticalService:
         """Test preparing candlestick chart data."""
         # Mock DataFrame
         mock_df = Mock()
-        mock_df.to_dicts.return_value = [
+        mock_df.to_dict.return_value = [
             {
                 "Date": datetime(2023, 1, 1),
                 "Open": 150.0,
@@ -308,7 +308,7 @@ class TestEnhancedStatisticalService:
         """Test preparing line chart data."""
         # Mock DataFrame
         mock_df = Mock()
-        mock_df.to_dicts.return_value = [
+        mock_df.to_dict.return_value = [
             {
                 "Date": datetime(2023, 1, 1),
                 "Close": 152.0
@@ -327,7 +327,7 @@ class TestEnhancedStatisticalService:
         """Test preparing indicator data for chart."""
         # Mock DataFrame
         mock_df = Mock()
-        mock_df.to_dicts.return_value = [
+        mock_df.to_dict.return_value = [
             {
                 "Date": datetime(2023, 1, 1),
                 "RSI": 50.0
@@ -363,7 +363,7 @@ class TestEnhancedStatisticalService:
         """Test preparing volume data for chart."""
         # Mock DataFrame
         mock_df = Mock()
-        mock_df.to_dicts.return_value = [
+        mock_df.to_dict.return_value = [
             {
                 "Date": datetime(2023, 1, 1),
                 "Volume": 1000000

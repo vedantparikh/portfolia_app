@@ -296,7 +296,7 @@ class IndicatorRegistryService:
         """Calculate indicators based on configurations."""
         start_time = time.time()
         errors = []
-        result_df = data.clone()
+        result_df = data.copy()
         
         # Generate unique IDs for indicators that don't have them
         for i, config in enumerate(configurations):

@@ -25,7 +25,7 @@ const EnhancedChart = ({
     data = [],
     symbol = '',
     period = '30d',
-    onPeriodChange,
+    onPeriodChange = () => {}, // <-- FIX 1
     height = 400,
     showVolume = true,
     loading = false,
@@ -409,7 +409,7 @@ const EnhancedChart = ({
         { value: '30d', label: '30 Days' },
         { value: '3mo', label: '3 Months' },
         { value: '6mo', label: '6 Months' },
-        { value: 'ytd', label: 'YTD' },
+        { value: 'ytd', label: 'YTD' }, // <-- FIX 2
         { value: '1y', label: '1 Year' },
         { value: '5y', label: '5 Years' },
         { value: 'max', label: 'All' }
@@ -524,7 +524,7 @@ const EnhancedChart = ({
                             <p className="text-sm text-gray-400">Price Range</p>
                             <p className="text-sm font-medium text-gray-200">
                                 ${returnsData.lowPrice?.toFixed(2) || '0'} - ${returnsData.highPrice?.toFixed(2) || '0'}
-                            </p>
+                            </p> 
                         </div>
                     </div>
                 </div>

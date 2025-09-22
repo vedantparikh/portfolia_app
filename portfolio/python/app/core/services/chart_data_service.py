@@ -310,7 +310,7 @@ class ChartDataService:
 
         # Prepare price data
         price_data = []
-        for row in df.to_dicts():
+        for row in df.to_dict('records'):
             if all(col in row for col in ["Open", "High", "Low", "Close", "Date"]):
                 price_data.append(PriceDataPoint(
                     date=row["Date"].isoformat() if isinstance(row["Date"], datetime) else str(row["Date"]),
@@ -338,7 +338,7 @@ class ChartDataService:
                 col_name = f"{output_col}_{config.id}"
                 if col_name in df.columns:
                     data_points = []
-                    for row in df.to_dicts():
+                    for row in df.to_dict('records'):
                         if col_name in row and row[col_name] is not None:
                             data_points.append(IndicatorDataPoint(
                                 date=row["Date"].isoformat() if isinstance(row["Date"], datetime) else str(row["Date"]),
@@ -368,7 +368,7 @@ class ChartDataService:
         volume_data = None
         if include_volume and "Volume" in df.columns:
             volume_data = []
-            for row in df.to_dicts():
+            for row in df.to_dict('records'):
                 if "Volume" in row and "Date" in row and row["Volume"] is not None:
                     volume_data.append(VolumeDataPoint(
                         date=row["Date"].isoformat() if isinstance(row["Date"], datetime) else str(row["Date"]),

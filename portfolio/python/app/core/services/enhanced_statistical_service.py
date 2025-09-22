@@ -78,7 +78,7 @@ class EnhancedStatisticalService:
             )
             
             # Convert to response format
-            data_records = result_df.to_dicts()
+            data_records = result_df.to_dict('records')
             
             # Extract indicator names that were applied
             applied_indicators = [config.indicator_name for config in indicator_configs if config.enabled]
@@ -209,7 +209,7 @@ class EnhancedStatisticalService:
         # Prepare candlestick data
         if chart_type == "candlestick":
             candlestick_data = []
-            for row in df.to_dicts():
+            for row in df.to_dict('records'):
                 if all(col in row for col in ["Open", "High", "Low", "Close", "Date"]):
                     candlestick_data.append({
                         "x": row["Date"].isoformat() if isinstance(row["Date"], datetime) else str(row["Date"]),
@@ -223,7 +223,7 @@ class EnhancedStatisticalService:
         # Prepare line chart data
         elif chart_type == "line":
             line_data = []
-            for row in df.to_dicts():
+            for row in df.to_dict('records'):
                 if "Close" in row and "Date" in row:
                     line_data.append({
                         "x": row["Date"].isoformat() if isinstance(row["Date"], datetime) else str(row["Date"]),
@@ -257,7 +257,7 @@ class EnhancedStatisticalService:
             for output_col in indicator_def.output_columns:
                 if output_col in df.columns:
                     data_points = []
-                    for row in df.to_dicts():
+                    for row in df.to_dict('records'):
                         if output_col in row and row[output_col] is not None:
                             data_points.append({
                                 "x": row["Date"].isoformat() if isinstance(row["Date"], datetime) else str(row["Date"]),
@@ -282,7 +282,7 @@ class EnhancedStatisticalService:
         """Prepare volume data for chart."""
         volume_data = []
         
-        for row in df.to_dicts():
+        for row in df.to_dict('records'):
             if "Volume" in row and "Date" in row and row["Volume"] is not None:
                 volume_data.append({
                     "x": row["Date"].isoformat() if isinstance(row["Date"], datetime) else str(row["Date"]),
@@ -295,7 +295,7 @@ class EnhancedStatisticalService:
         """Prepare price data for candlestick charts."""
         price_data = []
         
-        for row in df.to_dicts():
+        for row in df.to_dict('records'):
             if all(col in row for col in ["Open", "High", "Low", "Close", "Date"]):
                 price_data.append({
                     "date": row["Date"].isoformat() if isinstance(row["Date"], datetime) else str(row["Date"]),
@@ -327,7 +327,7 @@ class EnhancedStatisticalService:
                 col_name = f"{output_col}_{config.id}"
                 if col_name in df.columns:
                     data_points = []
-                    for row in df.to_dicts():
+                    for row in df.to_dict('records'):
                         if col_name in row and row[col_name] is not None:
                             data_points.append({
                                 "date": row["Date"].isoformat() if isinstance(row["Date"], datetime) else str(row["Date"]),
@@ -359,7 +359,7 @@ class EnhancedStatisticalService:
         """Prepare volume data for charts."""
         volume_data = []
         
-        for row in df.to_dicts():
+        for row in df.to_dict('records'):
             if "Volume" in row and "Date" in row and row["Volume"] is not None:
                 volume_data.append({
                     "date": row["Date"].isoformat() if isinstance(row["Date"], datetime) else str(row["Date"]),
