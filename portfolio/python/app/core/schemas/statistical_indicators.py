@@ -191,7 +191,6 @@ class IndicatorCalculationResponse(BaseModel):
     total_records: int = Field(..., description="Total number of data records")
     
     # Enhanced fields for React UI
-    price_data: List[PriceDataPoint] = Field(..., description="Price data for candlestick charts")
     indicator_series: List[IndicatorSeries] = Field(..., description="Indicator series data")
     volume_data: Optional[List[VolumeDataPoint]] = Field(None, description="Volume data")
     metadata: ChartMetadata = Field(..., description="Chart metadata")

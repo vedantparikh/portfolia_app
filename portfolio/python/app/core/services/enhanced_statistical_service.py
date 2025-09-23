@@ -84,7 +84,6 @@ class EnhancedStatisticalService:
             applied_indicators = [config.indicator_name for config in indicator_configs if config.enabled]
             
             # Generate enhanced response data
-            price_data = self._prepare_price_data(result_df)
             indicator_series = self._prepare_indicator_series(result_df, indicator_configs)
             volume_data = self._prepare_volume_data(result_df)
             metadata = self._prepare_metadata(
@@ -106,7 +105,6 @@ class EnhancedStatisticalService:
                 data=data_records,
                 indicators_applied=applied_indicators,
                 total_records=len(data_records),
-                price_data=price_data,
                 indicator_series=indicator_series,
                 volume_data=volume_data,
                 metadata=metadata
@@ -290,24 +288,6 @@ class EnhancedStatisticalService:
                 })
         
         return volume_data
-
-    def _prepare_price_data(self, df: pl.DataFrame) -> List[Dict[str, Any]]:
-        """Prepare price data for candlestick charts."""
-        price_data = []
-        
-        for row in df.to_dict('records'):
-            if all(col in row for col in ["Open", "High", "Low", "Close", "Date"]):
-                price_data.append({
-                    "date": row["Date"].isoformat() if isinstance(row["Date"], datetime) else str(row["Date"]),
-                    "open": float(row["Open"]),
-                    "high": float(row["High"]),
-                    "low": float(row["Low"]),
-                    "close": float(row["Close"]),
-                    "volume": float(row.get("Volume", 0)) if "Volume" in row else None,
-                    "adjusted_close": float(row.get("Adj Close", row["Close"])) if "Adj Close" in row else None
-                })
-        
-        return price_data
 
     def _prepare_indicator_series(self, df: pl.DataFrame, indicator_configs: List[IndicatorConfiguration]) -> List[Dict[str, Any]]:
         """Prepare indicator series data for charts."""
