@@ -120,13 +120,13 @@ class EnhancedStatisticalService:
         """Generate chart data with indicators for visualization."""
         try:
             # Get market data
-            market_data = await self.market_data_service.get_market_data(
+            market_data = await self.market_data_service.fetch_ticker_data(
                 symbol=request.symbol,
                 period=request.period,
                 interval=request.interval
             )
             
-            if market_data.is_empty():
+            if market_data.empty:
                 raise ValueError(f"No market data found for symbol {request.symbol}")
             
             # Get indicator configurations

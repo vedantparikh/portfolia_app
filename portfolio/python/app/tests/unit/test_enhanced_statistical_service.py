@@ -116,7 +116,7 @@ class TestEnhancedStatisticalService:
         """Test successful indicator calculation."""
         # Mock market data service
         mock_market_data = Mock()
-        mock_market_data.is_empty.return_value = False
+        mock_market_data.empty.return_value = False
         mock_market_data.columns = ["Date", "Open", "High", "Low", "Close", "Volume"]
         mock_market_data.__getitem__.side_effect = lambda key: Mock(min=lambda: datetime.now(), max=lambda: datetime.now())
         
@@ -152,7 +152,7 @@ class TestEnhancedStatisticalService:
         """Test indicator calculation with validation errors."""
         # Mock market data service
         mock_market_data = Mock()
-        mock_market_data.is_empty.return_value = False
+        mock_market_data.empty.return_value = False
         
         with patch.object(service.market_data_service, 'get_market_data', new_callable=AsyncMock) as mock_get_data:
             mock_get_data.return_value = mock_market_data
@@ -180,7 +180,7 @@ class TestEnhancedStatisticalService:
         """Test indicator calculation with no market data."""
         # Mock empty market data
         mock_market_data = Mock()
-        mock_market_data.is_empty.return_value = True
+        mock_market_data.empty.return_value = True
         
         with patch.object(service.market_data_service, 'get_market_data', new_callable=AsyncMock) as mock_get_data:
             mock_get_data.return_value = mock_market_data
@@ -193,7 +193,7 @@ class TestEnhancedStatisticalService:
         """Test successful chart data generation."""
         # Mock market data service
         mock_market_data = Mock()
-        mock_market_data.is_empty.return_value = False
+        mock_market_data.empty.return_value = False
         mock_market_data.columns = ["Date", "Open", "High", "Low", "Close", "Volume"]
         mock_market_data.__getitem__.side_effect = lambda key: Mock(min=lambda: datetime.now(), max=lambda: datetime.now())
         
