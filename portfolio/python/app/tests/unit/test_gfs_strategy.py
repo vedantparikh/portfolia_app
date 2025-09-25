@@ -73,12 +73,12 @@ class TestGfsStrategy(unittest.TestCase):
         self.assertIsInstance(result, pl.DataFrame)
 
         # Verify RSI column is added
-        self.assertIn("RSI", result.columns)
+        self.assertIn("rsi", result.columns)
 
         # Verify RSI values are in expected range [0, 100]
-        rsi_values = result.select("RSI").drop_nulls()
+        rsi_values = result.select("rsi").drop_nulls()
         if len(rsi_values) > 0:
-            rsi_array = rsi_values["RSI"].to_numpy()
+            rsi_array = rsi_values["rsi"].to_numpy()
             self.assertTrue(all(0 <= rsi <= 100 for rsi in rsi_array))
 
     @patch("yfinance.Ticker")
@@ -96,7 +96,7 @@ class TestGfsStrategy(unittest.TestCase):
             result = strategy.grandfather_rsi()
             # Should return a polars DataFrame
             self.assertIsInstance(result, pl.DataFrame)
-            self.assertIn("RSI", result.columns)
+            self.assertIn("rsi", result.columns)
         except Exception as e:
             # If it fails due to missing data, that's acceptable
             self.assertIn("No price data found", str(e))
@@ -116,7 +116,7 @@ class TestGfsStrategy(unittest.TestCase):
             result = strategy.father_rsi()
             # Should return a polars DataFrame
             self.assertIsInstance(result, pl.DataFrame)
-            self.assertIn("RSI", result.columns)
+            self.assertIn("rsi", result.columns)
         except Exception as e:
             # If it fails due to missing data, that's acceptable
             self.assertIn("No price data found", str(e))
@@ -136,7 +136,7 @@ class TestGfsStrategy(unittest.TestCase):
             result = strategy.son_rsi()
             # Should return a polars DataFrame
             self.assertIsInstance(result, pl.DataFrame)
-            self.assertIn("RSI", result.columns)
+            self.assertIn("rsi", result.columns)
         except Exception as e:
             # If it fails due to missing data, that's acceptable
             self.assertIn("No price data found", str(e))
@@ -265,9 +265,9 @@ class TestGfsStrategy(unittest.TestCase):
 
         for grandfather, father, son, expected in test_cases:
             # Mock the individual RSI methods to return DataFrames with the specified RSI values
-            mock_grandfather = pl.DataFrame({"RSI": [grandfather]})
-            mock_father = pl.DataFrame({"RSI": [father]})
-            mock_son = pl.DataFrame({"RSI": [son]})
+            mock_grandfather = pl.DataFrame({"rsi": [grandfather]})
+            mock_father = pl.DataFrame({"rsi": [father]})
+            mock_son = pl.DataFrame({"rsi": [son]})
 
             with patch.object(
                 strategy, "grandfather_rsi", return_value=mock_grandfather

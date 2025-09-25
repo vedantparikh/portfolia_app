@@ -241,7 +241,7 @@ class ChartDataResponse(BaseModel):
     metadata: Dict[str, Any] = Field(..., description="Chart metadata")
     
     # Enhanced React UI fields
-    react_chart_data: ReactChartData = Field(..., description="React-optimized chart data")
+    react_chart_data: Optional[ReactChartData] = Field(None, description="React-optimized chart data")
     plotly_config: Optional[Dict[str, Any]] = Field(None, description="Plotly configuration")
     highcharts_config: Optional[Dict[str, Any]] = Field(None, description="Highcharts configuration")
 

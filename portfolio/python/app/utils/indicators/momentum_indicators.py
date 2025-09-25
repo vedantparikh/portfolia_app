@@ -19,7 +19,7 @@ class MomentumIndicators(BaseIndicator):
         :return: DataFrame with RSI indicator field.
         """
         # Calculate price changes
-        self.df = self.df.with_columns([pl.col("Close").diff().alias("price_change")])
+        self.df = self.df.with_columns([pl.col("close").diff().alias("price_change")])
 
         # Calculate gains and losses
         self.df = self.df.with_columns(
@@ -59,7 +59,7 @@ class MomentumIndicators(BaseIndicator):
                     100.0
                     - (100.0 / (1.0 + (pl.col("avg_gains") / pl.col("avg_losses"))))
                 )
-                .alias("RSI")
+                .alias("rsi")
             ]
         )
 
@@ -70,7 +70,7 @@ class MomentumIndicators(BaseIndicator):
 
         if fillna:
             self.df = self.df.with_columns(
-                [pl.col("RSI").fill_null(strategy="forward")]
+                [pl.col("rsi").fill_null(strategy="forward")]
             )
 
         return self.df
@@ -87,23 +87,23 @@ class MomentumIndicators(BaseIndicator):
         self.df = self.df.with_columns(
             [
                 (
-                        (pl.col("Close") - pl.col("Close").shift(window))
-                        / pl.col("Close").shift(window)
-                        * 100
-                ).alias("ROC")
+                    (pl.col("close") - pl.col("close").shift(window))
+                    / pl.col("close").shift(window)
+                    * 100
+                ).alias("roc")
             ]
         )
 
         # ***FIXED***: Changed `if not fillna:` to `if fillna:`
         if fillna:
             self.df = self.df.with_columns(
-                [pl.col("ROC").fill_null(strategy="forward")]
+                [pl.col("roc").fill_null(strategy="forward")]
             )
 
         return self.df
 
     def stoch_rsi_indicator(
-            self, window: int = 14, smooth1: int = 3, smooth2: int = 3, fillna: bool = False
+        self, window: int = 14, smooth1: int = 3, smooth2: int = 3, fillna: bool = False
     ) -> pl.DataFrame:
         """
         Stochastic RSI
@@ -115,15 +115,15 @@ class MomentumIndicators(BaseIndicator):
         :return: DataFrame with Stochastic RSI indicator fields.
         """
         # First calculate RSI if not already present
-        if "RSI" not in self.df.columns:
+        if "rsi" not in self.df.columns:
             self.df = self.rsi_indicator(window=window, fillna=fillna)
 
         # Calculate Stochastic RSI
         # %K = (RSI - RSI_min) / (RSI_max - RSI_min)
         self.df = self.df.with_columns(
             [
-                pl.col("RSI").rolling_min(window_size=window).alias("rsi_min"),
-                pl.col("RSI").rolling_max(window_size=window).alias("rsi_max"),
+                pl.col("rsi").rolling_min(window_size=window).alias("rsi_min"),
+                pl.col("rsi").rolling_max(window_size=window).alias("rsi_max"),
             ]
         )
 
@@ -134,8 +134,8 @@ class MomentumIndicators(BaseIndicator):
                 .then(0.0)  # Or 100.0 if RSI == rsi_max, but 0.0 is safer
                 .otherwise(
                     (
-                            (pl.col("RSI") - pl.col("rsi_min"))
-                            / (pl.col("rsi_max") - pl.col("rsi_min"))
+                        (pl.col("rsi") - pl.col("rsi_min"))
+                        / (pl.col("rsi_max") - pl.col("rsi_min"))
                     )
                     * 100
                 )
@@ -171,7 +171,7 @@ class MomentumIndicators(BaseIndicator):
         return self.df
 
     def stoch_oscillator_indicator(
-            self, window: int = 14, smooth_window: int = 3, fillna: bool = False
+        self, window: int = 14, smooth_window: int = 3, fillna: bool = False
     ) -> pl.DataFrame:
         """
         Stochastic Oscillator
@@ -185,8 +185,8 @@ class MomentumIndicators(BaseIndicator):
         # %K = (Close - Low_min) / (High_max - Low_min) * 100
         self.df = self.df.with_columns(
             [
-                pl.col("Low").rolling_min(window_size=window).alias("low_min"),
-                pl.col("High").rolling_max(window_size=window).alias("high_max"),
+                pl.col("low").rolling_min(window_size=window).alias("low_min"),
+                pl.col("high").rolling_max(window_size=window).alias("high_max"),
             ]
         )
 
@@ -196,8 +196,8 @@ class MomentumIndicators(BaseIndicator):
                 .then(0.0)
                 .otherwise(
                     (
-                            (pl.col("Close") - pl.col("low_min"))
-                            / (pl.col("high_max") - pl.col("low_min"))
+                        (pl.col("close") - pl.col("low_min"))
+                        / (pl.col("high_max") - pl.col("low_min"))
                     )
                     * 100
                 )
@@ -242,14 +242,14 @@ class MomentumIndicators(BaseIndicator):
 # Convenience functions (No changes needed, these are fine)
 def calculate_rsi(prices: pl.Series, window: int = 14) -> pl.Series:
     """Calculate RSI for a price series."""
-    df = pl.DataFrame({"Close": prices})
+    df = pl.DataFrame({"close": prices})
     indicator = MomentumIndicators(df)
     result = indicator.rsi_indicator(window=window)
-    return result["RSI"]
+    return result["rsi"]
 
 
 def calculate_macd(
-        prices: pl.Series, fast: int = 12, slow: int = 26, signal: int = 9
+    prices: pl.Series, fast: int = 12, slow: int = 26, signal: int = 9
 ) -> pl.DataFrame:
     """Calculate MACD for a price series."""
     df = pl.DataFrame({"Close": prices})
@@ -260,14 +260,14 @@ def calculate_macd(
 
 
 def calculate_stochastic(
-        high: pl.Series,
-        low: pl.Series,
-        close: pl.Series,
-        k_window: int = 14,
-        d_window: int = 3,
+    high: pl.Series,
+    low: pl.Series,
+    close: pl.Series,
+    k_window: int = 14,
+    d_window: int = 3,
 ) -> pl.DataFrame:
     """Calculate Stochastic Oscillator."""
-    df = pl.DataFrame({"High": high, "Low": low, "Close": close})
+    df = pl.DataFrame({"high": high, "low": low, "close": close})
     indicator = MomentumIndicators(df)
     result = indicator.stoch_oscillator_indicator(
         window=k_window, smooth_window=d_window

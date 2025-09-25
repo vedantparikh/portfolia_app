@@ -7,11 +7,11 @@ class TrendIndicators(BaseIndicator):
     """Returns a Polars Dataframe with calculated different Trend Indicators."""
 
     def macd_indicator(
-            self,
-            window_slow: int = 26,
-            window_fast: int = 12,
-            window_sign: int = 9,
-            fillna: bool = False,
+        self,
+        window_slow: int = 26,
+        window_fast: int = 12,
+        window_sign: int = 9,
+        fillna: bool = False,
     ) -> pl.DataFrame:
         """
         Moving Average Convergence Divergence (MACD)
@@ -30,31 +30,31 @@ class TrendIndicators(BaseIndicator):
         # MACD = EMA(fast) - EMA(slow)
         self.df = self.df.with_columns(
             [
-                pl.col("Close")
+                pl.col("close")
                 .ewm_mean(span=window_fast, min_periods=min_periods_fast)
                 .alias("ema_fast"),
-                pl.col("Close")
+                pl.col("close")
                 .ewm_mean(span=window_slow, min_periods=min_periods_slow)
                 .alias("ema_slow"),
             ]
         )
 
         self.df = self.df.with_columns(
-            [(pl.col("ema_fast") - pl.col("ema_slow")).alias("MACD")]
+            [(pl.col("ema_fast") - pl.col("ema_slow")).alias("macd")]
         )
 
         # Signal line = EMA of MACD
         self.df = self.df.with_columns(
             [
-                pl.col("MACD")
+                pl.col("macd")
                 .ewm_mean(span=window_sign, min_periods=min_periods_sign)
-                .alias("Signal")
+                .alias("signal")
             ]
         )
 
         # Histogram = MACD - Signal
         self.df = self.df.with_columns(
-            [(pl.col("MACD") - pl.col("Signal")).alias("Histogram")]
+            [(pl.col("macd") - pl.col("signal")).alias("histogram")]
         )
 
         # Clean up temporary columns
@@ -63,9 +63,9 @@ class TrendIndicators(BaseIndicator):
         if fillna:
             self.df = self.df.with_columns(
                 [
-                    pl.col("MACD").fill_null(strategy="forward"),
-                    pl.col("Signal").fill_null(strategy="forward"),
-                    pl.col("Histogram").fill_null(strategy="forward"),
+                    pl.col("macd").fill_null(strategy="forward"),
+                    pl.col("signal").fill_null(strategy="forward"),
+                    pl.col("histogram").fill_null(strategy="forward"),
                 ]
             )
 
@@ -85,16 +85,16 @@ class TrendIndicators(BaseIndicator):
         # True Range = max(High-Low, |High-PrevClose|, |Low-PrevClose|)
         self.df = self.df.with_columns(
             [
-                pl.col("Close").shift(1).alias("prev_close"),
+                pl.col("close").shift(1).alias("prev_close"),
             ]
         )
 
         self.df = self.df.with_columns(
             [
                 pl.max_horizontal(
-                    pl.col("High") - pl.col("Low"),
-                    (pl.col("High") - pl.col("prev_close")).abs(),
-                    (pl.col("Low") - pl.col("prev_close")).abs(),
+                    pl.col("high") - pl.col("low"),
+                    (pl.col("high") - pl.col("prev_close")).abs(),
+                    (pl.col("low") - pl.col("prev_close")).abs(),
                 ).alias("true_range")
             ]
         )
@@ -102,8 +102,8 @@ class TrendIndicators(BaseIndicator):
         # Directional Movement
         self.df = self.df.with_columns(
             [
-                (pl.col("High") - pl.col("High").shift(1)).alias("high_diff"),
-                (pl.col("Low").shift(1) - pl.col("Low")).alias("low_diff"),
+                (pl.col("high") - pl.col("high").shift(1)).alias("high_diff"),
+                (pl.col("low").shift(1) - pl.col("low")).alias("low_diff"),
             ]
         )
 
@@ -149,22 +149,22 @@ class TrendIndicators(BaseIndicator):
                 pl.when(pl.col("atr") == 0)
                 .then(0.0)
                 .otherwise(pl.col("plus_di") / pl.col("atr") * 100)
-                .alias("ADX_pos"),
+                .alias("adx_pos"),
                 pl.when(pl.col("atr") == 0)
                 .then(0.0)
                 .otherwise(pl.col("minus_di") / pl.col("atr") * 100)
-                .alias("ADX_neg"),
+                .alias("adx_neg"),
             ]
         )
 
         # Calculate DX and ADX
         self.df = self.df.with_columns(
             [
-                pl.when((pl.col("ADX_pos") + pl.col("ADX_neg")) == 0)
+                pl.when((pl.col("adx_pos") + pl.col("adx_neg")) == 0)
                 .then(0.0)
                 .otherwise(
-                    (pl.col("ADX_pos") - pl.col("ADX_neg")).abs()
-                    / (pl.col("ADX_pos") + pl.col("ADX_neg"))
+                    (pl.col("adx_pos") - pl.col("adx_neg")).abs()
+                    / (pl.col("adx_pos") + pl.col("adx_neg"))
                     * 100
                 )
                 .alias("dx")
@@ -172,7 +172,7 @@ class TrendIndicators(BaseIndicator):
         )
 
         self.df = self.df.with_columns(
-            [pl.col("dx").ewm_mean(span=window, min_periods=min_periods).alias("ADX")]
+            [pl.col("dx").ewm_mean(span=window, min_periods=min_periods).alias("adx")]
         )
 
         # Clean up temporary columns
@@ -194,9 +194,9 @@ class TrendIndicators(BaseIndicator):
         if fillna:
             self.df = self.df.with_columns(
                 [
-                    pl.col("ADX").fill_null(strategy="forward"),
-                    pl.col("ADX_neg").fill_null(strategy="forward"),
-                    pl.col("ADX_pos").fill_null(strategy="forward"),
+                    pl.col("adx").fill_null(strategy="forward"),
+                    pl.col("adx_neg").fill_null(strategy="forward"),
+                    pl.col("adx_pos").fill_null(strategy="forward"),
                 ]
             )
 
@@ -218,10 +218,10 @@ class TrendIndicators(BaseIndicator):
         # and `rolling_argmin` which are much faster.
         self.df = self.df.with_columns(
             [
-                pl.col("High")
+                pl.col("high")
                 .rolling_apply(lambda s: s.arg_max(), window_size=window)
                 .alias("idx_high"),
-                pl.col("Low")
+                pl.col("low")
                 .rolling_apply(lambda s: s.arg_min(), window_size=window)
                 .alias("idx_low"),
             ]
@@ -241,9 +241,7 @@ class TrendIndicators(BaseIndicator):
         # Aroon Up = ((N - Days Since High) / N) x 100
         self.df = self.df.with_columns(
             [
-                ((window - pl.col("days_since_high")) / window * 100).alias(
-                    "aroon_up"
-                ),
+                ((window - pl.col("days_since_high")) / window * 100).alias("aroon_up"),
                 ((window - pl.col("days_since_low")) / window * 100).alias(
                     "aroon_down"
                 ),
@@ -256,7 +254,9 @@ class TrendIndicators(BaseIndicator):
         )
 
         # Clean up temporary columns
-        self.df = self.df.drop(["idx_high", "idx_low", "days_since_high", "days_since_low"])
+        self.df = self.df.drop(
+            ["idx_high", "idx_low", "days_since_high", "days_since_low"]
+        )
 
         if fillna:
             self.df = self.df.with_columns(
@@ -270,7 +270,7 @@ class TrendIndicators(BaseIndicator):
         return self.df
 
     def psar_indicator(
-            self, step: float = 0.02, max_step: float = 0.2, fillna: bool = False
+        self, step: float = 0.02, max_step: float = 0.2, fillna: bool = False
     ) -> pl.DataFrame:
         """
         Parabolic Stop and Reverse (Parabolic SAR)
@@ -325,7 +325,7 @@ class TrendIndicators(BaseIndicator):
         return self.df
 
     def cci_indicator(
-            self, window: int = 20, constant: float = 0.015, fillna: bool = False
+        self, window: int = 20, constant: float = 0.015, fillna: bool = False
     ) -> pl.DataFrame:
         """
         Commodity Channel Index (CCI)
@@ -340,7 +340,7 @@ class TrendIndicators(BaseIndicator):
         # Typical Price = (High + Low + Close) / 3
         self.df = self.df.with_columns(
             [
-                ((pl.col("High") + pl.col("Low") + pl.col("Close")) / 3).alias(
+                ((pl.col("high") + pl.col("low") + pl.col("close")) / 3).alias(
                     "typical_price"
                 )
             ]
@@ -374,7 +374,7 @@ class TrendIndicators(BaseIndicator):
                     (pl.col("typical_price") - pl.col("sma_tp"))
                     / (constant * pl.col("mean_deviation"))
                 )
-                .alias("CCI")
+                .alias("cci")
             ]
         )
 
@@ -383,7 +383,7 @@ class TrendIndicators(BaseIndicator):
 
         if fillna:
             self.df = self.df.with_columns(
-                [pl.col("CCI").fill_null(strategy="forward")]
+                [pl.col("cci").fill_null(strategy="forward")]
             )
 
         return self.df
@@ -401,7 +401,7 @@ def calculate_ema(prices: pl.Series, window: int = 20) -> pl.Series:
 
 
 def calculate_bollinger_bands(
-        prices: pl.Series, window: int = 20, num_std: float = 2.0
+    prices: pl.Series, window: int = 20, num_std: float = 2.0
 ) -> pl.DataFrame:
     """Calculate Bollinger Bands."""
     sma = prices.rolling_mean(window_size=window)
@@ -410,4 +410,4 @@ def calculate_bollinger_bands(
     upper_band = sma + (std * num_std)
     lower_band = sma - (std * num_std)
 
-    return pl.DataFrame({"Upper": upper_band, "Middle": sma, "Lower": lower_band})
+    return pl.DataFrame({"upper": upper_band, "middle": sma, "lower": lower_band})

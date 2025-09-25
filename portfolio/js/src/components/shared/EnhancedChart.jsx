@@ -122,11 +122,11 @@ const EnhancedChart = ({
         if (!data || data.length === 0) return;
 
         // FIX: Use capitalized keys (Date, Close, High, Low)
-        const sortedData = [...data].sort((a, b) => new Date(a.Date).getTime() - new Date(b.Date).getTime());
-        const firstPrice = sortedData[0]?.Close || 0;
-        const lastPrice = sortedData[sortedData.length - 1]?.Close || 0;
-        const highPrice = Math.max(...sortedData.map(d => d.High));
-        const lowPrice = Math.min(...sortedData.map(d => d.Low));
+        const sortedData = [...data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        const firstPrice = sortedData[0]?.close || 0;
+        const lastPrice = sortedData[sortedData.length - 1]?.close || 0;
+        const highPrice = Math.max(...sortedData.map(d => d.high));
+        const lowPrice = Math.min(...sortedData.map(d => d.low));
 
         const totalReturn = firstPrice > 0 ? ((lastPrice - firstPrice) / firstPrice) * 100 : 0;
         const maxGain = firstPrice > 0 ? ((highPrice - firstPrice) / firstPrice) * 100 : 0;
@@ -148,14 +148,14 @@ const EnhancedChart = ({
             return { candlestickData: [], volumeData: [] };
         }
         // FIX: Use item.Date for sorting
-        const sortedData = [...data].sort((a, b) => new Date(a.Date).getTime() - new Date(b.Date).getTime());
+        const sortedData = [...data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
         const cData = sortedData.map(item => {
             // FIX: Use capitalized keys (Open, High, Low, Close, Volume)
-            const open = Number(item.Open);
-            const high = Number(item.High);
-            const low = Number(item.Low);
-            const close = Number(item.Close);
+            const open = Number(item.open);
+            const high = Number(item.high);
+            const low = Number(item.low);
+            const close = Number(item.close);
             const volume = Number(item.Volume);
             
             if (isNaN(open) || isNaN(high) || isNaN(low) || isNaN(close) || isNaN(volume)) {
@@ -175,16 +175,16 @@ const EnhancedChart = ({
 
         const vData = sortedData.map(item => {
             // FIX: Use capitalized keys (Volume, Close, Open)
-            const volume = Number(item.Volume);
-            const close = Number(item.Close);
-            const open = Number(item.Open);
+            const volume = Number(item.volume);
+            const close = Number(item.close);
+            const open = Number(item.open);
             
             if (isNaN(volume) || isNaN(close) || isNaN(open)) {
                 return null;
             }
             
             return {
-                time: new Date(item.Date).getTime() / 1000, // FIX: item.date -> item.Date
+                time: new Date(item.date).getTime() / 1000, // FIX: item.date -> item.Date
                 value: volume,
                 color: close >= open ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)',
             };

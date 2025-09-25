@@ -23,7 +23,7 @@ class VolatilityIndicators(BaseIndicator):
         # Middle band = SMA of close prices
         self.df = self.df.with_columns(
             [
-                pl.col("Close")
+                pl.col("close")
                 .rolling_mean(window_size=window, min_periods=min_periods)
                 .alias("bb_bbm")
             ]
@@ -32,7 +32,7 @@ class VolatilityIndicators(BaseIndicator):
         # Calculate standard deviation
         self.df = self.df.with_columns(
             [
-                pl.col("Close")
+                pl.col("close")
                 .rolling_std(window_size=window, min_periods=min_periods)
                 .alias("bb_std")
             ]
@@ -50,11 +50,11 @@ class VolatilityIndicators(BaseIndicator):
         # Bollinger Band indicators
         self.df = self.df.with_columns(
             [
-                pl.when(pl.col("Close") > pl.col("bb_bbh"))
+                pl.when(pl.col("close") > pl.col("bb_bbh"))
                 .then(1)
                 .otherwise(0)
                 .alias("bb_bbhi"),
-                pl.when(pl.col("Close") < pl.col("bb_bbl"))
+                pl.when(pl.col("close") < pl.col("bb_bbl"))
                 .then(1)
                 .otherwise(0)
                 .alias("bb_bbli"),
@@ -92,16 +92,16 @@ class VolatilityIndicators(BaseIndicator):
         # True Range = max(High-Low, |High-PrevClose|, |Low-PrevClose|)
         self.df = self.df.with_columns(
             [
-                pl.col("Close").shift(1).alias("prev_close"),
+                pl.col("close").shift(1).alias("prev_close"),
             ]
         )
 
         self.df = self.df.with_columns(
             [
                 pl.max_horizontal(
-                    pl.col("High") - pl.col("Low"),
-                    (pl.col("High") - pl.col("prev_close")).abs(),
-                    (pl.col("Low") - pl.col("prev_close")).abs(),
+                    pl.col("high") - pl.col("low"),
+                    (pl.col("high") - pl.col("prev_close")).abs(),
+                    (pl.col("low") - pl.col("prev_close")).abs(),
                 ).alias("true_range")
             ]
         )
@@ -152,7 +152,7 @@ class VolatilityIndicators(BaseIndicator):
         # Typical Price = (High + Low + Close) / 3
         self.df = self.df.with_columns(
             [
-                ((pl.col("High") + pl.col("Low") + pl.col("Close")) / 3).alias(
+                ((pl.col("high") + pl.col("low") + pl.col("close")) / 3).alias(
                     "typical_price"
                 )
             ]
@@ -172,7 +172,7 @@ class VolatilityIndicators(BaseIndicator):
             # Alternative version: EMA of close
             self.df = self.df.with_columns(
                 [
-                    pl.col("Close")
+                    pl.col("close")
                     .ewm_mean(span=window, min_periods=min_periods)
                     .alias("keltner_channel_mband")
                 ]
@@ -181,16 +181,16 @@ class VolatilityIndicators(BaseIndicator):
         # Calculate ATR for the specified window
         self.df = self.df.with_columns(
             [
-                pl.col("Close").shift(1).alias("prev_close"),
+                pl.col("close").shift(1).alias("prev_close"),
             ]
         )
 
         self.df = self.df.with_columns(
             [
                 pl.max_horizontal(
-                    pl.col("High") - pl.col("Low"),
-                    (pl.col("High") - pl.col("prev_close")).abs(),
-                    (pl.col("Low") - pl.col("prev_close")).abs(),
+                    pl.col("high") - pl.col("low"),
+                    (pl.col("high") - pl.col("prev_close")).abs(),
+                    (pl.col("low") - pl.col("prev_close")).abs(),
                 ).alias("true_range")
             ]
         )
@@ -219,11 +219,11 @@ class VolatilityIndicators(BaseIndicator):
         # Calculate indicators
         self.df = self.df.with_columns(
             [
-                pl.when(pl.col("Close") > pl.col("keltner_channel_hband"))
+                pl.when(pl.col("close") > pl.col("keltner_channel_hband"))
                 .then(1)
                 .otherwise(0)
                 .alias("keltner_channel_hband_indicator"),
-                pl.when(pl.col("Close") < pl.col("keltner_channel_lband"))
+                pl.when(pl.col("close") < pl.col("keltner_channel_lband"))
                 .then(1)
                 .otherwise(0)
                 .alias("keltner_channel_lband_indicator"),
@@ -287,7 +287,7 @@ def calculate_atr(
         high: pl.Series, low: pl.Series, close: pl.Series, window: int = 14
 ) -> pl.Series:
     """Calculate Average True Range (ATR)."""
-    df = pl.DataFrame({"High": high, "Low": low, "Close": close})
+    df = pl.DataFrame({"high": high, "low": low, "close": close})
     indicator = VolatilityIndicators(df)
     result = indicator.average_true_range_indicator(window=window)
     return result["average_true_range"]
@@ -297,7 +297,7 @@ def calculate_bollinger_bands(
         prices: pl.Series, window: int = 20, num_std: float = 2.0
 ) -> pl.DataFrame:
     """Calculate Bollinger Bands."""
-    df = pl.DataFrame({"Close": prices})
+    df = pl.DataFrame({"close": prices})
     indicator = VolatilityIndicators(df)
     # Note: The class signature was updated to float to match this
     result = indicator.bollinger_bands_indicator(window=window, window_dev=num_std)
@@ -312,7 +312,7 @@ def calculate_keltner_channels(
         multiplier: float = 2.0,
 ) -> pl.DataFrame:
     """Calculate Keltner Channels."""
-    df = pl.DataFrame({"High": high, "Low": low, "Close": close})
+    df = pl.DataFrame({"high": high, "low": low, "close": close})
     indicator = VolatilityIndicators(df)
     # Note: The class signature was updated to float to match this
     result = indicator.keltner_channel_indicator(window=window, multiplier=multiplier)
