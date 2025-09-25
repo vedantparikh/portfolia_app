@@ -14,9 +14,9 @@ import polars as pl
 # Add the parent directory to the path so we can import our modules
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.utils.indicators.momentum_indicators import calculate_rsi
-from app.utils.indicators.trend_indicators import calculate_ema, calculate_sma
-from app.utils.indicators.volatility_indicators import calculate_bollinger_bands
+from utils.indicators.momentum_indicators import calculate_rsi
+from utils.indicators.trend_indicators import calculate_ema, calculate_sma
+from utils.indicators.volatility_indicators import calculate_bollinger_bands
 
 
 def generate_test_data(size=10000):

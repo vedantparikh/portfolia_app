@@ -1,0 +1,384 @@
+"""
+Enhanced Statistical Service
+Service for calculating indicators with user configurations and chart data generation.
+"""
+
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+import polars as pl
+from sqlalchemy.orm import Session
+
+from app.core.schemas.statistical_indicators import (
+    IndicatorCalculationRequest,
+    IndicatorCalculationResponse,
+    IndicatorConfiguration,
+    VolumeDataPoint,
+)
+from app.core.services.analysis_configuration_service import (
+    AnalysisConfigurationService,
+)
+from app.core.services.indicator_registry_service import IndicatorRegistryService
+from app.core.services.market_data_service import MarketDataService
+
+
+class EnhancedStatisticalService:
+    """Enhanced service for statistical calculations with user configurations."""
+
+    def __init__(self, db: Session):
+        self.db = db
+        self.indicator_registry = IndicatorRegistryService(db)
+        self.configuration_service = AnalysisConfigurationService(db)
+        self.market_data_service = MarketDataService()
+
+    async def calculate_indicators(
+            self, request: IndicatorCalculationRequest
+    ) -> IndicatorCalculationResponse:
+        """Calculate indicators based on user configuration."""
+
+        try:
+            # Get market data
+            market_data = await self.market_data_service.fetch_ticker_data(
+                symbol=request.symbol, period=request.period, interval=request.interval
+            )
+
+            if market_data.empty:
+                raise ValueError(f"No market data found for symbol {request.symbol}")
+
+            # Get indicator configurations
+            if request.configuration_id:
+                config = self.configuration_service.get_configuration(
+                    request.configuration_id,
+                    user_id=None,  # Allow public configurations
+                )
+                if not config:
+                    raise ValueError(
+                        f"Configuration {request.configuration_id} not found"
+                    )
+                indicator_configs = config.indicators
+                configuration_name = config.name
+            else:
+                indicator_configs = request.indicators
+                configuration_name = "Custom Configuration"
+
+            # Validate all indicator configurations
+            validation_errors = []
+            for config in indicator_configs:
+                errors = self.indicator_registry.validate_indicator_configuration(
+                    config
+                )
+                validation_errors.extend(errors)
+
+            if validation_errors:
+                error_messages = [e.error_message for e in validation_errors]
+                raise ValueError(f"Validation errors: {error_messages}")
+
+            # Calculate indicators
+            result_df, _, performance_metrics = (
+                self.indicator_registry.calculate_indicators(
+                    market_data, indicator_configs
+                )
+            )
+
+            # Convert to response format
+            data_records = result_df.to_dicts()
+
+            # Extract indicator names that were applied
+            applied_indicators = [
+                config.indicator_name for config in indicator_configs if config.enabled
+            ]
+
+            # Generate enhanced response data
+            indicator_series = self._prepare_indicator_series(
+                result_df, indicator_configs
+            )
+            volume_data = self._prepare_volume_data(result_df)
+            metadata = self._prepare_metadata(
+                request.symbol,
+                request.period,
+                request.interval,
+                result_df,
+                len(applied_indicators),
+                performance_metrics,
+            )
+
+            # Increment usage count if using a saved configuration
+            if request.configuration_id:
+                self.configuration_service.increment_usage_count(
+                    request.configuration_id
+                )
+
+            return IndicatorCalculationResponse(
+                symbol=request.symbol,
+                period=request.period,
+                interval=request.interval,
+                start_date=(
+                    market_data["date"].min()
+                    if "date" in market_data.columns
+                    else datetime.now()
+                ),
+                end_date=(
+                    market_data["date"].max()
+                    if "date" in market_data.columns
+                    else datetime.now()
+                ),
+                configuration_name=configuration_name,
+                data=data_records,
+                indicators_applied=applied_indicators,
+                total_records=len(data_records),
+                indicator_series=indicator_series,
+                volume_data=volume_data,
+                metadata=metadata,
+            )
+
+        except Exception as e:
+            raise ValueError(f"Error calculating indicators: {str(e)}") from e
+
+    def _prepare_indicator_data(
+            self, df: pl.DataFrame, indicator_configs: List[IndicatorConfiguration]
+    ) -> List[Dict[str, Any]]:
+        """Prepare indicator data for chart display."""
+        indicator_data = []
+
+        for config in indicator_configs:
+            if not config.enabled:
+                continue
+
+            # Get indicator definition to find output columns
+            indicator_def = self.indicator_registry.get_indicator_definition(
+                config.indicator_name
+            )
+            if not indicator_def:
+                continue
+
+            # Prepare data for each output column
+            for output_col in indicator_def.output_columns:
+                if output_col in df.columns:
+                    data_points = []
+                    for row in df.to_dicts():
+                        if output_col in row and row[output_col] is not None:
+                            data_points.append(
+                                {
+                                    "x": (
+                                        row["date"].isoformat()
+                                        if isinstance(row["date"], datetime)
+                                        else str(row["date"])
+                                    ),
+                                    "y": float(row[output_col]),
+                                }
+                            )
+
+                    if data_points:
+                        indicator_data.append(
+                            {
+                                "name": (
+                                        config.display_name
+                                        or f"{config.indicator_name}_{output_col}"
+                                ),
+                                "indicator_name": config.indicator_name,
+                                "output_column": output_col,
+                                "data": data_points,
+                                "color": config.color or "#000000",
+                                "line_style": config.line_style or "solid",
+                                "line_width": config.line_width or 1,
+                                "y_axis": config.y_axis or "secondary",
+                            }
+                        )
+
+        return indicator_data
+
+    def _prepare_volume_data(self, df: pl.DataFrame) -> List[VolumeDataPoint]:
+        """Prepare volume data for indicator calculation response."""
+        volume_data = []
+
+        for row in df.to_dicts():
+            if "volume" in row and "date" in row and row["volume"] is not None:
+                volume_data.append(
+                    VolumeDataPoint(
+                        date=(
+                            row["date"].isoformat()
+                            if isinstance(row["date"], datetime)
+                            else str(row["date"])
+                        ),
+                        volume=float(row["volume"]),
+                    )
+                )
+
+        return volume_data
+
+    def _prepare_volume_data_for_chart(self, df: pl.DataFrame) -> List[Dict[str, Any]]:
+        """Prepare volume data for chart response (legacy format)."""
+        volume_data = []
+
+        for row in df.to_dicts():
+            if "volume" in row and "date" in row and row["volume"] is not None:
+                volume_data.append(
+                    {
+                        "x": (
+                            row["date"].isoformat()
+                            if isinstance(row["date"], datetime)
+                            else str(row["date"])
+                        ),
+                        "y": float(row["volume"]),
+                    }
+                )
+
+        return volume_data
+
+    def _prepare_indicator_series(
+            self, df: pl.DataFrame, indicator_configs: List[IndicatorConfiguration]
+    ) -> List[Dict[str, Any]]:
+        """Prepare indicator series data for charts using efficient, vectorized operations."""  # noqa: E501
+        indicator_series = []
+
+        for config in indicator_configs:
+            if not config.enabled or not config.id:
+                continue
+
+            # Get indicator definition to find output columns
+            indicator_def = self.indicator_registry.get_indicator_definition(
+                config.indicator_name
+            )
+            if not indicator_def:
+                continue
+
+            # Prepare data for each output column
+            for output_col in indicator_def.output_columns:
+                col_name = f"{output_col}_{config.id}"
+                if col_name not in df.columns:
+                    continue
+
+                data_points = (
+                    df.lazy()
+                    .filter(pl.col(col_name).is_not_null())
+                    .select(
+                        [
+                            pl.col("date")
+                            .dt.strftime("%Y-%m-%dT%H:%M:%S%.f")
+                            .alias("date"),
+                            pl.col(col_name).cast(pl.Float64).alias("value"),
+                            (
+                                    pl.col(col_name).cast(pl.Utf8)
+                                    + " ("
+                                    + pl.lit(output_col)
+                                    + ")"
+                            ).alias("formatted_value"),
+                            pl.struct(
+                                [
+                                    pl.lit(config.id).alias("indicator_id"),
+                                    pl.lit(output_col).alias("parameter"),
+                                ]
+                            ).alias("metadata"),
+                        ]
+                    )
+                    .collect()
+                    .to_dicts()
+                )
+
+                if data_points:
+                    indicator_series.append(
+                        {
+                            "id": f"{config.id}_{output_col}",
+                            "indicator_name": config.indicator_name,
+                            "display_name": (
+                                f"{config.display_name or config.indicator_name} "
+                                f"({output_col})"
+                            ),
+                            "data": data_points,
+                            "color": config.color or "#000000",
+                            "line_style": config.line_style or "solid",
+                            "line_width": config.line_width or 1,
+                            "y_axis": config.y_axis or "secondary",
+                            "z_index": config.z_index or 0,
+                            "opacity": config.opacity or 1.0,
+                            "show_in_legend": config.show_in_legend,
+                            "group": config.group,
+                            "parameters": config.parameters,
+                        }
+                    )
+
+        return indicator_series
+
+    def _prepare_metadata(
+            self,
+            symbol: str,
+            period: str,
+            interval: str,
+            df: pl.DataFrame,
+            indicators_count: int,
+            performance_metrics: Any,
+    ) -> Dict[str, Any]:
+        """Prepare chart metadata."""
+        return {
+            "symbol": symbol,
+            "period": period,
+            "interval": interval,
+            "start_date": (
+                df["date"].min().isoformat()
+                if "date" in df.columns
+                else datetime.now().isoformat()
+            ),
+            "end_date": (
+                df["date"].max().isoformat()
+                if "date" in df.columns
+                else datetime.now().isoformat()
+            ),
+            "total_records": len(df),
+            "indicators_count": indicators_count,
+            "calculation_time_ms": (
+                performance_metrics.calculation_time_ms if performance_metrics else None
+            ),
+            "data_source": "market_data",
+            "last_updated": datetime.now().isoformat(),
+        }
+
+    async def get_available_indicators(self) -> Dict[str, Any]:
+        """Get all available indicators and their definitions."""
+        indicators = self.indicator_registry.get_available_indicators()
+        categories = self.indicator_registry.get_indicator_categories()
+        statistics = self.indicator_registry.get_indicator_statistics()
+
+        return {
+            "indicators": [ind.dict() for ind in indicators],
+            "categories": categories,  # categories is already a list of strings
+            "statistics": statistics,
+        }
+
+    async def get_predefined_templates(self) -> Dict[str, Any]:
+        """Get predefined analysis templates."""
+        templates = self.configuration_service.get_predefined_templates()
+        return {name: template.dict() for name, template in templates.items()}
+
+    async def create_configuration_from_template(
+            self, user_id: int, template_name: str, custom_name: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """Create a configuration from a predefined template."""
+        config = self.configuration_service.create_from_template(
+            user_id, template_name, custom_name
+        )
+        return config.dict() if config else None
+
+    async def validate_indicator_configuration(
+            self, config: IndicatorConfiguration
+    ) -> List[Dict[str, Any]]:
+        """Validate an indicator configuration."""
+        errors = self.indicator_registry.validate_indicator_configuration(config)
+        return [error.dict() for error in errors]
+
+    async def get_configuration_statistics(self, user_id: int) -> Dict[str, Any]:
+        """Get statistics about user's configurations."""
+        return self.configuration_service.get_configuration_statistics(user_id)
+
+    async def search_configurations(
+            self, query: str, user_id: Optional[int] = None, skip: int = 0, limit: int = 100
+    ) -> Dict[str, Any]:
+        """Search configurations."""
+        result = self.configuration_service.search_configurations(
+            query, user_id, skip, limit
+        )
+        return result.dict()
+
+    async def get_popular_configurations(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get popular public configurations."""
+        configs = self.configuration_service.get_popular_configurations(limit)
+        return [config.dict() for config in configs]

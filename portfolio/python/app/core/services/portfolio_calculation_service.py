@@ -209,14 +209,6 @@ class PortfolioCalculationService:
         if not all_asset_transactions:
             return self._empty_asset_performance_result(portfolio_id, asset_id, period)
 
-        # Filter for transactions within the period (needed for period XIRR)
-        if start_date:
-            period_transactions = [
-                t for t in all_asset_transactions if t.transaction_date >= start_date
-            ]
-        else:
-            period_transactions = all_asset_transactions
-
         # Get current asset value in portfolio
         current_asset_value = self._get_current_asset_value(portfolio_id, asset_id)
 

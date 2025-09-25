@@ -205,9 +205,9 @@ class GfsStrategy:
             son = self.son_rsi()
 
             # Extract the last RSI value from each DataFrame
-            grandfather_rsi = grandfather.select("RSI").tail(1).item()
-            father_rsi = father.select("RSI").tail(1).item()
-            son_rsi = son.select("RSI").tail(1).item()
+            grandfather_rsi = grandfather.select("rsi").tail(1).item()
+            father_rsi = father.select("rsi").tail(1).item()
+            son_rsi = son.select("rsi").tail(1).item()
 
             # Determine recommendation based on RSI values
             if grandfather_rsi < 30 and father_rsi < 30 and son_rsi < 30:

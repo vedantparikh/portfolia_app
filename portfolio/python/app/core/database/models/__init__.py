@@ -1,6 +1,7 @@
 # Database Models
 from app.core.database.connection import Base
 
+from .analysis_configuration import AnalysisConfiguration
 from .asset import Asset, MarketIndex
 from .portfolio import Portfolio, PortfolioAsset
 from .portfolio_analytics import (
@@ -44,4 +45,5 @@ __all__ = [
     "AssetCorrelation",
     "PortfolioBenchmark",
     "RiskLevel",
+    "AnalysisConfiguration",
 ]

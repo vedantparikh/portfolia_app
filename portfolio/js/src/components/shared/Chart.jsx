@@ -5,9 +5,10 @@ import {
     LineSeries,
     createChart
 } from 'lightweight-charts';
-import { BarChart3, Maximize2, Minimize2, RefreshCw } from 'lucide-react';
+import { BarChart3, Maximize2, Minimize2, RefreshCw, TrendingUp } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { formatVolume } from '../../utils/formatters.jsx';
+import { statisticalIndicatorsAPI } from '../../services/api';
+import { formatPercentage, formatVolume } from '../../utils/formatters.jsx';
 
 const Chart = ({
     data = [],
@@ -25,9 +26,102 @@ const Chart = ({
     className = '',
     enableFullscreen = false,
     onFullscreenToggle,
+    // New props for enhanced functionality
+    showReturns = false,
+    enableAnalysis = false,
+    assetId = null,
+    // Statistical indicators props
+    showIndicators = false,
+    selectedIndicators = [],
+    onIndicatorsChange,
+    indicatorConfigurations = [],
+    selectedConfiguration = null,
 }) => {
     const chartContainerRef = useRef(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [returnsData, setReturnsData] = useState({});
+    const [showReturnsPanel, setShowReturnsPanel] = useState(false);
+    const [indicatorData, setIndicatorData] = useState({});
+    const [loadingIndicators, setLoadingIndicators] = useState(false);
+    const [availableIndicators, setAvailableIndicators] = useState([]);
+    const [showIndicatorsPanel, setShowIndicatorsPanel] = useState(false);
+
+    // Load available indicators on mount
+    useEffect(() => {
+        if (showIndicators) {
+            loadAvailableIndicators();
+        }
+    }, [showIndicators]);
+
+    // Load indicator data when selected indicators change
+    useEffect(() => {
+        if (showIndicators && selectedIndicators.length > 0 && symbol && data.length > 0) {
+            loadIndicatorData();
+        }
+    }, [selectedIndicators, symbol, data, showIndicators]);
+
+    // Calculate returns data when data or period changes
+    useEffect(() => {
+        if (showReturns && data && data.length > 0) {
+            calculateReturns();
+        }
+    }, [data, period, showReturns]);
+
+    const loadAvailableIndicators = async () => {
+        try {
+            const response = await statisticalIndicatorsAPI.getAvailableIndicators();
+            setAvailableIndicators(response.indicators || []);
+        } catch (error) {
+            console.error('Failed to load available indicators:', error);
+        }
+    };
+
+    const loadIndicatorData = async () => {
+        if (!symbol) return;
+
+        try {
+            setLoadingIndicators(true);
+            const response = await statisticalIndicatorsAPI.calculateIndicators({
+                symbol: symbol,
+                period: period,
+                interval: '1d',
+                indicators: selectedIndicators.map(indicatorName => ({
+                    indicator_name: indicatorName,
+                    parameters: {},
+                    enabled: true
+                }))
+            });
+            setIndicatorData(response?.indicator_series || {});
+        } catch (error) {
+            console.error('Failed to load indicator data:', error);
+        } finally {
+            setLoadingIndicators(false);
+        }
+    };
+
+    const calculateReturns = () => {
+        if (!data || data.length === 0) return;
+
+        const sortedData = [...data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        const firstPrice = sortedData[0]?.close || 0;
+        const lastPrice = sortedData[sortedData.length - 1]?.close || 0;
+        const highPrice = Math.max(...sortedData.map(d => d.high));
+        const lowPrice = Math.min(...sortedData.map(d => d.low));
+
+        const totalReturn = firstPrice > 0 ? ((lastPrice - firstPrice) / firstPrice) * 100 : 0;
+        const maxGain = firstPrice > 0 ? ((highPrice - firstPrice) / firstPrice) * 100 : 0;
+        const maxLoss = firstPrice > 0 ? ((lowPrice - firstPrice) / firstPrice) * 100 : 0;
+
+        setReturnsData({
+            totalReturn,
+            maxGain,
+            maxLoss,
+            highPrice,
+            lowPrice,
+            firstPrice,
+            lastPrice
+        });
+    };
 
     // Helper function to format volume numbers with K/M suffixes
 
@@ -43,13 +137,13 @@ const Chart = ({
             const low = Number(item.low);
             const close = Number(item.close);
             const volume = Number(item.volume);
-            
+
             // Validate that all values are valid numbers
             if (isNaN(open) || isNaN(high) || isNaN(low) || isNaN(close) || isNaN(volume)) {
                 console.warn('Invalid data point:', item);
                 return null;
             }
-            
+
             return {
                 time: new Date(item.date).getTime() / 1000,
                 open: open,
@@ -64,11 +158,11 @@ const Chart = ({
             const volume = Number(item.volume);
             const close = Number(item.close);
             const open = Number(item.open);
-            
+
             if (isNaN(volume) || isNaN(close) || isNaN(open)) {
                 return null;
             }
-            
+
             return {
                 time: new Date(item.date).getTime() / 1000,
                 value: volume,
@@ -153,6 +247,26 @@ const Chart = ({
                 });
             }
             priceSeries.setData(lineData);
+        }
+
+        // Add indicator overlays
+        if (showIndicators && Array.isArray(indicatorData) && indicatorData.length > 0) {
+            indicatorData.forEach((indicatorSeries) => {
+                if (indicatorSeries.data && indicatorSeries.data.length > 0) {
+                    const seriesData = indicatorSeries.data.map(point => ({
+                        time: new Date(point.date).getTime() / 1000,
+                        value: point.value
+                    }));
+
+                    const series = chart.addSeries(LineSeries, {
+                        color: indicatorSeries.color || getIndicatorColor(indicatorSeries.indicator_name),
+                        lineWidth: indicatorSeries.line_width || 2,
+                        priceLineVisible: false,
+                        lastValueVisible: false,
+                    });
+                    series.setData(seriesData);
+                }
+            });
         }
 
         if (showVolume) {
@@ -254,7 +368,23 @@ const Chart = ({
             chart.remove();
         };
 
-    }, [candlestickData, volumeData, theme, height, showVolume, chartType, symbol]);
+    }, [candlestickData, volumeData, theme, height, showVolume, chartType, symbol, showIndicators, indicatorData]);
+
+    const getIndicatorColor = (indicatorName) => {
+        const colors = {
+            'SMA': '#ff6b6b',
+            'EMA': '#4ecdc4',
+            'RSI': '#45b7d1',
+            'MACD': '#96ceb4',
+            'BB': '#feca57',
+            'STOCH': '#ff9ff3',
+            'ADX': '#54a0ff',
+            'CCI': '#5f27cd',
+            'WILLR': '#00d2d3',
+            'ATR': '#ff9f43'
+        };
+        return colors[indicatorName] || '#8884d8';
+    };
 
     const handleFullscreenToggle = () => {
         const newFullscreenState = !isFullscreen;
@@ -304,6 +434,24 @@ const Chart = ({
                         ))}
                     </div>
                     <div className="flex items-center space-x-2">
+                        {showReturns && (
+                            <button
+                                onClick={() => setShowReturnsPanel(!showReturnsPanel)}
+                                className="btn-outline flex items-center space-x-2"
+                            >
+                                <TrendingUp size={16} />
+                                <span>Returns</span>
+                            </button>
+                        )}
+                        {showIndicators && (
+                            <button
+                                onClick={() => setShowIndicatorsPanel(!showIndicatorsPanel)}
+                                className="btn-outline flex items-center space-x-2"
+                            >
+                                <BarChart3 size={16} />
+                                <span>Indicators</span>
+                            </button>
+                        )}
                         {enableFullscreen && (
                             <button
                                 onClick={handleFullscreenToggle}
@@ -323,6 +471,119 @@ const Chart = ({
                             </button>
                         )}
                     </div>
+                </div>
+            )}
+
+            {/* Returns Panel */}
+            {showReturnsPanel && showReturns && (
+                <div className="card p-4 mb-4">
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-lg font-semibold text-gray-100 flex items-center">
+                            <TrendingUp className="w-5 h-5 mr-2 text-primary-400" />
+                            Performance Returns
+                        </h3>
+                        <button
+                            onClick={() => setShowReturnsPanel(false)}
+                            className="text-gray-400 hover:text-gray-100"
+                        >
+                            ×
+                        </button>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="text-center">
+                            <p className="text-sm text-gray-400">Total Return</p>
+                            <p className={`text-lg font-bold ${returnsData.totalReturn >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
+                                {formatPercentage(returnsData.totalReturn || 0)}
+                            </p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-sm text-gray-400">Max Gain</p>
+                            <p className="text-lg font-bold text-success-400">
+                                {formatPercentage(returnsData.maxGain || 0)}
+                            </p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-sm text-gray-400">Max Loss</p>
+                            <p className="text-lg font-bold text-danger-400">
+                                {formatPercentage(returnsData.maxLoss || 0)}
+                            </p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-sm text-gray-400">Price Range</p>
+                            <p className="text-sm font-medium text-gray-200">
+                                ${returnsData.lowPrice?.toFixed(2) || '0'} - ${returnsData.highPrice?.toFixed(2) || '0'}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Indicators Panel */}
+            {showIndicatorsPanel && showIndicators && (
+                <div className="card p-4 mb-4">
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-lg font-semibold text-gray-100 flex items-center">
+                            <BarChart3 className="w-5 h-5 mr-2 text-primary-400" />
+                            Technical Indicators
+                        </h3>
+                        <div className="flex items-center space-x-2">
+                            {loadingIndicators && (
+                                <RefreshCw className="w-4 h-4 text-primary-400 animate-spin" />
+                            )}
+                            <button
+                                onClick={() => setShowIndicatorsPanel(false)}
+                                className="text-gray-400 hover:text-gray-100"
+                            >
+                                ×
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                        {availableIndicators.map((indicator) => (
+                            <button
+                                key={indicator.name}
+                                onClick={() => {
+                                    const newIndicators = selectedIndicators.includes(indicator.name)
+                                        ? selectedIndicators.filter(i => i !== indicator.name)
+                                        : [...selectedIndicators, indicator.name];
+                                    if (onIndicatorsChange) {
+                                        onIndicatorsChange(newIndicators);
+                                    }
+                                }}
+                                className={`p-2 rounded-lg text-sm transition-colors flex items-center space-x-2 ${selectedIndicators.includes(indicator.name)
+                                    ? 'bg-primary-600 text-white'
+                                    : 'bg-dark-700 text-gray-300 hover:bg-dark-600'
+                                    }`}
+                            >
+                                <div
+                                    className="w-3 h-3 rounded-full"
+                                    style={{ backgroundColor: getIndicatorColor(indicator.name) }}
+                                />
+                                <span>{indicator.name}</span>
+                            </button>
+                        ))}
+                    </div>
+
+                    {selectedIndicators.length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-dark-600">
+                            <p className="text-sm text-gray-400 mb-2">Active Indicators:</p>
+                            <div className="flex flex-wrap gap-2">
+                                {selectedIndicators.map((indicator) => (
+                                    <span
+                                        key={indicator}
+                                        className="px-2 py-1 bg-primary-600/20 text-primary-400 text-xs rounded-full flex items-center space-x-1"
+                                    >
+                                        <div
+                                            className="w-2 h-2 rounded-full"
+                                            style={{ backgroundColor: getIndicatorColor(indicator) }}
+                                        />
+                                        <span>{indicator}</span>
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 

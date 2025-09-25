@@ -9,17 +9,17 @@ class VolumeIndicators(BaseIndicator):
     def mfi_indicator(self, window: int = 14, fillna: bool = False) -> pl.DataFrame:
         """
         Money Flow Index (MFI)
-        The Money Flow Index (MFI) is a momentum indicator that measures the inflow and outflow of money into a security
-        by comparing positive and negative money flow over a given period of time.
         https://www.investopedia.com/terms/m/mfi.asp
         :param window: N -Period.
         :param fillna: If True, fill NaN values.
         :return: DataFrame with MFI indicator field.
         """
+        min_periods = 0 if fillna else window
+
         # Calculate typical price
         self.df = self.df.with_columns(
             [
-                ((pl.col("High") + pl.col("Low") + pl.col("Close")) / 3).alias(
+                ((pl.col("high") + pl.col("low") + pl.col("close")) / 3).alias(
                     "typical_price"
                 )
             ]
@@ -27,7 +27,7 @@ class VolumeIndicators(BaseIndicator):
 
         # Calculate money flow
         self.df = self.df.with_columns(
-            [(pl.col("typical_price") * pl.col("Volume")).alias("money_flow")]
+            [(pl.col("typical_price") * pl.col("volume")).alias("money_flow")]
         )
 
         # Calculate positive and negative money flow
@@ -44,19 +44,33 @@ class VolumeIndicators(BaseIndicator):
             ]
         )
 
-        # Calculate money flow ratio
+        # Calculate positive and negative money flow sums
         self.df = self.df.with_columns(
             [
-                (
-                    pl.col("positive_money_flow").rolling_sum(window_size=window)
-                    / pl.col("negative_money_flow").rolling_sum(window_size=window)
-                ).alias("money_ratio")
+                pl.col("positive_money_flow")
+                .rolling_sum(window_size=window, min_periods=min_periods)
+                .alias("pos_flow_sum"),
+                pl.col("negative_money_flow")
+                .rolling_sum(window_size=window, min_periods=min_periods)
+                .alias("neg_flow_sum"),
             ]
         )
 
         # Calculate MFI
         self.df = self.df.with_columns(
-            [(100 - (100 / (1 + pl.col("money_ratio")))).alias("MFI")]
+            [
+                # If neg_flow_sum is 0, MFI is 100.
+                pl.when(pl.col("neg_flow_sum") == 0)
+                .then(100.0)
+                .otherwise(
+                    100.0
+                    - (
+                        100.0
+                        / (1.0 + (pl.col("pos_flow_sum") / pl.col("neg_flow_sum")))
+                    )
+                )
+                .alias("mfi")
+            ]
         )
 
         # Clean up temporary columns
@@ -66,13 +80,14 @@ class VolumeIndicators(BaseIndicator):
                 "money_flow",
                 "positive_money_flow",
                 "negative_money_flow",
-                "money_ratio",
+                "pos_flow_sum",
+                "neg_flow_sum",
             ]
         )
 
-        if not fillna:
+        if fillna:
             self.df = self.df.with_columns(
-                [pl.col("MFI").fill_null(strategy="forward")]
+                [pl.col("mfi").fill_null(strategy="forward")]
             )
 
         return self.df
@@ -80,37 +95,39 @@ class VolumeIndicators(BaseIndicator):
     def vpt_indicator(self, fillna: bool = False) -> pl.DataFrame:
         """
         Volume Price Trend (VPT)
-        The Volume Price Trend (VPT) is a technical indicator that combines price and volume to determine the strength
-        of a trend.
         https://www.investopedia.com/terms/v/vpt.asp
         :param fillna: If True, fill NaN values.
         :return: DataFrame with VPT indicator field.
         """
         # Calculate price change percentage
-        self.df = self.df.with_columns(
-            [
-                (
-                    (pl.col("Close") - pl.col("Close").shift(1))
-                    / pl.col("Close").shift(1)
-                    * 100
-                ).alias("price_change_pct")
-            ]
+        prev_close = pl.col("close").shift(1)
+
+        price_change_pct = (
+            pl.when(prev_close == 0)
+            .then(None)
+            .otherwise((pl.col("close") - prev_close) / prev_close * 100)
         )
 
         # Calculate VPT
-        self.df = self.df.with_columns(
-            [(pl.col("price_change_pct") * pl.col("Volume")).alias("vpt")]
-        )
+        vpt = price_change_pct * pl.col("volume")
+
+        if fillna:
+            vpt = vpt.fill_null(0.0)
+
+        self.df = self.df.with_columns(vpt.alias("vpt"))
 
         # Calculate cumulative VPT
-        self.df = self.df.with_columns([pl.col("vpt").cum_sum().alias("VPT")])
+        self.df = self.df.with_columns(
+            [pl.col("vpt").cum_sum().alias("vpt_cumulative")]
+        )
 
         # Clean up temporary columns
-        self.df = self.df.drop(["price_change_pct", "vpt"])
+        self.df = self.df.drop(["vpt"])
 
-        if not fillna:
+        # Kept for consistency if any other nulls appear
+        if fillna:
             self.df = self.df.with_columns(
-                [pl.col("VPT").fill_null(strategy="forward")]
+                [pl.col("vpt_cumulative").fill_null(strategy="forward")]
             )
 
         return self.df
@@ -118,7 +135,6 @@ class VolumeIndicators(BaseIndicator):
     def vwap_indicator(self, fillna: bool = False) -> pl.DataFrame:
         """
         Volume Weighted Average Price (VWAP)
-        VWAP is the average price a security has traded at throughout the day, based on both volume and price.
         https://www.investopedia.com/terms/v/vwap.asp
         :param fillna: If True, fill NaN values.
         :return: DataFrame with VWAP indicator field.
@@ -126,7 +142,7 @@ class VolumeIndicators(BaseIndicator):
         # Calculate typical price
         self.df = self.df.with_columns(
             [
-                ((pl.col("High") + pl.col("Low") + pl.col("Close")) / 3).alias(
+                ((pl.col("high") + pl.col("low") + pl.col("close")) / 3).alias(
                     "typical_price"
                 )
             ]
@@ -134,20 +150,25 @@ class VolumeIndicators(BaseIndicator):
 
         # Calculate price * volume
         self.df = self.df.with_columns(
-            [(pl.col("typical_price") * pl.col("Volume")).alias("price_volume")]
+            [(pl.col("typical_price") * pl.col("volume")).alias("price_volume")]
         )
 
         # Calculate cumulative price * volume and cumulative volume
         self.df = self.df.with_columns(
             [
                 pl.col("price_volume").cum_sum().alias("cum_price_volume"),
-                pl.col("Volume").cum_sum().alias("cum_volume"),
+                pl.col("volume").cum_sum().alias("cum_volume"),
             ]
         )
 
         # Calculate VWAP
         self.df = self.df.with_columns(
-            [(pl.col("cum_price_volume") / pl.col("cum_volume")).alias("VWAP")]
+            [
+                pl.when(pl.col("cum_volume") == 0)
+                .then(None)  # VWAP is undefined if volume is 0
+                .otherwise(pl.col("cum_price_volume") / pl.col("cum_volume"))
+                .alias("vwap")
+            ]
         )
 
         # Clean up temporary columns
@@ -155,9 +176,9 @@ class VolumeIndicators(BaseIndicator):
             ["typical_price", "price_volume", "cum_price_volume", "cum_volume"]
         )
 
-        if not fillna:
+        if fillna:
             self.df = self.df.with_columns(
-                [pl.col("VWAP").fill_null(strategy="forward")]
+                [pl.col("vwap").fill_null(strategy="forward")]
             )
 
         return self.df
@@ -165,7 +186,6 @@ class VolumeIndicators(BaseIndicator):
     def obv_indicator(self, fillna: bool = False) -> pl.DataFrame:
         """
         On-Balance Volume (OBV)
-        On-Balance Volume (OBV) is a momentum indicator that uses volume flow to predict changes in stock price.
         https://www.investopedia.com/terms/o/onbalancevolume.asp
         :param fillna: If True, fill NaN values.
         :return: DataFrame with OBV indicator field.
@@ -173,24 +193,24 @@ class VolumeIndicators(BaseIndicator):
         # Calculate OBV
         self.df = self.df.with_columns(
             [
-                pl.when(pl.col("Close") > pl.col("Close").shift(1))
-                .then(pl.col("Volume"))
-                .when(pl.col("Close") < pl.col("Close").shift(1))
-                .then(-pl.col("Volume"))
+                pl.when(pl.col("close") > pl.col("close").shift(1))
+                .then(pl.col("volume"))
+                .when(pl.col("close") < pl.col("close").shift(1))
+                .then(-pl.col("volume"))
                 .otherwise(0)
                 .alias("obv_change")
             ]
         )
 
         # Calculate cumulative OBV
-        self.df = self.df.with_columns([pl.col("obv_change").cum_sum().alias("OBV")])
+        self.df = self.df.with_columns([pl.col("obv_change").cum_sum().alias("obv")])
 
         # Clean up temporary columns
         self.df = self.df.drop(["obv_change"])
 
-        if not fillna:
+        if fillna:
             self.df = self.df.with_columns(
-                [pl.col("OBV").fill_null(strategy="forward")]
+                [pl.col("obv").fill_null(strategy="forward")]
             )
 
         return self.df
@@ -200,34 +220,38 @@ class VolumeIndicators(BaseIndicator):
     ) -> pl.DataFrame:
         """
         Force Index
-        The Force Index is a technical indicator that measures the power behind price movements by considering both
-        the direction and magnitude of price changes and the volume of trading.
         https://www.investopedia.com/terms/f/force-index.asp
         :param window: N -Period.
         :param fillna: If True, fill NaN values.
         :return: DataFrame with Force Index indicator field.
         """
+        min_periods = 0 if fillna else window
+
         # Calculate price change
         self.df = self.df.with_columns(
-            [(pl.col("Close") - pl.col("Close").shift(1)).alias("price_change")]
+            [(pl.col("close") - pl.col("close").shift(1)).alias("price_change")]
         )
 
         # Calculate Force Index
         self.df = self.df.with_columns(
-            [(pl.col("price_change") * pl.col("Volume")).alias("force_index")]
+            [(pl.col("price_change") * pl.col("volume")).alias("force_index")]
         )
 
         # Calculate smoothed Force Index
         self.df = self.df.with_columns(
-            [pl.col("force_index").ewm_mean(span=window).alias("Force_Index")]
+            [
+                pl.col("force_index")
+                .ewm_mean(span=window, min_periods=min_periods)
+                .alias("force_index_smoothed")
+            ]
         )
 
         # Clean up temporary columns
         self.df = self.df.drop(["price_change", "force_index"])
 
-        if not fillna:
+        if fillna:
             self.df = self.df.with_columns(
-                [pl.col("Force_Index").fill_null(strategy="forward")]
+                [pl.col("force_index_smoothed").fill_null(strategy="forward")]
             )
 
         return self.df
@@ -246,23 +270,23 @@ class VolumeIndicators(BaseIndicator):
         return self.df
 
 
-# Convenience functions for pandas-style usage
+# Convenience functions (These were already correct and needed no changes)
 def calculate_obv(close: pl.Series, volume: pl.Series) -> pl.Series:
     """Calculate On-Balance Volume (OBV)."""
-    df = pl.DataFrame({"Close": close, "Volume": volume})
+    df = pl.DataFrame({"close": close, "volume": volume})
     indicator = VolumeIndicators(df)
     result = indicator.obv_indicator()
-    return result["OBV"]
+    return result["obv"]
 
 
 def calculate_vwap(
     high: pl.Series, low: pl.Series, close: pl.Series, volume: pl.Series
 ) -> pl.Series:
     """Calculate Volume Weighted Average Price (VWAP)."""
-    df = pl.DataFrame({"High": high, "Low": low, "Close": close, "Volume": volume})
+    df = pl.DataFrame({"high": high, "low": low, "close": close, "volume": volume})
     indicator = VolumeIndicators(df)
     result = indicator.vwap_indicator()
-    return result["VWAP"]
+    return result["vwap"]
 
 
 def calculate_volume_sma(volume: pl.Series, window: int = 20) -> pl.Series:

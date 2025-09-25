@@ -1009,7 +1009,11 @@ export const analyticsAPI = {
       Parameters: portfolioId (string or number), allocationId (string or number), allocationData (object)
       Returns: Server response with updated allocation data
     */
-  updatePortfolioAllocation: async (portfolioId, allocationId, allocationData) => {
+  updatePortfolioAllocation: async (
+    portfolioId,
+    allocationId,
+    allocationData
+  ) => {
     const response = await api.put(
       `/analytics/portfolios/${portfolioId}/allocations/${allocationId}`,
       allocationData
@@ -1047,9 +1051,12 @@ export const analyticsAPI = {
       Returns: Server response with risk metrics data
     */
   getPortfolioRiskMetrics: async (portfolioId, forceRefresh = true) => {
-    const response = await api.get(`/analytics/portfolios/${portfolioId}/risk`, {
-      params: { force_refresh: forceRefresh },
-    });
+    const response = await api.get(
+      `/analytics/portfolios/${portfolioId}/risk`,
+      {
+        params: { force_refresh: forceRefresh },
+      }
+    );
     return response.data;
   },
 
@@ -1123,12 +1130,16 @@ export const analyticsAPI = {
       Parameters: asset1Id (string or number), asset2Id (string or number), forceRefresh (boolean)
       Returns: Server response with correlation data
     */
-  getAssetCorrelations: async (asset1Id = null, asset2Id = null, forceRefresh = true) => {
+  getAssetCorrelations: async (
+    asset1Id = null,
+    asset2Id = null,
+    forceRefresh = true
+  ) => {
     const response = await api.get("/analytics/assets/correlations", {
-      params: { 
-        asset1_id: asset1Id, 
-        asset2_id: asset2Id, 
-        force_refresh: forceRefresh 
+      params: {
+        asset1_id: asset1Id,
+        asset2_id: asset2Id,
+        force_refresh: forceRefresh,
       },
     });
     return response.data;
@@ -1170,6 +1181,194 @@ export const analyticsAPI = {
     const response = await api.get("/analytics/users/assets");
     return response.data;
   },
+};
+
+/* 
+  STATISTICAL INDICATORS API METHODS - Technical analysis and statistical indicators
+  These methods handle all statistical indicators and analysis configuration API calls
+*/
+export const statisticalIndicatorsAPI = {
+  /* 
+      GET AVAILABLE INDICATORS - Get all available statistical indicators
+      Returns: Server response with available indicators
+    */
+  getAvailableIndicators: async (category = null, search = null) => {
+    const params = new URLSearchParams();
+    if (category) params.append("category", category);
+    if (search) params.append("search", search);
+
+    const response = await api.get(
+      `/statistical-indicators/indicators?${params.toString()}`
+    );
+    return response.data;
+  },
+
+  /* 
+      CALCULATE INDICATORS - Calculate indicators for a symbol
+      Returns: Server response with calculated indicator data
+    */
+  calculateIndicators: async (requestData) => {
+    const response = await api.post(
+      "/statistical-indicators/calculate",
+      requestData
+    );
+    return response.data;
+  },
+
+  /* 
+      GET CONFIGURATIONS - Get analysis configurations
+      Returns: Server response with configurations
+    */
+  getConfigurations: async (skip = 0, limit = 100, userOnly = false) => {
+    const params = new URLSearchParams();
+    params.append("skip", skip.toString());
+    params.append("limit", limit.toString());
+    params.append("user_only", userOnly.toString());
+
+    const response = await api.get(
+      `/statistical-indicators/configurations?${params.toString()}`
+    );
+    return response.data;
+  },
+
+  /* 
+      CREATE CONFIGURATION - Create a new analysis configuration
+      Returns: Server response with created configuration
+    */
+  createConfiguration: async (configurationData) => {
+    const response = await api.post(
+      "/statistical-indicators/configurations",
+      configurationData
+    );
+    return response.data;
+  },
+
+  /* 
+      GET CONFIGURATION - Get a specific configuration
+      Returns: Server response with configuration details
+    */
+  getConfiguration: async (configId) => {
+    const response = await api.get(
+      `/statistical-indicators/configurations/${configId}`
+    );
+    return response.data;
+  },
+
+  /* 
+      UPDATE CONFIGURATION - Update an analysis configuration
+      Returns: Server response with updated configuration
+    */
+  updateConfiguration: async (configId, configurationData) => {
+    const response = await api.put(
+      `/statistical-indicators/configurations/${configId}`,
+      configurationData
+    );
+    return response.data;
+  },
+
+  /* 
+      DELETE CONFIGURATION - Delete an analysis configuration
+      Returns: Server response with deletion confirmation
+    */
+  deleteConfiguration: async (configId) => {
+    const response = await api.delete(
+      `/statistical-indicators/configurations/${configId}`
+    );
+    return response.data;
+  },
+
+  /* 
+      GET TEMPLATES - Get predefined analysis templates
+      Returns: Server response with available templates
+    */
+  getTemplates: async () => {
+    const response = await api.get("/statistical-indicators/templates");
+    return response.data;
+  },
+
+  /* 
+      CREATE FROM TEMPLATE - Create configuration from template
+      Returns: Server response with created configuration
+    */
+  createFromTemplate: async (templateName, customName = null) => {
+    const params = new URLSearchParams();
+    if (customName) params.append("custom_name", customName);
+
+    const response = await api.post(
+      `/statistical-indicators/templates/${templateName}/create?${params.toString()}`
+    );
+    return response.data;
+  },
+
+  /* 
+      VALIDATE CONFIGURATION - Validate indicator configuration
+      Returns: Server response with validation results
+    */
+  validateConfiguration: async (configuration) => {
+    const response = await api.post(
+      "/statistical-indicators/validate",
+      configuration
+    );
+    return response.data;
+  },
+
+  /* 
+      DUPLICATE CONFIGURATION - Duplicate an existing configuration
+      Returns: Server response with duplicated configuration
+    */
+  duplicateConfiguration: async (configId, newName) => {
+    const params = new URLSearchParams();
+    params.append("new_name", newName);
+
+    const response = await api.post(
+      `/statistical-indicators/configurations/${configId}/duplicate?${params.toString()}`
+    );
+    return response.data;
+  },
+
+  /* 
+      SEARCH CONFIGURATIONS - Search configurations by name, description, or tags
+      Returns: Server response with matching configurations
+    */
+  searchConfigurations: async (query, skip = 0, limit = 100) => {
+    const params = new URLSearchParams();
+    params.append("q", query);
+    params.append("skip", skip.toString());
+    params.append("limit", limit.toString());
+
+    const response = await api.get(
+      `/statistical-indicators/configurations/search?${params.toString()}`
+    );
+    return response.data;
+  },
+
+  /* 
+      GET STATISTICS - Get user's configuration statistics
+      Returns: Server response with user statistics
+    */
+  getStatistics: async () => {
+    const response = await api.get("/statistical-indicators/statistics");
+    return response.data;
+  },
+
+  /* 
+      GET POPULAR CONFIGURATIONS - Get popular public configurations
+      Returns: Server response with popular configurations
+    */
+  getPopularConfigurations: async (limit = 10) => {
+    const params = new URLSearchParams();
+    params.append("limit", limit.toString());
+
+    const response = await api.get(
+      `/statistical-indicators/popular?${params.toString()}`
+    );
+    return response.data;
+  },
+
+  /* 
+      GET ASSET ANALYSIS - Get comprehensive analysis for an asset
+      Returns: Server response with asset analysis data
+    */
 };
 
 /* 
@@ -1223,33 +1422,32 @@ export const portfolioCalculationsAPI = {
       Parameters: portfolioId (string or number), periods (array), endDate (string)
       Returns: Server response with multi-period performance data
     */
-      getMultiPeriodPerformance: async (
-        portfolioId,
-        periods = ["3m", "6m", "ytd", "1y", "2y", "3y", "5y", "inception"],
-        endDate = null
-      ) => {
-        
-        // Create the params object
-        const params = { periods };
-        if (endDate) {
-            params.end_date = endDate;
-        }
-    
-        const response = await api.get(
-          `/portfolios/calculations/portfolio/${portfolioId}/multi-period`,
-          {
-            params, // Your params object
-    
-            // --- THIS IS THE FIX ---
-            // Add this serializer to force the repeated-key format
-            // that FastAPI requires.
-            paramsSerializer: {
-              indexes: null // This serializes to: ?periods=3m&periods=6m...
-            }
-          }
-        );
-        return response.data;
-      },
+  getMultiPeriodPerformance: async (
+    portfolioId,
+    periods = ["3m", "6m", "ytd", "1y", "2y", "3y", "5y", "inception"],
+    endDate = null
+  ) => {
+    // Create the params object
+    const params = { periods };
+    if (endDate) {
+      params.end_date = endDate;
+    }
+
+    const response = await api.get(
+      `/portfolios/calculations/portfolio/${portfolioId}/multi-period`,
+      {
+        params, // Your params object
+
+        // --- THIS IS THE FIX ---
+        // Add this serializer to force the repeated-key format
+        // that FastAPI requires.
+        paramsSerializer: {
+          indexes: null, // This serializes to: ?periods=3m&periods=6m...
+        },
+      }
+    );
+    return response.data;
+  },
 
   /* 
       CALCULATE ASSET PERFORMANCE - Calculate performance metrics for a specific asset within a portfolio

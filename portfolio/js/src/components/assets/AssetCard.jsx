@@ -1,7 +1,9 @@
 import {
     BarChart3,
     MoreVertical,
-    Trash2
+    Trash2,
+    Activity,
+    TrendingUp
 } from 'lucide-react';
 import React, { useState } from 'react';
 import {
@@ -14,7 +16,7 @@ import {
     getChangeIcon
 } from '../../utils/formatters.jsx';
 
-const AssetCard = ({ asset, viewMode = 'grid', onClick, onDelete }) => {
+const AssetCard = ({ asset, viewMode = 'grid', onClick, onDelete, onAnalytics }) => {
     const [showMenu, setShowMenu] = useState(false);
     const handleMenuClick = (e) => {
         e.stopPropagation();
@@ -25,6 +27,12 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick, onDelete }) => {
         e.stopPropagation();
         setShowMenu(false);
         onDelete && onDelete();
+    };
+
+    const handleAnalytics = (e) => {
+        e.stopPropagation();
+        setShowMenu(false);
+        onAnalytics && onAnalytics();
     };
 
     if (viewMode === 'list') {
@@ -90,14 +98,11 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick, onDelete }) => {
                                     <div className="absolute right-0 top-8 bg-dark-800 border border-dark-700 rounded-lg shadow-lg z-10 min-w-40">
 
                                         <button
-                                            onClick={() => {
-                                                // Navigate to detailed analysis
-                                                toast.info('Detailed analysis coming soon!');
-                                            }}
+                                            onClick={handleAnalytics}
                                             className="w-full px-3 py-2 text-left text-sm text-primary-400 hover:bg-dark-700 flex items-center space-x-2"
                                         >
-                                            <BarChart3 size={14} />
-                                            <span>Detailed Analysis</span>
+                                            <Activity size={14} />
+                                            <span>Analytics</span>
                                         </button>
                                         <button
                                             onClick={handleDelete}
@@ -149,14 +154,11 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick, onDelete }) => {
                         {showMenu && (
                             <div className="absolute right-0 top-8 bg-dark-800 border border-dark-700 rounded-lg shadow-lg z-10 min-w-40">
                                 <button
-                                    onClick={() => {
-                                        // Navigate to detailed analysis
-                                        toast.info('Detailed analysis coming soon!');
-                                    }}
+                                    onClick={handleAnalytics}
                                     className="w-full px-3 py-2 text-left text-sm text-primary-400 hover:bg-dark-700 flex items-center space-x-2"
                                 >
-                                    <BarChart3 size={14} />
-                                    <span>Detailed Analysis</span>
+                                    <Activity size={14} />
+                                    <span>Analytics</span>
                                 </button>
                                 <button
                                     onClick={handleDelete}

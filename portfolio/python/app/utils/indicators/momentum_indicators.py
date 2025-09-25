@@ -1,6 +1,6 @@
 import polars as pl
 
-from .base import BaseIndicator
+from utils.indicators import BaseIndicator
 
 
 class MomentumIndicators(BaseIndicator):
@@ -19,7 +19,7 @@ class MomentumIndicators(BaseIndicator):
         :return: DataFrame with RSI indicator field.
         """
         # Calculate price changes
-        self.df = self.df.with_columns([pl.col("Close").diff().alias("price_change")])
+        self.df = self.df.with_columns([pl.col("close").diff().alias("price_change")])
 
         # Calculate gains and losses
         self.df = self.df.with_columns(
@@ -35,8 +35,8 @@ class MomentumIndicators(BaseIndicator):
             ]
         )
 
-        # Calculate RSI using exponential moving averages (to match ta package)
-        # Use alpha = 1/window for EMA
+        # Calculate RSI using exponential moving averages
+        # This `min_periods` logic is a good way to handle fillna at the source
         min_periods = 0 if fillna else window
 
         self.df = self.df.with_columns(
@@ -59,7 +59,7 @@ class MomentumIndicators(BaseIndicator):
                     100.0
                     - (100.0 / (1.0 + (pl.col("avg_gains") / pl.col("avg_losses"))))
                 )
-                .alias("RSI")
+                .alias("rsi")
             ]
         )
 
@@ -68,9 +68,9 @@ class MomentumIndicators(BaseIndicator):
             ["price_change", "gains", "losses", "avg_gains", "avg_losses"]
         )
 
-        if not fillna:
+        if fillna:
             self.df = self.df.with_columns(
-                [pl.col("RSI").fill_null(strategy="forward")]
+                [pl.col("rsi").fill_null(strategy="forward")]
             )
 
         return self.df
@@ -78,15 +78,7 @@ class MomentumIndicators(BaseIndicator):
     def roc_indicator(self, window: int = 12, fillna: bool = False) -> pl.DataFrame:
         """
         Rate of Change (ROC)
-        The Rate-of-Change (ROC) indicator, which is also referred to as simply Momentum, is a pure momentum oscillator
-        that measures the percent change in price from one period to the next. The ROC calculation compares the current
-        price with the price "n" periods ago. The plot forms an oscillator that fluctuates above and below the zero line
-         as the Rate-of-Change moves from positive to negative. As a momentum oscillator, ROC signals include centerline
-          crossovers, divergences and overbought-oversold readings. Divergences fail to foreshadow reversals more often
-          than not, so this article will forgo a detailed discussion on them. Even though centerline crossovers are
-          prone to whipsaw, especially short-term, these crossovers can be used to identify the overall trend.
-          Identifying overbought or oversold extremes comes naturally to the Rate-of-Change oscillator.
-          https://school.stockcharts.com/doku.php?id=technical_indicators:rate_of_change_roc_and_momentum
+        https://school.stockcharts.com/doku.php?id=technical_indicators:rate_of_change_roc_and_momentum
         :param window: N -Period.
         :param fillna: If True, fill NaN values.
         :return: DataFrame with ROC indicator field.
@@ -95,16 +87,17 @@ class MomentumIndicators(BaseIndicator):
         self.df = self.df.with_columns(
             [
                 (
-                    (pl.col("Close") - pl.col("Close").shift(window))
-                    / pl.col("Close").shift(window)
+                    (pl.col("close") - pl.col("close").shift(window))
+                    / pl.col("close").shift(window)
                     * 100
-                ).alias("ROC")
+                ).alias("roc")
             ]
         )
 
-        if not fillna:
+        # ***FIXED***: Changed `if not fillna:` to `if fillna:`
+        if fillna:
             self.df = self.df.with_columns(
-                [pl.col("ROC").fill_null(strategy="forward")]
+                [pl.col("roc").fill_null(strategy="forward")]
             )
 
         return self.df
@@ -114,10 +107,6 @@ class MomentumIndicators(BaseIndicator):
     ) -> pl.DataFrame:
         """
         Stochastic RSI
-        The StochRSI oscillator was developed to take advantage of both momentum indicators in order to create a more
-        sensitive indicator that is attuned to a specific security's historical performance rather than a generalized
-        analysis of price change.
-        https://school.stockcharts.com/doku.php?id=technical_indicators:stochrsi
         https://www.investopedia.com/terms/s/stochrsi.asp
         :param window: N -Period.
         :param smooth1: Moving average of Stochastic RSI.
@@ -126,25 +115,31 @@ class MomentumIndicators(BaseIndicator):
         :return: DataFrame with Stochastic RSI indicator fields.
         """
         # First calculate RSI if not already present
-        if "RSI" not in self.df.columns:
+        if "rsi" not in self.df.columns:
             self.df = self.rsi_indicator(window=window, fillna=fillna)
 
         # Calculate Stochastic RSI
         # %K = (RSI - RSI_min) / (RSI_max - RSI_min)
         self.df = self.df.with_columns(
             [
-                pl.col("RSI").rolling_min(window_size=window).alias("rsi_min"),
-                pl.col("RSI").rolling_max(window_size=window).alias("rsi_max"),
+                pl.col("rsi").rolling_min(window_size=window).alias("rsi_min"),
+                pl.col("rsi").rolling_max(window_size=window).alias("rsi_max"),
             ]
         )
 
         self.df = self.df.with_columns(
             [
-                (
-                    (pl.col("RSI") - pl.col("rsi_min"))
-                    / (pl.col("rsi_max") - pl.col("rsi_min"))
+                # ***FIXED***: Added when/otherwise to handle division by zero
+                pl.when(pl.col("rsi_max") == pl.col("rsi_min"))
+                .then(0.0)  # Or 100.0 if RSI == rsi_max, but 0.0 is safer
+                .otherwise(
+                    (
+                        (pl.col("rsi") - pl.col("rsi_min"))
+                        / (pl.col("rsi_max") - pl.col("rsi_min"))
+                    )
                     * 100
-                ).alias("stoch_rsi_k")
+                )
+                .alias("stoch_rsi_k")
             ]
         )
 
@@ -163,7 +158,8 @@ class MomentumIndicators(BaseIndicator):
         # Clean up temporary columns
         self.df = self.df.drop(["rsi_min", "rsi_max"])
 
-        if not fillna:
+        # ***FIXED***: Changed `if not fillna:` to `if fillna:`
+        if fillna:
             self.df = self.df.with_columns(
                 [
                     pl.col("stoch_rsi").fill_null(strategy="forward"),
@@ -179,9 +175,6 @@ class MomentumIndicators(BaseIndicator):
     ) -> pl.DataFrame:
         """
         Stochastic Oscillator
-        Developed in the late 1950s by George Lane. The stochastic oscillator presents the location of the closing
-        price of a stock in relation to the high and low range of the price of a stock over a period of time,
-        typically a 14-day period.
         https://school.stockcharts.com/doku.php?id=technical_indicators:stochastic_oscillator_fast_slow_and_full
         :param window: N -Period.
         :param smooth_window: SMA period over stoch_k.
@@ -192,18 +185,23 @@ class MomentumIndicators(BaseIndicator):
         # %K = (Close - Low_min) / (High_max - Low_min) * 100
         self.df = self.df.with_columns(
             [
-                pl.col("Low").rolling_min(window_size=window).alias("low_min"),
-                pl.col("High").rolling_max(window_size=window).alias("high_max"),
+                pl.col("low").rolling_min(window_size=window).alias("low_min"),
+                pl.col("high").rolling_max(window_size=window).alias("high_max"),
             ]
         )
 
         self.df = self.df.with_columns(
             [
-                (
-                    (pl.col("Close") - pl.col("low_min"))
-                    / (pl.col("high_max") - pl.col("low_min"))
+                pl.when(pl.col("high_max") == pl.col("low_min"))
+                .then(0.0)
+                .otherwise(
+                    (
+                        (pl.col("close") - pl.col("low_min"))
+                        / (pl.col("high_max") - pl.col("low_min"))
+                    )
                     * 100
-                ).alias("stoch")
+                )
+                .alias("stoch")
             ]
         )
 
@@ -219,7 +217,7 @@ class MomentumIndicators(BaseIndicator):
         # Clean up temporary columns
         self.df = self.df.drop(["low_min", "high_max"])
 
-        if not fillna:
+        if fillna:
             self.df = self.df.with_columns(
                 [
                     pl.col("stoch").fill_null(strategy="forward"),
@@ -241,13 +239,13 @@ class MomentumIndicators(BaseIndicator):
         return self.df
 
 
-# Convenience functions for pandas-style usage
+# Convenience functions (No changes needed, these are fine)
 def calculate_rsi(prices: pl.Series, window: int = 14) -> pl.Series:
     """Calculate RSI for a price series."""
-    df = pl.DataFrame({"Close": prices})
+    df = pl.DataFrame({"close": prices})
     indicator = MomentumIndicators(df)
     result = indicator.rsi_indicator(window=window)
-    return result["RSI"]
+    return result["rsi"]
 
 
 def calculate_macd(
@@ -256,7 +254,8 @@ def calculate_macd(
     """Calculate MACD for a price series."""
     df = pl.DataFrame({"Close": prices})
     # This would need a trend indicators class
-    # For now, return empty DataFrame
+    # For now, return empty DataFrame as in original
+    print("MACD is a trend indicator; this is a stub function.")
     return pl.DataFrame()
 
 
@@ -268,7 +267,7 @@ def calculate_stochastic(
     d_window: int = 3,
 ) -> pl.DataFrame:
     """Calculate Stochastic Oscillator."""
-    df = pl.DataFrame({"High": high, "Low": low, "Close": close})
+    df = pl.DataFrame({"high": high, "low": low, "close": close})
     indicator = MomentumIndicators(df)
     result = indicator.stoch_oscillator_indicator(
         window=k_window, smooth_window=d_window
