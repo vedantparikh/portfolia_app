@@ -1009,7 +1009,11 @@ export const analyticsAPI = {
       Parameters: portfolioId (string or number), allocationId (string or number), allocationData (object)
       Returns: Server response with updated allocation data
     */
-  updatePortfolioAllocation: async (portfolioId, allocationId, allocationData) => {
+  updatePortfolioAllocation: async (
+    portfolioId,
+    allocationId,
+    allocationData
+  ) => {
     const response = await api.put(
       `/analytics/portfolios/${portfolioId}/allocations/${allocationId}`,
       allocationData
@@ -1047,9 +1051,12 @@ export const analyticsAPI = {
       Returns: Server response with risk metrics data
     */
   getPortfolioRiskMetrics: async (portfolioId, forceRefresh = true) => {
-    const response = await api.get(`/analytics/portfolios/${portfolioId}/risk`, {
-      params: { force_refresh: forceRefresh },
-    });
+    const response = await api.get(
+      `/analytics/portfolios/${portfolioId}/risk`,
+      {
+        params: { force_refresh: forceRefresh },
+      }
+    );
     return response.data;
   },
 
@@ -1123,12 +1130,16 @@ export const analyticsAPI = {
       Parameters: asset1Id (string or number), asset2Id (string or number), forceRefresh (boolean)
       Returns: Server response with correlation data
     */
-  getAssetCorrelations: async (asset1Id = null, asset2Id = null, forceRefresh = true) => {
+  getAssetCorrelations: async (
+    asset1Id = null,
+    asset2Id = null,
+    forceRefresh = true
+  ) => {
     const response = await api.get("/analytics/assets/correlations", {
-      params: { 
-        asset1_id: asset1Id, 
-        asset2_id: asset2Id, 
-        force_refresh: forceRefresh 
+      params: {
+        asset1_id: asset1Id,
+        asset2_id: asset2Id,
+        force_refresh: forceRefresh,
       },
     });
     return response.data;
@@ -1183,10 +1194,12 @@ export const statisticalIndicatorsAPI = {
     */
   getAvailableIndicators: async (category = null, search = null) => {
     const params = new URLSearchParams();
-    if (category) params.append('category', category);
-    if (search) params.append('search', search);
-    
-    const response = await api.get(`/statistical-indicators/indicators?${params.toString()}`);
+    if (category) params.append("category", category);
+    if (search) params.append("search", search);
+
+    const response = await api.get(
+      `/statistical-indicators/indicators?${params.toString()}`
+    );
     return response.data;
   },
 
@@ -1195,16 +1208,10 @@ export const statisticalIndicatorsAPI = {
       Returns: Server response with calculated indicator data
     */
   calculateIndicators: async (requestData) => {
-    const response = await api.post('/statistical-indicators/calculate', requestData);
-    return response.data;
-  },
-
-  /* 
-      GENERATE CHART DATA - Generate chart data with indicators
-      Returns: Server response with chart data and indicators
-    */
-  generateChartData: async (requestData) => {
-    const response = await api.post('/statistical-indicators/chart-data', requestData);
+    const response = await api.post(
+      "/statistical-indicators/calculate",
+      requestData
+    );
     return response.data;
   },
 
@@ -1214,11 +1221,13 @@ export const statisticalIndicatorsAPI = {
     */
   getConfigurations: async (skip = 0, limit = 100, userOnly = false) => {
     const params = new URLSearchParams();
-    params.append('skip', skip.toString());
-    params.append('limit', limit.toString());
-    params.append('user_only', userOnly.toString());
-    
-    const response = await api.get(`/statistical-indicators/configurations?${params.toString()}`);
+    params.append("skip", skip.toString());
+    params.append("limit", limit.toString());
+    params.append("user_only", userOnly.toString());
+
+    const response = await api.get(
+      `/statistical-indicators/configurations?${params.toString()}`
+    );
     return response.data;
   },
 
@@ -1227,7 +1236,10 @@ export const statisticalIndicatorsAPI = {
       Returns: Server response with created configuration
     */
   createConfiguration: async (configurationData) => {
-    const response = await api.post('/statistical-indicators/configurations', configurationData);
+    const response = await api.post(
+      "/statistical-indicators/configurations",
+      configurationData
+    );
     return response.data;
   },
 
@@ -1236,7 +1248,9 @@ export const statisticalIndicatorsAPI = {
       Returns: Server response with configuration details
     */
   getConfiguration: async (configId) => {
-    const response = await api.get(`/statistical-indicators/configurations/${configId}`);
+    const response = await api.get(
+      `/statistical-indicators/configurations/${configId}`
+    );
     return response.data;
   },
 
@@ -1245,7 +1259,10 @@ export const statisticalIndicatorsAPI = {
       Returns: Server response with updated configuration
     */
   updateConfiguration: async (configId, configurationData) => {
-    const response = await api.put(`/statistical-indicators/configurations/${configId}`, configurationData);
+    const response = await api.put(
+      `/statistical-indicators/configurations/${configId}`,
+      configurationData
+    );
     return response.data;
   },
 
@@ -1254,24 +1271,9 @@ export const statisticalIndicatorsAPI = {
       Returns: Server response with deletion confirmation
     */
   deleteConfiguration: async (configId) => {
-    const response = await api.delete(`/statistical-indicators/configurations/${configId}`);
-    return response.data;
-  },
-
-  /* 
-      GENERATE REACT CHART DATA - Generate React-optimized chart data
-      Returns: Server response with React chart data
-    */
-  generateReactChartData: async (symbol, period = '6mo', interval = '1d', configurationId = null, chartType = 'candlestick', includeVolume = true) => {
-    const params = new URLSearchParams();
-    params.append('symbol', symbol);
-    params.append('period', period);
-    params.append('interval', interval);
-    if (configurationId) params.append('configuration_id', configurationId.toString());
-    params.append('chart_type', chartType);
-    params.append('include_volume', includeVolume.toString());
-    
-    const response = await api.get(`/statistical-indicators/chart-data/react?${params.toString()}`);
+    const response = await api.delete(
+      `/statistical-indicators/configurations/${configId}`
+    );
     return response.data;
   },
 
@@ -1280,7 +1282,7 @@ export const statisticalIndicatorsAPI = {
       Returns: Server response with available templates
     */
   getTemplates: async () => {
-    const response = await api.get('/statistical-indicators/templates');
+    const response = await api.get("/statistical-indicators/templates");
     return response.data;
   },
 
@@ -1290,9 +1292,11 @@ export const statisticalIndicatorsAPI = {
     */
   createFromTemplate: async (templateName, customName = null) => {
     const params = new URLSearchParams();
-    if (customName) params.append('custom_name', customName);
-    
-    const response = await api.post(`/statistical-indicators/templates/${templateName}/create?${params.toString()}`);
+    if (customName) params.append("custom_name", customName);
+
+    const response = await api.post(
+      `/statistical-indicators/templates/${templateName}/create?${params.toString()}`
+    );
     return response.data;
   },
 
@@ -1301,7 +1305,10 @@ export const statisticalIndicatorsAPI = {
       Returns: Server response with validation results
     */
   validateConfiguration: async (configuration) => {
-    const response = await api.post('/statistical-indicators/validate', configuration);
+    const response = await api.post(
+      "/statistical-indicators/validate",
+      configuration
+    );
     return response.data;
   },
 
@@ -1311,9 +1318,11 @@ export const statisticalIndicatorsAPI = {
     */
   duplicateConfiguration: async (configId, newName) => {
     const params = new URLSearchParams();
-    params.append('new_name', newName);
-    
-    const response = await api.post(`/statistical-indicators/configurations/${configId}/duplicate?${params.toString()}`);
+    params.append("new_name", newName);
+
+    const response = await api.post(
+      `/statistical-indicators/configurations/${configId}/duplicate?${params.toString()}`
+    );
     return response.data;
   },
 
@@ -1323,26 +1332,13 @@ export const statisticalIndicatorsAPI = {
     */
   searchConfigurations: async (query, skip = 0, limit = 100) => {
     const params = new URLSearchParams();
-    params.append('q', query);
-    params.append('skip', skip.toString());
-    params.append('limit', limit.toString());
-    
-    const response = await api.get(`/statistical-indicators/configurations/search?${params.toString()}`);
-    return response.data;
-  },
+    params.append("q", query);
+    params.append("skip", skip.toString());
+    params.append("limit", limit.toString());
 
-  /* 
-      GENERATE HIGHCHARTS DATA - Generate Highcharts-compatible chart data
-      Returns: Server response with Highcharts data
-    */
-  generateHighchartsData: async (symbol, period = 'max', interval = '1d', configurationId = null) => {
-    const params = new URLSearchParams();
-    params.append('symbol', symbol);
-    params.append('period', period);
-    params.append('interval', interval);
-    if (configurationId) params.append('configuration_id', configurationId.toString());
-    
-    const response = await api.get(`/statistical-indicators/chart-data/highcharts?${params.toString()}`);
+    const response = await api.get(
+      `/statistical-indicators/configurations/search?${params.toString()}`
+    );
     return response.data;
   },
 
@@ -1351,7 +1347,7 @@ export const statisticalIndicatorsAPI = {
       Returns: Server response with user statistics
     */
   getStatistics: async () => {
-    const response = await api.get('/statistical-indicators/statistics');
+    const response = await api.get("/statistical-indicators/statistics");
     return response.data;
   },
 
@@ -1361,9 +1357,11 @@ export const statisticalIndicatorsAPI = {
     */
   getPopularConfigurations: async (limit = 10) => {
     const params = new URLSearchParams();
-    params.append('limit', limit.toString());
-    
-    const response = await api.get(`/statistical-indicators/popular?${params.toString()}`);
+    params.append("limit", limit.toString());
+
+    const response = await api.get(
+      `/statistical-indicators/popular?${params.toString()}`
+    );
     return response.data;
   },
 
@@ -1424,33 +1422,32 @@ export const portfolioCalculationsAPI = {
       Parameters: portfolioId (string or number), periods (array), endDate (string)
       Returns: Server response with multi-period performance data
     */
-      getMultiPeriodPerformance: async (
-        portfolioId,
-        periods = ["3m", "6m", "ytd", "1y", "2y", "3y", "5y", "inception"],
-        endDate = null
-      ) => {
-        
-        // Create the params object
-        const params = { periods };
-        if (endDate) {
-            params.end_date = endDate;
-        }
-    
-        const response = await api.get(
-          `/portfolios/calculations/portfolio/${portfolioId}/multi-period`,
-          {
-            params, // Your params object
-    
-            // --- THIS IS THE FIX ---
-            // Add this serializer to force the repeated-key format
-            // that FastAPI requires.
-            paramsSerializer: {
-              indexes: null // This serializes to: ?periods=3m&periods=6m...
-            }
-          }
-        );
-        return response.data;
-      },
+  getMultiPeriodPerformance: async (
+    portfolioId,
+    periods = ["3m", "6m", "ytd", "1y", "2y", "3y", "5y", "inception"],
+    endDate = null
+  ) => {
+    // Create the params object
+    const params = { periods };
+    if (endDate) {
+      params.end_date = endDate;
+    }
+
+    const response = await api.get(
+      `/portfolios/calculations/portfolio/${portfolioId}/multi-period`,
+      {
+        params, // Your params object
+
+        // --- THIS IS THE FIX ---
+        // Add this serializer to force the repeated-key format
+        // that FastAPI requires.
+        paramsSerializer: {
+          indexes: null, // This serializes to: ?periods=3m&periods=6m...
+        },
+      }
+    );
+    return response.data;
+  },
 
   /* 
       CALCULATE ASSET PERFORMANCE - Calculate performance metrics for a specific asset within a portfolio

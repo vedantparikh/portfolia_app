@@ -10,8 +10,6 @@ import polars as pl
 from sqlalchemy.orm import Session
 
 from app.core.schemas.statistical_indicators import (
-    ChartDataRequest,
-    ChartDataResponse,
     IndicatorCalculationRequest,
     IndicatorCalculationResponse,
     IndicatorConfiguration,
@@ -34,7 +32,7 @@ class EnhancedStatisticalService:
         self.market_data_service = MarketDataService()
 
     async def calculate_indicators(
-        self, request: IndicatorCalculationRequest
+            self, request: IndicatorCalculationRequest
     ) -> IndicatorCalculationResponse:
         """Calculate indicators based on user configuration."""
 
@@ -136,138 +134,8 @@ class EnhancedStatisticalService:
         except Exception as e:
             raise ValueError(f"Error calculating indicators: {str(e)}") from e
 
-    async def generate_chart_data(self, request: ChartDataRequest) -> ChartDataResponse:
-        """Generate chart data with indicators for visualization."""
-        try:
-            # Get market data
-            market_data = await self.market_data_service.fetch_ticker_data(
-                symbol=request.symbol, period=request.period, interval=request.interval
-            )
-
-            if market_data.empty:
-                raise ValueError(f"No market data found for symbol {request.symbol}")
-
-            # Get indicator configurations
-            if request.configuration_id:
-                config = self.configuration_service.get_configuration(
-                    request.configuration_id, user_id=None
-                )
-                if not config:
-                    raise ValueError(
-                        f"Configuration {request.configuration_id} not found"
-                    )
-                indicator_configs = config.indicators
-                chart_settings = config.chart_settings or {}
-            else:
-                indicator_configs = request.indicators
-                chart_settings = {}
-
-            # Calculate indicators
-            result_df, calculation_errors, performance_metrics = (
-                self.indicator_registry.calculate_indicators(
-                    market_data, indicator_configs
-                )
-            )
-
-            # Prepare chart data
-            chart_data = self._prepare_chart_data(
-                result_df,
-                indicator_configs,
-                request.chart_type,
-                request.include_volume,
-                chart_settings,
-            )
-
-            # Prepare indicator data for chart
-            indicator_data = self._prepare_indicator_data(result_df, indicator_configs)
-
-            # Prepare volume data if requested
-            volume_data = None
-            if request.include_volume and "volume" in result_df.columns:
-                volume_data = self._prepare_volume_data_for_chart(result_df)
-
-            # Prepare metadata
-            metadata = {
-                "symbol": request.symbol,
-                "period": request.period,
-                "interval": request.interval,
-                "chart_type": request.chart_type,
-                "indicators_count": len([c for c in indicator_configs if c.enabled]),
-                "data_points": len(result_df),
-                "calculation_errors": len(calculation_errors),
-                "performance_metrics": (
-                    performance_metrics.dict() if performance_metrics else None
-                ),
-            }
-
-            return ChartDataResponse(
-                symbol=request.symbol,
-                chart_type=request.chart_type,
-                data=chart_data,
-                indicators=indicator_data,
-                volume_data=volume_data,
-                metadata=metadata,
-            )
-
-        except Exception as e:
-            raise ValueError(f"Error generating chart data: {str(e)}") from e
-
-    def _prepare_chart_data(
-        self,
-        df: pl.DataFrame,
-        _indicator_configs: List[IndicatorConfiguration],
-        chart_type: str,
-        _include_volume: bool,
-        chart_settings: Dict[str, Any],
-    ) -> Dict[str, Any]:
-        """Prepare chart data structure."""
-        # Base chart data
-        chart_data = {"type": chart_type, "data": []}
-
-        # Prepare candlestick data
-        if chart_type == "candlestick":
-            candlestick_data = []
-            for row in df.to_dicts():
-                if all(col in row for col in ["open", "high", "low", "close", "date"]):
-                    candlestick_data.append(
-                        {
-                            "x": (
-                                row["date"].isoformat()
-                                if isinstance(row["date"], datetime)
-                                else str(row["date"])
-                            ),
-                            "open": float(row["open"]),
-                            "high": float(row["high"]),
-                            "low": float(row["low"]),
-                            "close": float(row["close"]),
-                        }
-                    )
-            chart_data["data"] = candlestick_data
-
-        # Prepare line chart data
-        elif chart_type == "line":
-            line_data = []
-            for row in df.to_dicts():
-                if "close" in row and "date" in row:
-                    line_data.append(
-                        {
-                            "x": (
-                                row["date"].isoformat()
-                                if isinstance(row["date"], datetime)
-                                else str(row["date"])
-                            ),
-                            "y": float(row["close"]),
-                        }
-                    )
-            chart_data["data"] = line_data
-
-        # Add chart settings
-        chart_data.update(chart_settings)
-
-        return chart_data
-
     def _prepare_indicator_data(
-        self, df: pl.DataFrame, indicator_configs: List[IndicatorConfiguration]
+            self, df: pl.DataFrame, indicator_configs: List[IndicatorConfiguration]
     ) -> List[Dict[str, Any]]:
         """Prepare indicator data for chart display."""
         indicator_data = []
@@ -304,8 +172,8 @@ class EnhancedStatisticalService:
                         indicator_data.append(
                             {
                                 "name": (
-                                    config.display_name
-                                    or f"{config.indicator_name}_{output_col}"
+                                        config.display_name
+                                        or f"{config.indicator_name}_{output_col}"
                                 ),
                                 "indicator_name": config.indicator_name,
                                 "output_column": output_col,
@@ -358,7 +226,7 @@ class EnhancedStatisticalService:
         return volume_data
 
     def _prepare_indicator_series(
-        self, df: pl.DataFrame, indicator_configs: List[IndicatorConfiguration]
+            self, df: pl.DataFrame, indicator_configs: List[IndicatorConfiguration]
     ) -> List[Dict[str, Any]]:
         """Prepare indicator series data for charts using efficient, vectorized operations."""  # noqa: E501
         indicator_series = []
@@ -390,10 +258,10 @@ class EnhancedStatisticalService:
                             .alias("date"),
                             pl.col(col_name).cast(pl.Float64).alias("value"),
                             (
-                                pl.col(col_name).cast(pl.Utf8)
-                                + " ("
-                                + pl.lit(output_col)
-                                + ")"
+                                    pl.col(col_name).cast(pl.Utf8)
+                                    + " ("
+                                    + pl.lit(output_col)
+                                    + ")"
                             ).alias("formatted_value"),
                             pl.struct(
                                 [
@@ -432,13 +300,13 @@ class EnhancedStatisticalService:
         return indicator_series
 
     def _prepare_metadata(
-        self,
-        symbol: str,
-        period: str,
-        interval: str,
-        df: pl.DataFrame,
-        indicators_count: int,
-        performance_metrics: Any,
+            self,
+            symbol: str,
+            period: str,
+            interval: str,
+            df: pl.DataFrame,
+            indicators_count: int,
+            performance_metrics: Any,
     ) -> Dict[str, Any]:
         """Prepare chart metadata."""
         return {
@@ -482,7 +350,7 @@ class EnhancedStatisticalService:
         return {name: template.dict() for name, template in templates.items()}
 
     async def create_configuration_from_template(
-        self, user_id: int, template_name: str, custom_name: Optional[str] = None
+            self, user_id: int, template_name: str, custom_name: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
         """Create a configuration from a predefined template."""
         config = self.configuration_service.create_from_template(
@@ -491,7 +359,7 @@ class EnhancedStatisticalService:
         return config.dict() if config else None
 
     async def validate_indicator_configuration(
-        self, config: IndicatorConfiguration
+            self, config: IndicatorConfiguration
     ) -> List[Dict[str, Any]]:
         """Validate an indicator configuration."""
         errors = self.indicator_registry.validate_indicator_configuration(config)
@@ -502,7 +370,7 @@ class EnhancedStatisticalService:
         return self.configuration_service.get_configuration_statistics(user_id)
 
     async def search_configurations(
-        self, query: str, user_id: Optional[int] = None, skip: int = 0, limit: int = 100
+            self, query: str, user_id: Optional[int] = None, skip: int = 0, limit: int = 100
     ) -> Dict[str, Any]:
         """Search configurations."""
         result = self.configuration_service.search_configurations(

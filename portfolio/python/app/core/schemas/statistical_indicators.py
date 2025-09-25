@@ -196,18 +196,6 @@ class IndicatorCalculationResponse(BaseModel):
     metadata: ChartMetadata = Field(..., description="Chart metadata")
 
 
-class ChartDataRequest(BaseModel):
-    """Request for chart data with indicators."""
-    symbol: str = Field(..., description="Stock symbol")
-    period: str = Field(default="max", description="Data period")
-    interval: str = Field(default="1d", description="Data interval")
-    configuration_id: Optional[int] = Field(None, description="Analysis configuration ID")
-    indicators: Optional[List[IndicatorConfiguration]] = Field(None, description="Custom indicator configurations")
-    chart_type: str = Field(default="candlestick", description="Chart type (candlestick, line, bar)")
-    include_volume: bool = Field(default=True, description="Include volume subplot")
-    start_date: Optional[datetime] = Field(None, description="Start date for data")
-    end_date: Optional[datetime] = Field(None, description="End date for data")
-
 
 class ReactChartConfig(BaseModel):
     """Configuration for React chart components."""
@@ -229,21 +217,6 @@ class ReactChartData(BaseModel):
     volume_data: Optional[List[VolumeDataPoint]] = Field(None, description="Volume data")
     config: ReactChartConfig = Field(..., description="Chart configuration")
     metadata: ChartMetadata = Field(..., description="Chart metadata")
-
-
-class ChartDataResponse(BaseModel):
-    """Response containing chart data with indicators."""
-    symbol: str = Field(..., description="Stock symbol")
-    chart_type: str = Field(..., description="Chart type")
-    data: Dict[str, Any] = Field(..., description="Chart data structure")
-    indicators: List[Dict[str, Any]] = Field(..., description="Indicator data for chart")
-    volume_data: Optional[List[Dict[str, Any]]] = Field(None, description="Volume data")
-    metadata: Dict[str, Any] = Field(..., description="Chart metadata")
-    
-    # Enhanced React UI fields
-    react_chart_data: Optional[ReactChartData] = Field(None, description="React-optimized chart data")
-    plotly_config: Optional[Dict[str, Any]] = Field(None, description="Plotly configuration")
-    highcharts_config: Optional[Dict[str, Any]] = Field(None, description="Highcharts configuration")
 
 
 class IndicatorRegistryResponse(BaseModel):

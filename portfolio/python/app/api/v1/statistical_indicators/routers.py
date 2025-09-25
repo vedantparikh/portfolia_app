@@ -21,8 +21,6 @@ from app.core.schemas.statistical_indicators import (
     AnalysisConfigurationCreate,
     AnalysisConfigurationListResponse,
     AnalysisConfigurationUpdate,
-    ChartDataRequest,
-    ChartDataResponse,
     IndicatorCalculationRequest,
     IndicatorCalculationResponse,
     IndicatorConfiguration,
@@ -32,7 +30,6 @@ from app.core.schemas.statistical_indicators import (
 from app.core.services.analysis_configuration_service import (
     AnalysisConfigurationService,
 )
-from app.core.services.chart_data_service import ChartDataService
 from app.core.services.enhanced_statistical_service import EnhancedStatisticalService
 
 router = APIRouter(prefix="/statistical-indicators", tags=["statistical-indicators"])
@@ -99,35 +96,6 @@ async def calculate_indicators(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error calculating indicators: {str(e)}")
-
-
-@router.post("/chart-data", response_model=ChartDataResponse)
-async def generate_chart_data(
-        request: ChartDataRequest,
-        current_user: User = Depends(get_optional_current_user),
-        request_obj: Request = None,
-        db: Session = Depends(get_db)
-):
-    """Generate chart data with indicators for visualization."""
-    # Rate limiting for unauthenticated users
-    if not current_user:
-        client_ip = get_client_ip(request_obj) if request_obj else "unknown"
-        if is_rate_limited(
-                client_ip, "generate_chart_data", max_attempts=10, window_seconds=3600
-        ):
-            raise HTTPException(
-                status_code=429,
-                detail="Rate limit exceeded. Please authenticate or try again later.",
-            )
-
-    try:
-        service = ChartDataService(db)
-        result = await service.generate_chart_data(request)
-        return result
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generating chart data: {str(e)}")
 
 
 # Analysis Configuration Endpoints
@@ -235,37 +203,6 @@ async def delete_configuration(
         raise HTTPException(status_code=500, detail=f"Error deleting configuration: {str(e)}")
 
 
-@router.get("/chart-data/react")
-async def generate_react_chart_data(
-        symbol: str,
-        period: str = "6mo",
-        interval: str = "1d",
-        configuration_id: Optional[int] = None,
-        chart_type: str = "candlestick",
-        include_volume: bool = True,
-        current_user: User = Depends(get_optional_current_user),
-        db: Session = Depends(get_db)
-):
-    """Generate React-optimized chart data."""
-    try:
-        service = ChartDataService(db)
-
-        request = ChartDataRequest(
-            symbol=symbol,
-            period=period,
-            interval=interval,
-            configuration_id=configuration_id,
-            indicators=None,
-            chart_type=chart_type,
-            include_volume=include_volume
-        )
-
-        result = await service.generate_chart_data(request)
-        return result.react_chart_data
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generating React chart data: {str(e)}")
-
-
 @router.get("/templates")
 async def get_predefined_templates(
         current_user: User = Depends(get_optional_current_user),
@@ -362,33 +299,6 @@ async def search_configurations(
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error searching configurations: {str(e)}")
-
-
-@router.get("/chart-data/highcharts")
-async def generate_highcharts_data(
-        symbol: str,
-        period: str = "max",
-        interval: str = "1d",
-        configuration_id: Optional[int] = None,
-        current_user: User = Depends(get_optional_current_user),
-        db: Session = Depends(get_db)
-):
-    """Generate Highcharts-compatible chart data."""
-    try:
-        service = ChartDataService(db)
-        result = await service.generate_highcharts_data(
-            ChartDataRequest(
-                symbol=symbol,
-                period=period,
-                interval=interval,
-                configuration_id=configuration_id,
-                chart_type="candlestick",
-                include_volume=True
-            )
-        )
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generating Highcharts data: {str(e)}")
 
 
 @router.get("/statistics")
