@@ -114,6 +114,15 @@ const PortfolioAssetCard = ({ asset, viewMode = 'grid', onClick, onTransaction, 
                                 {asset.realized_pnl_percentage?.toFixed(2) || '0.00'}%
                             </p>
                         </div>
+                        <div className="text-right">
+                            <p className="text-sm text-gray-400">Today's P&L</p>
+                            <p className={`text-sm font-medium ${(asset.pnl || 0) >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
+                                ${asset.today_pnl?.toFixed(2) || '0.00'}
+                            </p>
+                            <p className={`text-xs ${(asset.pnl_percentage || 0) >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
+                                {asset.today_pnl_percentage?.toFixed(2) || '0.00'}%
+                            </p>
+                        </div>
 
                         <div className="flex items-center space-x-2">
                             <div className="relative">
@@ -269,6 +278,19 @@ const PortfolioAssetCard = ({ asset, viewMode = 'grid', onClick, onTransaction, 
                             </div>
                         </div>
                     )}
+                    {asset.today_pnl !== undefined && (
+                        <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-400">Today's P&L</span>
+                            <div className="text-right">
+                                <span className={`text-sm font-medium ${(asset.today_pnl || 0) >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
+                                    ${asset.today_pnl?.toFixed(2) || '0.00'}
+                                </span>
+                                <span className={`text-xs ml-2 ${(asset.today_pnl_percentage || 0) >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
+                                    ({asset.today_pnl_percentage?.toFixed(2) || '0.00'}%)
+                                </span>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -360,7 +382,9 @@ const PortfolioAssets = ({ portfolio, onRefresh }) => {
                     pnl: holding.unrealized_pnl,
                     pnl_percentage: holding.unrealized_pnl_percent,
                     realized_pnl: holding.realized_pnl,
-                    realized_pnl_percentage: holding.realized_pnl_percent
+                    realized_pnl_percentage: holding.realized_pnl_percent,
+                    today_pnl: holding.today_pnl,
+                    today_pnl_percentage: holding.today_pnl_percent
                 }));
             }
 
