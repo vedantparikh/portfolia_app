@@ -22,7 +22,7 @@ import { assetAPI, marketAPI } from '../../services/api';
 import assetCache from '../../services/assetCache';
 import { ClientSideAssetSearch, SymbolSearch } from '../shared';
 
-const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
+const CreateTransactionModal = ({ portfolios, onClose, onCreate, prefilledAsset = null, prefilledPrice = null }) => {
     const { isAuthenticated } = useAuth();  // Get the authentication status
     const [formData, setFormData] = useState({  // State for form data
         portfolio_id: '',
@@ -226,6 +226,28 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
         console.log('[CreateTransactionModal] Modal opened, preloading assets...');
         assetCache.preloadAssets();
     }, []);
+
+    // Prefill form data when prefilledAsset is provided
+    useEffect(() => {
+        if (prefilledAsset) {
+            console.log('[CreateTransactionModal] Prefilling asset data:', prefilledAsset);
+            setFormData(prev => ({
+                ...prev,
+                asset_id: prefilledAsset.id,
+                symbol: prefilledAsset.symbol
+            }));
+            setSelectedAsset(prefilledAsset);
+
+            // Set prefilled price if provided
+            if (prefilledPrice) {
+                console.log('[CreateTransactionModal] Setting prefilled price:', prefilledPrice);
+                setFormData(prev => ({
+                    ...prev,
+                    price: prefilledPrice.toString()
+                }));
+            }
+        }
+    }, [prefilledAsset, prefilledPrice]);
 
     // Function to fetch current price for a symbol
     const fetchCurrentPrice = async (symbol) => {
@@ -535,6 +557,9 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
                             <h2 className="text-xl font-bold text-gray-100">Create Transaction</h2>
                             <p className="text-sm text-gray-400">
                                 Add a new {getSelectedTransactionType().label.toLowerCase()} transaction
+                                {prefilledAsset && (
+                                    <span className="text-primary-400"> for {prefilledAsset.symbol}</span>
+                                )}
                             </p>
                         </div>
                     </div>
@@ -645,8 +670,8 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate }) => {
                             onSelect={handleSymbolSelect}
                             onPriceUpdate={handlePriceUpdate}
                             placeholder="Search assets..."
-                            disabled={loading}
-                            showSuggestions={true}
+                            disabled={loading || !!prefilledAsset}
+                            showSuggestions={!prefilledAsset}
                             preloadAssets={true}
                         />
 

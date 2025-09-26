@@ -9,14 +9,16 @@ import {
     Search,
     Settings,
     TrendingDown,
-    TrendingUp
+    TrendingUp,
+    X
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { userAssetsAPI } from '../../services/api';
+import { portfolioAPI, transactionAPI, userAssetsAPI } from '../../services/api';
 import AssetAnalyticsView from '../analytics/AssetAnalyticsView';
 import IndicatorConfigurationManager from '../analytics/IndicatorConfigurationManager';
 import { Sidebar } from '../shared';
+import CreateTransactionModal from '../transactions/CreateTransactionModal';
 import AssetCard from './AssetCard';
 import AssetFilters from './AssetFilters';
 import AssetModal from './AssetModal';
@@ -24,6 +26,7 @@ import AssetModal from './AssetModal';
 const Assets = () => {
     const [assets, setAssets] = useState([]);
     const [filteredAssets, setFilteredAssets] = useState([]);
+    const [portfolios, setPortfolios] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedAsset, setSelectedAsset] = useState(null);
@@ -35,6 +38,8 @@ const Assets = () => {
     const [chartData, setChartData] = useState([]);
     const [selectedConfiguration, setSelectedConfiguration] = useState(null);
     const [showConfigurationManager, setShowConfigurationManager] = useState(false);
+    const [showTransactionModal, setShowTransactionModal] = useState(false);
+    const [transactionAsset, setTransactionAsset] = useState(null);
     const [filters, setFilters] = useState({
         category: 'all',
         priceRange: 'all',
@@ -55,6 +60,11 @@ const Assets = () => {
         const loadAssetsSafe = async () => {
             try {
                 setLoading(true);
+
+                // Load portfolios for transaction creation
+                const portfoliosResponse = await portfolioAPI.getPortfolios();
+                console.log('[Assets] Portfolios response:', portfoliosResponse);
+
                 const response = await userAssetsAPI.getUserAssets({
                     limit: 100,
                     include_detail: true,
@@ -66,6 +76,7 @@ const Assets = () => {
                 if (isMounted) {
                     console.log('[Assets] User assets response:', response);
                     setAssets(response.assets || []);
+                    setPortfolios(portfoliosResponse || []);
                 }
             } catch (error) {
                 if (isMounted) {
@@ -117,6 +128,11 @@ const Assets = () => {
     const loadAssets = async () => {
         try {
             setLoading(true);
+
+            // Load portfolios for transaction creation
+            const portfoliosResponse = await portfolioAPI.getPortfolios();
+            console.log('[Assets] Portfolios response:', portfoliosResponse);
+
             const response = await userAssetsAPI.getUserAssets({
                 limit: 100,
                 include_detail: true,
@@ -125,6 +141,7 @@ const Assets = () => {
             });
             console.log('[Assets] User assets response:', response);
             setAssets(response.assets || []);
+            setPortfolios(portfoliosResponse || []);
         } catch (error) {
             console.error('Failed to load user assets:', error);
             toast.error('Failed to load your assets');
@@ -323,6 +340,33 @@ const Assets = () => {
         setSelectedAsset(asset);
         setShowAnalytics(true);
         await loadChartData(asset);
+    };
+
+    const handleTransactionClick = (asset) => {
+        setTransactionAsset(asset);
+        setShowTransactionModal(true);
+    };
+
+    const handleCreateTransaction = async (transactionData) => {
+        try {
+            console.log('[Assets] Creating transaction with data:', transactionData);
+            const response = await transactionAPI.createTransaction(transactionData);
+            console.log('[Assets] Create response:', response);
+
+            setShowTransactionModal(false);
+            setTransactionAsset(null);
+            toast.success('Transaction created successfully');
+
+            // Refresh assets to ensure consistency
+            setTimeout(() => {
+                loadAssets();
+            }, 500);
+        } catch (error) {
+            console.error('Failed to create transaction:', error);
+            const errorMessage = error.response?.data?.detail || error.message || 'Failed to create transaction';
+            toast.error(errorMessage);
+            throw error; // Re-throw so the modal can handle it
+        }
     };
 
     const loadChartData = async (asset) => {
@@ -712,6 +756,7 @@ const Assets = () => {
                                     onAddToPortfolio={handleAddToPortfolio}
                                     onViewInPortfolio={handleViewInPortfolio}
                                     onAnalytics={() => handleAnalyticsClick(asset)}
+                                    onTransaction={() => handleTransactionClick(asset)}
                                 />
                             ))}
                         </div>
@@ -755,6 +800,20 @@ const Assets = () => {
                                 </div>
                             </div>
                         </div>
+                    )}
+
+                    {/* Create Transaction Modal */}
+                    {showTransactionModal && transactionAsset && (
+                        <CreateTransactionModal
+                            portfolios={portfolios}
+                            prefilledAsset={transactionAsset}
+                            prefilledPrice={transactionAsset.detail?.current_price || transactionAsset.current_price}
+                            onClose={() => {
+                                setShowTransactionModal(false);
+                                setTransactionAsset(null);
+                            }}
+                            onCreate={handleCreateTransaction}
+                        />
                     )}
                 </div>
             </div>
