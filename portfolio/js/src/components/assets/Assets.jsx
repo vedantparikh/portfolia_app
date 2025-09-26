@@ -15,6 +15,7 @@ import {
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { portfolioAPI, transactionAPI, userAssetsAPI } from '../../services/api';
+import assetCache from '../../services/assetCache';
 import AssetAnalyticsView from '../analytics/AssetAnalyticsView';
 import IndicatorConfigurationManager from '../analytics/IndicatorConfigurationManager';
 import { Sidebar } from '../shared';
@@ -420,9 +421,25 @@ const Assets = () => {
             if (modalMode === 'create') {
                 savedAsset = await userAssetsAPI.createUserAsset(assetData);
                 toast.success('Asset added successfully');
+
+                // Refresh the asset cache to include the new asset
+                try {
+                    await assetCache.refreshCache();
+                    console.log('[Assets] Asset cache refreshed after creating new asset');
+                } catch (cacheError) {
+                    console.warn('[Assets] Failed to refresh asset cache:', cacheError);
+                }
             } else if (modalMode === 'edit') {
                 savedAsset = await userAssetsAPI.updateUserAsset(selectedAsset.id, assetData);
                 toast.success('Asset updated successfully');
+
+                // Refresh the asset cache to include the updated asset
+                try {
+                    await assetCache.refreshCache();
+                    console.log('[Assets] Asset cache refreshed after updating asset');
+                } catch (cacheError) {
+                    console.warn('[Assets] Failed to refresh asset cache:', cacheError);
+                }
             }
             loadAssets(); // Reload assets
             setShowModal(false);
@@ -767,6 +784,7 @@ const Assets = () => {
                         <AssetModal
                             asset={selectedAsset}
                             mode={modalMode}
+                            existingAssets={assets}
                             onClose={() => {
                                 setShowModal(false);
                                 setSelectedAsset(null);

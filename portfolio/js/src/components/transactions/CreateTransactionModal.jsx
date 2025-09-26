@@ -445,6 +445,14 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate, prefilledAsset 
 
             toast.success('Asset created successfully and selected for transaction');
 
+            // Refresh the asset cache to include the new asset
+            try {
+                await assetCache.refreshCache();
+                console.log('[CreateTransactionModal] Asset cache refreshed after creating new asset');
+            } catch (cacheError) {
+                console.warn('[CreateTransactionModal] Failed to refresh asset cache:', cacheError);
+            }
+
             // Try to fetch current price for the new asset
             if (createdAsset.symbol) {
                 await fetchCurrentPrice(createdAsset.symbol);

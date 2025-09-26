@@ -12,7 +12,7 @@ import {
 } from "../../utils/formatters.jsx";
 import { Chart, SymbolSearch } from "../shared";
 
-const AssetModal = ({ asset, mode = "view", onClose, onSave }) => {
+const AssetModal = ({ asset, mode = "view", onClose, onSave, existingAssets = [] }) => {
   const [priceHistory, setPriceHistory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
@@ -30,6 +30,7 @@ const AssetModal = ({ asset, mode = "view", onClose, onSave }) => {
   });
   const [isEditing, setIsEditing] = useState(false);
   const [isChartFullscreen, setIsChartFullscreen] = useState(false);
+  const [duplicateError, setDuplicateError] = useState("");
 
   // Initialize form data when asset changes
   useEffect(() => {
@@ -108,9 +109,40 @@ const AssetModal = ({ asset, mode = "view", onClose, onSave }) => {
       ...prev,
       [name]: value,
     }));
+
+    // Clear duplicate error when user changes symbol
+    if (name === 'symbol') {
+      setDuplicateError("");
+    }
+  };
+
+  // Check for duplicate assets
+  const checkForDuplicate = (symbol) => {
+    if (!symbol || mode !== 'create') return false;
+
+    console.log('[AssetModal] Checking for duplicate:', symbol, 'in existing assets:', existingAssets);
+
+    const duplicate = existingAssets.find(existingAsset =>
+      existingAsset.symbol && existingAsset.symbol.toLowerCase() === symbol.toLowerCase()
+    );
+
+    if (duplicate) {
+      console.log('[AssetModal] Duplicate found:', duplicate);
+      setDuplicateError(`Asset "${symbol}" already exists in your portfolio. Please choose a different symbol.`);
+      return true;
+    } else {
+      console.log('[AssetModal] No duplicate found');
+      setDuplicateError("");
+      return false;
+    }
   };
 
   const handleSave = async () => {
+    // Check for duplicates before saving
+    if (mode === 'create' && checkForDuplicate(formData.symbol)) {
+      return; // Don't save if duplicate found
+    }
+
     try {
       const savedAsset = await onSave(formData);
       if (savedAsset) {
@@ -143,9 +175,8 @@ const AssetModal = ({ asset, mode = "view", onClose, onSave }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div
-        className={`bg-dark-900 rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col ${
-          isChartFullscreen ? "max-w-full max-h-full" : ""
-        }`}
+        className={`bg-dark-900 rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col ${isChartFullscreen ? "max-w-full max-h-full" : ""
+          }`}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-dark-700">
@@ -158,15 +189,15 @@ const AssetModal = ({ asset, mode = "view", onClose, onSave }) => {
                 {isCreateMode
                   ? "Create New Asset"
                   : isViewMode && !isEditing
-                  ? "Asset Details"
-                  : "Edit Asset"}
+                    ? "Asset Details"
+                    : "Edit Asset"}
               </h2>
               <p className="text-sm text-gray-400">
                 {isCreateMode
                   ? "Add a new asset for analysis"
                   : isViewMode && !isEditing
-                  ? "View and analyze asset information"
-                  : "Update asset information"}
+                    ? "View and analyze asset information"
+                    : "Update asset information"}
               </p>
             </div>
           </div>
@@ -185,32 +216,46 @@ const AssetModal = ({ asset, mode = "view", onClose, onSave }) => {
             <div className="p-6 flex-1 overflow-y-auto">
               <div className="space-y-6">
                 {/* Symbol Search */}
-                <div className="card p-6">
+                <div className="card p-6 relative z-10">
                   <h3 className="text-lg font-semibold text-gray-100 mb-4">
                     Search Asset
                   </h3>
-                  <SymbolSearch
-                    value={formData.symbol}
-                    onChange={(value) => {
-                      setFormData((prev) => ({
-                        ...prev,
-                        symbol: value,
-                      }));
-                    }}
-                    onSelect={(selectedAsset) => {
-                      setFormData((prev) => ({
-                        ...prev,
-                        symbol: selectedAsset.symbol,
-                        name: selectedAsset.name,
-                        asset_type: selectedAsset.asset_type || "EQUITY",
-                        exchange: selectedAsset.exchange || "",
-                        sector: selectedAsset.sector || "",
-                        industry: selectedAsset.industry || "",
-                        country: selectedAsset.country || "",
-                      }));
-                    }}
-                    placeholder="Search for a stock symbol..."
-                  />
+                  <div className="relative">
+                    <SymbolSearch
+                      value={formData.symbol}
+                      onChange={(value) => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          symbol: value,
+                        }));
+                      }}
+                      onSelect={(selectedAsset) => {
+                        // Check for duplicate before setting the form data
+                        if (checkForDuplicate(selectedAsset.symbol)) {
+                          return; // Don't update form if duplicate found
+                        }
+
+                        setFormData((prev) => ({
+                          ...prev,
+                          symbol: selectedAsset.symbol,
+                          name: selectedAsset.name,
+                          asset_type: selectedAsset.asset_type || "EQUITY",
+                          exchange: selectedAsset.exchange || "",
+                          sector: selectedAsset.sector || "",
+                          industry: selectedAsset.industry || "",
+                          country: selectedAsset.country || "",
+                        }));
+                      }}
+                      placeholder="Search for a stock symbol..."
+                    />
+                  </div>
+
+                  {/* Duplicate Error Display */}
+                  {duplicateError && (
+                    <div className="mt-3 p-3 bg-red-900/20 border border-red-500/30 rounded-lg">
+                      <p className="text-red-400 text-sm">{duplicateError}</p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Asset Form */}
@@ -341,31 +386,28 @@ const AssetModal = ({ asset, mode = "view", onClose, onSave }) => {
               <div className="flex space-x-1 mb-6 border-b border-dark-700">
                 <button
                   onClick={() => setActiveTab("overview")}
-                  className={`px-4 py-2 text-sm font-medium transition-colors ${
-                    activeTab === "overview"
-                      ? "text-primary-400 border-b-2 border-primary-400"
-                      : "text-gray-400 hover:text-gray-300"
-                  }`}
+                  className={`px-4 py-2 text-sm font-medium transition-colors ${activeTab === "overview"
+                    ? "text-primary-400 border-b-2 border-primary-400"
+                    : "text-gray-400 hover:text-gray-300"
+                    }`}
                 >
                   Overview
                 </button>
                 <button
                   onClick={() => setActiveTab("chart")}
-                  className={`px-4 py-2 text-sm font-medium transition-colors ${
-                    activeTab === "chart"
-                      ? "text-primary-400 border-b-2 border-primary-400"
-                      : "text-gray-400 hover:text-gray-300"
-                  }`}
+                  className={`px-4 py-2 text-sm font-medium transition-colors ${activeTab === "chart"
+                    ? "text-primary-400 border-b-2 border-primary-400"
+                    : "text-gray-400 hover:text-gray-300"
+                    }`}
                 >
                   Chart
                 </button>
                 <button
                   onClick={() => setActiveTab("analytics")}
-                  className={`px-4 py-2 text-sm font-medium transition-colors ${
-                    activeTab === "analytics"
-                      ? "text-primary-400 border-b-2 border-primary-400"
-                      : "text-gray-400 hover:text-gray-300"
-                  }`}
+                  className={`px-4 py-2 text-sm font-medium transition-colors ${activeTab === "analytics"
+                    ? "text-primary-400 border-b-2 border-primary-400"
+                    : "text-gray-400 hover:text-gray-300"
+                    }`}
                 >
                   Analytics
                 </button>
@@ -626,10 +668,10 @@ const AssetModal = ({ asset, mode = "view", onClose, onSave }) => {
                           <p className="text-lg font-semibold text-gray-100">
                             {asset?.detail?.day_high
                               ? `${formatPrice(
-                                  asset.detail?.open
-                                )} / ${formatPrice(
-                                  asset.detail?.day_high
-                                )} / ${formatPrice(asset.detail?.day_low)}`
+                                asset.detail?.open
+                              )} / ${formatPrice(
+                                asset.detail?.day_high
+                              )} / ${formatPrice(asset.detail?.day_low)}`
                               : "N/A"}
                           </p>
                         </div>
@@ -640,8 +682,8 @@ const AssetModal = ({ asset, mode = "view", onClose, onSave }) => {
                           <p className="text-lg font-semibold text-gray-100">
                             {asset?.detail?.high_52w
                               ? `${formatPrice(
-                                  asset.detail?.high_52w
-                                )} / ${formatPrice(asset.detail?.low_52w)}`
+                                asset.detail?.high_52w
+                              )} / ${formatPrice(asset.detail?.low_52w)}`
                               : "N/A"}
                           </p>
                         </div>
@@ -715,8 +757,8 @@ const AssetModal = ({ asset, mode = "view", onClose, onSave }) => {
                             <p className="text-lg font-semibold text-gray-100">
                               {asset.detail?.dividend_yield
                                 ? `${(
-                                    Number(asset.detail.dividend_yield) * 100
-                                  ).toFixed(2)}%`
+                                  Number(asset.detail.dividend_yield) * 100
+                                ).toFixed(2)}%`
                                 : "N/A"}
                             </p>
                           </div>
@@ -727,8 +769,8 @@ const AssetModal = ({ asset, mode = "view", onClose, onSave }) => {
                             <p className="text-lg font-semibold text-gray-100">
                               {asset.detail?.payout_ratio
                                 ? `${(
-                                    Number(asset.detail.payout_ratio) * 100
-                                  ).toFixed(2)}%`
+                                  Number(asset.detail.payout_ratio) * 100
+                                ).toFixed(2)}%`
                                 : "N/A"}
                             </p>
                           </div>
@@ -739,8 +781,8 @@ const AssetModal = ({ asset, mode = "view", onClose, onSave }) => {
                             <p className="text-lg font-semibold text-gray-100">
                               {asset.detail?.full_time_employees
                                 ? Number(
-                                    asset.detail.full_time_employees
-                                  ).toLocaleString()
+                                  asset.detail.full_time_employees
+                                ).toLocaleString()
                                 : "N/A"}
                             </p>
                           </div>
@@ -776,8 +818,8 @@ const AssetModal = ({ asset, mode = "view", onClose, onSave }) => {
                             <p className="text-lg font-semibold text-gray-100">
                               {asset.detail?.return_on_asset
                                 ? `${(
-                                    Number(asset.detail.return_on_asset) * 100
-                                  ).toFixed(2)}%`
+                                  Number(asset.detail.return_on_asset) * 100
+                                ).toFixed(2)}%`
                                 : "N/A"}
                             </p>
                           </div>
@@ -788,8 +830,8 @@ const AssetModal = ({ asset, mode = "view", onClose, onSave }) => {
                             <p className="text-lg font-semibold text-gray-100">
                               {asset.detail?.return_on_equity
                                 ? `${(
-                                    Number(asset.detail.return_on_equity) * 100
-                                  ).toFixed(2)}%`
+                                  Number(asset.detail.return_on_equity) * 100
+                                ).toFixed(2)}%`
                                 : "N/A"}
                             </p>
                           </div>
@@ -801,8 +843,8 @@ const AssetModal = ({ asset, mode = "view", onClose, onSave }) => {
                             <p className="text-lg font-semibold text-gray-100">
                               {asset.detail?.operating_cashflow
                                 ? `${formatMarketCap(
-                                    asset.detail.operating_cashflow
-                                  )}`
+                                  asset.detail.operating_cashflow
+                                )}`
                                 : "N/A"}
                             </p>
                           </div>
@@ -813,8 +855,8 @@ const AssetModal = ({ asset, mode = "view", onClose, onSave }) => {
                             <p className="text-lg font-semibold text-gray-100">
                               {asset.detail?.free_cashflow
                                 ? `${formatMarketCap(
-                                    asset.detail.free_cashflow
-                                  )}`
+                                  asset.detail.free_cashflow
+                                )}`
                                 : "N/A"}
                             </p>
                           </div>
@@ -825,8 +867,8 @@ const AssetModal = ({ asset, mode = "view", onClose, onSave }) => {
                             <p className="text-lg font-semibold text-gray-100">
                               {asset.detail?.total_cash
                                 ? `${formatMarketCap(
-                                    asset.detail.total_cash
-                                  )}`
+                                  asset.detail.total_cash
+                                )}`
                                 : "N/A"}
                             </p>
                           </div>
@@ -837,8 +879,8 @@ const AssetModal = ({ asset, mode = "view", onClose, onSave }) => {
                             <p className="text-lg font-semibold text-gray-100">
                               {asset.detail?.total_debt
                                 ? `${formatMarketCap(
-                                    asset.detail.total_debt
-                                  )}`
+                                  asset.detail.total_debt
+                                )}`
                                 : "N/A"}
                             </p>
                           </div>
@@ -910,13 +952,12 @@ const AssetModal = ({ asset, mode = "view", onClose, onSave }) => {
                           RSI (14)
                         </h4>
                         <p
-                          className={`text-2xl font-bold ${
-                            asset?.rsi > 70
-                              ? "text-danger-400"
-                              : asset?.rsi < 30
+                          className={`text-2xl font-bold ${asset?.rsi > 70
+                            ? "text-danger-400"
+                            : asset?.rsi < 30
                               ? "text-success-400"
                               : "text-gray-100"
-                          }`}
+                            }`}
                         >
                           {asset?.rsi ? asset.rsi.toFixed(1) : "N/A"}
                         </p>
@@ -925,8 +966,8 @@ const AssetModal = ({ asset, mode = "view", onClose, onSave }) => {
                             {asset.rsi > 70
                               ? "Overbought"
                               : asset.rsi < 30
-                              ? "Oversold"
-                              : "Neutral"}
+                                ? "Oversold"
+                                : "Neutral"}
                           </p>
                         )}
                       </div>
@@ -935,11 +976,10 @@ const AssetModal = ({ asset, mode = "view", onClose, onSave }) => {
                           MACD
                         </h4>
                         <p
-                          className={`text-2xl font-bold ${
-                            asset?.macd > 0
-                              ? "text-success-400"
-                              : "text-danger-400"
-                          }`}
+                          className={`text-2xl font-bold ${asset?.macd > 0
+                            ? "text-success-400"
+                            : "text-danger-400"
+                            }`}
                         >
                           {asset?.macd ? asset.macd.toFixed(4) : "N/A"}
                         </p>
@@ -949,11 +989,10 @@ const AssetModal = ({ asset, mode = "view", onClose, onSave }) => {
                           Volatility (20d)
                         </h4>
                         <p
-                          className={`text-2xl font-bold ${
-                            asset?.volatility_20d > 0.3
-                              ? "text-warning-400"
-                              : "text-gray-100"
-                          }`}
+                          className={`text-2xl font-bold ${asset?.volatility_20d > 0.3
+                            ? "text-warning-400"
+                            : "text-gray-100"
+                            }`}
                         >
                           {asset?.volatility_20d
                             ? `${(asset.volatility_20d * 100).toFixed(1)}%`
