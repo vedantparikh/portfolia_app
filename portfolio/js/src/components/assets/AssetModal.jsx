@@ -143,7 +143,19 @@ const AssetModal = ({ asset, mode = "view", onClose, onSave, existingAssets = []
       return; // Don't save if duplicate found
     }
 
+    // Validate required fields
+    if (!formData.symbol || !formData.symbol.trim()) {
+      toast.error('Symbol is required');
+      return;
+    }
+
+    if (!formData.name || !formData.name.trim()) {
+      toast.error('Asset name is required');
+      return;
+    }
+
     try {
+      console.log('[AssetModal] Saving asset with data:', formData);
       const savedAsset = await onSave(formData);
       if (savedAsset) {
         toast.success(
@@ -237,8 +249,8 @@ const AssetModal = ({ asset, mode = "view", onClose, onSave, existingAssets = []
 
                         setFormData((prev) => ({
                           ...prev,
-                          symbol: selectedAsset.symbol,
-                          name: selectedAsset.name,
+                          symbol: selectedAsset.symbol || "",
+                          name: selectedAsset.name || selectedAsset.long_name || selectedAsset.short_name || "",
                           asset_type: selectedAsset.asset_type || "EQUITY",
                           exchange: selectedAsset.exchange || "",
                           sector: selectedAsset.sector || "",

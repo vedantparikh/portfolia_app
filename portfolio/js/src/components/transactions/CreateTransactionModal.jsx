@@ -473,7 +473,7 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate, prefilledAsset 
             return;
         }
 
-        if (!formData.symbol.trim()) {
+        if (!formData.symbol || !formData.symbol.trim()) {
             toast.error('Symbol is required');
             return;
         }
@@ -482,7 +482,6 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate, prefilledAsset 
         if (!formData.asset_id && formData.symbol) {
             const cachedAsset = assetCache.findAssetBySymbol(formData.symbol);
             if (cachedAsset) {
-                console.log('[CreateTransactionModal] Found asset during validation:', cachedAsset);
                 setFormData(prev => ({
                     ...prev,
                     asset_id: cachedAsset.id
@@ -1099,37 +1098,36 @@ const CreateTransactionModal = ({ portfolios, onClose, onCreate, prefilledAsset 
                             className="input-field w-full resize-none"
                         />
                     </div>
-                </form>
 
-                {/* Footer */}
-                <div className="flex items-center justify-end space-x-3 p-6 border-t border-dark-700 flex-shrink-0">
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="btn-secondary"
-                        disabled={loading}
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        type="submit"
-                        onClick={handleSubmit}
-                        disabled={loading || !formData.portfolio_id || !formData.symbol || !formData.quantity || !formData.price}
-                        className="btn-primary flex items-center space-x-2"
-                    >
-                        {loading ? (
-                            <>
-                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                <span>Creating...</span>
-                            </>
-                        ) : (
-                            <>
-                                <Plus size={16} />
-                                <span>Create Transaction</span>
-                            </>
-                        )}
-                    </button>
-                </div>
+                    {/* Form Actions */}
+                    <div className="flex items-center justify-end space-x-3 pt-6 border-t border-dark-700">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="btn-secondary"
+                            disabled={loading}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={loading || !formData.portfolio_id || !formData.symbol || !formData.quantity || !formData.price}
+                            className="btn-primary flex items-center space-x-2"
+                        >
+                            {loading ? (
+                                <>
+                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    <span>Creating...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Plus size={16} />
+                                    <span>Create Transaction</span>
+                                </>
+                            )}
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     );
