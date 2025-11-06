@@ -1,26 +1,29 @@
 services:    
   app:
+    container_name: portfolio-ui
     build: ./js
     volumes:
       - ./js/src:/app/src
+      - ./js/vite.config.js:/app/vite.config.js
     env_file:
       - ./js/.env.docker
     ports:
-      - 3000:3000
+      - 3000:5173
     depends_on:
       api:
         condition: service_healthy
     networks:
-      - portfolio_network
-    restart: unless-stopped
+      - homepage_proxy-network
+    restart: no
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      test: ["CMD", "curl", "-f", "http://localhost:5173"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
       
   api:
+    container_name: portfolio-api
     build: 
       context: ./python/app
       dockerfile: Dockerfile
@@ -48,7 +51,7 @@ services:
       - ./python/app/requirements.txt:/app/requirements.txt:delegated
       - ./python/app/health_check.py:/app/health_check.py:delegated
     networks:
-      - portfolio_network
+      - homepage_proxy-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
@@ -59,6 +62,7 @@ services:
 
 
   postgres:
+    container_name: portfolio-db
     build:
       context: ./python/app
       dockerfile: Dockerfile.postgres
@@ -69,7 +73,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - portfolio_network
+      - homepage_proxy-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
@@ -79,6 +83,7 @@ services:
       start_period: 30s
 
   redis:
+    container_name: portfolio-redis
     build:
       context: ./python/app
       dockerfile: Dockerfile.redis
@@ -89,7 +94,7 @@ services:
     volumes:
       - redis_data:/data
     networks:
-      - portfolio_network
+      - homepage_proxy-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -100,8 +105,15 @@ services:
 
 volumes:
   postgres_data:
+    driver: local
+    driver_opts:
+      type: 'none'
+      o: 'bind'
+      device: '/mnt/myusb/postgres-data'
   redis_data:
+    driver: local
+
 
 networks:
-  portfolio_network:
-    driver: bridge
+  homepage_proxy-network:
+    external: true

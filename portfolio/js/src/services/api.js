@@ -27,7 +27,7 @@ import axios from "axios";
   This creates a pre-configured axios instance that we can reuse throughout the app
 */
 const api = axios.create({
-  baseURL: "http://localhost:8000/api/v1", // Base URL for all API calls
+  baseURL: "/api/v1", // Base URL for all API calls
   timeout: 100000, // Request timeout (100 seconds)
   headers: {
     "Content-Type": "application/json", // Tell server we're sending JSON data
@@ -304,7 +304,7 @@ export const portfolioAPI = {
       Returns: Server response with array of portfolio objects
     */
   getPortfolios: async () => {
-    const response = await api.get("/portfolios");
+    const response = await api.get("/portfolios/");
     return response.data.portfolios || response.data || [];
   },
 
@@ -466,7 +466,7 @@ export const marketAPI = {
       Returns: Server response with array of asset objects
     */
   getAssets: async (params = {}) => {
-    const response = await api.get("/assets", { params });
+    const response = await api.get("/assets/", { params });
     return response.data;
   },
 
@@ -572,7 +572,7 @@ export const userAssetsAPI = {
   getUserAssets: async (params = {}) => {
     // Get assets directly from assets API (no portfolio dependency)
     try {
-      const response = await api.get("/assets", { params });
+      const response = await api.get("/assets/", { params });
       return { assets: response.data || [] };
     } catch (error) {
       console.error("Failed to get assets:", error);
@@ -589,7 +589,7 @@ export const userAssetsAPI = {
     // Create the asset in the system for analysis purposes only (no portfolio entry)
     try {
       // Try to find existing asset by symbol first
-      const existingAssets = await api.get("/assets", {
+      const existingAssets = await api.get("/assets/", {
         params: { symbol: assetData.symbol, limit: 1 },
       });
 
@@ -748,7 +748,7 @@ export const assetAPI = {
       Returns: Server response with array of asset objects
     */
   getAssets: async (params = {}) => {
-    const response = await api.get("/assets", { params });
+    const response = await api.get("/assets/", { params });
     return response;
   },
 
@@ -829,7 +829,7 @@ export const transactionAPI = {
       Returns: Server response with array of transaction objects
     */
   getTransactions: async (params = {}) => {
-    const response = await api.get("/transactions", { params });
+    const response = await api.get("/transactions/", { params });
     return response.data.transactions || response.data || [];
   },
 
@@ -839,7 +839,7 @@ export const transactionAPI = {
       Returns: Server response with array of transaction objects
     */
   getPortfolioTransactions: async (portfolioId, params = {}) => {
-    const response = await api.get(`/portfolios/${portfolioId}/transactions`, {
+    const response = await api.get(`/portfolios/${portfolioId}/transactions/`, {
       params,
     });
     return response.data.transactions || response.data || [];
@@ -1595,7 +1595,7 @@ export const watchlistAPI = {
       Returns: Server response with array of watchlist objects
     */
   getWatchlists: async (includeItems = false) => {
-    const response = await api.get("/watchlists", {
+    const response = await api.get("/watchlists/", {
       params: { include_items: includeItems },
     });
     return response.data.watchlists || response.data || [];
