@@ -173,7 +173,15 @@ class Asset(AssetBase):
 
 class AssetBulkCreateRequest(BaseModel):
     """Schema for bulk asset creation request."""
+
     symbols: List[str]
+    allow_minimal_on_market_data_failure: bool = Field(
+        default=False,
+        description=(
+            "If true, when yfinance cannot return ticker info, create a minimal "
+            "Asset (symbol, generic name, default type) so flows like demo seeding still work."
+        ),
+    )
 
 
 class FailedAssetInfo(BaseModel):

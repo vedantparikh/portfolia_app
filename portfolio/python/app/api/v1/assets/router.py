@@ -178,7 +178,31 @@ async def create_assets_bulk(
             assets_to_create.append(new_asset)
         except Exception as e:
             logger.warning("Failed to process symbol %s for bulk creation: %s", symbol, e)
-            failed_assets.append({"symbol": symbol, "reason": f"Failed to fetch market data or symbol not found."})
+            if asset_data.allow_minimal_on_market_data_failure:
+                etf_symbols = {"SPY", "IVV", "VOO", "QQQ", "DIA", "IWM"}
+                atype = AssetType.ETF if symbol in etf_symbols else AssetType.EQUITY
+                logger.info(
+                    "Bulk-create fallback: minimal asset for %s (yfinance unavailable, type=%s)",
+                    symbol,
+                    atype,
+                )
+                assets_to_create.append(
+                    AssetModel(
+                        symbol=symbol,
+                        name=symbol,
+                        asset_type=atype,
+                        currency="USD",
+                        user_id=current_user.id,
+                        is_active=True,
+                    )
+                )
+            else:
+                failed_assets.append(
+                    {
+                        "symbol": symbol,
+                        "reason": "Failed to fetch market data or symbol not found.",
+                    }
+                )
 
     if assets_to_create:
         db.add_all(assets_to_create)
