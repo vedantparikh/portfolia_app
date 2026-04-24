@@ -22,12 +22,29 @@
 // Import axios library for making HTTP requests
 import axios from "axios";
 
+/**
+ * API base path used by axios. Defaults to the relative path "/api/v1", which the
+ * browser resolves against whatever origin the page was opened from — localhost,
+ * a Tailscale IP, a domain, anything — without any hardcoded host.
+ *
+ * The Vite dev/preview server proxy (vite.config.js) forwards /api → the FastAPI
+ * container, so no CORS or mixed-host issues arise.
+ *
+ * Only set VITE_API_BASE_URL when the API lives on a completely separate origin,
+ * e.g. VITE_API_BASE_URL=https://api.example.com/api/v1 for a CDN-hosted SPA.
+ * Never point it at a Docker service name (api, portfolia_api) — those are only
+ * reachable inside Docker, not from the browser.
+ */
+export const API_BASE_URL = (
+  import.meta.env.VITE_API_BASE_URL || "/api/v1"
+).replace(/\/+$/, "");
+
 /* 
   CREATE AXIOS INSTANCE - Configure axios with default settings
   This creates a pre-configured axios instance that we can reuse throughout the app
 */
 const api = axios.create({
-  baseURL: "http://localhost:8000/api/v1", // Base URL for all API calls
+  baseURL: API_BASE_URL, // Overridable via VITE_API_BASE_URL
   timeout: 100000, // Request timeout (100 seconds)
   headers: {
     "Content-Type": "application/json", // Tell server we're sending JSON data
@@ -204,12 +221,9 @@ export const authAPI = {
       Note: This uses direct axios call to avoid interceptor loops
     */
   refreshToken: async (refreshToken) => {
-    const response = await axios.post(
-      "http://localhost:8000/api/v1/auth/refresh",
-      {
-        refresh_token: refreshToken,
-      }
-    );
+    const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
+      refresh_token: refreshToken,
+    });
     return response.data;
   },
 
@@ -304,7 +318,7 @@ export const portfolioAPI = {
       Returns: Server response with array of portfolio objects
     */
   getPortfolios: async () => {
-    const response = await api.get("/portfolios");
+    const response = await api.get("/portfolios/");
     return response.data.portfolios || response.data || [];
   },
 
@@ -314,7 +328,7 @@ export const portfolioAPI = {
       Returns: Server response with created portfolio data
     */
   createPortfolio: async (portfolioData) => {
-    const response = await api.post("/portfolios", portfolioData);
+    const response = await api.post("/portfolios/", portfolioData);
     return response.data;
   },
 
@@ -466,7 +480,7 @@ export const marketAPI = {
       Returns: Server response with array of asset objects
     */
   getAssets: async (params = {}) => {
-    const response = await api.get("/assets", { params });
+    const response = await api.get("/assets/", { params });
     return response.data;
   },
 
@@ -572,7 +586,7 @@ export const userAssetsAPI = {
   getUserAssets: async (params = {}) => {
     // Get assets directly from assets API (no portfolio dependency)
     try {
-      const response = await api.get("/assets", { params });
+      const response = await api.get("/assets/", { params });
       return { assets: response.data || [] };
     } catch (error) {
       console.error("Failed to get assets:", error);
@@ -589,7 +603,7 @@ export const userAssetsAPI = {
     // Create the asset in the system for analysis purposes only (no portfolio entry)
     try {
       // Try to find existing asset by symbol first
-      const existingAssets = await api.get("/assets", {
+      const existingAssets = await api.get("/assets/", {
         params: { symbol: assetData.symbol, limit: 1 },
       });
 
@@ -597,7 +611,7 @@ export const userAssetsAPI = {
         return existingAssets[0];
       } else {
         // Create new asset for analysis
-        const assetResponse = await api.post("/assets", {
+        const assetResponse = await api.post("/assets/", {
           symbol: assetData.symbol,
           name: assetData.name,
           asset_type: assetData.asset_type || "EQUITY",
@@ -714,7 +728,7 @@ export const userAssetsAPI = {
     */
   bulkUpdateUserAssets: async (updates) => {
     // First get all portfolios for the user
-    const portfoliosResponse = await api.get("/portfolios");
+    const portfoliosResponse = await api.get("/portfolios/");
     const portfolios = portfoliosResponse.data;
 
     if (!portfolios || portfolios.length === 0) {
@@ -748,7 +762,7 @@ export const assetAPI = {
       Returns: Server response with array of asset objects
     */
   getAssets: async (params = {}) => {
-    const response = await api.get("/assets", { params });
+    const response = await api.get("/assets/", { params });
     return response;
   },
 
@@ -758,7 +772,7 @@ export const assetAPI = {
       Returns: Server response with created asset data
     */
   createAsset: async (assetData) => {
-    const response = await api.post("/assets", assetData);
+    const response = await api.post("/assets/", assetData);
     return response;
   },
 
@@ -829,7 +843,7 @@ export const transactionAPI = {
       Returns: Server response with array of transaction objects
     */
   getTransactions: async (params = {}) => {
-    const response = await api.get("/transactions", { params });
+    const response = await api.get("/transactions/", { params });
     return response.data.transactions || response.data || [];
   },
 
@@ -1595,7 +1609,7 @@ export const watchlistAPI = {
       Returns: Server response with array of watchlist objects
     */
   getWatchlists: async (includeItems = false) => {
-    const response = await api.get("/watchlists", {
+    const response = await api.get("/watchlists/", {
       params: { include_items: includeItems },
     });
     return response.data.watchlists || response.data || [];
@@ -1619,7 +1633,7 @@ export const watchlistAPI = {
       Returns: Server response with created watchlist data
     */
   createWatchlist: async (watchlistData) => {
-    const response = await api.post("/watchlists", watchlistData);
+    const response = await api.post("/watchlists/", watchlistData);
     return response.data;
   },
 

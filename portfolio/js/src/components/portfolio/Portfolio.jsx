@@ -12,7 +12,11 @@ import {
 import React, { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
-import { portfolioAPI, transactionAPI } from "../../services/api";
+import {
+  API_BASE_URL,
+  portfolioAPI,
+  transactionAPI,
+} from "../../services/api";
 import {
   formatCurrency,
   formatDateTime,
@@ -102,7 +106,7 @@ const Portfolio = () => {
         error.message.includes("Network Error")
       ) {
         toast.error(
-          "Network error. Please check if the backend server is running on http://localhost:8000"
+          `Network error: is the API at ${API_BASE_URL} reachable from this browser?`
         );
       } else {
         toast.error(`Failed to load portfolios: ${error.message}`);
