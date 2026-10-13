@@ -2,6 +2,7 @@
 Authentication dependencies for FastAPI routes.
 """
 
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import Depends, HTTPException, Request, status
@@ -11,11 +12,28 @@ from sqlalchemy.orm import Session
 
 from core.auth.utils import ALGORITHM, SECRET_KEY, verify_token
 from core.database.connection import get_db
-from core.database.models import User, UserProfile
+from core.database.models import User, UserProfile, UserSession
 from core.schemas.auth import TokenData
 
 # Security scheme for Bearer token authentication
 security = HTTPBearer()
+
+
+def is_session_active(db: Session, user_id: int, session_id: Optional[str]) -> bool:
+    """Check that the token's server-side session exists and has not been revoked."""
+    if not session_id:
+        return False
+    return (
+        db.query(UserSession.id)
+        .filter(
+            UserSession.session_id == session_id,
+            UserSession.user_id == user_id,
+            UserSession.is_active.is_(True),
+            UserSession.expires_at > datetime.now(timezone.utc),
+        )
+        .first()
+        is not None
+    )
 
 
 async def get_current_user(
@@ -34,6 +52,10 @@ async def get_current_user(
         payload = verify_token(credentials.credentials, "access")
         user_id: str = payload.get("sub")
         if user_id is None:
+            raise credentials_exception
+
+        # Reject tokens whose session was revoked (logout, password change/reset)
+        if not is_session_active(db, int(user_id), payload.get("sid")):
             raise credentials_exception
 
         # Get user from database
@@ -105,6 +127,9 @@ async def get_optional_current_user(
         if user_id is None:
             return None
 
+        if not is_session_active(db, int(user_id), payload.get("sid")):
+            return None
+
         user = db.query(User).filter(User.id == int(user_id)).first()
         if user is None or not user.is_active:
             return None
@@ -159,6 +184,7 @@ def get_token_data(token: str) -> TokenData:
             user_id=int(user_id) if user_id else None,
             email=email,
             username=username,
+            session_id=payload.get("sid"),
             exp=exp,
         )
     except JWTError:
@@ -168,13 +194,10 @@ def get_token_data(token: str) -> TokenData:
         )
 
 
-def validate_refresh_token(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-) -> dict:
-    """Validate refresh token."""
+def validate_refresh_token(refresh_token: str) -> dict:
+    """Decode a refresh token, raising 401 if it is invalid or not a refresh token."""
     try:
-        payload = verify_token(credentials.credentials, "refresh")
-        return payload
+        return verify_token(refresh_token, "refresh")
     except HTTPException:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"

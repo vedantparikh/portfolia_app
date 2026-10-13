@@ -19,14 +19,15 @@ from core.auth.dependencies import (
     validate_refresh_token,
 )
 from core.auth.utils import (
-    create_refresh_token,
+    REFRESH_TOKEN_EXPIRE_MINUTES,
+    consume_reset_token,
     create_tokens,
+    enforce_rate_limit,
     generate_reset_token,
     generate_session_id,
     generate_verification_token,
     get_password_hash,
     is_password_strong,
-    mark_reset_token_used,
     mark_verification_token_used,
     sanitize_username,
     store_reset_token,
@@ -44,6 +45,7 @@ from core.schemas.auth import (
     PasswordChange,
     PasswordReset,
     PasswordResetConfirm,
+    RefreshTokenRequest,
     Token,
     TokenValidationResponse,
     UserCreate,
@@ -56,6 +58,22 @@ from core.schemas.auth import (
 logger = get_logger(__name__)
 
 router = APIRouter(tags=["authentication"])
+
+# Brute-force protection windows (attempts per window)
+LOGIN_MAX_ATTEMPTS = 10
+REGISTER_MAX_ATTEMPTS = 5
+PASSWORD_RESET_MAX_ATTEMPTS = 5
+RATE_LIMIT_WINDOW_SECONDS = 15 * 60
+
+
+def revoke_user_sessions(db: Session, user_id: int, keep_session_id: str | None = None) -> None:
+    """Deactivate all of a user's sessions, optionally keeping one (e.g. the current one)."""
+    query = db.query(UserSession).filter(
+        UserSession.user_id == user_id, UserSession.is_active.is_(True)
+    )
+    if keep_session_id:
+        query = query.filter(UserSession.session_id != keep_session_id)
+    query.update({UserSession.is_active: False}, synchronize_session=False)
 
 
 @router.post(
@@ -80,6 +98,10 @@ async def register_user(
         user_agent=user_agent,
     )
 
+    enforce_rate_limit(
+        client_ip, "register", REGISTER_MAX_ATTEMPTS, RATE_LIMIT_WINDOW_SECONDS
+    )
+
     logger.info(
         f"👤 User registration initiated | Email: {user_data.email} | Username: {user_data.username} | IP: {client_ip}"
     )
@@ -92,13 +114,14 @@ async def register_user(
         existing_user = (
             db.query(User)
             .filter(
-                (User.email == user_data.email) | (User.username == user_data.username)
+                (User.email == user_data.email.lower())
+                | (User.username == sanitize_username(user_data.username))
             )
             .first()
         )
 
         if existing_user:
-            if existing_user.email == user_data.email:
+            if existing_user.email == user_data.email.lower():
                 logger.warning(
                     f"🚫 Registration failed - Email already registered | Email: {user_data.email} | IP: {client_ip}"
                 )
@@ -232,16 +255,21 @@ async def login_user(
     user_credentials: UserLogin, request: Request, db: Session = Depends(get_db)
 ):
     """Authenticate user and return JWT tokens."""
-    # Find user by username
-    user = (
-        db.query(User)
-        .filter(User.username == user_credentials.username.lower())
-        .first()
+    client_ip = get_client_ip(request)
+    username = user_credentials.username.lower()
+
+    enforce_rate_limit(
+        client_ip, "login_ip", LOGIN_MAX_ATTEMPTS * 3, RATE_LIMIT_WINDOW_SECONDS
     )
+    enforce_rate_limit(
+        username, "login_user", LOGIN_MAX_ATTEMPTS, RATE_LIMIT_WINDOW_SECONDS
+    )
+
+    # Find user by username
+    user = db.query(User).filter(User.username == username).first()
 
     if not user or not verify_password(user_credentials.password, user.password_hash):
         # Log failed login attempt
-        client_ip = get_client_ip(request)
         log_security_event(
             logger,
             "failed_login",
@@ -260,28 +288,24 @@ async def login_user(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Account is deactivated"
         )
 
-    # Create session
+    # Create a server-side session; tokens carry its id so they can be revoked
     session_id = generate_session_id()
-    refresh_token = create_refresh_token(
-        {"sub": str(user.id), "email": user.email, "username": user.username}
-    )
+    tokens = create_tokens(user.id, user.email, user.username, session_id)
     user_session = UserSession(
         user_id=user.id,
         session_id=session_id,
-        refresh_token=refresh_token,
-        expires_at=datetime.now(timezone.utc) + timedelta(days=7),
-        ip_address=get_client_ip(request),
+        refresh_token=tokens["refresh_token"],
+        expires_at=datetime.now(timezone.utc)
+        + timedelta(minutes=REFRESH_TOKEN_EXPIRE_MINUTES),
+        ip_address=client_ip,
         user_agent=get_user_agent(request),
     )
+    user.last_login = datetime.now(timezone.utc)
 
     db.add(user_session)
     db.commit()
 
-    # Generate tokens
-    tokens = create_tokens(user.id, user.email, user.username)
-
     # Log successful login
-    client_ip = get_client_ip(request)
     log_security_event(
         logger,
         "successful_login",
@@ -294,20 +318,58 @@ async def login_user(
 
 @router.post("/refresh", response_model=Token)
 async def refresh_access_token(
-    refresh_token_data: dict = Depends(validate_refresh_token),
+    refresh_request: RefreshTokenRequest,
     db: Session = Depends(get_db),
 ):
-    """Refresh access token using refresh token."""
-    user_id = int(refresh_token_data.get("sub"))
-    user = db.query(User).filter(User.id == user_id).first()
+    """
+    Exchange a refresh token for a new token pair.
 
-    if not user or not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
+    Refresh tokens are single-use: each refresh rotates the token stored on the
+    session, so a replayed (stolen) token is rejected and revokes the session.
+    """
+    invalid = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
+    )
+    payload = validate_refresh_token(refresh_request.refresh_token)
+    session_id = payload.get("sid")
+    if not session_id:
+        raise invalid
+
+    now = datetime.now(timezone.utc)
+    user_session = (
+        db.query(UserSession)
+        .filter(
+            UserSession.session_id == session_id,
+            UserSession.user_id == int(payload.get("sub")),
+            UserSession.is_active.is_(True),
+            UserSession.expires_at > now,
         )
+        .first()
+    )
+    if not user_session:
+        raise invalid
 
-    # Generate new tokens
-    tokens = create_tokens(user.id, user.email, user.username)
+    if user_session.refresh_token != refresh_request.refresh_token:
+        # Token reuse: an old refresh token was presented. Assume theft and revoke.
+        user_session.is_active = False
+        db.commit()
+        log_security_event(
+            logger,
+            "refresh_token_reuse",
+            str(user_session.user_id),
+            user_session.ip_address,
+            f"Refresh token reuse detected for session {session_id}; session revoked",
+        )
+        raise invalid
+
+    user = user_session.user
+    if not user or not user.is_active:
+        raise invalid
+
+    tokens = create_tokens(user.id, user.email, user.username, session_id)
+    user_session.refresh_token = tokens["refresh_token"]
+    user_session.expires_at = now + timedelta(minutes=REFRESH_TOKEN_EXPIRE_MINUTES)
+    db.commit()
 
     return tokens
 
@@ -318,28 +380,16 @@ async def logout_user(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Logout user and invalidate session."""
-    # Invalidate current session
-    auth_header = request.headers.get("Authorization")
-    if auth_header and auth_header.startswith("Bearer "):
-        token = auth_header.split(" ")[1]
-        try:
-            token_data = get_token_data(token)
-            # Mark session as expired
-            session = (
-                db.query(UserSession)
-                .filter(
-                    UserSession.user_id == current_user.id,
-                    UserSession.expires_at > datetime.now(timezone.utc),
-                )
-                .first()
-            )
-
-            if session:
-                session.expires_at = datetime.now(timezone.utc)
-                db.commit()
-        except:
-            pass
+    """Logout user and invalidate the current session."""
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        session_id = get_token_data(auth_header.split(" ", 1)[1]).session_id
+        if session_id:
+            db.query(UserSession).filter(
+                UserSession.user_id == current_user.id,
+                UserSession.session_id == session_id,
+            ).update({UserSession.is_active: False}, synchronize_session=False)
+            db.commit()
 
     # Log logout event
     client_ip = get_client_ip(request)
@@ -393,6 +443,7 @@ async def update_current_user(
 @router.post("/change-password")
 async def change_password(
     password_data: PasswordChange,
+    request: Request,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -411,9 +462,13 @@ async def change_password(
             detail="New password does not meet security requirements",
         )
 
-    # Update password
+    # Update password and sign out every other session
     current_user.password_hash = get_password_hash(password_data.new_password)
     current_user.updated_at = datetime.now(timezone.utc)
+    current_session_id = get_token_data(
+        request.headers.get("Authorization", "").split(" ", 1)[-1]
+    ).session_id
+    revoke_user_sessions(db, current_user.id, keep_session_id=current_session_id)
 
     db.commit()
 
@@ -435,6 +490,19 @@ async def forgot_password(
     # Log API request
     log_api_request(
         logger, "POST", "/forgot-password", None, client_ip, email=password_reset.email
+    )
+
+    enforce_rate_limit(
+        client_ip,
+        "forgot_password_ip",
+        PASSWORD_RESET_MAX_ATTEMPTS * 3,
+        RATE_LIMIT_WINDOW_SECONDS,
+    )
+    enforce_rate_limit(
+        password_reset.email.lower(),
+        "forgot_password_email",
+        PASSWORD_RESET_MAX_ATTEMPTS,
+        RATE_LIMIT_WINDOW_SECONDS,
     )
 
     user = db.query(User).filter(User.email == password_reset.email.lower()).first()
@@ -471,8 +539,7 @@ async def forgot_password(
             )
 
             return {
-                "message": "If the email exists, a password reset link has been sent",
-                "reset_url": reset_url,  # For development/testing
+                "message": "If the email exists, a password reset link has been sent"
             }
         else:
             logger.error(f"Failed to store reset token for user {user.id}")
@@ -502,7 +569,14 @@ async def validate_reset_token_endpoint(
     client_ip = get_client_ip(request) if request else "unknown"
 
     # Log API request
-    log_api_request(logger, "GET", f"/validate-reset-token/{token}", None, client_ip)
+    log_api_request(logger, "GET", "/validate-reset-token", None, client_ip)
+
+    enforce_rate_limit(
+        client_ip,
+        "validate_reset_token",
+        PASSWORD_RESET_MAX_ATTEMPTS * 6,
+        RATE_LIMIT_WINDOW_SECONDS,
+    )
 
     # Validate the token
     is_valid, token_data, error_message = validate_reset_token(token)
@@ -523,7 +597,7 @@ async def validate_reset_token_endpoint(
             message="Token is valid. You can now reset your password.",
             redirect_url=f"{settings.API_URL}{settings.API_V1_STR}/reset-password?token={token}",
             expires_at=datetime.fromisoformat(token_data["created_at"])
-            + timedelta(hours=24),
+            + timedelta(minutes=60),
             user_email=token_data["user_email"],
         )
     else:
@@ -556,8 +630,22 @@ async def reset_password(
     # Log API request
     log_api_request(logger, "POST", "/reset-password", None, client_ip)
 
-    # Validate reset token
-    is_valid, token_data, error_message = validate_reset_token(password_reset.token)
+    enforce_rate_limit(
+        client_ip,
+        "reset_password",
+        PASSWORD_RESET_MAX_ATTEMPTS * 3,
+        RATE_LIMIT_WINDOW_SECONDS,
+    )
+
+    # Check strength before consuming the token so a weak password doesn't burn it
+    if not is_password_strong(password_reset.new_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password does not meet security requirements",
+        )
+
+    # Validate and invalidate the token in one atomic step (prevents reuse races)
+    is_valid, token_data, error_message = consume_reset_token(password_reset.token)
 
     if not is_valid:
         log_security_event(
@@ -581,12 +669,10 @@ async def reset_password(
                 detail="User not found or account is deactivated",
             )
 
-        # Update password
+        # Update password and sign out every existing session
         user.password_hash = get_password_hash(password_reset.new_password)
         user.updated_at = datetime.now(timezone.utc)
-
-        # Mark token as used
-        mark_reset_token_used(password_reset.token)
+        revoke_user_sessions(db, user.id)
 
         # Commit changes
         db.commit()
@@ -605,6 +691,9 @@ async def reset_password(
             "redirect_url": f"{settings.API_URL}{settings.API_V1_STR}/auth/login?message=password_reset_successful",
         }
 
+    except HTTPException:
+        db.rollback()
+        raise
     except Exception as e:
         db.rollback()
         logger.error(f"Failed to reset password: {e}")

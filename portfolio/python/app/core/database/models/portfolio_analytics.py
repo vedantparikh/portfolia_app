@@ -16,7 +16,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
-    text,
+    func,
 )
 from sqlalchemy.orm import relationship
 
@@ -90,7 +90,7 @@ class PortfolioPerformanceHistory(Base):
     information_ratio = Column(Numeric(10, 6), nullable=True)
 
     created_at = Column(
-        DateTime(timezone=True), server_default=text('now()'), nullable=False
+        DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
     # Relationships
@@ -131,12 +131,12 @@ class PortfolioAllocation(Base):
     # Status
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(
-        DateTime(timezone=True), server_default=text('now()'), nullable=False
+        DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     updated_at = Column(
         DateTime(timezone=True),
-        server_default=text('now()'),
-        onupdate=text('now()'),
+        server_default=func.now(),
+        onupdate=func.now(),
         nullable=False,
     )
 
@@ -188,7 +188,7 @@ class RebalancingEvent(Base):
     execution_notes = Column(Text, nullable=True)
 
     created_at = Column(
-        DateTime(timezone=True), server_default=text('now()'), nullable=False
+        DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
     # Relationships
@@ -234,12 +234,12 @@ class PortfolioBenchmark(Base):
     is_primary = Column(Boolean, default=False, nullable=False)  # Primary benchmark
 
     created_at = Column(
-        DateTime(timezone=True), server_default=text('now()'), nullable=False
+        DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     updated_at = Column(
         DateTime(timezone=True),
-        server_default=text('now()'),
-        onupdate=text('now()'),
+        server_default=func.now(),
+        onupdate=func.now(),
         nullable=False,
     )
 

@@ -58,115 +58,81 @@ const api = axios.create({
 */
 api.interceptors.request.use(
   (config) => {
-    // Get the access token from browser storage or use the provided token
-    const token =
-      localStorage.getItem("access_token") ||
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwiZW1haWwiOiJ2cGFyaWtoQGNsaW5vbWljLmFpIiwidXNlcm5hbWUiOiJidWJibHkiLCJleHAiOjE3NTc1MDg3MjMsInR5cGUiOiJhY2Nlc3MifQ.bGLl1rLOWbxQSzQDTLz98vWZWBlRF3RCeshLkmgTamo";
-
+    // Attach the access token, if the user is logged in
+    const token = localStorage.getItem("access_token");
     if (token) {
-      // If token exists, add it to the request headers
       config.headers.Authorization = `Bearer ${token}`;
-      console.log(
-        `[API] Adding auth token to request: ${config.method?.toUpperCase()} ${
-          config.url
-        }`
-      );
-    } else {
-      // If no token, log that the request will be made without authentication
-      console.log(
-        `[API] No auth token found for request: ${config.method?.toUpperCase()} ${
-          config.url
-        }`
-      );
     }
-
-    // Return the modified config (with or without token)
     return config;
   },
-  (error) => {
-    // If there's an error in the request interceptor, log it and reject the promise
-    console.error("[API] Request interceptor error:", error);
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
+
+/*
+  Clear all authentication data and send the user to the login page
+*/
+const forceLogout = () => {
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("refresh_token");
+  localStorage.removeItem("user");
+  localStorage.removeItem("profile");
+  window.location.href = "/login";
+};
+
+/*
+  Refresh tokens are single-use (the server rotates them on every refresh), so
+  concurrent 401s must share ONE refresh request instead of each starting their own.
+*/
+let refreshPromise = null;
+
+const refreshAccessToken = () => {
+  if (!refreshPromise) {
+    const refreshToken = localStorage.getItem("refresh_token");
+    if (!refreshToken) {
+      return Promise.reject(new Error("No refresh token"));
+    }
+    refreshPromise = authAPI
+      .refreshToken(refreshToken)
+      .then(({ access_token, refresh_token }) => {
+        localStorage.setItem("access_token", access_token);
+        localStorage.setItem("refresh_token", refresh_token);
+        return access_token;
+      })
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+  return refreshPromise;
+};
 
 /* 
   RESPONSE INTERCEPTOR - Runs after every API response
-  This handles successful responses and errors, including automatic token refresh
+  On a 401, refreshes the access token once and retries the original request
 */
 api.interceptors.response.use(
-  (response) => {
-    // Log successful responses for debugging
-    console.log(
-      `[API] Response received: ${response.config.method?.toUpperCase()} ${
-        response.config.url
-      } - ${response.status}`
-    );
-    return response;
-  },
+  (response) => response,
   async (error) => {
-    // Log error responses for debugging
-    console.error(
-      `[API] Response error: ${error.config?.method?.toUpperCase()} ${
-        error.config?.url
-      } - ${error.response?.status}: ${
-        error.response?.data?.detail || error.message
-      }`
-    );
-
-    // Store the original request so we can retry it after token refresh
     const originalRequest = error.config;
+    // Auth endpoints (login, refresh, ...) report bad credentials with 401; don't refresh for them
+    const isAuthEndpoint = originalRequest?.url?.startsWith("/auth/");
 
-    // If we get a 401 (Unauthorized) error and haven't already tried to refresh
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      console.log("[API] Attempting token refresh...");
-      originalRequest._retry = true; // Mark that we're trying to refresh
-
+    if (
+      error.response?.status === 401 &&
+      originalRequest &&
+      !originalRequest._retry &&
+      !isAuthEndpoint
+    ) {
+      originalRequest._retry = true;
       try {
-        // Get the refresh token from storage
-        const refreshToken = localStorage.getItem("refresh_token");
-        if (refreshToken) {
-          console.log("[API] Refresh token found, attempting refresh...");
-
-          // Try to get new tokens using the refresh token
-          const response = await authAPI.refreshToken(refreshToken);
-
-          // Extract new tokens from response
-          const { access_token, refresh_token } = response;
-
-          // Save new tokens to storage
-          localStorage.setItem("access_token", access_token);
-          localStorage.setItem("refresh_token", refresh_token);
-          console.log("[API] Token refresh successful");
-
-          // Add the new token to the original request
-          originalRequest.headers.Authorization = `Bearer ${access_token}`;
-
-          // Retry the original request with the new token
-          return api(originalRequest);
-        } else {
-          console.log("[API] No refresh token found");
-        }
+        const accessToken = await refreshAccessToken();
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+        return api(originalRequest);
       } catch (refreshError) {
-        // If token refresh fails, clear all auth data and redirect to login
-        console.error(
-          "[API] Token refresh failed:",
-          refreshError.response?.data || refreshError.message
-        );
-
-        // Clear all authentication data from storage
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("refresh_token");
-        localStorage.removeItem("user");
-        localStorage.removeItem("profile");
-
-        // Redirect user to login page
-        window.location.href = "/login";
+        forceLogout();
         return Promise.reject(refreshError);
       }
     }
 
-    // If it's not a 401 error or refresh failed, just reject the promise
     return Promise.reject(error);
   }
 );

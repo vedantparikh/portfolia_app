@@ -62,6 +62,7 @@ class RedisClient(metaclass=SingletonMeta):
         port: int = 6379,
         db: int = 0,
         connect: bool = False,
+        password: str | None = None,
     ):
         self.host = host
         self.port = port
@@ -74,6 +75,7 @@ class RedisClient(metaclass=SingletonMeta):
             host=self.host,
             port=self.port,
             db=self.db,
+            password=password or None,
             max_connections=1024,
             socket_timeout=5,
             health_check_interval=self.ex_seconds,
@@ -89,8 +91,14 @@ class RedisClient(metaclass=SingletonMeta):
         redis_host = os.getenv("REDIS_HOST", "localhost")
         redis_port = os.getenv("REDIS_PORT", 6379)
         redis_cache_db = os.getenv("REDIS_CACHE_DB", 0)
+        redis_password = os.getenv("REDIS_PASSWORD") or None
 
-        return cls(host=redis_host, port=redis_port, db=redis_cache_db)
+        return cls(
+            host=redis_host,
+            port=redis_port,
+            db=redis_cache_db,
+            password=redis_password,
+        )
 
     def set(self, key, value, ex_seconds=None):
         """SET the string value of a key."""
@@ -172,6 +180,30 @@ class RedisClient(metaclass=SingletonMeta):
                     )
 
             return data, exist
+
+    def getdel(self, key):
+        """Atomically GET and DELETE a key. Returns None if missing or Redis is down."""
+
+        key = json.dumps(key)
+        with self.RedisContextManager(self.connection_pool) as client:
+            if client is not None:
+                data = client.getdel(key)
+                return json.loads(data) if data else None
+
+    def incr_with_ttl(self, key, ex_seconds: int):
+        """
+        Atomically increment a counter, setting its TTL when first created.
+        Returns the new count, or None if Redis is unavailable.
+        """
+
+        key = json.dumps(key)
+        with self.RedisContextManager(self.connection_pool) as client:
+            if client is not None:
+                pipe = client.pipeline()
+                pipe.incr(key)
+                pipe.expire(key, ex_seconds, nx=True)
+                count, _ = pipe.execute()
+                return count
 
     def delete(self, key):
         """DELETE a key."""

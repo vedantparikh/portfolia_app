@@ -24,12 +24,37 @@ from core.database.models import (
     Portfolio,
     PortfolioAsset,
     Transaction,
+    TransactionStatus,
     TransactionType,
 )
 from core.services.market_data_service import MarketDataService
 from core.services.utils import PeriodType, CashFlow
 
 logger = logging.getLogger(__name__)
+
+TRADING_DAYS_PER_YEAR = 252
+
+
+def compute_daily_returns(history: pd.DataFrame, opening_value: float) -> pd.Series:
+    """
+    Cash-flow-adjusted daily returns from a daily value series.
+
+    Buys (`inflow`) are treated as arriving at the start of the day and sales/dividends
+    (`outflow`) as leaving at the end of the day:
+
+        r_t = (V_t + outflow_t) / (V_{t-1} + inflow_t) - 1
+
+    This keeps the denominator non-negative, so a full exit is measured correctly
+    (instead of producing -100%), and a first purchase measures close vs. cost.
+    Days with no capital at risk (denominator <= 0) get NaN.
+    """
+    prev_value = history["value"].shift(1)
+    if len(prev_value):
+        prev_value.iloc[0] = opening_value
+    denominator = prev_value + history["inflow"]
+    numerator = history["value"] + history["outflow"]
+    returns = numerator / denominator.where(denominator > 0) - 1
+    return returns.replace([np.inf, -np.inf], np.nan)
 
 
 class PortfolioCalculationService:
@@ -135,20 +160,18 @@ class PortfolioCalculationService:
 
         volatility = self._calculate_volatility(portfolio_history_df)
         max_drawdown = self._calculate_max_drawdown(portfolio_history_df)
-        # Calculate CAGR
-        cagr = await self._calculate_cagr(
-            all_transactions, current_value, actual_start_date, end_date
-        )
 
         # Calculate XIRR
         xirr_value = await self._calculate_xirr(
             all_transactions, current_value, actual_start_date, end_date
         )
 
-        # Calculate TWR
-        twr_value = await self._calculate_twr(
-            all_transactions, current_value, actual_start_date, end_date
+        # Calculate TWR, and CAGR as the annualised TWR
+        twr_value = self._calculate_twr(portfolio_history_df)
+        period_start = actual_start_date or min(
+            t.transaction_date for t in all_transactions
         )
+        cagr = self._calculate_cagr(twr_value, period_start, end_date)
 
         result = {
             "portfolio_id": portfolio_id,
@@ -345,80 +368,30 @@ class PortfolioCalculationService:
         return comparison
 
     # CAGR Calculation Methods
-    async def _calculate_cagr(
+    def _calculate_cagr(
             self,
-            all_transactions: List[Transaction],
-            current_value: float,
-            start_date: Optional[datetime],
+            twr_percent: Optional[float],
+            start_date: datetime,
             end_date: datetime,
     ) -> Optional[float]:
         """
-        Calculate Compound Annual Growth Rate (CAGR).
+        Compound Annual Growth Rate, computed as the annualised time-weighted return.
 
-        CAGR Formula: (Ending Value / Beginning Value)^(1/Number of Years) - 1
-
-        For periods <= 1 year, returns simple return.
-        For periods > 1 year, returns annualized CAGR.
+        Using TWR (rather than end value / net invested) keeps deposits and
+        withdrawals from being counted as growth. Periods shorter than a year are
+        not annualised (standard GIPS practice); the period return is returned.
         """
-        try:
-            # Get beginning value
-            beginning_value = await self._get_portfolio_value_at_date(
-                all_transactions, start_date
-            )
-
-            if beginning_value <= 0:
-                if start_date is None and all_transactions:
-                    net_investment = sum(
-                        float(t.total_amount)
-                        for t in all_transactions
-                        if t.transaction_type == TransactionType.BUY
-                    ) - sum(
-                        float(t.total_amount)
-                        for t in all_transactions
-                        if t.transaction_type == TransactionType.SELL
-                    )
-
-                    if net_investment > 0:
-                        beginning_value = net_investment
-                    else:
-                        logger.warning("Net investment is zero or negative, cannot calculate CAGR")
-                        return None
-                else:
-                    # For periods other than inception, a zero value is an actual problem
-                    logger.warning("Beginning value is zero or negative for a non-inception period")
-                    return None
-
-            if current_value < 0:
-                return -100.0  # Total loss
-
-            # Calculate time period in years
-            if start_date:
-                years = (end_date - start_date).days / 365.25
-            else:
-                # For inception, use first transaction date
-                first_transaction_date = min(
-                    t.transaction_date for t in all_transactions
-                )
-                years = (end_date - first_transaction_date).days / 365.25
-
-            if years <= 0:
-                return 0.0
-
-            # Calculate total return
-            total_return = (current_value / beginning_value) - 1
-
-            # For periods > 1 year, annualize the return
-            if years > 1:
-                cagr = ((1 + total_return) ** (1 / years)) - 1
-            else:
-                # For periods <= 1 year, return simple total return
-                cagr = total_return
-
-            return float(cagr * 100)  # Return as percentage
-
-        except Exception as e:
-            logger.error("Error calculating CAGR: %s", e)
+        if twr_percent is None:
             return None
+        years = (end_date - start_date).days / 365.25
+        if years <= 0:
+            return 0.0
+        growth = 1 + twr_percent / 100
+        if years < 1:
+            return float(twr_percent)
+        if growth <= 0:
+            return -100.0
+        return float((growth ** (1 / years) - 1) * 100)
 
     async def _calculate_benchmark_cagr(
             self,
@@ -487,9 +460,14 @@ class PortfolioCalculationService:
             amounts = []
 
             if start_date:
-                # For period calculations, add initial portfolio value as outflow
+                # For period calculations, the holdings at the start count as an
+                # investment made at start_date. Only transactions strictly before
+                # start_date are included so none is counted twice.
+                prior_transactions = [
+                    t for t in all_transactions if t.transaction_date < start_date
+                ]
                 initial_value = await self._get_portfolio_value_at_date(
-                    all_transactions, start_date
+                    prior_transactions, start_date
                 )
                 if initial_value > 0:
                     dates.append(start_date)
@@ -503,13 +481,12 @@ class PortfolioCalculationService:
                 # For inception, use all transactions
                 period_transactions = all_transactions
 
-            # Add cash flows from transactions
+            # Add cash flows from transactions (date and amount always appended together)
             for transaction in period_transactions:
-                dates.append(transaction.transaction_date)
-                if transaction.transaction_type == TransactionType.BUY:
-                    amounts.append(-float(transaction.total_amount))  # Outflow
-                elif transaction.transaction_type == TransactionType.SELL:
-                    amounts.append(float(transaction.total_amount))  # Inflow
+                amount = self._investor_cash_flow(transaction)
+                if amount is not None:
+                    dates.append(transaction.transaction_date)
+                    amounts.append(amount)
 
             # Add current value as final inflow
             dates.append(end_date)
@@ -540,6 +517,18 @@ class PortfolioCalculationService:
         except Exception as e:
             logger.error("Error calculating XIRR: %s", e)
             return None
+
+    @staticmethod
+    def _investor_cash_flow(transaction: Transaction) -> Optional[float]:
+        """
+        Cash flow from the investor's point of view: money in is negative, money
+        back (sale proceeds, dividends) is positive. None for non-cash transactions.
+        """
+        if transaction.transaction_type == TransactionType.BUY:
+            return -float(transaction.total_amount)
+        if transaction.transaction_type in (TransactionType.SELL, TransactionType.DIVIDEND):
+            return float(transaction.total_amount)
+        return None
 
     def _calculate_benchmark_xirr(
             self,
@@ -584,285 +573,18 @@ class PortfolioCalculationService:
             return None
 
     # TWR Calculation Methods
-    async def _calculate_twr(
-            self,
-            all_transactions: List[Transaction],
-            current_value: float,
-            start_date: Optional[datetime],
-            end_date: datetime,
-    ) -> Optional[float]:
+    def _calculate_twr(self, portfolio_history: Optional[pd.DataFrame]) -> Optional[float]:
         """
-        Calculate Time-Weighted Rate of Return (TWR).
+        Time-Weighted Return: geometrically linked cash-flow-adjusted daily returns.
 
-        TWR measures the compound rate of growth of a portfolio by eliminating
-        the distorting effects of cash flows. It's calculated by:
-        1. Breaking the measurement period into sub-periods at each cash flow
-        2. Calculating the return for each sub-period
-        3. Linking the sub-period returns geometrically
-
-        Formula: TWR = [(1 + R1) × (1 + R2) × ... × (1 + Rn)] - 1
-        Where Ri is the return for sub-period i
+        TWR = [(1 + r_1) x (1 + r_2) x ... x (1 + r_n)] - 1, see compute_daily_returns.
         """
-        try:
-            # Get all cash flow dates within the period
-            cash_flow_dates = self._get_cash_flow_dates(
-                all_transactions, start_date, end_date
-            )
-
-            if not cash_flow_dates:
-                # No cash flows, calculate simple return
-                if start_date:
-                    initial_value = await self._get_portfolio_value_at_date(
-                        all_transactions, start_date
-                    )
-                    if initial_value is None or initial_value <= 0:
-                        logger.warning("Cannot calculate TWR: invalid initial value")
-                        return None
-
-                    simple_return = (current_value / initial_value) - 1
-                    return float(simple_return * 100)
-                else:
-                    # Inception with no intermediate cash flows
-                    inception_twr = await self._calculate_inception_twr(
-                        all_transactions, current_value
-                    )
-
-                    if inception_twr is None:
-                        return None
-
-                    return inception_twr
-
-            # Calculate TWR with cash flows
-            return await self._calculate_twr_with_cash_flows(
-                all_transactions,
-                start_date,
-                end_date,
-                cash_flow_dates,
-            )
-
-        except Exception as e:
-            logger.error("Error calculating TWR: %s", e)
+        if portfolio_history is None or portfolio_history.empty:
             return None
-
-    def _get_cash_flow_dates(
-            self,
-            all_transactions: List[Transaction],
-            start_date: Optional[datetime],
-            end_date: datetime,
-    ) -> List[datetime]:
-        """Get sorted list of intermediate cash flow dates within the period."""
-        cash_flow_dates = []
-
-        for transaction in all_transactions:
-            txn_date = transaction.transaction_date
-
-            # Skip transactions outside the period
-            if start_date and txn_date <= start_date:
-                continue  # Don't include start date transactions
-            if txn_date >= end_date:
-                continue  # Don't include end date transactions
-
-            cash_flow_dates.append(txn_date)
-
-        # Remove duplicates and sort
-        cash_flow_dates = sorted(list(set(cash_flow_dates)))
-        return cash_flow_dates
-
-    async def _calculate_inception_twr(
-            self,
-            all_transactions: List[Transaction],
-            current_value: float,
-    ) -> Optional[float]:
-        """Calculate TWR from inception when there are no intermediate cash flows."""
-        try:
-            # Get the first transaction date
-            if not all_transactions:
-                return None
-
-            first_transaction = min(all_transactions, key=lambda t: t.transaction_date)
-            first_date = first_transaction.transaction_date
-
-            # Calculate total initial investment
-            initial_investment = sum(
-                float(t.total_amount)
-                for t in all_transactions
-                if t.transaction_type == TransactionType.BUY
-            ) - sum(
-                float(t.total_amount)
-                for t in all_transactions
-                if t.transaction_type == TransactionType.SELL
-            )
-
-            if initial_investment <= 0:
-                logger.warning(
-                    "Cannot calculate inception TWR: invalid initial investment"
-                )
-                return None
-
-            # Calculate total return (not annualized)
-            total_return = (current_value / initial_investment) - 1
-
-            # Return the total geometric return for the period
-            # Annualization will be handled by the main TWR function if needed
-            return float(total_return * 100)
-
-        except Exception as e:
-            logger.error("Error calculating inception TWR: %s", e)
+        returns = portfolio_history["daily_return"].dropna()
+        if returns.empty:
             return None
-
-    async def _calculate_twr_with_cash_flows(
-            self,
-            all_transactions: List[Transaction],
-            start_date: Optional[datetime],
-            end_date: datetime,
-            cash_flow_dates: List[datetime],
-    ) -> Optional[float]:
-        """Calculate TWR with intermediate cash flows."""
-        try:
-            # Create sub-periods
-            sub_periods = self._create_sub_periods(
-                start_date, end_date, cash_flow_dates
-            )
-
-            if not sub_periods:
-                return None
-
-            # Calculate return for each sub-period
-            sub_period_returns = []
-
-            for i, (period_start, period_end) in enumerate(sub_periods):
-                sub_return = await self._calculate_sub_period_return(
-                    all_transactions, period_start, period_end
-                )
-
-                if sub_return is None:
-                    logger.warning("Could not calculate return for sub-period %d", i)
-                    continue
-
-                sub_period_returns.append(sub_return)
-
-            if not sub_period_returns:
-                logger.warning("No valid sub-period returns calculated")
-                return None
-
-            # Link sub-period returns geometrically
-            twr = self._link_sub_period_returns(sub_period_returns)
-
-            return float(twr * 100)
-
-        except Exception as e:
-            logger.error("Error calculating TWR with cash flows: %s", e)
-            return None
-
-    def _create_sub_periods(
-            self,
-            start_date: Optional[datetime],
-            end_date: datetime,
-            cash_flow_dates: List[datetime],
-    ) -> List[tuple]:
-        """Create sub-periods based on cash flow dates."""
-        sub_periods = []
-
-        # Determine the actual start date
-        actual_start = start_date if start_date else cash_flow_dates[0]
-
-        # Create periods between cash flows
-        period_dates = [actual_start] + cash_flow_dates + [end_date]
-        period_dates = sorted(list(set(period_dates)))
-
-        for i in range(len(period_dates) - 1):
-            period_start = period_dates[i]
-            period_end = period_dates[i + 1]
-
-            # Skip zero-length periods
-            if period_start != period_end:
-                sub_periods.append((period_start, period_end))
-
-        return sub_periods
-
-    async def _calculate_sub_period_return(
-            self,
-            all_transactions: List[Transaction],
-            period_start: datetime,
-            period_end: datetime,
-    ) -> Optional[float]:
-        """Calculate return for a single sub-period using the correct TWR formula."""
-        try:
-            # Market Value at the beginning of the sub-period (before any cash flows)
-            start_value_before_cf = await self._get_portfolio_value_at_date(
-                all_transactions, period_start
-            )
-
-            # Market Value at the end of the sub-period
-            end_value = await self._get_portfolio_value_at_date(
-                all_transactions, period_end
-            )
-
-            # Cash flows that happen at the beginning of this period (at period_start)
-            cash_flows_at_start = self._get_cash_flows_at_date(
-                all_transactions, period_start
-            )
-
-            # Calculate the adjusted start value (after cash flows at period start)
-            start_value = start_value_before_cf + cash_flows_at_start
-
-            # Handle edge cases
-            if start_value is None or start_value <= 0:
-                if cash_flows_at_start > 0:
-                    return 0.0  # New money invested, no growth yet
-                return None
-
-            if end_value is None:
-                return None
-
-            # TWR formula: Return = (End Value) / (Start Value + Cash Flows at Start) - 1
-            # This properly accounts for cash flows that happen at the period boundary
-            sub_return = (end_value / start_value) - 1
-            return sub_return
-
-        except Exception as e:
-            logger.error("Error calculating sub-period return: %s", e)
-            return None
-
-    def _get_cash_flows_at_date(
-            self,
-            all_transactions: List[Transaction],
-            target_date: datetime,
-    ) -> float:
-        """Get net cash flows that occurred exactly at the target date."""
-        net_cash_flow = 0.0
-
-        for transaction in all_transactions:
-            if transaction.transaction_date.date() == target_date.date():
-                if transaction.transaction_type == TransactionType.BUY:
-                    net_cash_flow += float(transaction.total_amount)  # Positive inflow
-                elif transaction.transaction_type == TransactionType.SELL:
-                    net_cash_flow -= float(transaction.total_amount)  # Negative outflow
-
-        return net_cash_flow
-
-    def _get_period_cash_flows(
-            self,
-            all_transactions: List[Transaction],
-            period_start: datetime,
-            period_end: datetime,
-    ) -> float:
-        """Get the net cash flow that occurred during the sub-period."""
-        net_cash_flow = 0.0
-
-        for transaction in all_transactions:
-            txn_date = transaction.transaction_date
-
-            # For TWR, we only include cash flows that happen AFTER the period starts
-            # This prevents double-counting the initial investment in the first period
-            # Cash flows at period boundaries are attributed to the period ending at that date
-            if period_start < txn_date <= period_end:
-                if transaction.transaction_type == TransactionType.BUY:
-                    net_cash_flow += float(transaction.total_amount)  # Positive inflow
-                elif transaction.transaction_type == TransactionType.SELL:
-                    net_cash_flow -= float(transaction.total_amount)  # Negative outflow
-
-        return net_cash_flow
+        return float(((1 + returns).prod() - 1) * 100)
 
     def _link_sub_period_returns(self, sub_period_returns: List[float]) -> float:
         """Link sub-period returns geometrically."""
@@ -1131,7 +853,7 @@ class PortfolioCalculationService:
             if (
                     symbol in self._price_cache
                     and symbol in self._price_cache_time
-                    and (current_time - self._price_cache_time[symbol]).seconds < 3600
+                    and (current_time - self._price_cache_time[symbol]).total_seconds() < 3600
             ):
                 return self._price_cache[symbol]
 
@@ -1219,9 +941,10 @@ class PortfolioCalculationService:
             start_date: Optional[datetime],
             end_date: datetime,
     ) -> List[Transaction]:
-        """Get transactions for a portfolio within date range."""
+        """Get completed transactions for a portfolio within date range."""
         query = self.db.query(Transaction).filter(
             Transaction.portfolio_id == portfolio_id,
+            Transaction.status == TransactionStatus.COMPLETED,
             Transaction.transaction_date <= end_date,
         )
 
@@ -1366,48 +1089,33 @@ class PortfolioCalculationService:
     def _calculate_volatility(
             self, portfolio_history: pd.DataFrame
     ) -> Optional[float]:
-        """
-        Calculate annualized volatility from a series of portfolio values.
-        Volatility is the standard deviation of daily returns.
-        """
-        if portfolio_history is None or portfolio_history.empty or len(portfolio_history) < 2:
+        """Annualised volatility of the cash-flow-adjusted daily returns, in percent."""
+        if portfolio_history is None or portfolio_history.empty:
             return None
 
-        try:
-            # Calculate daily returns
-            daily_returns = portfolio_history["value"].pct_change().dropna()
-
-            if daily_returns.empty:
-                return 0.0
-
-            # Calculate annualized volatility (252 trading days in a year)
-            volatility = daily_returns.std() * np.sqrt(252)
-            return float(volatility * 100)  # Return as percentage
-        except Exception as e:
-            logger.error("Error calculating volatility: %s", e)
+        daily_returns = portfolio_history["daily_return"].dropna()
+        if len(daily_returns) < 2:
             return None
+        return float(daily_returns.std() * np.sqrt(TRADING_DAYS_PER_YEAR) * 100)
 
     def _calculate_max_drawdown(
             self, portfolio_history: pd.DataFrame
     ) -> Optional[float]:
         """
-        Calculate the Max Drawdown from a series of portfolio values.
-        Max Drawdown is the largest percentage drop from a peak to a trough.
+        Largest peak-to-trough fall of the cumulative return curve, in percent.
+
+        Uses the compounded cash-flow-adjusted returns, so deposits and withdrawals
+        do not show up as gains or drawdowns.
         """
         if portfolio_history is None or portfolio_history.empty:
             return None
 
-        try:
-            # Calculate the running maximum (cumulative high)
-            running_max = portfolio_history["value"].cummax()
-            # Calculate the drawdown (percentage drop from the running max)
-            drawdown = (portfolio_history["value"] - running_max) / running_max
-            # The max drawdown is the minimum value of the drawdown series
-            max_drawdown = drawdown.min()
-            return float(max_drawdown * 100)  # Return as percentage
-        except Exception as e:
-            logger.error("Error calculating max drawdown: %s", e)
+        daily_returns = portfolio_history["daily_return"].dropna()
+        if daily_returns.empty:
             return None
+        equity_curve = (1 + daily_returns).cumprod()
+        drawdown = equity_curve / equity_curve.cummax() - 1
+        return float(drawdown.min() * 100)
 
     async def get_portfolio_history(
             self,
@@ -1416,8 +1124,17 @@ class PortfolioCalculationService:
             end_date: datetime,
     ) -> Optional[pd.DataFrame]:
         """
-        Generates a daily time series of the portfolio's total market value.
-        This is a computationally intensive operation.
+        Daily (business-day) series of portfolio value and cash flows.
+
+        Columns:
+            value         market value at the day's close
+            inflow        cash invested that day (buys, including fees)
+            outflow       cash returned that day (net sale proceeds, dividends)
+            net_cash_flow inflow - outflow
+            daily_return  cash-flow-adjusted return, see compute_daily_returns
+
+        Weekend transactions are attributed to the next business day, so weekends
+        don't add artificial zero-return days to the series.
         """
         try:
             if not all_transactions:
@@ -1429,83 +1146,106 @@ class PortfolioCalculationService:
             if period_start > end_date:
                 return None
 
-            # Create a date range for the history
-            date_range = pd.date_range(start=period_start, end=end_date, freq="D")
-            history = []
-
-            # Group transactions by date for efficiency
-            transactions_by_date = {}
-            for t in all_transactions:
-                date_key = t.transaction_date.date()
-                if date_key not in transactions_by_date:
-                    transactions_by_date[date_key] = []
-                transactions_by_date[date_key].append(t)
-
-            # Get initial holdings before the start date
-            holdings = await self._get_holdings_at_date(
-                all_transactions, period_start - timedelta(days=1)
-            )
-            asset_map = {}  # Cache asset objects
-
-            for date in date_range:
-                # Update holdings with transactions for the current day
-                date_key = date.date()
-                daily_net_cash_flow = 0.0
-                if date_key in transactions_by_date:
-                    for transaction in transactions_by_date[date_key]:
-                        asset_id = transaction.asset_id
-                        quantity = float(transaction.quantity)
-                        if asset_id not in holdings:
-                            holdings[asset_id] = 0.0
-
-                        if transaction.transaction_type == TransactionType.BUY:
-                            holdings[asset_id] += quantity
-                            # A buy is a cash inflow (deposit)
-                            daily_net_cash_flow += float(transaction.total_amount)
-                        elif transaction.transaction_type == TransactionType.SELL:
-                            holdings[asset_id] -= quantity
-                            # A sell is a cash outflow (withdrawal)
-                            daily_net_cash_flow -= float(transaction.total_amount)
-
-                # Calculate portfolio value for the current day
-                total_value = 0.0
-                for asset_id, quantity in holdings.items():
-                    if quantity > 1e-9:
-                        # Fetch asset from cache or DB
-                        if asset_id not in asset_map:
-                            asset_map[asset_id] = (
-                                self.db.query(Asset)
-                                .filter(Asset.id == asset_id)
-                                .first()
-                            )
-                        asset = asset_map[asset_id]
-                        if not asset:
-                            continue
-
-                        price_data = await self.get_price_data(asset.symbol)
-                        price = self._get_price_for_date(price_data, date.date())
-                        if price:
-                            total_value += quantity * price
-
-                history.append({"date": date, "value": total_value, "net_cash_flow": daily_net_cash_flow})
-
-            if not history:
+            days = pd.bdate_range(start=period_start.date(), end=end_date.date())
+            if days.empty:
                 return None
 
+            transactions = sorted(all_transactions, key=lambda t: t.transaction_date)
+            asset_map: Dict[int, Optional[Asset]] = {}
+
+            # Holdings from everything strictly before the first day of the series
+            first_day = days[0].date()
+            opening = [t for t in transactions if t.transaction_date.date() < first_day]
+            pending = [t for t in transactions if t.transaction_date.date() >= first_day]
+            holdings = await self._get_holdings_at_date(opening, None)
+            opening_value = await self._value_holdings(
+                holdings, (days[0] - pd.offsets.BDay(1)).date(), asset_map
+            )
+
+            history = []
+            next_tx = 0
+            for day in days:
+                inflow = outflow = 0.0
+                # Apply every transaction up to and including this day
+                while (
+                        next_tx < len(pending)
+                        and pending[next_tx].transaction_date.date() <= day.date()
+                ):
+                    transaction = pending[next_tx]
+                    next_tx += 1
+                    self._apply_to_holdings(holdings, transaction)
+                    cash_flow = self._investor_cash_flow(transaction)
+                    if cash_flow is not None and cash_flow < 0:
+                        inflow += -cash_flow
+                    elif cash_flow is not None:
+                        outflow += cash_flow
+
+                value = await self._value_holdings(holdings, day.date(), asset_map)
+                history.append(
+                    {
+                        "date": day,
+                        "value": value,
+                        "inflow": inflow,
+                        "outflow": outflow,
+                        "net_cash_flow": inflow - outflow,
+                    }
+                )
+
             df = pd.DataFrame(history).set_index("date")
+            df["daily_return"] = compute_daily_returns(df, opening_value)
             return df
 
         except Exception as e:
             logger.error("Error generating portfolio history: %s", e)
             return None
 
+    @staticmethod
+    def _apply_to_holdings(holdings: Dict[int, float], transaction: Transaction) -> None:
+        """Update share counts for a transaction (only buys and sells change quantity)."""
+        quantity = float(transaction.quantity)
+        if transaction.transaction_type == TransactionType.BUY:
+            holdings[transaction.asset_id] = holdings.get(transaction.asset_id, 0.0) + quantity
+        elif transaction.transaction_type == TransactionType.SELL:
+            holdings[transaction.asset_id] = holdings.get(transaction.asset_id, 0.0) - quantity
+
+    async def _value_holdings(
+            self,
+            holdings: Dict[int, float],
+            on_date,
+            asset_map: Dict[int, Optional[Asset]],
+    ) -> float:
+        """
+        Market value of holdings at the close on `on_date`.
+
+        Raises ValueError when a held asset has no price, rather than silently
+        valuing it at zero (which would show up as a fake crash in the returns).
+        """
+        total_value = 0.0
+        for asset_id, quantity in holdings.items():
+            if quantity <= 1e-9:
+                continue
+            if asset_id not in asset_map:
+                asset_map[asset_id] = (
+                    self.db.query(Asset).filter(Asset.id == asset_id).first()
+                )
+            asset = asset_map[asset_id]
+            if not asset:
+                raise ValueError(f"Asset {asset_id} not found")
+
+            price_data = await self.get_price_data(asset.symbol)
+            price = self._get_price_for_date(price_data, on_date)
+            if price is None:
+                raise ValueError(f"No price for {asset.symbol} on {on_date}")
+            total_value += quantity * price
+        return total_value
+
     async def _get_holdings_at_date(
-            self, transactions: List[Transaction], target_date: datetime
+            self, transactions: List[Transaction], target_date: Optional[datetime]
     ) -> Dict[int, float]:
-        """Calculates asset holdings on a specific date."""
+        """Calculates asset holdings on a specific date (None = after all transactions)."""
         holdings = {}
         for t in transactions:
-            if t.transaction_date <= target_date:
+            if target_date is None or t.transaction_date <= target_date:
                 asset_id = t.asset_id
                 quantity = float(t.quantity)
                 if asset_id not in holdings:

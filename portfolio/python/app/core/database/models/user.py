@@ -10,7 +10,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
-    text,
+    func,
 )
 from sqlalchemy.orm import relationship
 
@@ -29,12 +29,12 @@ class User(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     is_verified = Column(Boolean, default=False, nullable=False)
     created_at = Column(
-        DateTime(timezone=True), server_default=text("NOW()"), nullable=False
+        DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     updated_at = Column(
         DateTime(timezone=True),
-        server_default=text("NOW()"),
-        onupdate=text("NOW()"),
+        server_default=func.now(),
+        onupdate=func.now(),
         nullable=False,
     )
     last_login = Column(DateTime(timezone=True), nullable=True)
@@ -89,12 +89,12 @@ class UserProfile(Base):
     language_preference = Column(String(10), default="en", nullable=False)
     notification_preferences = Column(Text, nullable=True)  # JSON string
     created_at = Column(
-        DateTime(timezone=True), server_default=text("NOW()"), nullable=False
+        DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     updated_at = Column(
         DateTime(timezone=True),
-        server_default=text("NOW()"),
-        onupdate=text("NOW()"),
+        server_default=func.now(),
+        onupdate=func.now(),
         nullable=False,
     )
 
@@ -126,12 +126,12 @@ class UserSession(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=False)
     created_at = Column(
-        DateTime(timezone=True), server_default=text("NOW()"), nullable=False
+        DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     last_used = Column(
         DateTime(timezone=True),
-        server_default=text("NOW()"),
-        onupdate=text("NOW()"),
+        server_default=func.now(),
+        onupdate=func.now(),
         nullable=False,
     )
 

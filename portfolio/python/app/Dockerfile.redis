@@ -8,5 +8,5 @@ RUN apk add --no-cache \
 # Expose port
 EXPOSE 6379
 
-# Use default redis entrypoint
-CMD ["redis-server"]
+# Require a password whenever REDIS_PASSWORD is provided (set it in .env.docker)
+CMD ["sh", "-c", "exec redis-server ${REDIS_PASSWORD:+--requirepass \"$REDIS_PASSWORD\"}"]

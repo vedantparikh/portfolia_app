@@ -7,6 +7,14 @@ from pydantic_settings import BaseSettings
 
 env = Env()
 
+LOCAL_ENVIRONMENTS = {"development", "dev", "local", "test"}
+INSECURE_SECRET_DEFAULTS = {
+    "",
+    "password",
+    "your-secret-key-here",
+    "your-jwt-secret-key-change-in-production",
+}
+
 
 class Settings(BaseSettings):
     """Application settings."""
@@ -27,8 +35,10 @@ class Settings(BaseSettings):
     API_PORT: int = env.int("API_PORT", 8000)
     API_URL: str = env.str("API_URL", "http://localhost:8000")
 
-    # CORS settings
-    ALLOWED_ORIGINS: List[str] = env.list("ALLOWED_ORIGINS", ["*"])
+    # CORS settings. Defaults to the frontend origin; never combine "*" with credentials.
+    ALLOWED_ORIGINS: List[str] = env.list(
+        "ALLOWED_ORIGINS", [env.str("FRONTEND_URL", "http://localhost:3000")]
+    )
 
     # Database settings
     POSTGRES_HOST: str = env.str("POSTGRES_HOST", "localhost")
@@ -117,9 +127,37 @@ class Settings(BaseSettings):
 
         # Note: DATABASE_URL is a read-only property, so we don't override it here
 
+    def validate_secrets(self) -> None:
+        """
+        Refuse to run with placeholder or weak secrets outside local development.
+
+        Generate a secret with: python -c "import secrets; print(secrets.token_urlsafe(64))"
+        """
+        if self.ENVIRONMENT.lower() in LOCAL_ENVIRONMENTS or self.TESTING:
+            return
+
+        problems = []
+        for name in ("SECRET_KEY", "JWT_SECRET_KEY"):
+            value = getattr(self, name)
+            if value in INSECURE_SECRET_DEFAULTS or len(value) < 32:
+                problems.append(f"{name} is unset, a placeholder, or shorter than 32 chars")
+        if self.POSTGRES_PASSWORD in INSECURE_SECRET_DEFAULTS:
+            problems.append("POSTGRES_PASSWORD is unset or a placeholder")
+        if not self.REDIS_PASSWORD:
+            problems.append("REDIS_PASSWORD is not set")
+        if "*" in self.ALLOWED_ORIGINS:
+            problems.append('ALLOWED_ORIGINS must list explicit origins, not "*"')
+
+        if problems:
+            raise RuntimeError(
+                f"Insecure configuration for ENVIRONMENT={self.ENVIRONMENT}: "
+                + "; ".join(problems)
+            )
+
 
 # Create settings instance
 settings = Settings()
+settings.validate_secrets()
 
 # Override for testing if TESTING environment variable is set
 if os.getenv("TESTING", "false").lower() == "true":

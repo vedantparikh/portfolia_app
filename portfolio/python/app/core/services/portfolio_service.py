@@ -11,6 +11,7 @@ from core.database.models import (
     Portfolio,
     PortfolioAsset,
     Transaction,
+    TransactionStatus,
     TransactionType,
 )
 from core.database.utils import get_portfolio_performance_summary
@@ -27,6 +28,61 @@ from core.schemas.portfolio import (
     TransactionUpdate,
 )
 from core.services.market_data_service import MarketDataService
+
+
+class OversellError(ValueError):
+    """Raised when a sell exceeds the quantity held at that point in time."""
+
+
+def compute_position(transactions: List[Transaction]) -> Dict[str, Decimal]:
+    """
+    Rebuild a position from its transactions using FIFO lots.
+
+    `transactions` must be ordered chronologically (buys before sells on ties) and
+    contain only completed transactions. `total_amount` is the cash moved, so buy lots
+    include fees and sell proceeds are net of fees and taxes.
+
+    Raises OversellError if a sell exceeds the quantity held at that moment.
+    """
+    buy_lots: List[Dict[str, Decimal]] = []
+    realized_pnl = Decimal("0")
+    cost_of_sold = Decimal("0")
+
+    for tx in transactions:
+        if tx.transaction_type == TransactionType.BUY:
+            buy_lots.append(
+                {"quantity": Decimal(tx.quantity), "total_amount": Decimal(tx.total_amount)}
+            )
+        elif tx.transaction_type == TransactionType.SELL:
+            sell_quantity = Decimal(tx.quantity)
+            held = sum((lot["quantity"] for lot in buy_lots), Decimal("0"))
+            if sell_quantity > held:
+                raise OversellError(
+                    f"Sell of {sell_quantity} on {tx.transaction_date:%Y-%m-%d} "
+                    f"exceeds the {held} units held at that date"
+                )
+
+            cost_of_goods_sold = Decimal("0")
+            while sell_quantity > 0:
+                lot = buy_lots[0]
+                take = min(sell_quantity, lot["quantity"])
+                portion = (take / lot["quantity"]) * lot["total_amount"]
+                cost_of_goods_sold += portion
+                lot["quantity"] -= take
+                lot["total_amount"] -= portion
+                sell_quantity -= take
+                if lot["quantity"] <= 0:
+                    buy_lots.pop(0)
+
+            realized_pnl += Decimal(tx.total_amount) - cost_of_goods_sold
+            cost_of_sold += cost_of_goods_sold
+
+    return {
+        "quantity": sum((lot["quantity"] for lot in buy_lots), Decimal("0")),
+        "cost_basis_total": sum((lot["total_amount"] for lot in buy_lots), Decimal("0")),
+        "realized_pnl": realized_pnl,
+        "cost_of_sold": cost_of_sold,
+    }
 
 
 class PortfolioService:
@@ -218,188 +274,6 @@ class PortfolioService:
 
         return portfolio_asset
 
-    async def update_asset_pnl(
-            self, portfolio_asset: PortfolioAsset
-    ) -> PortfolioAsset:
-        """Update unrealized P&L for a portfolio asset using real-time data."""
-        try:
-            # Get asset information
-            asset = (
-                self.db.query(Asset)
-                .filter(Asset.id == portfolio_asset.asset_id)
-                .first()
-            )
-            if not asset:
-                return portfolio_asset
-
-            # Get current price from yfinance
-            current_price = await self.market_data_service.get_current_price(
-                symbol=asset.symbol
-            )
-            last_trading_day_price = (
-                await self.market_data_service.get_yesterdays_close(
-                    symbol=asset.symbol
-                )
-            )
-
-            if current_price:
-                current_value = float(current_price) * float(portfolio_asset.quantity)
-                portfolio_asset.current_value = Decimal(str(current_value))
-
-                # Calculate unrealized P&L
-                cost_basis_total = float(portfolio_asset.cost_basis_total)
-                unrealized_pnl = current_value - cost_basis_total
-                portfolio_asset.unrealized_pnl = Decimal(str(unrealized_pnl))
-
-                # Calculate P&L percentage
-                if cost_basis_total > 0:
-                    pnl_percent = (unrealized_pnl / cost_basis_total) * 100
-                    portfolio_asset.unrealized_pnl_percent = Decimal(str(pnl_percent))
-                else:
-                    portfolio_asset.unrealized_pnl_percent = Decimal("0")
-
-                # Calculate Today's P&L and Percentage
-                if last_trading_day_price:
-                    previous_day_value = float(last_trading_day_price) * float(
-                        portfolio_asset.quantity
-                    )
-                    today_pnl_value = current_value - previous_day_value
-                    portfolio_asset.today_pnl = Decimal(str(today_pnl_value))
-
-                    if previous_day_value > 0:
-                        today_pnl_percent = (
-                                                    today_pnl_value / previous_day_value
-                                            ) * 100
-                        portfolio_asset.today_pnl_percent = Decimal(
-                            str(today_pnl_percent)
-                        )
-                    else:
-                        portfolio_asset.today_pnl_percent = Decimal("0")
-                else:
-                    # Cannot calculate today's P&L without yesterday's close
-                    portfolio_asset.today_pnl = Decimal("0")
-                    portfolio_asset.today_pnl_percent = Decimal("0")
-
-            else:
-                # If we can't get current price, keep existing values or set to None
-                portfolio_asset.current_value = None
-                portfolio_asset.unrealized_pnl = None
-                portfolio_asset.unrealized_pnl_percent = None
-                portfolio_asset.today_pnl = None
-                portfolio_asset.today_pnl_percent = None
-
-            # Calculate realized P&L
-            realized_pnl, realized_pnl_percent = self._calculate_realized_pnl(
-                portfolio_asset.portfolio_id, portfolio_asset.asset_id
-            )
-            portfolio_asset.realized_pnl = realized_pnl
-            portfolio_asset.realized_pnl_percent = realized_pnl_percent
-
-        except Exception as e:
-            # Log error but don't fail the operation
-            print(f"Error updating P&L for asset {portfolio_asset.asset_id}: {e}")
-
-        return portfolio_asset
-
-    def _calculate_realized_pnl(
-            self, portfolio_id: int, asset_id: int
-    ) -> tuple[Decimal, Decimal]:
-        """Calculate realized P&L for a specific asset based on sell transactions."""
-        # Get all sell transactions for this asset in this portfolio
-        sell_transactions = (
-            self.db.query(Transaction)
-            .filter(
-                and_(
-                    Transaction.portfolio_id == portfolio_id,
-                    Transaction.asset_id == asset_id,
-                    Transaction.transaction_type == TransactionType.SELL,
-                )
-            )
-            .order_by(Transaction.transaction_date)
-            .all()
-        )
-
-        if not sell_transactions:
-            return Decimal("0"), Decimal("0")
-
-        # Get all buy transactions for this asset in this portfolio
-        buy_transactions = (
-            self.db.query(Transaction)
-            .filter(
-                and_(
-                    Transaction.portfolio_id == portfolio_id,
-                    Transaction.asset_id == asset_id,
-                    Transaction.transaction_type == TransactionType.BUY,
-                )
-            )
-            .order_by(Transaction.transaction_date)
-            .all()
-        )
-
-        if not buy_transactions:
-            return Decimal("0"), Decimal("0")
-
-        # Calculate realized P&L using FIFO (First In, First Out) method
-        total_realized_pnl = Decimal("0")
-        total_cost_basis_sold = Decimal("0")
-
-        # Create a copy of buy transactions to track remaining quantities
-        remaining_buys = []
-        for buy in buy_transactions:
-            remaining_buys.append(
-                {
-                    "quantity": buy.quantity,
-                    "price": buy.price,
-                    "total_amount": buy.total_amount,
-                    "date": buy.transaction_date,
-                }
-            )
-
-        # Process each sell transaction
-        for sell in sell_transactions:
-            sell_quantity = sell.quantity
-            sell_price = sell.price
-
-            # Use FIFO to match sells with buys
-            while sell_quantity > 0 and remaining_buys:
-                buy = remaining_buys[0]
-                available_quantity = buy["quantity"]
-
-                if available_quantity <= 0:
-                    remaining_buys.pop(0)
-                    continue
-
-                # Calculate how much of this sell to match with this buy
-                quantity_to_match = min(sell_quantity, available_quantity)
-
-                # Calculate cost basis for this portion
-                cost_basis_portion = (quantity_to_match / buy["quantity"]) * buy[
-                    "total_amount"
-                ]
-                total_cost_basis_sold += cost_basis_portion
-
-                # Calculate realized P&L for this portion
-                sell_proceeds = quantity_to_match * sell_price
-                realized_pnl_portion = sell_proceeds - cost_basis_portion
-                total_realized_pnl += realized_pnl_portion
-
-                # Update remaining quantities
-                sell_quantity -= quantity_to_match
-                buy["quantity"] -= quantity_to_match
-                buy["total_amount"] -= cost_basis_portion
-
-                # Remove buy if fully consumed
-                if buy["quantity"] <= 0:
-                    remaining_buys.pop(0)
-
-        # Calculate realized P&L percentage
-        if total_cost_basis_sold > 0:
-            realized_pnl_percent = (total_realized_pnl / total_cost_basis_sold) * 100
-        else:
-            realized_pnl_percent = Decimal("0")
-
-        return total_realized_pnl, realized_pnl_percent
-
     async def update_portfolio_asset(
             self,
             portfolio_id: int,
@@ -534,51 +408,91 @@ class PortfolioService:
         return result
 
     # Transaction Management
+    def _get_owned_asset(self, asset_id: int, user_id: int) -> Optional[Asset]:
+        return (
+            self.db.query(Asset)
+            .filter(Asset.id == asset_id, Asset.user_id == user_id)
+            .first()
+        )
+
     async def add_transaction(
             self, portfolio_id: int, transaction_data: TransactionCreate, user_id: int
     ) -> Optional[Transaction]:
-        """Add a transaction and recalculate the corresponding asset's state."""
+        """
+        Add a transaction and recalculate the corresponding asset's state atomically.
+
+        The portfolio comes from `portfolio_id` (never the request body), both the
+        portfolio and the asset must belong to the user, and `total_amount` is always
+        computed server-side. Raises OversellError if the sell exceeds holdings.
+        """
         portfolio = self.get_portfolio(portfolio_id, user_id)
         if not portfolio:
             return None
+        if not self._get_owned_asset(transaction_data.asset_id, user_id):
+            return None
 
-        transaction_data.total_amount = transaction_data.quantity * transaction_data.price
-        transaction = Transaction(**transaction_data.dict())
-        self.db.add(transaction)
-        self.db.commit()
+        values = transaction_data.dict()
+        values["portfolio_id"] = portfolio_id
+        values["total_amount"] = Transaction.compute_total_amount(
+            transaction_data.transaction_type,
+            transaction_data.quantity,
+            transaction_data.price,
+            transaction_data.fees,
+            transaction_data.taxes,
+        )
+        transaction = Transaction(**values)
+
+        try:
+            self.db.add(transaction)
+            self.db.flush()
+            await self.recalculate_asset_state(
+                portfolio_id, transaction.asset_id, commit=False
+            )
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
+            raise
+
         self.db.refresh(transaction)
-
-        await self.recalculate_asset_state(portfolio_id, transaction.asset_id)
         return transaction
 
     async def update_transaction(
             self, transaction_id: int, transaction_data: TransactionUpdate, user_id: int
     ) -> Optional[Transaction]:
-        """Update a transaction and recalculate the corresponding asset's state."""
+        """Update a transaction and recalculate the corresponding asset's state atomically."""
         transaction = self.get_transaction(transaction_id, user_id)
         if not transaction:
             return None
 
-        asset_id_to_recalculate = transaction.asset_id
-        portfolio_id_to_recalculate = transaction.portfolio_id
-
         update_data = transaction_data.dict(exclude_unset=True)
+        # total_amount is derived; ignore any client-supplied value
+        update_data.pop("total_amount", None)
         for field, value in update_data.items():
             setattr(transaction, field, value)
 
-        if 'quantity' in update_data or 'price' in update_data:
-            transaction.total_amount = transaction.quantity * transaction.price
-
-        self.db.commit()
-        self.db.refresh(transaction)
-
-        await self.recalculate_asset_state(
-            portfolio_id_to_recalculate, asset_id_to_recalculate
+        transaction.total_amount = Transaction.compute_total_amount(
+            transaction.transaction_type,
+            transaction.quantity,
+            transaction.price,
+            transaction.fees,
+            transaction.taxes,
         )
+
+        try:
+            self.db.flush()
+            await self.recalculate_asset_state(
+                transaction.portfolio_id, transaction.asset_id, commit=False
+            )
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
+            raise
+
+        self.db.refresh(transaction)
         return transaction
 
     async def delete_transaction(self, transaction_id: int, user_id: int) -> bool:
-        """Delete a transaction and recalculate the corresponding asset's state."""
+        """Delete a transaction and recalculate the corresponding asset's state atomically."""
         transaction = self.get_transaction(transaction_id, user_id)
         if not transaction:
             return False
@@ -586,10 +500,14 @@ class PortfolioService:
         portfolio_id = transaction.portfolio_id
         asset_id = transaction.asset_id
 
-        self.db.delete(transaction)
-        self.db.commit()
-
-        await self.recalculate_asset_state(portfolio_id, asset_id)
+        try:
+            self.db.delete(transaction)
+            self.db.flush()
+            await self.recalculate_asset_state(portfolio_id, asset_id, commit=False)
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
+            raise
         return True
 
     def get_portfolio_transactions(
@@ -753,7 +671,10 @@ class PortfolioService:
             self, portfolio_id: int,
     ) -> List[PortfolioHolding]:
         """
-        OPTIMIZED & FIXED: Fetches all asset and market data concurrently for performance.
+        Fetches all asset and market data concurrently for performance.
+
+        Does NOT check ownership: callers must verify the portfolio belongs to the
+        user first (see get_user_portfolio_holdings).
         """
         # 1. Fetch all assets and their info in ONE database query using a JOIN.
         portfolio_assets_with_info = (
@@ -917,8 +838,16 @@ class PortfolioService:
             .all()
         )
 
+    async def get_user_portfolio_holdings(
+            self, portfolio_id: int, user_id: int
+    ) -> Optional[List[PortfolioHolding]]:
+        """Holdings for a portfolio the user owns, or None if it isn't theirs."""
+        if not self.get_portfolio(portfolio_id, user_id):
+            return None
+        return await self.get_portfolio_holdings(portfolio_id)
+
     async def recalculate_asset_state(
-            self, portfolio_id: int, asset_id: int
+            self, portfolio_id: int, asset_id: int, commit: bool = True
     ) -> Optional[PortfolioAsset]:
         """
         Recalculates an asset's complete state from its transaction history.
@@ -935,48 +864,28 @@ class PortfolioService:
                 Transaction.portfolio_id == portfolio_id,
                 Transaction.asset_id == asset_id,
             )
-            .order_by(Transaction.transaction_date.asc(), buy_first_sort_order.asc())
+            .order_by(
+                Transaction.transaction_date.asc(),
+                buy_first_sort_order.asc(),
+                Transaction.id.asc(),
+            )
             .all()
         )
-
-        buy_lots = []
-        realized_pnl = Decimal("0")
-
-        for tx in transactions:
-            if tx.transaction_type == TransactionType.BUY:
-                buy_lots.append({"quantity": tx.quantity, "total_amount": tx.total_amount})
-            elif tx.transaction_type == TransactionType.SELL:
-                sell_quantity = tx.quantity
-                sell_proceeds = tx.total_amount
-                cost_of_goods_sold = Decimal("0")
-
-                while sell_quantity > 0 and buy_lots:
-                    oldest_lot = buy_lots[0]
-                    quantity_to_sell_from_lot = min(sell_quantity, oldest_lot["quantity"])
-
-                    if oldest_lot["quantity"] > 0:
-                        cost_basis_portion = (quantity_to_sell_from_lot / oldest_lot["quantity"]) * oldest_lot[
-                            "total_amount"]
-                        cost_of_goods_sold += cost_basis_portion
-                        oldest_lot["quantity"] -= quantity_to_sell_from_lot
-                        oldest_lot["total_amount"] -= cost_basis_portion
-
-                    sell_quantity -= quantity_to_sell_from_lot
-
-                    if oldest_lot["quantity"] <= 0:
-                        buy_lots.pop(0)
-
-                realized_pnl += (sell_proceeds - cost_of_goods_sold)
-
-        current_quantity = sum(lot["quantity"] for lot in buy_lots)
-        total_cost = sum(lot["total_amount"] for lot in buy_lots)
+        completed = [
+            tx for tx in transactions
+            if tx.status in (None, TransactionStatus.COMPLETED)
+        ]
+        position = compute_position(completed)
+        current_quantity = position["quantity"]
+        total_cost = position["cost_basis_total"]
 
         portfolio_asset = self.db.query(PortfolioAsset).filter_by(portfolio_id=portfolio_id, asset_id=asset_id).first()
 
         if not transactions:
             if portfolio_asset:
                 self.db.delete(portfolio_asset)
-                self.db.commit()
+                if commit:
+                    self.db.commit()
             return None
 
         if not portfolio_asset:
@@ -986,7 +895,12 @@ class PortfolioService:
         portfolio_asset.quantity = current_quantity
         portfolio_asset.cost_basis_total = total_cost
         portfolio_asset.cost_basis = total_cost / current_quantity if current_quantity > 0 else Decimal("0")
-        portfolio_asset.realized_pnl = realized_pnl
+        portfolio_asset.realized_pnl = position["realized_pnl"]
+        portfolio_asset.realized_pnl_percent = (
+            position["realized_pnl"] / position["cost_of_sold"] * 100
+            if position["cost_of_sold"] > 0
+            else Decimal("0")
+        )
 
         if current_quantity > 0:
             try:
@@ -994,7 +908,8 @@ class PortfolioService:
                 if asset:
                     current_price = await self.market_data_service.get_current_price(asset.symbol)
                     if current_price:
-                        current_value = current_price * portfolio_asset.quantity
+                        # Prices come back as float; convert via str to avoid binary noise
+                        current_value = Decimal(str(current_price)) * portfolio_asset.quantity
                         unrealized_pnl = current_value - portfolio_asset.cost_basis_total
                         portfolio_asset.current_value = current_value
                         portfolio_asset.unrealized_pnl = unrealized_pnl
@@ -1014,6 +929,7 @@ class PortfolioService:
             portfolio_asset.unrealized_pnl = Decimal("0")
             portfolio_asset.unrealized_pnl_percent = Decimal("0")
 
-        self.db.commit()
-        self.db.refresh(portfolio_asset)
+        if commit:
+            self.db.commit()
+            self.db.refresh(portfolio_asset)
         return portfolio_asset

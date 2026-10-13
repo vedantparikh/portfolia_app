@@ -234,7 +234,8 @@ class TransactionBase(BaseModel):
 
 
 class TransactionCreate(TransactionBase):
-    pass
+    # Computed server-side from quantity, price, fees and taxes; any value sent is ignored
+    total_amount: Optional[Decimal] = None
 
 
 class TransactionUpdate(BaseModel):
