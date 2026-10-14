@@ -69,3 +69,7 @@ temp/
 # Misc
 *.tgz
 *.tar.gz
+# Local env files (secrets)
+.env.docker
+.env.*
+!.env.example
