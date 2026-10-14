@@ -1,0 +1,46 @@
+# Dependencies / envs
+**/node_modules/
+**/.venv/
+**/venv/
+**/__pycache__/
+*.pyc
+
+# Build output
+js/dist/
+**/build/
+*.min.js
+*.min.css
+*.map
+
+# Caches / reports
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+**/coverage/
+
+# Lockfiles (read only when explicitly needed)
+js/package-lock.json
+uv.lock
+
+# Local data, logs, secrets
+*.db
+*.sqlite
+*.sqlite3
+**/logs/
+*.log
+**/.env*
+!**/.env.example
+
+# Large fixtures / binary assets
+python/apple_market_data.json
+js/public/*.png
+js/public/*.ico
+*.pdf
+
+# Older reference docs (may be stale; see REFACTOR_PLAN.md)
+python/app/docs/
