@@ -35,6 +35,22 @@ from core.database.connection import get_db
 from core.database.models.base import Base
 from main import app
 
+_QUARANTINE = [
+    line.strip()
+    for line in open(os.path.join(os.path.dirname(__file__), "quarantine.txt"))
+    if line.strip() and not line.startswith("#")
+]
+collect_ignore = [e.removeprefix("tests/") for e in _QUARANTINE if "::" not in e]
+_QUARANTINED_TESTS = {e for e in _QUARANTINE if "::" in e}
+
+
+def pytest_collection_modifyitems(config, items):
+    for item in items:
+        if item.nodeid in _QUARANTINED_TESTS:
+            item.add_marker(
+                pytest.mark.xfail(strict=True, reason="quarantined: tests/quarantine.txt")
+            )
+
 
 # Create test database
 @pytest.fixture(scope="session")

@@ -1,0 +1,351 @@
+# Portfolia — Production Refactor Plan
+
+Status: **in progress** (Phase 0 partly done, see §6) · Updated: 2026-10-14
+Scope: `portfolio/` (FastAPI backend `python/app`, React frontend `js`, Docker, CI at git root)
+Target host: NVIDIA Jetson AGX Xavier home server shared with ~35 other containers (see §1b)
+
+---
+
+## 0. Where we are (audit summary)
+
+| Area | State | Most important issues |
+|---|---|---|
+| **Calculation correctness** | ❌ Not trustworthy | Stock splits are ignored and yfinance prices are split/dividend-adjusted, so a 2:1 split shows −50%. Imported dividends are stored as **0**. There is **no FX conversion**: EUR cost basis is compared against USD prices. Benchmark TWR can return −100%. The dashboard's metrics count deposits as returns. Today's P&L is wrong for positions traded today. When a price is missing, the code silently values the position at its cost basis. ~12 metrics are implemented 2–9 times each, and the copies disagree (risk-free rate 2% vs 3%, % vs fraction, FIFO vs average cost). |
+| **Backend architecture** | ⚠️ Inconsistent | Every endpoint is `async def` but uses a sync SQLAlchemy session, so it blocks the event loop. There is no repository layer, and routers (analytics, assets, auth) run queries and commits directly. There are no domain exceptions; 53 `detail=str(e)` leak internal errors. Three config systems are stacked. The only Alembic migration is a no-op, and `create_all` runs 3× on every start. `/assets/search` is shadowed by `/{asset_id}`. Symbol search exists in 5 places. The dashboard router is dead and never mounted. |
+| **Frontend** | ⚠️ Works, hard to extend | Zero tests. `api.js` is 1,775 lines. There are 4 symbol-search components and 2 chart components, and 24 hand-rolled modals. There is no data-fetching layer. The frontend recomputes P&L, Sortino, drawdown and allocation. USD and `$` are hardcoded in ~90 places. Tokens live in localStorage and there are 2 `innerHTML` XSS paths. Sentry is effectively disabled. The Vite dev server runs as "prod". |
+| **Tests** | ❌ Red | Unit tests: 69 pass, 23 fail, 12 fail to collect. Integration tests: 15 pass, 23 fail (wrong `/app/v1` prefix). Two import roots register the models twice. The most valuable test file (calculation service, 40 tests) cannot be collected. 11 services have zero tests. There are no frontend tests and no e2e tests. |
+| **Infra / CI** | ⚠️ Gated, still dev-only | *Fixed:* CI now runs `verify.sh --stack` on arm64, compose is hardened for the shared host, and secrets are out of images. *Open:* there is a single dev compose (reload, bind mounts, DEBUG), the API image is 1.9 GB and runs as root, there is no release or deploy process, and the remaining docs are stale. |
+
+> ✅ **Resolved:** the staged `docker-compose.yml` change.
+> - The broken `3000:5173` port is fixed.
+> - The `/media/...` bind mount was dropped on purpose: there is no production data yet.
+> - Data now lives in named volumes under the Docker data-root.
+
+---
+
+## 1. Guiding principles
+
+1. **One source of truth for every number.** All financial values are computed in one pure, tested Python *calculation engine*. Services, persisted snapshots and the frontend only consume its output and never recompute it.
+2. **Correctness is proven by tests.** Every metric gets golden-value tests: hand-calculated scenarios covering splits, dividends, FX, mid-period deposits and partial sells. These tests are written **before** the refactor touches that metric.
+3. **Same shape everywhere.** Every backend feature module has the same files, and every frontend feature folder has the same files. Adding a feature means copying a template.
+4. **Strangler, not big-bang.** Each phase ships as small, reviewable PRs. The app keeps working on `master` after every PR.
+5. **Production defaults, dev overrides.** The base compose file and Dockerfiles are production-grade. Dev conveniences such as reload, bind mounts and the Vite dev server live in an override.
+
+6. **Every commit is deployable.** No commit lands on `master` unless `scripts/verify.sh --stack` passes. Locally that means before pushing; in CI it is a required check. The test-quarantine ratchet only ever shrinks.
+
+---
+
+## 1b. Deployment target: the Jetson server
+
+| Fact | Value | Consequence |
+|---|---|---|
+| Board | Jetson AGX Xavier, 8× Carmel ARMv8.2, 512-core Volta GPU, **30 GB unified RAM** (CPU and GPU share it) | Build and run **linux/arm64** only. Any GPU memory use takes RAM from every other service. |
+| OS / SDK | JetPack 5.1.6 (L4T R35.6.5, Ubuntu 20.04, CUDA 11.4). Docker 26 with the `nvidia` runtime (not the default) and Compose v5 | GPU containers must use `runtime: nvidia` and L4T-matched base images (`nvcr.io/nvidia/l4t-*:r35.x`). |
+| Storage | eMMC root 28 GB (74% used). Docker data-root is `/mnt/samsung_ufs/docker_data` (234 GB) | Keep images slim, use named volumes (they land on the UFS disk), rotate logs, prune old images after deploys. |
+| Neighbours | ~35 containers. GPU users: immich (server and ML), jellyfin, ollama. Shared `nginx-proxy-manager` (80/443, Tailscale TLS), `homepage`, `glances`, `portainer`, `shared-postgres`/`shared-redis` | Portfolio is a guest: memory limits, no host ports for DB/Redis, only the UI published, and it joins `homepage_proxy-network`. |
+| Taken host ports | 80, 443, 2283, 3001, 3030, 3333, 5000, 5230, 7788, 8001, 8010, 8081, 8082, 8085, 8096, 8181, 8222, 8443, 8999, 9444, 11434 … | Prod UI on **3000**, prod API on loopback 8000, staging on 3100/8100. Ports can be overridden with `PORTFOLIO_UI_PORT` and `PORTFOLIO_API_PORT`. |
+| Repo | `github.com/vedantparikh/portfolia` is **public** | Free native arm64 GitHub runners (`ubuntu-24.04-arm`). **Never** register a self-hosted runner on the Jetson, because a public-repo PR could run code on the home server. |
+
+### GPU strategy: use the GPU where it actually pays off
+
+The request was "use the NVIDIA GPU as much as possible". The recommendation is to **not** run the portfolio API, worker or DB on the GPU, and to reach the GPU through services that already own it:
+
+- **The current workloads are tiny.** Hundreds of transactions and a few thousand price rows: every pandas/numpy calculation takes microseconds to milliseconds. The bottlenecks are Yahoo network I/O and DB round trips. Moving such small arrays to the GPU costs more in kernel-launch and copy overhead than the computation itself.
+- **No GPU dataframe library fits.** RAPIDS (cuDF) does not support Jetson/JetPack 5. CuPy and PyTorch need L4T base images (2–6 GB) that are tied to the JetPack version. They cannot run on GitHub runners or a developer laptop, which breaks principle 6 (the image we test must be the image we ship).
+- **The GPU is already contended.** Immich ML, jellyfin transcoding and ollama share the one GPU and the unified RAM.
+
+**Where the GPU is used (opt-in, behind interfaces, always with a CPU fallback):**
+
+| Use | How | When |
+|---|---|---|
+| **LLM features** via the existing GPU-accelerated `ollama` (`http://ollama:11434` on `homepage_proxy-network`) | An `LLMProvider` interface (ollama first). Uses: parsing statements from unknown brokers (fallback to the Trade Republic parser), categorising transactions, plain-language "explain my portfolio" summaries. Portfolio images stay CPU-only, and the model memory is shared with open-webui. | After Phase 3 (needs the clean transaction and import modules) |
+| **Monte Carlo / optimisation** (retirement projections, efficient frontier, VaR simulation with ≥100k paths) | A separate optional `portfolio-gpu-worker` image (`l4t-pytorch:r35.x`, `runtime: nvidia`, `profiles: [gpu]`) behind a `ComputeBackend` interface. A NumPy implementation is the default and is what CI tests. | Only when such a feature exists **and** a benchmark shows ≥5× speed-up at realistic sizes on the Xavier |
+| **OCR for scanned statements** | Reuse the host's `paperless` OCR pipeline, or Tesseract (CPU). GPU OCR is not worth an L4T image here. | With the importer work |
+
+Every GPU path gets a CI test against the CPU fallback, plus a manual benchmark script that runs on the Jetson.
+
+---
+
+## 2. Target architecture
+
+### 2.1 Backend layout (`python/app` → package `portfolia`)
+
+```
+python/
+  pyproject.toml            # single source of deps (uv + uv.lock); [dev] extra
+  alembic/ alembic.ini
+  src/portfolia/
+    main.py                 # create_app() factory: middleware, handlers, routers
+    core/
+      config.py             # pydantic-settings only, SecretStr, no environs/dotenv
+      db.py                 # engine, SessionLocal, get_session (UoW: commit/rollback per request)
+      errors.py             # DomainError → NotFound/Forbidden/Conflict/Validation/ExternalService
+      error_handlers.py     # one JSON envelope: {error:{code,message,details}, request_id}
+      logging.py            # structured JSON logs, configured once
+      middleware.py         # request-id, access log, timing, security headers
+      security.py           # PyJWT, bcrypt/argon2, hashed refresh tokens
+      redis.py              # thin typed wrapper on app.state (replaces pickle RedisClient)
+    domain/                 # PURE — no DB, no HTTP, no yfinance
+      money.py              # Decimal helpers, rounding policy, Currency
+      positions.py          # build_positions(txns): FIFO lots, fees, splits, transfers, dividends
+      valuation.py          # value_series(positions, prices, fx) → value / inflow / outflow per day
+      returns.py            # simple, TWR, XIRR/MWR, CAGR, period returns
+      risk.py               # vol, Sharpe, Sortino, max DD, Calmar, VaR/CVaR, beta/alpha
+      allocation.py         # weights, drift, rebalancing (shares, not $/100)
+      indicators/           # RSI(Wilder), MACD, BB(pop std), ATR(Wilder), ADX, CCI …
+    modules/                # one folder per feature, identical shape
+      auth/        router.py service.py repository.py schemas.py models.py
+      portfolios/  …
+      transactions/ …       # + importers/ (trade_republic, portfolia) + pdf export
+      assets/      …
+      market_data/ provider.py (MarketDataProvider protocol) yahoo.py cache.py router.py
+      fx/          provider.py service.py   # historical FX rates
+      analytics/   …        # orchestrates domain/* for a portfolio; owns snapshots
+      watchlists/  …
+      health/      router.py   # /health/live, /health/ready (503 when unhealthy)
+    api/v1.py               # explicit router aggregation; import errors fail fast
+    workers/                # scheduled price/FX refresh + snapshot rebuild (arq or APScheduler)
+  tests/
+    unit/ (domain/*, services with fakes)  integration/ (Postgres, API)  fixtures/ (recorded prices)
+```
+
+**Rules**
+- Routers are thin. They do validation, dependency injection and call a service. They never touch the DB and never contain `try/except Exception`.
+- Services hold the business flow, call repositories and `domain/*`, and raise `DomainError`s.
+- Repositories own all SQLAlchemy queries. They never commit; the request-scoped unit of work commits.
+- Ownership is checked once, in a dependency such as `get_owned_portfolio(portfolio_id, user)`, not in 15 copy-pasted blocks.
+- **Sync vs async decision (recommended):** keep sync SQLAlchemy 2.0 and make DB endpoints plain `def`, so FastAPI runs them in its threadpool. This is the smallest change that stops event-loop blocking. Use `Mapped[]` typed models and timezone-aware DateTimes everywhere. Any yfinance, SMTP or bcrypt call that remains in an `async` path is wrapped in `run_in_threadpool`.
+
+### 2.2 Calculation engine: the canonical rules
+
+| Topic | Rule |
+|---|---|
+| Money | `Decimal` in the domain layer and `Numeric(20,8)` for prices. Round only at the API boundary. |
+| Units | Percentages are returned as **percent** (15.0), everywhere, with a documented API convention. |
+| Cost basis | FIFO lots including fees. Realized P&L = proceeds − fees − lot cost. |
+| Corporate actions | SPLIT multiplies lot quantities and divides lot prices. TRANSFER_IN/OUT create/close lots at a given cost. DIVIDEND is a cash flow using the *given amount*, net of withholding tax (tax is recorded). |
+| Prices | **Unadjusted** closes for valuation (`auto_adjust=False`). Splits and dividends come from transactions, never from adjusted prices, so nothing is double counted. |
+| FX | Each transaction stores its trade currency. Each asset stores its quote currency. Every valuation converts to `portfolio.currency` with the FX rate **of that date**. GBp/ILA minor units are normalised. |
+| Missing price | Forward-fill up to N days. After that the holding is flagged `stale_price`/`price_unavailable` in the response. It is **never** silently valued at cost. |
+| Value history | Rebuilt from transactions day by day, using each day's holdings (never current qty × historical price). The calendar is the trading days of the portfolio's exchanges, and the series excludes today's incomplete candle. |
+| Returns | TWR from cash-flow-adjusted daily returns. MWR = XIRR with the opening value as a flow on period start. CAGR is derived from TWR. Period returns (1D/1W/1M/YTD/1Y/ALL) use calendar dates, not row offsets. |
+| Risk | Sample std, annualised by √252 over a trading-day series. Risk-free rate comes from **one** setting. Sortino uses downside deviation versus the MAR. Beta/alpha use returns aligned on common dates and return `None` (not 0) when undefined. |
+| Today's P&L | qty_at_prev_close × (P_now − P_prev_close) + Σ trades today × (P_now − trade_price). |
+| Benchmark | A shadow portfolio that buys and sells the benchmark with the *same* external flows, priced with a total-return index (e.g. `^SP500TR`). It reuses the same TWR/XIRR functions. |
+| NaN/Inf | These never reach the DB or JSON. Undefined metrics are `null`, with a reason. |
+| Derived state | `PortfolioAsset.quantity/cost_basis` become a **cache** rebuilt from transactions. The API no longer accepts client-written quantity or P&L. |
+
+---
+
+## 3. Phased roadmap
+
+Each step is roughly one PR. The order matters: **safety net → release platform → foundation → correctness → consolidation → frontend → hardening**.
+
+### Phase 0: Stabilise and create a safety net (≈1 week)
+| # | Work | Done when |
+|---|---|---|
+| 0.1 | ✅ Compose for the shared host: UI port fixed, API on loopback only, DB/Redis not published, named volumes, memory limits, log rotation (`fe0e6c3`) | Stack healthy, UI :3000 → 200 |
+| 0.2 | ✅ `.env.example` templates and `.dockerignore` files, so secrets are no longer baked into images (`f5579c3`). ⏳ **Still to do:** rotate the Brevo SMTP password and Sentry DSN, check history commits `508abfd`/`51bdb8d`, and add gitleaks to CI. | gitleaks clean, secrets rotated |
+| 0.3 | ✅ Repo hygiene: 59 dead or stray files removed (`a1b50e4`). ⏳ Rewrite the root README and `STARTUP_GUIDE.md`, and fix or delete `setup-docker.sh` and `scripts/setup_database.sh`. | README accurate |
+| 0.4 | One import root and one dependency file. Use a single `pyproject.toml` with uv and a lock file. Split dev and prod deps. Add `ta` for tests. Drop `schedule`, `requests`, `scipy` and `PyPDF2`. Set `requires-python >= 3.12`. Delete the empty `python/app/app/` dir, which shadows the `app` package. | `pytest --collect-only` collects with **0 errors** |
+| 0.5 | **Burn down `tests/quarantine.txt`** (50 entries: 8 uncollectable files, 42 xfail). Fix the `/app/v1` → `/api/v1` prefix and delete tests for removed APIs. Then turn on blocking lint: ruff on changed files via pre-commit, and eslint once `react/prop-types` is solved by TS or disabled. | Quarantine file empty, lint is a required check |
+| 0.6 | ✅ CI gate: `scripts/verify.sh --stack` on `ubuntu-24.04-arm` for every PR and every push to master (`e30df0f`). ⏳ Turn on GitHub branch protection: require the `verify` check, squash-merge only, no direct pushes to `master`. | A red check blocks merge |
+| 0.7 | **Characterisation tests.** Seed a fixed demo portfolio against recorded prices and snapshot the current API outputs (holdings, summary, performance). | We can see exactly which numbers each later PR changes, and every change is intentional |
+
+### Phase R: Release platform (≈1.5 weeks, right after Phase 0, *before* the big refactors)
+There is no production data yet, so this is the cheapest moment to set up how releases work. Every later phase then ships through it. See §7 for the full release strategy.
+
+| # | Work | Done when |
+|---|---|---|
+| R.1 | **Production images.** API: multi-stage `python:3.12-slim`, prod deps only, non-root, `uvicorn` workers with no reload, `alembic upgrade head` as a separate one-off `migrate` service. UI: `npm ci && vite build`, then `nginx:alpine` (non-root) serving `dist` with SPA fallback and `/api` proxied to the API. Postgres and Redis use the official images directly (drop the thin Dockerfiles). | Both images < 400 MB, start without bind mounts, and pass `verify.sh` |
+| R.2 | **Compose split.** `compose.yaml` holds the prod base, using images only (`image: ghcr.io/vedantparikh/portfolia-{api,web}:${PORTFOLIO_VERSION}`). `compose.dev.yaml` holds the build, bind mounts, reload and the Vite dev server. `compose.staging.yaml` holds the staging ports and volumes. Prod and staging have separate env files under `/home/bubbly/server/appdata/portfolia/env/` (outside the repo, `chmod 600`). | `docker compose -f compose.yaml config` has no `build:` and no bind mounts |
+| R.3 | **Release workflow** (`.github/workflows/release.yml`). On a `v*` tag, build `linux/arm64` images natively on `ubuntu-24.04-arm`, push to GHCR tagged `X.Y.Z`, `X.Y` and `sha-<short>`, and attach SBOM and provenance. On every master push, publish an `edge` tag. Use release-please (Conventional Commits, which the repo already uses) to open the release PR and maintain `CHANGELOG.md`. | Tagging `v0.1.0` publishes pullable images |
+| R.4 | **`scripts/deploy.sh <env> <version>`** on the Jetson: pull, then `pg_dump` backup, then `docker compose run --rm migrate`, then `up -d --wait`, then the smoke checks from `verify.sh`. On any failure it automatically redeploys the previous version, which is recorded in `env/<env>.deployed`. It prunes images older than the last 3 releases. | A deliberately broken release rolls itself back |
+| R.5 | **Staging environment** on the same Jetson: project `portfolio-staging`, UI :3100, its own volumes and seeded demo data. It auto-deploys `edge` through a systemd timer that runs `deploy.sh staging edge` every 15 minutes when the digest changes. | A merge to master shows up on staging within 15 minutes |
+| R.6 | **Backups and restore.** Run a nightly `pg_dump` to `/mnt/samsung_ufs/backups/portfolio/`, keeping 14 daily and 8 weekly copies, with an optional copy to Nextcloud. Add a `restore.sh`, and run a monthly restore drill into staging. | A restore drill passes |
+| R.7 | **Exposure and monitoring.** Add an nginx-proxy-manager host `portfolio.<tailnet>.ts.net` with TLS, upstream `portfolio-web:8080` on `homepage_proxy-network`. Add a homepage tile and status widget, keep Sentry for errors, and add an uptime check. | HTTPS URL works, and an outage shows up on homepage |
+
+### Phase 1: Backend foundation (≈1.5 weeks)
+| # | Work |
+|---|---|
+| 1.1 | Rewrite `config.py` as pure pydantic-settings. Collapse the duplicate keys (`SECRET_KEY`/`JWT_SECRET_KEY`, `ALGORITHM`/`JWT_ALGORITHM`). Fix `REFRESH_TOKEN_EXPIRE_DAYS`. Make Redis read its settings from config. |
+| 1.2 | Add an `app` factory with explicit router aggregation, deleting the ~230 lines of `try/import` blocks. Standardise prefixes and tags. Fix the `/assets/search` shadowing and the duplicate operationIds. |
+| 1.3 | Add `DomainError` classes, global handlers and the uniform error envelope. Remove the `detail=str(e)` leaks and the blanket `except Exception`. |
+| 1.4 | Add middleware for request-id, structured access logging and timing. Configure logging once and remove the `print()` calls. |
+| 1.5 | Add a unit-of-work session dependency and a `get_owned_portfolio` dependency. Make DB endpoints `def`. |
+| 1.6 | **Alembic as the only schema authority.** Autogenerate a baseline migration from the models. There is no production data yet, so it simply runs on empty DBs in every env, with no `stamp`. Do this **before** the first prod release (R.4) so prod is born on Alembic. Remove every `create_all` and the auto-seeding on startup. A CI check fails on model/migration drift. |
+| 1.7 | Models: move to SQLAlchemy 2 `Mapped[]`, make all DateTimes timezone-aware (in a migration), and widen price precision. |
+| 1.8 | Health endpoints: `/health/live` and `/health/ready` with real checks, returning 503 when unhealthy. Delete `health_router` (the test router) and the hardcoded timestamp. |
+| 1.9 | Auth hardening: python-jose → PyJWT, passlib → bcrypt (or argon2) directly, hash refresh tokens at rest, dummy hash on unknown users, remove the no-op `require_admin`. Optional: refresh token in an httpOnly cookie (see Phase 4.6). |
+
+### Phase 2: Calculation engine and correctness (≈2–3 weeks, the core of the work)
+Golden tests are written first for every item.
+
+| # | Work | Fixes |
+|---|---|---|
+| 2.1 | `domain/positions.py`: FIFO with fees, SPLIT, TRANSFER_IN/OUT and DIVIDEND (with a given amount and tax). Add schema validation: qty > 0 and price ≥ 0 per type. | C1, C2, M2, M3 |
+| 2.2 | Importer fix: the Trade Republic dividend amount and withholding tax are kept, and the currency is set. Run a data migration that recomputes affected rows. | C2 |
+| 2.3 | `modules/fx`: historical FX provider and cache. Add `asset.quote_currency`, and normalise GBp. | C3 |
+| 2.4 | `MarketDataProvider` interface with one Yahoo implementation: unadjusted closes and corporate-action feed, Redis pipeline cache, concurrency limit and backoff. Delete the 4 duplicate search paths so a single `/assets/search` remains. | C1, H5, perf |
+| 2.5 | `domain/valuation.py`: daily holdings × unadjusted price × FX on a trading calendar, with explicit stale/missing flags. | H4, H6, M5 |
+| 2.6 | `domain/returns.py` and `domain/risk.py`: TWR, XIRR (with opening value), CAGR, calendar-date period returns, and risk metrics with a single risk-free rate and percent units. | H1, H3, M6, M10 |
+| 2.7 | Benchmark shadow portfolio built on the same functions, with a total-return index. | C4, H2 |
+| 2.8 | Today's P&L formula and a correct previous close (time-aware rather than `iloc[0]` of 2 days). | H5 |
+| 2.9 | Allocation and rebalancing in shares. Fix the indicator formulas (Wilder RSI/ATR/ADX, population-std Bollinger, CCI, StochRSI). | M8, Low |
+| 2.10 | `PortfolioAsset` becomes a derived cache, rebuilt on every transaction write. Remove the client-writable quantity and P&L fields. | M1 |
+| 2.11 | Re-run the Phase 0.7 characterisation snapshots and review **each** changed number against a hand calculation or a broker statement. | — |
+
+### Phase 3: Consolidate backend modules (≈1.5 weeks)
+| # | Work |
+|---|---|
+| 3.1 | Merge `portfolio_service`, `portfolio_calculation_service`, `portfolio_analytics_service`, `portfolio_risk_metrics_service`, `portfolio_advance_risk_metrics` and `portfolio_dashboard_service` into `modules/portfolios` (CRUD and holdings) plus `modules/analytics` (which orchestrates the domain functions and owns snapshots). Remove the dead dashboard router and service, or mount them properly. |
+| 3.2 | Move all DB access out of the analytics, assets and auth routers into repositories. |
+| 3.3 | Snapshots are persisted by a **background worker** (daily close, plus on transaction change), not inside request handlers. The same worker refreshes prices and FX. |
+| 3.4 | Replace the pickle `RedisClient` with a typed wrapper. Delete `SingletonMeta`, `watchlist_alert_service` (or finish it), the FHIR leftovers and `fix_asset_quantities_and_pnl.py` (which becomes a management command: `portfolia recalc`). |
+| 3.5 | Move the PDF export and transaction export to portfolio currency and formatted money. Stop summing volume across currencies. |
+| 3.6 | Enforce mypy (strict on `domain/` and `core/`, gradually elsewhere). Add an OpenAPI snapshot test so contract changes are deliberate. |
+
+### Phase 4: Frontend (≈3 weeks, can start in parallel with Phase 2)
+| # | Work |
+|---|---|
+| 4.1 | Tooling: Vitest, React Testing Library, MSW and Playwright. Move ESLint 9 to flat config with jsx-a11y, `no-console` and `max-lines`. Add Prettier, husky with lint-staged, and `knip`. Remove unused deps and declare `prop-types`, or move to TS. |
+| 4.2 | **TypeScript, gradually** (`allowJs`, strict for new files). API types are generated from FastAPI's `openapi.json` (`openapi-typescript`), and CI fails on drift. |
+| 4.3 | Split `api.js` into `shared/api/client.ts` (axios, single-flight refresh, `ApiError`) plus a per-feature `api.ts`. Remove the duplicate endpoints and the `portfolios[0]` bug. |
+| 4.4 | Adopt **TanStack Query**: one hook per resource, invalidation on mutation, cache cleared on logout. Replace `assetCache` and `useAssetPreloader`. |
+| 4.5 | Build the `shared/ui` primitives (Button, Modal with focus trap and Esc, FormModal with react-hook-form and zod, Table, Card, Spinner, EmptyState, ErrorState). Collapse the 24 modals, the 4 search components (1 remains) and the 2 charts (1 remains). |
+| 4.6 | Security: remove `dangerouslySetInnerHTML` and the `innerHTML` tooltips. Keep a single `tokenStore`. Ideally put the refresh token in an httpOnly cookie, with the access token held in memory. |
+| 4.7 | **Delete all frontend financial math.** Display backend values only. One `formatMoney(value, currency, locale)`, with lint rules banning raw `toFixed` and `$`. |
+| 4.8 | Routing: `ProtectedLayout` (Sidebar and `<Outlet/>`), `React.lazy` per route, an error boundary, a 404 page, and Sentry fixed to read `VITE_SENTRY_DSN`. |
+| 4.9 | Feature-folder layout (see §2.3). Migrate feature by feature: auth → portfolios → transactions → assets → watchlists → analytics → dashboard. |
+
+### 2.3 Frontend layout
+```
+js/src/
+  app/        main.tsx App.tsx router.tsx providers.tsx ErrorBoundary.tsx
+  shared/     api/(client, errors, generated/) ui/ lib/format/ hooks/ charts/PriceChart.tsx
+  features/<name>/  api.ts queries.ts components/ pages/ __tests__/
+  test/       setup.ts msw/handlers/ fixtures/ renderWithProviders.tsx
+js/e2e/       Playwright specs
+```
+
+### Phase 5: Test pyramid and e2e (runs alongside every phase, finalised here)
+| Layer | Tool | Scope | Target |
+|---|---|---|---|
+| Domain unit | pytest + hypothesis | `domain/*`, with golden scenarios and property tests (e.g. TWR is invariant to deposits, quantity is never < 0) | ≥ 95% line coverage, 100% of metrics |
+| Service unit | pytest + fakes | Services with fake repo and provider, `fakeredis`, network blocked (`pytest-socket`) | ≥ 85% |
+| Integration | pytest + testcontainers Postgres 16 | Repositories, migrations up/down, API through httpx with a real DB and per-test transaction rollback | All endpoints happy path plus auth/ownership |
+| Contract | OpenAPI snapshot + schemathesis (nightly) | No unintended API changes, no 500s on fuzzed input | — |
+| Frontend unit | Vitest + RTL + MSW | Formatters, API client refresh logic, forms, key components | ≥ 70% on `shared/` and `features/*/` |
+| E2E | Playwright against the prod compose profile + deterministic seed (recorded prices, no live Yahoo) | Register/login → create portfolio → add buy/sell/dividend/split → dashboard numbers equal the golden values → import Trade Republic PDF → watchlist | Runs on PRs (smoke) and nightly (full) |
+
+**Golden scenario fixture set** (shared by domain tests, integration tests and e2e):
+1. Single buy, flat price
+2. Buy and partial sell with fees (FIFO)
+3. 2:1 split mid-period
+4. Dividend with withholding tax
+5. Mid-period deposit in a flat market (TWR = 0%)
+6. EUR portfolio holding a USD asset with an FX move
+7. Missing price days and holidays
+8. Trade executed today (today's P&L)
+9. Benchmark comparison with identical flows
+
+### Phase 6: Production hardening (≈1 week; the deployment basics moved to Phase R)
+| # | Work |
+|---|---|
+| 6.1 | Add a worker service (prices, FX, snapshots) to the release images and compose files, with its own memory limit. |
+| 6.2 | Redis requires a password. Add a Trivy scan to the release workflow, which fails on critical CVEs. Run Playwright e2e against the release images in staging before promotion. |
+| 6.3 | Optional GPU profile (§1b): `portfolio-gpu-worker` and the ollama `LLMProvider`, only once a feature needs them. |
+| 6.4 | Docs: one root README (quick start, architecture diagram, dev/staging/prod commands, runbooks for deploy, rollback and restore), `docs/adr/` (sync DB, calc engine conventions, FX source, GPU strategy, release strategy), and `CONTRIBUTING.md` ("how to add a feature module"). |
+
+---
+
+## 4. Decisions
+
+Answered:
+- **Existing data:** none yet. No data migration or recompute report is needed, and the Phase 1.6 Alembic baseline can be created fresh with no `stamp`.
+- **Compose intent:** drop the `/media` bind mount and keep DB/Redis private. Done in 0.1.
+- **GPU:** use it via shared GPU services (ollama) and an optional GPU worker profile only where benchmarks justify it (§1b).
+
+Open:
+1. **Multi-currency:** do you need full FX support (EUR portfolio holding USD assets)? That is my recommendation, given Trade Republic. Which FX source: Yahoo `EURUSD=X` (free) or ECB rates?
+2. **Sync vs async DB:** I recommend sync SQLAlchemy with `def` endpoints, which is simpler and fits the Jetson. The alternative is a full AsyncSession/asyncpg migration.
+3. **TypeScript migration on the frontend:** gradual (recommended) or not at all.
+4. **Refresh token in an httpOnly cookie:** this changes the auth flow between frontend and backend. Recommended, but it is optional.
+5. **Public hostname:** Tailscale-only (`*.ts.net`, recommended) or exposed to the internet?
+6. **Staging auto-deploy:** a systemd timer pulling `edge` (recommended), or manual `deploy.sh staging edge` only?
+
+## 5. Risks
+
+| Risk | Mitigation |
+|---|---|
+| Numbers change for users after Phase 2 | Characterisation snapshots (0.7), a per-number review (2.11) and a changelog entry |
+| Prod gets data before Alembic owns the schema | Land 1.6 before the first `deploy.sh prod`, and make `alembic check` (model drift) a CI gate |
+| Yahoo rate limits or outages | Provider abstraction, cache, backoff, and a background worker (requests never call Yahoo synchronously) |
+| A long-running refactor drifts from master | Small PRs, the strangler approach, and CI gates from week 1 |
+| Portfolio starves the other services on the shared Jetson (immich, jellyfin, ollama) | Memory limits per service, log rotation, no GPU by default, image pruning in `deploy.sh` |
+| A bad release breaks prod | Staging soak, `deploy.sh` with automatic rollback, a `pg_dump` before every migration, and expand/contract migrations so the previous version can still run |
+| arm64-only issues (wheels, native deps) | CI builds and tests natively on `ubuntu-24.04-arm` with the same images that are deployed |
+
+**Rough total:** 9–11 weeks for one developer, with Phase R added. Phases 2 and 4 can overlap.
+
+---
+
+## 6. Progress log
+
+| Date | Branch | Commit | What |
+|---|---|---|---|
+| 2026-10-14 | `chore/repo-cleanup` | `a1b50e4` | Removed 59 dead/stray files (no behaviour change) |
+| 2026-10-14 | `chore/release-foundation` | `fe0e6c3` | Compose for the shared Jetson host |
+| 2026-10-14 | `chore/release-foundation` | `f5579c3` | Env templates and `.dockerignore` |
+| 2026-10-14 | `chore/release-foundation` | `e30df0f` | `verify.sh` gate, test quarantine ratchet, arm64 CI |
+
+---
+
+## 7. Release strategy
+
+**Branching: trunk-based.**
+- `master` is always deployable.
+- Work happens on short-lived branches (`feat/…`, `fix/…`, `chore/…`) and merges by squash-merge PR after the required `verify` check passes.
+- Unfinished features hide behind env flags (`FEATURE_*`), not long-lived branches.
+- Commit messages follow Conventional Commits, which drive the version bump and changelog.
+
+**Versioning: SemVer.**
+- `feat` produces a minor bump, `fix` a patch, and `feat!` or `BREAKING CHANGE` a major (we stay in 0.x until Phase 2 is done).
+- release-please opens a release PR; merging it creates the `vX.Y.Z` tag and updates `CHANGELOG.md`.
+
+**Artifacts are immutable images in GHCR**, built once and promoted unchanged:
+
+| Tag | Produced by | Used by |
+|---|---|---|
+| `sha-<short>` | every master push | traceability and bisecting |
+| `edge` | every master push | staging (auto) |
+| `X.Y.Z`, `X.Y` | release tag | production (pinned to `X.Y.Z`) |
+
+**Environments, all on the Jetson:**
+
+| Env | Compose project | Source | Port | Data | Deploy |
+|---|---|---|---|---|---|
+| dev | `portfolio-dev` | local build, bind mounts, reload | 3000/8000 (moves to 3200/8200 once prod takes 3000) | dev volumes | `docker compose -f compose.yaml -f compose.dev.yaml up` |
+| staging | `portfolio-staging` | `edge` | 3100 | seeded demo data, reset allowed | auto (timer) |
+| prod | `portfolio` | `X.Y.Z` | 3000, plus HTTPS via NPM | real data, nightly backups | manual `scripts/deploy.sh prod X.Y.Z` |
+
+**Promotion flow:** PR → `verify` (tests, build, arm64 stack smoke) → squash merge → `edge` published → staging auto-deploys and soaks → release PR merged → `vX.Y.Z` images → `deploy.sh prod X.Y.Z` (backup, migrate, up, smoke, auto-rollback on failure).
+
+**Deploy style:** recreate, with health-gated `up --wait`. Expect a few seconds of downtime, which is acceptable for a personal app. If zero downtime ever matters, use blue/green: two `web` stacks (`portfolio-blue`/`portfolio-green`) with NPM switching the upstream.
+
+**Database migrations: expand → migrate → contract.**
+- A release may only *add* columns or tables, or backfill data.
+- Destructive changes ship one release later, so the previous image still runs against the new schema. This keeps rollback a pure image swap.
+- If a release must be irreversible, `deploy.sh` requires `--allow-irreversible` and takes a fresh backup first.
+
+**Hotfixes:** branch from master (trunk is deployable), use a `fix:` commit, merge, and release a patch. Never patch production containers by hand.
+
+**Pull-based deploys:** the Jetson pulls from GHCR. GitHub never gets SSH or a self-hosted runner on the home server, because the repo is public.
+
+**What "doesn't ship broken" means, in layers:**
+1. Locally, `scripts/verify.sh` before push (a pre-push hook is optional).
+2. On the PR, the required `verify` check runs the same script on arm64.
+3. Images are built once per tag; whatever was verified is what gets deployed.
+4. Staging soaks `edge` before every prod release.
+5. `deploy.sh` runs smoke checks after deploy and rolls back automatically to the last good version.
+6. Sentry and an uptime check alert after a release.

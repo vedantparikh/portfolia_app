@@ -1,4 +1,13 @@
-services:    
+name: portfolio
+
+# Shared Jetson host: cap memory, rotate logs, publish only the UI.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
   app:
     build: ./js
     volumes:
@@ -10,7 +19,7 @@ services:
     environment:
       - DOCKER_API_URL=http://api:8000
     ports:
-      - 3456:3000
+      - "${PORTFOLIO_UI_PORT:-3000}:3000"
     depends_on:
       api:
         condition: service_healthy
@@ -18,19 +27,25 @@ services:
       - portfolio_network
       - homepage_proxy-network
     restart: unless-stopped
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: 1g
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-      
+
   api:
-    build: 
+    build:
       context: ./python/app
       dockerfile: Dockerfile
+    # Loopback only: the UI reaches the API through its /api proxy.
     ports:
-      - "8000:8000"
+      - "127.0.0.1:${PORTFOLIO_API_PORT:-8000}:8000"
     env_file:
       - ./python/app/.env.docker
     environment:
@@ -42,15 +57,14 @@ services:
       redis:
         condition: service_healthy
     volumes:
-      # Development: Mount source code for live reload (exclude cache)
-      - ./python/app/app:/app/app:delegated
-      - ./python/app/schemas:/app/schemas:delegated
+      # Development: Mount source code for live reload
       - ./python/app/utils:/app/utils:delegated
       - ./python/app/api:/app/api:delegated
       - ./python/app/alembic:/app/alembic:delegated
       - ./python/app/alembic.ini:/app/alembic.ini:delegated
       - ./python/app/core:/app/core:delegated
       - ./python/app/config.py:/app/config.py:delegated
+      - ./python/app/main.py:/app/main.py:delegated
       - ./python/app/start_api.py:/app/start_api.py:delegated
       - ./python/app/start_api.sh:/app/start_api.sh:delegated
       - ./python/app/requirements.txt:/app/requirements.txt:delegated
@@ -59,6 +73,11 @@ services:
     networks:
       - portfolio_network
     restart: unless-stopped
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: 2g
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
       interval: 30s
@@ -66,21 +85,23 @@ services:
       retries: 3
       start_period: 40s
 
-
   postgres:
     build:
       context: ./python/app
       dockerfile: Dockerfile.postgres
     env_file:
       - ./python/app/.env.docker
-    # Bound to localhost only: reachable from the host (or via SSH tunnel), not the network
-    ports:
-      - "127.0.0.1:5432:5432"
+    # No host port: only reachable on portfolio_network (use `docker compose exec postgres psql`).
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - portfolio_network
     restart: unless-stopped
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: 1g
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
@@ -94,14 +115,16 @@ services:
       dockerfile: Dockerfile.redis
     env_file:
       - ./python/app/.env.docker
-    # Bound to localhost only: reachable from the host (or via SSH tunnel), not the network
-    ports:
-      - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
     networks:
       - portfolio_network
     restart: unless-stopped
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: 256m
     healthcheck:
       test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$REDIS_PASSWORD\" redis-cli ping | grep -q PONG"]
       interval: 10s
@@ -109,17 +132,13 @@ services:
       retries: 5
       start_period: 30s
 
+# Named volumes live under the Docker data-root (/mnt/samsung_ufs/docker_data on the Jetson).
 volumes:
   postgres_data:
-    driver: local
-    driver_opts:
-      type: 'none'
-      o: 'bind'
-      device: '/media/vparikh/docker_drive/portfolia-postgres-data'
   redis_data:
 
 networks:
   portfolio_network:
     driver: bridge
-  homepage_proxy-network:    
+  homepage_proxy-network:
     external: true
