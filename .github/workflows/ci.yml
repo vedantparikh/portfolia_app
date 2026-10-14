@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: verify (arm64, same as the Jetson)
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: portfolio
+    steps:
+      - uses: actions/checkout@v4
+      - name: Env files from templates
+        run: |
+          cp python/app/.env.example python/app/.env.docker
+          cp js/.env.example js/.env.docker
+      - name: External proxy network (exists on the server)
+        run: docker network create homepage_proxy-network
+      - name: Tests, build and stack smoke
+        run: scripts/verify.sh --stack
+      - name: Stack logs
+        if: failure()
+        run: docker compose logs --no-color --tail 200
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
+
+  frontend-lint:
+    name: frontend lint (report only until REFACTOR_PLAN Phase 0.5)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: portfolio/js
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "21"
+      - run: npm install --no-audit --no-fund
+      - run: npm run lint
