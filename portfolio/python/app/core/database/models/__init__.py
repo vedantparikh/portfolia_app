@@ -9,7 +9,7 @@ from .portfolio_analytics import (
     RebalancingEvent,
     RiskLevel,
 )
-from .transaction import ManualEntry, Transaction, TransactionType
+from .transaction import ManualEntry, Transaction, TransactionStatus, TransactionType
 from .user import User, UserProfile, UserSession
 from .watchlist import Watchlist, WatchlistAlert, WatchlistItem, WatchlistPerformance
 
@@ -24,6 +24,7 @@ __all__ = [
     "Asset",
     "MarketIndex",
     "Transaction",
+    "TransactionStatus",
     "TransactionType",
     "ManualEntry",
     "Watchlist",

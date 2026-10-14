@@ -46,7 +46,8 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     else:
         expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
-    to_encode.update({"exp": expire, "type": "access"})
+    # jti makes every token unique, even when issued in the same second
+    to_encode.update({"exp": expire, "type": "access", "jti": secrets.token_urlsafe(16)})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
@@ -59,7 +60,8 @@ def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) 
     else:
         expire = datetime.now(timezone.utc) + timedelta(minutes=REFRESH_TOKEN_EXPIRE_MINUTES)
 
-    to_encode.update({"exp": expire, "type": "refresh"})
+    # jti makes every token unique, so refresh-token rotation always changes the token
+    to_encode.update({"exp": expire, "type": "refresh", "jti": secrets.token_urlsafe(16)})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
@@ -83,9 +85,19 @@ def verify_token(token: str, token_type: str = "access") -> dict:
         )
 
 
-def create_tokens(user_id: int, email: str, username: str) -> dict:
-    """Create both access and refresh tokens for a user."""
-    data = {"sub": str(user_id), "email": email, "username": username}
+def create_tokens(user_id: int, email: str, username: str, session_id: str) -> dict:
+    """
+    Create both access and refresh tokens for a user.
+
+    Both tokens carry the session id (`sid`) so they can be revoked server-side by
+    deactivating the corresponding UserSession.
+    """
+    data = {
+        "sub": str(user_id),
+        "email": email,
+        "username": username,
+        "sid": session_id,
+    }
 
     access_token = create_access_token(data=data)
     refresh_token = create_refresh_token(data=data)
@@ -152,16 +164,38 @@ def rate_limit_key(identifier: str, action: str) -> str:
 def is_rate_limited(
     identifier: str, action: str, max_attempts: int, window_seconds: int
 ) -> bool:
-    """Check if an action is rate limited."""
-    # This would typically integrate with Redis for actual rate limiting
-    # For now, return False (not rate limited)
-    return False
+    """
+    Count an attempt for (action, identifier) and report whether the limit is exceeded.
+
+    Uses a fixed window counter in Redis. Fails open if Redis is unavailable so an
+    outage does not lock every user out.
+    """
+    try:
+        count = get_redis().incr_with_ttl(
+            rate_limit_key(identifier, action), window_seconds
+        )
+    except Exception as e:
+        logger.error(f"Rate limit check failed for {action}: {e}")
+        return False
+    return count is not None and count > max_attempts
+
+
+def enforce_rate_limit(
+    identifier: str, action: str, max_attempts: int, window_seconds: int
+) -> None:
+    """Raise HTTP 429 if the action is rate limited for this identifier."""
+    if is_rate_limited(identifier, action, max_attempts, window_seconds):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many attempts. Please try again later.",
+            headers={"Retry-After": str(window_seconds)},
+        )
 
 
 def validate_token_expiry(token_exp: Union[int, datetime]) -> bool:
     """Validate if token is expired."""
     if isinstance(token_exp, int):
-        exp_datetime = datetime.fromtimestamp(token_exp)
+        exp_datetime = datetime.fromtimestamp(token_exp, tz=timezone.utc)
     else:
         exp_datetime = token_exp
 
@@ -209,13 +243,13 @@ def store_reset_token(
 
         # Store in Redis with expiration
         key = f"reset_token:{token}"
-        redis_client.set(
+        stored = redis_client.set(
             key=key,
             ex_seconds=expires_in_minutes * 60,  # Convert minutes to seconds
             value=token_data,
         )
 
-        return True
+        return bool(stored)
     except Exception as e:
         logger.error(f"Failed to store reset token: {e}")
         return False
@@ -268,41 +302,35 @@ def validate_reset_token(token: str) -> Tuple[bool, Optional[dict], Optional[str
         return False, None, "Token validation failed"
 
 
-def mark_reset_token_used(token: str) -> bool:
+def consume_reset_token(token: str) -> Tuple[bool, Optional[dict], Optional[str]]:
     """
-    Mark a reset token as used.
+    Atomically validate and invalidate a password reset token.
 
-    Args:
-        token: The reset token to mark as used
+    The token is removed with GETDEL, so two concurrent requests cannot both use it.
 
     Returns:
-        bool: True if marked successfully, False otherwise
+        Tuple[bool, Optional[dict], Optional[str]]: (is_valid, token_data, error_message)
     """
     try:
-        redis_client = get_redis()
+        token_data = get_redis().getdel(f"reset_token:{token}")
 
-        if not redis_client:
-            return False
+        if not token_data:
+            return False, None, "Token not found or expired"
 
-        key = f"reset_token:{token}"
-        token_json = redis_client.get(key)
+        if token_data.get("is_used", False):
+            return False, None, "Token has already been used"
 
-        if not token_json:
-            return False
+        created_at = datetime.fromisoformat(token_data["created_at"]).replace(
+            tzinfo=utc
+        )
+        if datetime.now(utc) - created_at > timedelta(minutes=60):
+            return False, None, "Token has expired"
 
-        # Update token data
-        token_data = token_json
-        token_data["is_used"] = True
+        return True, token_data, None
 
-        # Store updated data
-        redis_client.set(
-            key=key, ex_seconds=3600, value=token_data
-        )  # Keep for 1 hour after use
-
-        return True
     except Exception as e:
-        logger.error(f"Failed to mark reset token as used: {e}")
-        return False
+        logger.error(f"Failed to consume reset token: {e}")
+        return False, None, "Token validation failed"
 
 
 def store_verification_token(
@@ -336,13 +364,13 @@ def store_verification_token(
 
         # Store in Redis with expiration
         key = f"verification_token:{token}"
-        redis_client.set(
+        stored = redis_client.set(
             key=key,
             ex_seconds=expires_in_hours * 3600,  # Convert hours to seconds
             value=token_data,
         )
 
-        return True
+        return bool(stored)
     except Exception as e:
         logger.error(f"Failed to store verification token: {e}")
         return False

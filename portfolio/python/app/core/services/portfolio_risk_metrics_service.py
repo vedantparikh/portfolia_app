@@ -84,21 +84,8 @@ class PortfolioRiskMetricsService:
                     "Could not generate portfolio value history. Not enough data.",
                 )
 
-            # Calculate daily returns ADJUSTED for cash flows
-            # Get the previous day's market value
-            prev_day_value = portfolio_history_df["value"].shift(1)
-
-            # Calculate the adjusted denominator: Start Value + Net Cash Flow
-            # A BUY (positive cash flow) increases the base
-            # A SELL (negative cash flow) decreases the base
-            denominator = prev_day_value + portfolio_history_df["net_cash_flow"]
-
-            # Calculate the true daily return
-            daily_returns = (portfolio_history_df["value"] / denominator - 1).dropna()
-
-            # Replace NaN/inf values that can occur on days with full withdrawal
-            daily_returns.replace([np.inf, -np.inf], np.nan, inplace=True)
-            daily_returns.dropna(inplace=True)
+            # Cash-flow-adjusted daily returns (see compute_daily_returns)
+            daily_returns = portfolio_history_df["daily_return"].dropna()
 
             if len(daily_returns) < 2:
                 return self._empty_risk_result(
@@ -335,14 +322,12 @@ class PortfolioRiskMetricsService:
             ) - 1
             excess_returns = daily_returns - daily_risk_free_rate
 
-            # Calculate downside deviation (std dev of only negative excess returns)
-            downside_returns = excess_returns[excess_returns < 0]
-            if downside_returns.empty:
-                return np.inf  # Or some other indicator of no downside risk
-            downside_deviation = downside_returns.std()
+            # Downside deviation: semideviation below the target (0 excess return),
+            # averaged over ALL periods, not just the negative ones
+            downside_deviation = np.sqrt((excess_returns.clip(upper=0) ** 2).mean())
 
             if downside_deviation == 0:
-                return 0.0
+                return None  # No downside observed: ratio is undefined (not JSON-safe inf)
 
             # Calculate and annualize Sortino
             avg_excess_return = excess_returns.mean()
@@ -372,19 +357,14 @@ class PortfolioRiskMetricsService:
         try:
             # max_drawdown_pct is already calculated as a negative percentage (e.g., -20.0)
             if max_drawdown_pct is None or max_drawdown_pct == 0:
-                return np.inf  # Avoid division by zero
+                return None  # Undefined without a drawdown (not JSON-safe inf)
 
-            # Calculate annualized return
+            # Geometric annualisation; returns are business-day observations
             num_days = len(daily_returns)
-            if num_days < self.TRADING_DAYS_PER_YEAR:
-                # If less than a year, don't annualize or handle as per business logic
-                total_return = (1 + daily_returns).prod() - 1
-                # Simple scaling (can be debated, geometric is better)
-                annualized_return = total_return * (self.TRADING_DAYS_PER_YEAR / num_days)
-            else:
-                # Proper geometric annualization
-                total_return = (1 + daily_returns).prod()
-                annualized_return = total_return ** (self.TRADING_DAYS_PER_YEAR / num_days) - 1
+            if num_days == 0:
+                return None
+            growth = (1 + daily_returns).prod()
+            annualized_return = growth ** (self.TRADING_DAYS_PER_YEAR / num_days) - 1
 
             calmar_ratio = annualized_return / abs(max_drawdown_pct / 100)
             return float(calmar_ratio)

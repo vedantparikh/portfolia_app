@@ -4,7 +4,7 @@ from typing import List, Tuple
 
 from sqlalchemy.orm import Session
 
-from core.database.models import Transaction
+from core.database.models import Asset, Transaction, TransactionType
 from core.schemas.account_statements import (
     AccountStatementProvider,
     BulkCreateSummary,
@@ -83,6 +83,10 @@ class AccountStatementService:
         created_transaction_models = []
         errors = []
         affected_asset_ids = set()
+        owned_asset_ids = {
+            asset_id
+            for (asset_id,) in self.db.query(Asset.id).filter(Asset.user_id == user_id)
+        }
 
         # 2. Prepare all transaction models and add them to the session
         for i, item in enumerate(transactions_data):
@@ -92,13 +96,21 @@ class AccountStatementService:
                 ]:
                     continue
 
+                if item.asset_id not in owned_asset_ids:
+                    raise ValueError(f"Asset {item.asset_id} not found")
+
+                transaction_type = TransactionType(
+                    getattr(item.transaction_type, "value", item.transaction_type)
+                )
                 transaction = Transaction(
                     portfolio_id=portfolio_id,
                     asset_id=item.asset_id,
-                    transaction_type=item.transaction_type,
+                    transaction_type=transaction_type,
                     quantity=item.quantity,
                     price=item.price,
-                    total_amount=item.total_amount,
+                    total_amount=Transaction.compute_total_amount(
+                        transaction_type, item.quantity, item.price, item.fees
+                    ),
                     transaction_date=datetime.strptime(
                         item.transaction_date, "%Y-%m-%d"
                     ).replace(tzinfo=timezone.utc),
@@ -112,21 +124,23 @@ class AccountStatementService:
             except Exception as e:
                 errors.append(f"Data item {i + 1} ('{item.notes}'): {str(e)}")
 
-        # 3. Perform a single commit for all valid transactions
+        # 3. Insert all valid transactions and recalculate each affected asset once,
+        #    in a single database transaction so holdings never drift from history
         try:
             if created_transaction_models:
+                self.db.flush()
+                for asset_id in affected_asset_ids:
+                    await self.portfolio_service.recalculate_asset_state(
+                        portfolio_id, asset_id, commit=False
+                    )
                 self.db.commit()
         except Exception as e:
             self.db.rollback()
             return [], BulkCreateSummary(
                 total_created=0,
                 total_failed=len(transactions_data),
-                errors=[f"Database commit failed, rolling back all changes: {e}"] + errors,
+                errors=[f"Import failed, rolling back all changes: {e}"] + errors,
             )
-
-        # 4. Recalculate the state for each affected asset ONCE
-        for asset_id in affected_asset_ids:
-            await self.portfolio_service.recalculate_asset_state(portfolio_id, asset_id)
 
         # 5. Prepare the successful response data
         final_created_list = [

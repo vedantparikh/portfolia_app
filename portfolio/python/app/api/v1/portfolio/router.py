@@ -310,7 +310,13 @@ async def get_portfolio_holdings(
 ):
     """Get detailed portfolio holdings with current values and P&L."""
     portfolio_service = PortfolioService(db)
-    holdings = await portfolio_service.get_portfolio_holdings(portfolio_id)
+    holdings = await portfolio_service.get_user_portfolio_holdings(
+        portfolio_id, current_user.id
+    )
+    if holdings is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
+        )
     return holdings
 
 

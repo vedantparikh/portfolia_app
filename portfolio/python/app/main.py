@@ -3,13 +3,15 @@ import time
 from contextlib import asynccontextmanager
 
 import sentry_sdk
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from config import settings
 from core.database.connection import create_tables, init_db
 from core.database.init_db import init_database
 from core.logging_config import get_logger, setup_logging
+from core.services.portfolio_service import OversellError
 from health_check import router as health_router
 
 # Setup comprehensive logging
@@ -112,11 +114,18 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+@app.exception_handler(OversellError)
+async def oversell_error_handler(request: Request, exc: OversellError):
+    """A sell larger than the position is a client error, not a server failure."""
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.ALLOWED_ORIGINS,
-    allow_credentials=True,
+    # Browsers reject credentialed requests to a wildcard origin; never allow both.
+    allow_credentials="*" not in settings.ALLOWED_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )

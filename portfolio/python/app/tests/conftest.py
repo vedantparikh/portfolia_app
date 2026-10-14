@@ -31,8 +31,9 @@ os.environ["JWT_SECRET_KEY"] = "test-jwt-secret-key-for-testing-only"
 os.environ["FORCE_SQLITE"] = "true"
 
 # Import after setting environment variables to ensure test config is used
-from app.core.database.connection import Base, get_db
-from app.main import app
+from core.database.connection import get_db
+from core.database.models.base import Base
+from main import app
 
 
 # Create test database

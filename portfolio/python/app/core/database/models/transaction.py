@@ -1,4 +1,5 @@
 import enum
+from decimal import Decimal
 
 from sqlalchemy import (
     Column,
@@ -115,10 +116,28 @@ class Transaction(Base):
         Index("idx_transactions_asset_date", "asset_id", "transaction_date"),
     )
 
-    @property
-    def net_amount(self) -> float:
-        """Calculate net amount after fees and taxes."""
-        return float(self.total_amount) - float(self.fees) - float(self.taxes)
+    @staticmethod
+    def compute_total_amount(
+        transaction_type: "TransactionType",
+        quantity: Decimal,
+        price: Decimal,
+        fees: Decimal | None = None,
+        taxes: Decimal | None = None,
+    ) -> Decimal:
+        """
+        Cash actually moved by a transaction, which is what `total_amount` stores.
+
+        BUY:  quantity * price + fees + taxes  (cash paid; becomes the cost basis)
+        SELL: quantity * price - fees - taxes  (net proceeds received)
+        Other types: quantity * price
+        """
+        gross = Decimal(quantity) * Decimal(price)
+        costs = Decimal(fees or 0) + Decimal(taxes or 0)
+        if transaction_type == TransactionType.BUY:
+            return gross + costs
+        if transaction_type == TransactionType.SELL:
+            return gross - costs
+        return gross
 
     @property
     def is_buy(self) -> bool:

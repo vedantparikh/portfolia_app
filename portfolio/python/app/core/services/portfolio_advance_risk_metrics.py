@@ -71,12 +71,12 @@ class PortfolioAdvanceRiskMetricsService:
             if portfolio_history_df is None or portfolio_history_df.empty:
                 return self._empty_result(portfolio_id, "Could not generate portfolio history.", period)
 
-            # Calculate true daily returns, adjusted for cash flows
-            prev_day_value = portfolio_history_df["value"].shift(1)
-            denominator = prev_day_value + portfolio_history_df["net_cash_flow"]
-            portfolio_daily_returns = (portfolio_history_df["value"] / denominator - 1).replace(
-                [np.inf, -np.inf], np.nan
-            ).dropna()
+            # Cash-flow-adjusted daily returns (see compute_daily_returns)
+            portfolio_daily_returns = portfolio_history_df["daily_return"].dropna()
+
+            # "inception" has no start date: use the first day of the history
+            if start_date is None:
+                start_date = portfolio_history_df.index[0].to_pydatetime()
 
             # 1b. Get Current Holdings and Weights using PortfolioService
             # This is the basis for concentration and diversification metrics

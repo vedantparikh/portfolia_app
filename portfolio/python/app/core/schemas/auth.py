@@ -98,12 +98,19 @@ class Token(BaseModel):
     expires_in: int
 
 
+class RefreshTokenRequest(BaseModel):
+    """Schema for exchanging a refresh token for a new token pair."""
+
+    refresh_token: str
+
+
 class TokenData(BaseModel):
     """Schema for token payload data."""
 
     user_id: Optional[int] = None
     email: Optional[str] = None
     username: Optional[str] = None
+    session_id: Optional[str] = None
     exp: Optional[datetime] = None
 
 

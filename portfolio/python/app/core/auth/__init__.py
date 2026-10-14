@@ -20,7 +20,8 @@ __all__ = [
     "mark_verification_token_used",
     "store_reset_token",
     "validate_reset_token",
-    "mark_reset_token_used",
+    "consume_reset_token",
+    "enforce_rate_limit",
     # Dependencies
     "get_current_user",
     "get_current_active_user",

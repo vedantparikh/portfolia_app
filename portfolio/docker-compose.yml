@@ -73,8 +73,9 @@ services:
       dockerfile: Dockerfile.postgres
     env_file:
       - ./python/app/.env.docker
+    # Bound to localhost only: reachable from the host (or via SSH tunnel), not the network
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -93,15 +94,16 @@ services:
       dockerfile: Dockerfile.redis
     env_file:
       - ./python/app/.env.docker
+    # Bound to localhost only: reachable from the host (or via SSH tunnel), not the network
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
     networks:
       - portfolio_network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$REDIS_PASSWORD\" redis-cli ping | grep -q PONG"]
       interval: 10s
       timeout: 5s
       retries: 5
