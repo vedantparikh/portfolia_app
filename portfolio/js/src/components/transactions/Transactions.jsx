@@ -459,7 +459,7 @@ const Transactions = () => {
               </button>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-2">
               {visibleTransactions.map((transaction, index) => (
                 <TransactionCard
                   key={`${transaction.id}-${index}`}
