@@ -30,7 +30,7 @@ docker run --rm --user "$(id -u):$(id -g)" \
   -e PYTHONPATH=/app:/tmp/extra -e PYTHONDONTWRITEBYTECODE=1 \
   "$PROJECT-api" sh -c '
     pip install -q --disable-pip-version-check --no-deps --target /tmp/extra ta &&
-    python -c "import main; assert len(main.app.routes) > 100" &&
+    python -c "import main; assert len(main.app.openapi()[\"paths\"]) >= 90" &&
     python -m pytest tests -q -p no:cacheprovider'
 
 step "frontend: production build"
