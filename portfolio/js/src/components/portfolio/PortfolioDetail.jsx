@@ -11,7 +11,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { analyticsAPI, portfolioAPI } from "../../services/api";
+import { portfolioAPI } from "../../services/api";
 import { formatCurrency } from "../../utils/formatters.jsx";
 import {
   BenchmarkComparison,
@@ -25,18 +25,15 @@ const PortfolioDetail = ({ portfolio }) => {
   const [holdings, setHoldings] = useState([]);
   const [loadingHoldings, setLoadingHoldings] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
-  const [, setAnalyticsData] = useState(null);
-  const [, setLoadingAnalytics] = useState(false);
   const [sortConfig, setSortConfig] = useState({
     key: "value",
     direction: "descending",
   });
 
-  // Load portfolio holdings and analytics
+  // Load portfolio holdings
   useEffect(() => {
     if (portfolio && portfolio.id) {
       loadHoldings();
-      loadAnalyticsData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reload only when portfolio changes
   }, [portfolio]);
@@ -88,30 +85,6 @@ const PortfolioDetail = ({ portfolio }) => {
       setHoldings([]);
     } finally {
       setLoadingHoldings(false);
-    }
-  };
-
-  const loadAnalyticsData = async () => {
-    if (!portfolio || !portfolio.id) return;
-
-    try {
-      setLoadingAnalytics(true);
-      const [summary, performanceSnapshot] = await Promise.allSettled([
-        analyticsAPI.getPortfolioAnalyticsSummary(portfolio.id),
-        analyticsAPI.getPerformanceSnapshot(portfolio.id),
-      ]);
-
-      setAnalyticsData({
-        summary: summary.status === "fulfilled" ? summary.value : null,
-        performanceSnapshot:
-          performanceSnapshot.status === "fulfilled"
-            ? performanceSnapshot.value
-            : null,
-      });
-    } catch (error) {
-      console.warn("[PortfolioDetail] Failed to load analytics data:", error);
-    } finally {
-      setLoadingAnalytics(false);
     }
   };
 
