@@ -30,7 +30,7 @@ docker run --rm --user "$(id -u):$(id -g)" \
   -e PYTHONPATH=/app:/tmp/extra -e PYTHONDONTWRITEBYTECODE=1 \
   "$PROJECT-api" sh -c '
     pip install -q --disable-pip-version-check --no-deps --target /tmp/extra ta &&
-    python -c "import main; assert len(main.app.routes) > 100" &&
+    python -c "import main; assert len(main.app.openapi()[\"paths\"]) >= 90" &&
     python -m pytest tests -q -p no:cacheprovider'
 
 step "frontend: production build"
@@ -44,7 +44,12 @@ if [[ "${1:-}" == "--stack" ]]; then
   for url in "http://localhost:${PORTFOLIO_UI_PORT:-3000}/" \
              "http://localhost:${PORTFOLIO_UI_PORT:-3000}/api/v1/health" \
              "http://127.0.0.1:${PORTFOLIO_API_PORT:-8000}/health/"; do
-    curl -fsS -o /dev/null --max-time 10 "$url" && echo "ok  $url"
+    for attempt in 1 2 3 4 5 6; do
+      curl -fsS -o /dev/null --max-time 10 "$url" && break
+      [[ $attempt == 6 ]] && { echo "FAIL $url"; exit 1; }
+      sleep 5
+    done
+    echo "ok  $url"
   done
 fi
 

@@ -4,7 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import List, Tuple
 
-import PyPDF2
+import pypdf
 
 from core.schemas.account_statements import (
     ParsedData,
@@ -64,7 +64,7 @@ class TradeRepublicParser(PDFParser):
         """Parse Trade Republic PDF statement."""
         warnings = []
         try:
-            pdf_reader = PyPDF2.PdfReader(io.BytesIO(pdf_content))
+            pdf_reader = pypdf.PdfReader(io.BytesIO(pdf_content))
             full_text = "".join(page.extract_text() for page in pdf_reader.pages)
         except Exception as e:
             return ParsedData(
