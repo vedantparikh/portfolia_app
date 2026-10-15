@@ -769,9 +769,7 @@ const AssetModal = ({ asset, mode = "view", onClose, onSave, existingAssets = []
                             </span>
                             <p className="text-lg font-semibold text-gray-100">
                               {asset.detail?.dividend_yield
-                                ? `${(
-                                  Number(asset.detail.dividend_yield) * 100
-                                ).toFixed(2)}%`
+                                ? `${Number(asset.detail.dividend_yield).toFixed(2)}%`
                                 : "N/A"}
                             </p>
                           </div>
