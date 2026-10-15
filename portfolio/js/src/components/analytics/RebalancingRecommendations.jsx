@@ -1,9 +1,7 @@
 import {
     AlertTriangle,
     ArrowRight,
-    CheckCircle,
     Clock,
-    DollarSign,
     RefreshCw,
     Target,
     TrendingDown,
@@ -13,6 +11,13 @@ import { useEffect, useState } from 'react';
 import { analyticsAPI } from '../../services/api';
 import { formatCurrency, formatPercentage } from '../../utils/formatters.jsx';
 import LoadingSpinner from '../shared/LoadingSpinner';
+
+// "allocation_drift_exceeds_threshold_11.2%" -> "Allocation drift exceeds threshold 11.2%"
+const humanize = (code) => {
+    if (!code) return "";
+    const text = String(code).replace(/_/g, " ");
+    return text.charAt(0).toUpperCase() + text.slice(1);
+};
 
 const RebalancingRecommendations = ({ portfolioId }) => {
     const [recommendations, setRecommendations] = useState(null);
@@ -157,14 +162,14 @@ const RebalancingRecommendations = ({ portfolioId }) => {
                 <div className="space-y-4">
                     <div>
                         <p className="text-sm text-gray-400 mb-2">Trigger Reason</p>
-                        <p className="text-gray-100">{recommendations.trigger_reason}</p>
+                        <p className="text-gray-100">{humanize(recommendations.trigger_reason)}</p>
                     </div>
 
                     <div>
                         <p className="text-sm text-gray-400 mb-2">Recommended Timing</p>
                         <div className="flex items-center space-x-2">
                             <Clock size={16} className="text-primary-400" />
-                            <span className="text-gray-100">{recommendations.recommended_timing}</span>
+                            <span className="text-gray-100">{humanize(recommendations.recommended_timing)}</span>
                         </div>
                     </div>
                 </div>
@@ -198,27 +203,16 @@ const RebalancingRecommendations = ({ portfolioId }) => {
                                     </div>
                                     <div>
                                         <p className="font-medium text-gray-100">
-                                            {action.action_type?.toUpperCase()} {action.symbol}
+                                            {action.action_type?.toUpperCase()} {action.asset_symbol}
                                         </p>
                                         <p className="text-sm text-gray-400">
-                                            Quantity: {action.quantity} | Price: {formatCurrency(action.price)}
+                                            {action.action_type === 'buy' ? 'Underweight vs. target' : 'Overweight vs. target'}
                                         </p>
                                     </div>
                                 </div>
-                                <div className="text-right">
-                                    <p className={`font-medium ${action.action_type === 'buy'
-                                        ? 'text-success-400'
-                                        : action.action_type === 'sell'
-                                            ? 'text-danger-400'
-                                            : 'text-gray-100'
-                                        }`}>
-                                        {action.action_type === 'buy' ? '+' : action.action_type === 'sell' ? '-' : ''}
-                                        {formatCurrency(action.total_value)}
-                                    </p>
-                                    <p className="text-sm text-gray-400">
-                                        {action.reason || 'Rebalancing'}
-                                    </p>
-                                </div>
+                                <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getPriorityColor(action.priority)}`}>
+                                    {action.priority?.toUpperCase()}
+                                </span>
                             </div>
                         ))}
                     </div>
@@ -230,7 +224,7 @@ const RebalancingRecommendations = ({ portfolioId }) => {
                 <div className="card p-6">
                     <h3 className="text-lg font-semibold text-gray-100 mb-4 flex items-center">
                         <Target className="w-5 h-5 mr-2 text-primary-400" />
-                        Expected Post-Rebalancing Allocations
+                        Current → Target Allocation
                     </h3>
 
                     <div className="space-y-3">
@@ -241,16 +235,18 @@ const RebalancingRecommendations = ({ portfolioId }) => {
                                         <Target size={16} className="text-primary-400" />
                                     </div>
                                     <div>
-                                        <p className="font-medium text-gray-100">{allocation.symbol}</p>
-                                        <p className="text-sm text-gray-400">{allocation.name}</p>
+                                        <p className="font-medium text-gray-100">{allocation.asset_symbol}</p>
+                                        <p className="text-sm text-gray-400">{allocation.asset_name}</p>
                                     </div>
                                 </div>
                                 <div className="text-right">
                                     <p className="font-medium text-gray-100">
-                                        {formatPercentage(parseFloat(allocation.target_percentage))}
+                                        {formatPercentage(parseFloat(allocation.current_percentage), { showSign: false })}
+                                        <span className="text-gray-500"> → </span>
+                                        {formatPercentage(parseFloat(allocation.target_percentage), { showSign: false })}
                                     </p>
                                     <p className="text-sm text-gray-400">
-                                        {formatCurrency(parseFloat(allocation.expected_value))}
+                                        {formatCurrency(parseFloat(allocation.current_value))}
                                     </p>
                                 </div>
                             </div>
@@ -259,66 +255,6 @@ const RebalancingRecommendations = ({ portfolioId }) => {
                 </div>
             )}
 
-            {/* Cost and Impact Analysis */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="card p-6">
-                    <h3 className="text-lg font-semibold text-gray-100 mb-4 flex items-center">
-                        <DollarSign className="w-5 h-5 mr-2 text-primary-400" />
-                        Cost Analysis
-                    </h3>
-
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-400">Estimated Transaction Costs</span>
-                            <span className="text-sm font-medium text-gray-100">
-                                {recommendations.estimated_cost ? formatCurrency(parseFloat(recommendations.estimated_cost)) : 'N/A'}
-                            </span>
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-400">Tax Impact</span>
-                            <span className="text-sm font-medium text-gray-100">
-                                {recommendations.tax_impact ? formatCurrency(parseFloat(recommendations.tax_impact)) : 'N/A'}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="card p-6">
-                    <h3 className="text-lg font-semibold text-gray-100 mb-4 flex items-center">
-                        <TrendingUp className="w-5 h-5 mr-2 text-primary-400" />
-                        Expected Impact
-                    </h3>
-
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-400">Risk Reduction</span>
-                            <span className="text-sm font-medium text-gray-100">
-                                {recommendations.expected_risk_reduction ? formatPercentage(parseFloat(recommendations.expected_risk_reduction)) : 'N/A'}
-                            </span>
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-400">Return Impact</span>
-                            <span className="text-sm font-medium text-gray-100">
-                                {recommendations.expected_return_impact ? formatPercentage(parseFloat(recommendations.expected_return_impact)) : 'N/A'}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex justify-center space-x-4">
-                <button className="btn-outline">
-                    <Clock size={16} className="mr-2" />
-                    Schedule Rebalancing
-                </button>
-                <button className="btn-primary">
-                    <CheckCircle size={16} className="mr-2" />
-                    Execute Now
-                </button>
-            </div>
         </div>
     );
 };
