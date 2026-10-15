@@ -7,7 +7,7 @@ import {
     Target,
     Trash2
 } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { analyticsAPI } from '../../services/api';
 import { formatCurrency, formatPercentage } from '../../utils/formatters.jsx';
 import LoadingSpinner from '../shared/LoadingSpinner';
@@ -24,6 +24,7 @@ const PortfolioAllocationManager = ({ portfolioId }) => {
         if (portfolioId) {
             loadAllocationData();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- reload only when portfolioId changes
     }, [portfolioId]);
 
     const loadAllocationData = async () => {
@@ -274,6 +275,7 @@ const PortfolioAllocationManager = ({ portfolioId }) => {
             {/* Add/Edit Allocation Modal */}
             {(showAddModal || editingAllocation) && (
                 <AllocationModal
+                    portfolioId={portfolioId}
                     allocation={editingAllocation}
                     onSave={editingAllocation ? handleUpdateAllocation : handleAddAllocation}
                     onClose={() => {
@@ -287,7 +289,7 @@ const PortfolioAllocationManager = ({ portfolioId }) => {
 };
 
 // Allocation Modal Component
-const AllocationModal = ({ allocation, onSave, onClose }) => {
+const AllocationModal = ({ portfolioId, allocation, onSave, onClose }) => {
     const [formData, setFormData] = useState({
         asset_id: allocation?.asset_id || '',
         target_percentage: allocation?.target_percentage || '',
