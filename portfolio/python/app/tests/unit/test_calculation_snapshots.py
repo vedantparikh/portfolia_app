@@ -20,6 +20,10 @@ import polars as pl
 import pytest
 
 from core.database.models import Transaction, TransactionType
+from core.services.portfolio_advance_risk_metrics import (
+    PortfolioAdvanceRiskMetricsService,
+)
+from core.services.portfolio_analytics_service import PortfolioAnalyticsService
 from core.services.portfolio_calculation_service import PortfolioCalculationService
 from core.services.portfolio_risk_metrics_service import PortfolioRiskMetricsService
 from core.services.portfolio_service import compute_position
@@ -209,6 +213,64 @@ def _indicator_outputs():
     return out
 
 
+def _price_frame(asset, gaps=False):
+    close = [_price(asset, i) for i in range(len(DAYS))]
+    df = pd.DataFrame(
+        {
+            "Open": [round(c * 0.998, 4) for c in close],
+            "High": [round(c * 1.012, 4) for c in close],
+            "Low": [round(c * 0.988, 4) for c in close],
+            "Close": close,
+            "Volume": [1_000_000 + 1000 * (i % 37) for i in range(len(DAYS))],
+        },
+        index=DAYS,
+    )
+    if gaps:
+        # Holiday-like gaps exercise the forward-fill before pct_change
+        df.loc[df.index[5::17], "Close"] = float("nan")
+    return df
+
+
+def _numbers(d):
+    return {
+        k: _num(v)
+        if isinstance(v, (int, float, Decimal)) and not isinstance(v, bool)
+        else str(v)
+        for k, v in sorted(d.items())
+    }
+
+
+def _analytics_outputs():
+    p1, p2 = _price_frame(1), _price_frame(2, gaps=True)
+    adv = PortfolioAdvanceRiskMetricsService(db=None)
+    beta, alpha = adv._calculate_beta_and_alpha(p1["Close"].pct_change().dropna(), p2)
+    weights = pd.Series({"A1": 0.6, "A2": 0.4})
+    asset_prices = pd.concat(
+        [p1["Close"].rename("A1"), p2["Close"].rename("A2")], axis=1
+    )
+    analytics = PortfolioAnalyticsService(db=None)
+    lower = p2.rename(columns=str.lower)
+    return {
+        "beta": _num(beta),
+        "alpha": _num(alpha),
+        "concentration": _num(adv._calculate_concentration_risk(weights)),
+        "diversification": _num(
+            adv._calculate_diversification_ratio(
+                weights, asset_prices.ffill().pct_change().dropna()
+            )
+        ),
+        "technical_yf": _numbers(
+            analytics._calculate_technical_indicators_from_yfinance(p1)
+        ),
+        "risk_yf": _numbers(analytics._calculate_risk_metrics_from_yfinance(p1)),
+        "performance_yf": _numbers(
+            analytics._calculate_performance_metrics_from_yfinance(p1)
+        ),
+        "risk": _numbers(analytics._calculate_risk_metrics(lower)),
+        "performance": _numbers(analytics._calculate_performance_metrics(lower)),
+    }
+
+
 def _compare(expected, actual, path=""):
     if isinstance(expected, dict):
         assert set(expected) == set(actual), (
@@ -230,6 +292,7 @@ async def test_calculation_snapshots(monkeypatch):
     actual = {
         "engine": await _engine_outputs(monkeypatch),
         "indicators": _indicator_outputs(),
+        "analytics": _analytics_outputs(),
     }
     actual = json.loads(json.dumps(actual))
     if os.environ.get("UPDATE_SNAPSHOTS") == "1":
