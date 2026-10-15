@@ -145,12 +145,12 @@ Each step is roughly one PR. The order matters: **safety net → release platfor
 | # | Work | Done when |
 |---|---|---|
 | 0.1 | ✅ Compose for the shared host: UI port fixed, API on loopback only, DB/Redis not published, named volumes, memory limits, log rotation (`fe0e6c3`) | Stack healthy, UI :3000 → 200 |
-| 0.2 | ✅ `.env.example` templates and `.dockerignore` files, so secrets are no longer baked into images (`f5579c3`). ⏳ **Still to do:** rotate the Brevo SMTP password and Sentry DSN, check history commits `508abfd`/`51bdb8d`, and add gitleaks to CI. | gitleaks clean, secrets rotated |
+| 0.2 | ✅ `.env.example` templates and `.dockerignore` files, so secrets are no longer baked into images (`f5579c3`). ⏳ **Still to do:** rotate the Brevo SMTP password (Sentry was removed on 2026-10-15), check history commits `508abfd`/`51bdb8d`, and add gitleaks to CI. | gitleaks clean, secrets rotated |
 | 0.3 | ✅ Repo hygiene: 59 dead or stray files removed (`a1b50e4`). ⏳ Rewrite the root README and `STARTUP_GUIDE.md`, and fix or delete `setup-docker.sh` and `scripts/setup_database.sh`. | README accurate |
 | 0.4 | One import root and one dependency file. Use a single `pyproject.toml` with uv and a lock file. Split dev and prod deps. Add `ta` for tests. Drop `schedule`, `requests`, `scipy` and `PyPDF2`. Set `requires-python >= 3.12`. Delete the empty `python/app/app/` dir, which shadows the `app` package. | `pytest --collect-only` collects with **0 errors** |
 | 0.5 | **Burn down `tests/quarantine.txt`** (50 entries: 8 uncollectable files, 42 xfail). Fix the `/app/v1` → `/api/v1` prefix and delete tests for removed APIs. Then turn on blocking lint: ruff on changed files via pre-commit, and eslint once `react/prop-types` is solved by TS or disabled. | Quarantine file empty, lint is a required check |
 | 0.6 | ✅ CI gate: `scripts/verify.sh --stack` on `ubuntu-24.04-arm` for every PR and every push to master (`e30df0f`). ⏳ Turn on GitHub branch protection: require the `verify` check, squash-merge only, no direct pushes to `master`. | A red check blocks merge |
-| 0.7 | **Characterisation tests.** Seed a fixed demo portfolio against recorded prices and snapshot the current API outputs (holdings, summary, performance). | We can see exactly which numbers each later PR changes, and every change is intentional |
+| 0.7 | ✅ **Characterisation tests**: `tests/unit/test_calculation_snapshots.py` pins positions, value history, TWR/CAGR/XIRR, risk metrics, all indicators and the analytics/advanced-risk helpers on deterministic inputs (added in deps wave 3). | Every number change fails the gate and must be explained |
 
 ### Phase R: Release platform (≈1.5 weeks, right after Phase 0, *before* the big refactors)
 There is no production data yet, so this is the cheapest moment to set up how releases work. Every later phase then ships through it. See §7 for the full release strategy.
@@ -163,7 +163,7 @@ There is no production data yet, so this is the cheapest moment to set up how re
 | R.4 | **`scripts/deploy.sh <env> <version>`** on the Jetson: pull, then `pg_dump` backup, then `docker compose run --rm migrate`, then `up -d --wait`, then the smoke checks from `verify.sh`. On any failure it automatically redeploys the previous version, which is recorded in `env/<env>.deployed`. It prunes images older than the last 3 releases. | A deliberately broken release rolls itself back |
 | R.5 | **Staging environment** on the same Jetson: project `portfolio-staging`, UI :3100, its own volumes and seeded demo data. It auto-deploys `edge` through a systemd timer that runs `deploy.sh staging edge` every 15 minutes when the digest changes. | A merge to master shows up on staging within 15 minutes |
 | R.6 | **Backups and restore.** Run a nightly `pg_dump` to `/mnt/samsung_ufs/backups/portfolio/`, keeping 14 daily and 8 weekly copies, with an optional copy to Nextcloud. Add a `restore.sh`, and run a monthly restore drill into staging. | A restore drill passes |
-| R.7 | **Exposure and monitoring.** Add an nginx-proxy-manager host `portfolio.<tailnet>.ts.net` with TLS, upstream `portfolio-web:8080` on `homepage_proxy-network`. Add a homepage tile and status widget, keep Sentry for errors, and add an uptime check. | HTTPS URL works, and an outage shows up on homepage |
+| R.7 | **Exposure and monitoring.** Add an nginx-proxy-manager host `portfolio.<tailnet>.ts.net` with TLS, upstream `portfolio-web:8080` on `homepage_proxy-network`. Add a homepage tile and status widget and an uptime check (Sentry was removed on request; errors go to structured logs). | HTTPS URL works, and an outage shows up on homepage |
 
 ### Phase 1: Backend foundation (≈1.5 weeks)
 | # | Work |
@@ -215,7 +215,7 @@ Golden tests are written first for every item.
 | 4.5 | Build the `shared/ui` primitives (Button, Modal with focus trap and Esc, FormModal with react-hook-form and zod, Table, Card, Spinner, EmptyState, ErrorState). Collapse the 24 modals, the 4 search components (1 remains) and the 2 charts (1 remains). |
 | 4.6 | Security: remove `dangerouslySetInnerHTML` and the `innerHTML` tooltips. Keep a single `tokenStore`. Ideally put the refresh token in an httpOnly cookie, with the access token held in memory. |
 | 4.7 | **Delete all frontend financial math.** Display backend values only. One `formatMoney(value, currency, locale)`, with lint rules banning raw `toFixed` and `$`. |
-| 4.8 | Routing: `ProtectedLayout` (Sidebar and `<Outlet/>`), `React.lazy` per route, an error boundary, a 404 page, and Sentry fixed to read `VITE_SENTRY_DSN`. |
+| 4.8 | Routing: `ProtectedLayout` (Sidebar and `<Outlet/>`), `React.lazy` per route, an error boundary, and a 404 page. |
 | 4.9 | Feature-folder layout (see §2.3). Migrate feature by feature: auth → portfolios → transactions → assets → watchlists → analytics → dashboard. |
 
 ### 2.3 Frontend layout
@@ -298,6 +298,11 @@ Open:
 | 2026-10-14 | `chore/release-foundation` | `fe0e6c3` | Compose for the shared Jetson host |
 | 2026-10-14 | `chore/release-foundation` | `f5579c3` | Env templates and `.dockerignore` |
 | 2026-10-14 | `chore/release-foundation` | `e30df0f` | `verify.sh` gate, test quarantine ratchet, arm64 CI |
+| 2026-10-15 | `fix/app-build-run` (#67) | — | 8 runtime bugs found by seeding demo data (500s, watchlist bulk add, crashes); full ruff + eslint cleanup, lint is gating |
+| 2026-10-15 | `feat/ui-polish` (#68) | — | Transaction colours, sidebar fit, compact transaction rows, mobile header, footer year |
+| 2026-10-15 | `chore/deps-wave1` (#69) | — | Node 22, unused deps removed, FastAPI 0.143 / Starlette 1.8 / SQLAlchemy 2.1 / pydantic 2.14, test tooling |
+| 2026-10-15 | `chore/deps-wave2` (#70) | — | React 19, React Router 7, Vite 8, ESLint 9 flat config |
+| 2026-10-15 | `chore/deps-wave3` | — | Calculation snapshots (0.7 ✅), Sentry removed, lucide 1, charts 5, Router 8, Tailwind 4, passlib → bcrypt, Python 3.14, numpy 2, pandas 3, polars 2, yfinance 1.7 |
 
 ---
 
@@ -348,4 +353,4 @@ Open:
 3. Images are built once per tag; whatever was verified is what gets deployed.
 4. Staging soaks `edge` before every prod release.
 5. `deploy.sh` runs smoke checks after deploy and rolls back automatically to the last good version.
-6. Sentry and an uptime check alert after a release.
+6. The uptime check and the error log alert after a release.

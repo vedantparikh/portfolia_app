@@ -1,6 +1,6 @@
 # Portfolia
 
-Self-hosted investment-portfolio tracker (holdings, P&L, TWR/XIRR, risk metrics, watchlists, broker-PDF import). FastAPI + SQLAlchemy 2 (sync) + Postgres 16 + Redis + yfinance backend (`python/app`); React 18 + Vite + Tailwind frontend (`js`).
+Self-hosted investment-portfolio tracker (holdings, P&L, TWR/XIRR, risk metrics, watchlists, broker-PDF import). Python 3.14 / FastAPI + SQLAlchemy 2.1 (sync) + Postgres 16 + Redis + pandas 3 / polars 2 / yfinance 1 backend (`python/app`); React 19 + React Router 8 + Vite 8 + Tailwind 4 frontend (`js`, Node 22). No Sentry/telemetry.
 
 Git root is the parent dir (`../`: `.github/workflows/ci.yml`, `.pre-commit-config.yaml`). Roadmap, release strategy and progress log: `REFACTOR_PLAN.md`.
 
@@ -52,6 +52,9 @@ Never run pytest inside the running `portfolio-api-1`, which is wired to the sta
 - When a session establishes a new non-obvious fact about the project, update this file or the plan's progress log.
 
 ## Known state (2026-10-15)
-- Gate: lint clean (ruff + eslint, 0 warnings); about 130 tests passed, 42 quarantined xfail, plus 8 quarantined uncollectable files.
+- Gate: lint clean (ruff + eslint, 0 warnings); 134 tests passed, 42 quarantined xfail, plus 8 quarantined uncollectable files.
+- `tests/unit/test_calculation_snapshots.py` pins every computed number (engine, risk, indicators, analytics) against `snapshots/calculations.json`. If it fails, a number the app shows changed: fix the regression, or regenerate with `UPDATE_SNAPSHOTS=1` only for an intended change and explain it in the commit.
+- Tailwind 4: theme tokens live in `@theme` in `src/index.css` (there is no `tailwind.config.js`). Use slash opacity (`bg-black/50`), not the removed `bg-opacity-*`.
+- ESLint stays on 9 until `eslint-plugin-react` supports 10. ruff `target-version` stays py312 on purpose (see pyproject).
 - Lint policy: ruff ignores E501 (the formatter owns line length) and E712 (SQLAlchemy `== True`). ESLint has `react/prop-types` off (TS migration is planned). Use `eslint-disable-next-line react-hooks/exhaustive-deps -- <reason>` only when adding the dependency would change when the effect runs.
 - `npm test` is a placeholder. There are no frontend unit tests or e2e tests yet.
