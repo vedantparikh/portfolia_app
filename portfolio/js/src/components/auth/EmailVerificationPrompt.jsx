@@ -36,7 +36,7 @@ const EmailVerificationPrompt = ({ user }) => {
     return (
         <div className="bg-warning-600/20 border border-warning-600/30 rounded-lg p-4 mb-6">
             <div className="flex items-start">
-                <div className="flex-shrink-0">
+                <div className="shrink-0">
                     <AlertCircle size={20} className="text-warning-400 mt-0.5" />
                 </div>
                 <div className="ml-3 flex-1">
@@ -72,7 +72,7 @@ const EmailVerificationPrompt = ({ user }) => {
                         </button>
                     </div>
                 </div>
-                <div className="flex-shrink-0 ml-4">
+                <div className="shrink-0 ml-4">
                     <button
                         onClick={handleDismiss}
                         className="text-gray-400 hover:text-gray-300 transition-colors duration-200"

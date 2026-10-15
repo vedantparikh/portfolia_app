@@ -131,7 +131,7 @@ class PortfolioAdvanceRiskMetricsService:
             asset_prices = asset_prices.truncate(
                 before=start_date.date(), after=end_date.date()
             )
-            asset_returns = asset_prices.pct_change().dropna()
+            asset_returns = asset_prices.ffill().pct_change().dropna()
 
             benchmark_prices = price_data_dict.get(benchmark_symbol)
             if benchmark_prices is None:
@@ -197,7 +197,7 @@ class PortfolioAdvanceRiskMetricsService:
         if benchmark_prices.empty:
             return None, None
         try:
-            benchmark_returns = benchmark_prices["Close"].pct_change().dropna()
+            benchmark_returns = benchmark_prices["Close"].ffill().pct_change().dropna()
 
             port_returns = portfolio_returns.copy()
             bench_returns = benchmark_returns.copy()

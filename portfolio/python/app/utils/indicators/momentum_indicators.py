@@ -42,10 +42,10 @@ class MomentumIndicators(BaseIndicator):
         self.df = self.df.with_columns(
             [
                 pl.col("gains")
-                .ewm_mean(span=window, min_periods=min_periods)
+                .ewm_mean(span=window, min_samples=min_periods)
                 .alias("avg_gains"),
                 pl.col("losses")
-                .ewm_mean(span=window, min_periods=min_periods)
+                .ewm_mean(span=window, min_samples=min_periods)
                 .alias("avg_losses"),
             ]
         )

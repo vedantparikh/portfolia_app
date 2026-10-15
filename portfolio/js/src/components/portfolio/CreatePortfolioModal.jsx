@@ -74,10 +74,10 @@ const CreatePortfolioModal = ({ onClose, onCreate }) => {
     ];
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-dark-900 rounded-xl border border-dark-700 w-full max-w-2xl max-h-[95vh] overflow-hidden flex flex-col">
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-dark-700 flex-shrink-0">
+                <div className="flex items-center justify-between p-6 border-b border-dark-700 shrink-0">
                     <div className="flex items-center space-x-3">
                         <div className="w-10 h-10 bg-primary-600/20 rounded-lg flex items-center justify-center">
                             <Plus size={20} className="text-primary-400" />
@@ -225,7 +225,7 @@ const CreatePortfolioModal = ({ onClose, onCreate }) => {
                 </form>
 
                 {/* Footer */}
-                <div className="flex items-center justify-end space-x-3 p-6 border-t border-dark-700 flex-shrink-0">
+                <div className="flex items-center justify-end space-x-3 p-6 border-t border-dark-700 shrink-0">
                     <button
                         type="button"
                         onClick={onClose}

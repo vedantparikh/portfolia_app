@@ -256,7 +256,7 @@ const IndicatorConfigurationManager = ({
                                     <div className="flex items-center space-x-2 mb-2">
                                         <h4 className="font-semibold text-gray-100">{config.name}</h4>
                                         {config.is_public && (
-                                            <span className="px-2 py-1 text-xs bg-green-900 text-green-300 rounded">
+                                            <span className="px-2 py-1 text-xs bg-green-900 text-green-300 rounded-sm">
                                                 Public
                                             </span>
                                         )}
@@ -271,13 +271,13 @@ const IndicatorConfigurationManager = ({
                                         {config.indicators?.slice(0, 5).map(indicator => (
                                             <span
                                                 key={indicator.id}
-                                                className="px-2 py-1 text-xs bg-dark-600 text-gray-300 rounded"
+                                                className="px-2 py-1 text-xs bg-dark-600 text-gray-300 rounded-sm"
                                             >
                                                 {indicator.display_name || indicator.indicator_name}
                                             </span>
                                         ))}
                                         {config.indicators?.length > 5 && (
-                                            <span className="px-2 py-1 text-xs bg-dark-600 text-gray-400 rounded">
+                                            <span className="px-2 py-1 text-xs bg-dark-600 text-gray-400 rounded-sm">
                                                 +{config.indicators.length - 5} more
                                             </span>
                                         )}
@@ -287,7 +287,7 @@ const IndicatorConfigurationManager = ({
                                             {config.tags.map(tag => (
                                                 <span
                                                     key={tag}
-                                                    className="px-2 py-1 text-xs bg-primary-900 text-primary-300 rounded"
+                                                    className="px-2 py-1 text-xs bg-primary-900 text-primary-300 rounded-sm"
                                                 >
                                                     #{tag}
                                                 </span>
@@ -301,7 +301,7 @@ const IndicatorConfigurationManager = ({
                                             e.stopPropagation();
                                             handleEditConfiguration(config);
                                         }}
-                                        className="p-2 text-gray-400 hover:text-gray-100 hover:bg-dark-600 rounded transition-colors"
+                                        className="p-2 text-gray-400 hover:text-gray-100 hover:bg-dark-600 rounded-sm transition-colors"
                                         title="Edit configuration"
                                     >
                                         <Edit3 size={16} />
@@ -311,7 +311,7 @@ const IndicatorConfigurationManager = ({
                                             e.stopPropagation();
                                             handleDuplicateConfiguration(config);
                                         }}
-                                        className="p-2 text-gray-400 hover:text-gray-100 hover:bg-dark-600 rounded transition-colors"
+                                        className="p-2 text-gray-400 hover:text-gray-100 hover:bg-dark-600 rounded-sm transition-colors"
                                         title="Duplicate configuration"
                                     >
                                         <Copy size={16} />
@@ -321,7 +321,7 @@ const IndicatorConfigurationManager = ({
                                             e.stopPropagation();
                                             handleDeleteConfiguration(config.id);
                                         }}
-                                        className="p-2 text-gray-400 hover:text-red-400 hover:bg-dark-600 rounded transition-colors"
+                                        className="p-2 text-gray-400 hover:text-red-400 hover:bg-dark-600 rounded-sm transition-colors"
                                         title="Delete configuration"
                                     >
                                         <Trash2 size={16} />
@@ -436,7 +436,7 @@ const ConfigurationModal = ({
     const categories = [...new Set(availableIndicators.map(ind => ind.category))];
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-dark-800 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden">
                 <div className="flex items-center justify-between p-6 border-b border-dark-700">
                     <h3 className="text-xl font-semibold text-gray-100">{title}</h3>
@@ -578,7 +578,7 @@ const IndicatorConfigCard = ({
             <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center space-x-2">
                     <div
-                        className="w-4 h-4 rounded"
+                        className="w-4 h-4 rounded-sm"
                         style={{ backgroundColor: indicator.color }}
                     />
                     <h6 className="font-medium text-gray-100">

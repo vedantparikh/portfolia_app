@@ -214,7 +214,7 @@ const ClientSideAssetSearch = ({
 
     // Memoized suggestion badge
     const getSuggestionBadge = useMemo(() => (
-        <span className="text-xs px-2 py-1 bg-primary-600/20 text-primary-400 rounded">
+        <span className="text-xs px-2 py-1 bg-primary-600/20 text-primary-400 rounded-sm">
             Your Asset
         </span>
     ), []);
@@ -266,7 +266,7 @@ const ClientSideAssetSearch = ({
             {showSuggestionsDropdown && filteredAssets.length > 0 && (
                 <div
                     ref={dropdownRef}
-                    className="absolute z-[60] w-full mt-1 bg-dark-800 border border-dark-600 rounded-lg shadow-lg max-h-80 overflow-y-auto"
+                    className="absolute z-60 w-full mt-1 bg-dark-800 border border-dark-600 rounded-lg shadow-lg max-h-80 overflow-y-auto"
                 >
                     {/* Show All Assets Message */}
                     {value === '' && (
@@ -305,7 +305,7 @@ const ClientSideAssetSearch = ({
 
             {/* No Results */}
             {showSuggestionsDropdown && filteredAssets.length === 0 && !searching && value && value.length >= 2 && (
-                <div className="absolute z-[60] w-full mt-1 bg-dark-800 border border-dark-600 rounded-lg shadow-lg">
+                <div className="absolute z-60 w-full mt-1 bg-dark-800 border border-dark-600 rounded-lg shadow-lg">
                     <div className="px-4 py-6 text-center">
                         <Database size={32} className="mx-auto mb-3 text-gray-600" />
                         <p className="text-gray-400 text-sm mb-2">No assets found</p>

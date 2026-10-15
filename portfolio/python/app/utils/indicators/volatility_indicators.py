@@ -24,7 +24,7 @@ class VolatilityIndicators(BaseIndicator):
         self.df = self.df.with_columns(
             [
                 pl.col("close")
-                .rolling_mean(window_size=window, min_periods=min_periods)
+                .rolling_mean(window_size=window, min_samples=min_periods)
                 .alias("bb_bbm")
             ]
         )
@@ -33,7 +33,7 @@ class VolatilityIndicators(BaseIndicator):
         self.df = self.df.with_columns(
             [
                 pl.col("close")
-                .rolling_std(window_size=window, min_periods=min_periods)
+                .rolling_std(window_size=window, min_samples=min_periods)
                 .alias("bb_std")
             ]
         )
@@ -110,7 +110,7 @@ class VolatilityIndicators(BaseIndicator):
         self.df = self.df.with_columns(
             [
                 pl.col("true_range")
-                .rolling_mean(window_size=window, min_periods=min_periods)
+                .rolling_mean(window_size=window, min_samples=min_periods)
                 .alias("average_true_range")
             ]
         )
@@ -164,7 +164,7 @@ class VolatilityIndicators(BaseIndicator):
             self.df = self.df.with_columns(
                 [
                     pl.col("typical_price")
-                    .rolling_mean(window_size=window, min_periods=min_periods)
+                    .rolling_mean(window_size=window, min_samples=min_periods)
                     .alias("keltner_channel_mband")
                 ]
             )
@@ -173,7 +173,7 @@ class VolatilityIndicators(BaseIndicator):
             self.df = self.df.with_columns(
                 [
                     pl.col("close")
-                    .ewm_mean(span=window, min_periods=min_periods)
+                    .ewm_mean(span=window, min_samples=min_periods)
                     .alias("keltner_channel_mband")
                 ]
             )
@@ -199,7 +199,7 @@ class VolatilityIndicators(BaseIndicator):
         self.df = self.df.with_columns(
             [
                 pl.col("true_range")
-                .rolling_mean(window_size=atr_window, min_periods=min_periods_atr)
+                .rolling_mean(window_size=atr_window, min_samples=min_periods_atr)
                 .alias("atr")
             ]
         )

@@ -52,7 +52,7 @@ const EditSymbolModal = ({ isOpen, onClose, symbol, onUpdate }) => {
     if (!isOpen || !symbol) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-dark-900 border border-dark-700 rounded-lg w-full max-w-md mx-4">
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-dark-700">
@@ -94,7 +94,7 @@ const EditSymbolModal = ({ isOpen, onClose, symbol, onUpdate }) => {
                         <textarea
                             value={formData.notes}
                             onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                            className="w-full px-3 py-2 bg-dark-800 border border-dark-600 rounded-lg text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+                            className="w-full px-3 py-2 bg-dark-800 border border-dark-600 rounded-lg text-gray-100 placeholder-gray-400 focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
                             placeholder="Add notes about this symbol..."
                             rows={3}
                         />
@@ -120,7 +120,7 @@ const EditSymbolModal = ({ isOpen, onClose, symbol, onUpdate }) => {
                                         min="0"
                                         value={formData.alert_price_high}
                                         onChange={(e) => setFormData(prev => ({ ...prev, alert_price_high: e.target.value }))}
-                                        className="w-full pl-8 pr-3 py-2 bg-dark-800 border border-dark-600 rounded-lg text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                        className="w-full pl-8 pr-3 py-2 bg-dark-800 border border-dark-600 rounded-lg text-gray-100 placeholder-gray-400 focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                                         placeholder="0.00"
                                     />
                                     <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm">
@@ -144,7 +144,7 @@ const EditSymbolModal = ({ isOpen, onClose, symbol, onUpdate }) => {
                                         min="0"
                                         value={formData.alert_price_low}
                                         onChange={(e) => setFormData(prev => ({ ...prev, alert_price_low: e.target.value }))}
-                                        className="w-full pl-8 pr-3 py-2 bg-dark-800 border border-dark-600 rounded-lg text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                        className="w-full pl-8 pr-3 py-2 bg-dark-800 border border-dark-600 rounded-lg text-gray-100 placeholder-gray-400 focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                                         placeholder="0.00"
                                     />
                                     <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm">

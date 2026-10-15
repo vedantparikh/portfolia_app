@@ -176,7 +176,7 @@ const Dashboard = () => {
       {/* Mobile sidebar overlay */}
       {isMobile && sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40"
+          className="fixed inset-0 bg-black/50 z-40"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -193,7 +193,7 @@ const Dashboard = () => {
       />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 min-w-0 flex flex-col">
         {/* Top Header */}
         <header className="bg-dark-900/80 backdrop-blur-sm border-b border-dark-700 px-6 py-4">
           <div className="flex items-center justify-between">

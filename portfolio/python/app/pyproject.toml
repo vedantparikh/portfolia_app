@@ -7,7 +7,7 @@ name = "portfolia-api"
 version = "1.0.0"
 description = "Portfolio management and trading strategy API"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.14"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -37,7 +37,7 @@ dependencies = [
     "yahooquery>=2.4.1",
     "httpx>=0.27.0",
     "python-jose[cryptography]>=3.3.0",
-    "passlib[bcrypt]>=1.7.4",
+    "bcrypt>=5.0.0",
     "pydantic>=2.8.2",
     "pydantic-settings>=2.3.4",
     "email-validator>=2.1.0",
@@ -146,6 +146,8 @@ zip_safe = false
 
 [tool.ruff]
 line-length = 88
+# py312 on purpose: with py314 the formatter drops the parentheses in
+# `except (A, B):` (PEP 758), which reads like Python 2 syntax.
 target-version = "py312"
 
 [tool.ruff.lint]

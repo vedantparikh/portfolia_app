@@ -409,11 +409,11 @@ const Portfolio = () => {
       {/* Mobile Overlay */}
       {isMobile && sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40"
+          className="fixed inset-0 bg-black/50 z-40"
           onClick={() => setSidebarOpen(false)}
         />
       )}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 min-w-0 overflow-y-auto">
         {/* Mobile Header */}
         {isMobile && (
           <div className="bg-dark-900 border-b border-dark-700 p-4 flex items-center justify-between">

@@ -1,4 +1,9 @@
-import { createChart } from "lightweight-charts";
+import {
+  createChart,
+  AreaSeries,
+  CandlestickSeries,
+  LineSeries,
+} from "lightweight-charts";
 import {
   BarChart3,
   Maximize2,
@@ -285,7 +290,7 @@ const Chart = ({
     let comparisonSeries = null;
 
     if (isPortfolioChart) {
-      priceSeries = chart.addLineSeries({
+      priceSeries = chart.addSeries(LineSeries, {
         color: "#0ea5e9",
         lineWidth: 2,
         title: "Portfolio Value",
@@ -293,7 +298,7 @@ const Chart = ({
       priceSeries.setData(portfolioLineData);
 
       if (showComparisonLine && comparisonLineData.length > 0) {
-        comparisonSeries = chart.addLineSeries({
+        comparisonSeries = chart.addSeries(LineSeries, {
           color: "#6b7280",
           lineWidth: 2,
           lineStyle: 2,
@@ -303,7 +308,7 @@ const Chart = ({
       }
     } else {
       if (chartType === "candlestick") {
-        priceSeries = chart.addCandlestickSeries({
+        priceSeries = chart.addSeries(CandlestickSeries, {
           upColor: "#22c55e",
           downColor: "#ef4444",
           borderDownColor: "#dc2626",
@@ -318,14 +323,14 @@ const Chart = ({
           value: d.close,
         }));
         if (chartType === "area") {
-          priceSeries = chart.addAreaSeries({
+          priceSeries = chart.addSeries(AreaSeries, {
             topColor: "rgba(14, 165, 233, 0.3)",
             bottomColor: "rgba(14, 165, 233, 0.0)",
             lineColor: "#0ea5e9",
             lineWidth: 2,
           });
         } else {
-          priceSeries = chart.addLineSeries({
+          priceSeries = chart.addSeries(LineSeries, {
             color: "#0ea5e9",
             lineWidth: 2,
           });
@@ -344,7 +349,7 @@ const Chart = ({
           if (indicatorValues && indicatorValues.length > 0) {
             const isSecondaryAxis = isSecondaryAxisIndicator(indicatorName);
 
-            const series = chart.addLineSeries({
+            const series = chart.addSeries(LineSeries, {
               color: getIndicatorColor(indicatorName),
               lineWidth: 2,
               priceLineVisible: false,
@@ -667,7 +672,7 @@ const Chart = ({
             {enableFullscreen && (
               <button
                 onClick={handleFullscreenToggle}
-                className="p-2 text-gray-400 hover:text-gray-100 hover:bg-dark-700 rounded transition-colors"
+                className="p-2 text-gray-400 hover:text-gray-100 hover:bg-dark-700 rounded-sm transition-colors"
                 title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
               >
                 {isFullscreen ? (
@@ -680,7 +685,7 @@ const Chart = ({
             {onRefresh && (
               <button
                 onClick={onRefresh}
-                className="p-2 text-gray-400 hover:text-gray-100 hover:bg-dark-700 rounded transition-colors"
+                className="p-2 text-gray-400 hover:text-gray-100 hover:bg-dark-700 rounded-sm transition-colors"
                 title="Refresh data"
               >
                 <RefreshCw size={16} />

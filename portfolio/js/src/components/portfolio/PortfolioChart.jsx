@@ -316,7 +316,7 @@ const PortfolioChart = ({ portfolio, stats }) => {
 
     return (
       <div className="h-80 flex flex-col md:flex-row items-center justify-center gap-8">
-        <div className="relative w-64 h-64 flex-shrink-0">
+        <div className="relative w-64 h-64 shrink-0">
           <div className="w-full h-full rounded-full" style={pieStyle} />
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="w-40 h-40 bg-dark-800 rounded-full flex items-center justify-center">
@@ -333,7 +333,7 @@ const PortfolioChart = ({ portfolio, stats }) => {
           {pieData.map((allocation, index) => (
             <div key={index} className="flex items-center space-x-3">
               <div
-                className="w-4 h-4 rounded flex-shrink-0"
+                className="w-4 h-4 rounded-sm shrink-0"
                 style={{ backgroundColor: allocation.color }}
               ></div>
               <div className="flex-1 min-w-0">
@@ -424,7 +424,7 @@ const PortfolioChart = ({ portfolio, stats }) => {
             <button
               key={periodOption.value}
               onClick={() => setTimeRange(periodOption.value)}
-              className={`px-3 py-1 text-xs rounded-md transition-colors flex-shrink-0 ${timeRange === periodOption.value
+              className={`px-3 py-1 text-xs rounded-md transition-colors shrink-0 ${timeRange === periodOption.value
                 ? "bg-primary-600 text-white font-semibold"
                 : "bg-dark-800 text-gray-400 hover:bg-dark-700"
                 }`}

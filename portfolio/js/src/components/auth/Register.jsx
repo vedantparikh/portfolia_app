@@ -241,7 +241,7 @@ const Register = () => {
                             <input
                                 type="checkbox"
                                 id="terms"
-                                className="mt-1 rounded border-dark-600 text-primary-600 focus:ring-primary-500 bg-dark-800"
+                                className="mt-1 rounded-sm border-dark-600 text-primary-600 focus:ring-primary-500 bg-dark-800"
                                 {...register('terms', {
                                     required: 'You must accept the terms and conditions',
                                 })}

@@ -55,7 +55,7 @@ const EditWatchlistModal = ({ isOpen, onClose, watchlist, onUpdate }) => {
     if (!isOpen || !watchlist) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-dark-900 border border-dark-700 rounded-lg w-full max-w-md mx-4">
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-dark-700">
@@ -79,7 +79,7 @@ const EditWatchlistModal = ({ isOpen, onClose, watchlist, onUpdate }) => {
                             type="text"
                             value={formData.name}
                             onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                            className="w-full px-3 py-2 bg-dark-800 border border-dark-600 rounded-lg text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                            className="w-full px-3 py-2 bg-dark-800 border border-dark-600 rounded-lg text-gray-100 placeholder-gray-400 focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                             placeholder="Enter watchlist name"
                             required
                         />
@@ -93,7 +93,7 @@ const EditWatchlistModal = ({ isOpen, onClose, watchlist, onUpdate }) => {
                         <textarea
                             value={formData.description}
                             onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                            className="w-full px-3 py-2 bg-dark-800 border border-dark-600 rounded-lg text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+                            className="w-full px-3 py-2 bg-dark-800 border border-dark-600 rounded-lg text-gray-100 placeholder-gray-400 focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
                             placeholder="Enter description (optional)"
                             rows={3}
                         />
@@ -148,7 +148,7 @@ const EditWatchlistModal = ({ isOpen, onClose, watchlist, onUpdate }) => {
                                     onChange={(e) => setFormData(prev => ({ ...prev, is_default: e.target.checked }))}
                                     className="sr-only peer"
                                 />
-                                <div className="w-11 h-6 bg-dark-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                                <div className="w-11 h-6 bg-dark-700 peer-focus:outline-hidden peer-focus:ring-4 peer-focus:ring-primary-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
                             </label>
                         </div>
 
@@ -178,7 +178,7 @@ const EditWatchlistModal = ({ isOpen, onClose, watchlist, onUpdate }) => {
                                     onChange={(e) => setFormData(prev => ({ ...prev, is_public: e.target.checked }))}
                                     className="sr-only peer"
                                 />
-                                <div className="w-11 h-6 bg-dark-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                                <div className="w-11 h-6 bg-dark-700 peer-focus:outline-hidden peer-focus:ring-4 peer-focus:ring-primary-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
                             </label>
                         </div>
                     </div>

@@ -431,7 +431,7 @@ const Watchlist = () => {
       {/* Mobile sidebar overlay */}
       {isMobile && sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40"
+          className="fixed inset-0 bg-black/50 z-40"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -448,7 +448,7 @@ const Watchlist = () => {
       />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 min-w-0 flex flex-col">
         {/* Mobile Header */}
         {isMobile && (
           <div className="bg-dark-900 border-b border-dark-700 p-4 flex items-center justify-between">
@@ -650,7 +650,7 @@ const Watchlist = () => {
                                       : watchlist.id
                                   );
                                 }}
-                                className="p-1 rounded hover:bg-dark-600 transition-colors opacity-0 group-hover:opacity-100"
+                                className="p-1 rounded-sm hover:bg-dark-600 transition-colors opacity-0 group-hover:opacity-100"
                               >
                                 <MoreVertical
                                   size={16}

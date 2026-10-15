@@ -166,7 +166,7 @@ const EmailVerification = () => {
                                     type="text"
                                     id="token"
                                     placeholder="Enter verification token from email"
-                                    className="w-full px-4 py-3 bg-dark-800 border border-dark-600 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                    className="w-full px-4 py-3 bg-dark-800 border border-dark-600 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                                 />
                                 {errors.token && (
                                     <p className="mt-2 text-sm text-danger-400">{errors.token.message}</p>

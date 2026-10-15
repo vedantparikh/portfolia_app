@@ -10,20 +10,19 @@ alembic==1.20.0
 redis==8.1.0
 
 # Data Processing
-polars==0.20.1
-numpy>=1.21.6,<1.28.0
-pandas==2.3.3
-yfinance==0.2.66
+polars==2.0.0
+numpy==2.5.4
+pandas==3.0.6
+yfinance==1.7.0
 yahooquery==2.4.1
-pyarrow==21.0.0
+pyarrow==26.0.0
 
 # HTTP and API
 httpx==0.28.1
 
 # Authentication and Security
 python-jose[cryptography]==3.5.0
-passlib[bcrypt]==1.7.4
-bcrypt==4.0.1
+bcrypt==5.0.0
 pydantic==2.14.1
 pydantic-settings==2.16.0
 email-validator==2.3.0
@@ -48,6 +47,3 @@ pyxirr==0.10.8
 # PDF Processing
 reportlab==5.0.1
 pypdf==6.20.1
-
-# monitoring
-sentry-sdk==2.72.0

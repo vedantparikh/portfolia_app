@@ -207,7 +207,7 @@ class PortfolioAnalyticsService:
         metrics["annualized_return"] = Decimal(str(annualized_return))
 
         # Volatility (annualized)
-        daily_volatility = daily_returns.pct_change().std()
+        daily_volatility = daily_returns.ffill().pct_change().std()
         annualized_volatility = daily_volatility * math.sqrt(252)
         metrics["volatility"] = Decimal(str(annualized_volatility))
 
@@ -217,14 +217,14 @@ class PortfolioAnalyticsService:
         metrics["sharpe_ratio"] = Decimal(str(sharpe_ratio))
 
         # Maximum drawdown
-        cumulative_returns = (1 + daily_returns.pct_change()).cumprod()
+        cumulative_returns = (1 + daily_returns.ffill().pct_change()).cumprod()
         running_max = cumulative_returns.expanding().max()
         drawdown = (cumulative_returns - running_max) / running_max
         max_drawdown = drawdown.min()
         metrics["max_drawdown"] = Decimal(str(max_drawdown))
 
         # Value at Risk (95% and 99%)
-        returns = daily_returns.pct_change().dropna()
+        returns = daily_returns.ffill().pct_change().dropna()
         var_95 = returns.quantile(0.05)
         var_99 = returns.quantile(0.01)
         metrics["var_95"] = Decimal(str(var_95))
@@ -330,7 +330,7 @@ class PortfolioAnalyticsService:
 
         try:
             # Calculate returns
-            returns = price_data["Close"].pct_change().dropna()
+            returns = price_data["Close"].ffill().pct_change().dropna()
 
             # Volatility
             if len(returns) >= 20:
@@ -532,7 +532,7 @@ class PortfolioAnalyticsService:
         metrics = {}
 
         # Volatility calculations
-        returns = price_data["close"].pct_change().dropna()
+        returns = price_data["close"].ffill().pct_change().dropna()
         metrics["volatility_20d"] = Decimal(
             str(returns.rolling(20).std().iloc[-1] * math.sqrt(252))
         )
