@@ -31,10 +31,10 @@ class TrendIndicators(BaseIndicator):
         self.df = self.df.with_columns(
             [
                 pl.col("close")
-                .ewm_mean(span=window_fast, min_periods=min_periods_fast)
+                .ewm_mean(span=window_fast, min_samples=min_periods_fast)
                 .alias("ema_fast"),
                 pl.col("close")
-                .ewm_mean(span=window_slow, min_periods=min_periods_slow)
+                .ewm_mean(span=window_slow, min_samples=min_periods_slow)
                 .alias("ema_slow"),
             ]
         )
@@ -47,7 +47,7 @@ class TrendIndicators(BaseIndicator):
         self.df = self.df.with_columns(
             [
                 pl.col("macd")
-                .ewm_mean(span=window_sign, min_periods=min_periods_sign)
+                .ewm_mean(span=window_sign, min_samples=min_periods_sign)
                 .alias("signal")
             ]
         )
@@ -132,13 +132,13 @@ class TrendIndicators(BaseIndicator):
         self.df = self.df.with_columns(
             [
                 pl.col("true_range")
-                .ewm_mean(span=window, min_periods=min_periods)
+                .ewm_mean(span=window, min_samples=min_periods)
                 .alias("atr"),
                 pl.col("plus_dm")
-                .ewm_mean(span=window, min_periods=min_periods)
+                .ewm_mean(span=window, min_samples=min_periods)
                 .alias("plus_di"),
                 pl.col("minus_dm")
-                .ewm_mean(span=window, min_periods=min_periods)
+                .ewm_mean(span=window, min_samples=min_periods)
                 .alias("minus_di"),
             ]
         )
@@ -172,7 +172,7 @@ class TrendIndicators(BaseIndicator):
         )
 
         self.df = self.df.with_columns(
-            [pl.col("dx").ewm_mean(span=window, min_periods=min_periods).alias("adx")]
+            [pl.col("dx").ewm_mean(span=window, min_samples=min_periods).alias("adx")]
         )
 
         # Clean up temporary columns
@@ -213,16 +213,16 @@ class TrendIndicators(BaseIndicator):
         # This version correctly calculates the index of the high/low
         # in the rolling window and then calculates the Aroon values.
 
-        # Note: rolling_apply with a lambda is slow in Polars.
+        # Note: rolling_map with a lambda is slow in Polars.
         # Newer Polars versions (>= 0.20.10) have `rolling_argmax`
         # and `rolling_argmin` which are much faster.
         self.df = self.df.with_columns(
             [
                 pl.col("high")
-                .rolling_apply(lambda s: s.arg_max(), window_size=window)
+                .rolling_map(lambda s: s.arg_max(), window_size=window)
                 .alias("idx_high"),
                 pl.col("low")
-                .rolling_apply(lambda s: s.arg_min(), window_size=window)
+                .rolling_map(lambda s: s.arg_min(), window_size=window)
                 .alias("idx_low"),
             ]
         )
@@ -350,7 +350,7 @@ class TrendIndicators(BaseIndicator):
         self.df = self.df.with_columns(
             [
                 pl.col("typical_price")
-                .rolling_mean(window_size=window, min_periods=min_periods)
+                .rolling_mean(window_size=window, min_samples=min_periods)
                 .alias("sma_tp")
             ]
         )
@@ -360,7 +360,7 @@ class TrendIndicators(BaseIndicator):
             [
                 (pl.col("typical_price") - pl.col("sma_tp"))
                 .abs()
-                .rolling_mean(window_size=window, min_periods=min_periods)
+                .rolling_mean(window_size=window, min_samples=min_periods)
                 .alias("mean_deviation")
             ]
         )

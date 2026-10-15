@@ -48,10 +48,10 @@ class VolumeIndicators(BaseIndicator):
         self.df = self.df.with_columns(
             [
                 pl.col("positive_money_flow")
-                .rolling_sum(window_size=window, min_periods=min_periods)
+                .rolling_sum(window_size=window, min_samples=min_periods)
                 .alias("pos_flow_sum"),
                 pl.col("negative_money_flow")
-                .rolling_sum(window_size=window, min_periods=min_periods)
+                .rolling_sum(window_size=window, min_samples=min_periods)
                 .alias("neg_flow_sum"),
             ]
         )
@@ -241,7 +241,7 @@ class VolumeIndicators(BaseIndicator):
         self.df = self.df.with_columns(
             [
                 pl.col("force_index")
-                .ewm_mean(span=window, min_periods=min_periods)
+                .ewm_mean(span=window, min_samples=min_periods)
                 .alias("force_index_smoothed")
             ]
         )
