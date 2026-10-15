@@ -19,9 +19,9 @@ step "lint: ruff (backend), eslint (frontend)"
 docker run --rm --user "$(id -u):$(id -g)" -v "$ROOT/python/app:/app" -w /app \
   "$PROJECT-api" sh -c 'ruff check --no-cache . && ruff format --check --no-cache .'
 docker run --rm --network none \
-  -v "$ROOT/js/src:/app/src:ro" -v "$ROOT/js/.eslintrc.cjs:/app/.eslintrc.cjs:ro" \
+  -v "$ROOT/js/src:/app/src:ro" -v "$ROOT/js/eslint.config.js:/app/eslint.config.js:ro" \
   -v "$ROOT/js/vite.config.js:/app/vite.config.js:ro" \
-  "$PROJECT-app" npx eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0
+  "$PROJECT-app" npx eslint . --report-unused-disable-directives --max-warnings 0
 
 step "backend: app import + pytest (throwaway container, not on the stack network)"
 docker run --rm --user "$(id -u):$(id -g)" \

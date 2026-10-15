@@ -190,7 +190,7 @@ const BulkTransactionModal = ({ isOpen, onClose, onSave, portfolios }) => {
 
       const storageKey = `${LOCAL_STORAGE_KEY_PREFIX}${portfolioId}`;
       localStorage.removeItem(storageKey);
-    } catch (error) {
+    } catch {
       // Error toast is handled in the parent component
     } finally {
       setIsSaving(false);

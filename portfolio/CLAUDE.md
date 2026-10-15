@@ -25,7 +25,7 @@ docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD/python/app:/app
 Lint is part of the gate, and both linters must report 0. Autofix before committing:
 ```
 docker run --rm --user "$(id -u):$(id -g)" -v "$PWD/python/app:/app" -w /app portfolio-api sh -c 'ruff check --fix --no-cache . && ruff format --no-cache .'
-docker run --rm -v "$PWD/js/src:/app/src" -v "$PWD/js/.eslintrc.cjs:/app/.eslintrc.cjs:ro" portfolio-app npx eslint src --ext js,jsx --fix
+docker run --rm -v "$PWD/js/src:/app/src" -v "$PWD/js/eslint.config.js:/app/eslint.config.js:ro" portfolio-app npx eslint src --fix
 ```
 Never run pytest inside the running `portfolio-api-1`, which is wired to the stack's Postgres.
 
