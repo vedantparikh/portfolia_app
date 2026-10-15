@@ -643,8 +643,13 @@ class WatchlistService:
                         if data.get("current_price")
                         else None
                     )
-                    if data.get("short_name", data.get("long_name")) and not item.company_name:
-                        item.company_name = data.get("short_name", data.get("long_name"))
+                    if (
+                        data.get("short_name", data.get("long_name"))
+                        and not item.company_name
+                    ):
+                        item.company_name = data.get(
+                            "short_name", data.get("long_name")
+                        )
 
                     # Calculate price changes
                     if item.added_price and data.get("current_price"):

@@ -186,12 +186,14 @@ class AssetBulkCreateRequest(BaseModel):
 
 class FailedAssetInfo(BaseModel):
     """Schema for reporting a failed asset creation."""
+
     symbol: str
     reason: str
 
 
 class AssetBulkCreateResponse(BaseModel):
     """Schema for bulk asset creation response."""
+
     created: List[Asset]
     failed: List[FailedAssetInfo]
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Pre-push gate mirroring CI. Needs only Docker (the Jetson host has no py3.12/node).
-#   scripts/verify.sh          compose config + backend tests + frontend build
+#   scripts/verify.sh          compose config + lint + backend tests + frontend build
 #   scripts/verify.sh --stack  also rebuild/restart the local stack and smoke-test it
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -14,6 +14,14 @@ docker compose config -q
 
 step "build images"
 docker compose build -q api app
+
+step "lint: ruff (backend), eslint (frontend)"
+docker run --rm --user "$(id -u):$(id -g)" -v "$ROOT/python/app:/app" -w /app \
+  "$PROJECT-api" sh -c 'ruff check --no-cache . && ruff format --check --no-cache .'
+docker run --rm --network none \
+  -v "$ROOT/js/src:/app/src:ro" -v "$ROOT/js/.eslintrc.cjs:/app/.eslintrc.cjs:ro" \
+  -v "$ROOT/js/vite.config.js:/app/vite.config.js:ro" \
+  "$PROJECT-app" npx eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0
 
 step "backend: app import + pytest (throwaway container, not on the stack network)"
 docker run --rm --user "$(id -u):$(id -g)" \

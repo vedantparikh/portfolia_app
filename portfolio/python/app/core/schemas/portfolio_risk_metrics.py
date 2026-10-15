@@ -21,7 +21,9 @@ class RiskMetrics(BaseModel):
         None, description="99% Value at Risk (VaR) in percent."
     )
     sortino_ratio: Optional[Decimal] = Field(None, description="Sortino ratio.")
-    cvar_95: Optional[Decimal] = Field(None, description="95% Value at Risk (VaR) in percent.")
+    cvar_95: Optional[Decimal] = Field(
+        None, description="95% Value at Risk (VaR) in percent."
+    )
     calmar_ratio: Optional[Decimal] = Field(None, description="Calmar ratio.")
 
 
@@ -39,10 +41,19 @@ class RiskCalculationResponse(BaseModel):
     comprehensive set of risk metrics.
     """
 
-    portfolio_id: int = Field(..., description="The unique identifier for the portfolio.")
-    period: str = Field(..., description="The time period for which the risk was calculated (e.g., '1Y', 'YTD').")
-    error: Optional[str] = Field(None, description="An error message if the calculation failed, otherwise null.")
-    metrics: RiskMetrics = Field(..., description="A container for the calculated risk metrics.")
+    portfolio_id: int = Field(
+        ..., description="The unique identifier for the portfolio."
+    )
+    period: str = Field(
+        ...,
+        description="The time period for which the risk was calculated (e.g., '1Y', 'YTD').",
+    )
+    error: Optional[str] = Field(
+        None, description="An error message if the calculation failed, otherwise null."
+    )
+    metrics: RiskMetrics = Field(
+        ..., description="A container for the calculated risk metrics."
+    )
     risk_assessment: Optional[RiskAssessmentMetrics] = Field(
         ..., description="A container for the risk assessment metrics."
-        )
+    )

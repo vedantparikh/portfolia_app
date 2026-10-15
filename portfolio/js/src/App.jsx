@@ -20,7 +20,6 @@
  */
 
 // Import React - the core library for building user interfaces
-import React from "react";
 import * as Sentry from "@sentry/react";
 
 // Import Toaster from react-hot-toast - this shows popup notifications to users

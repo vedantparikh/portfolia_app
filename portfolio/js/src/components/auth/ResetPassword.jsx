@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { Eye, EyeOff, Lock, AlertCircle, CheckCircle, ArrowLeft } from 'lucide-react';
 import { authAPI } from '../../services/api';
@@ -11,7 +11,6 @@ const ResetPassword = () => {
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [searchParams] = useSearchParams();
-    const navigate = useNavigate();
 
     const token = searchParams.get('token');
 

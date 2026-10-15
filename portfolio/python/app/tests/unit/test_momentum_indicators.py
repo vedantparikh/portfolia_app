@@ -71,12 +71,17 @@ class TestMomentumIndicators(unittest.TestCase):
         # We'll check that the values are in the same general range rather than exact matches
         rsi_our = pd_result["rsi"].dropna()
         rsi_ta = ta_rsi.dropna()
-        
+
         # Check that both have similar statistical properties
-        self.assertAlmostEqual(rsi_our.mean(), rsi_ta.mean(), delta=5.0, 
-                             msg="RSI means should be similar")
-        self.assertAlmostEqual(rsi_our.std(), rsi_ta.std(), delta=5.0, 
-                             msg="RSI standard deviations should be similar")
+        self.assertAlmostEqual(
+            rsi_our.mean(), rsi_ta.mean(), delta=5.0, msg="RSI means should be similar"
+        )
+        self.assertAlmostEqual(
+            rsi_our.std(),
+            rsi_ta.std(),
+            delta=5.0,
+            msg="RSI standard deviations should be similar",
+        )
 
     def test_roc_indicator(self):
         """Test ROC indicator implementation."""
@@ -92,12 +97,17 @@ class TestMomentumIndicators(unittest.TestCase):
         # Compare with ta package results (allowing for small numerical differences)
         roc_our = pd_result["roc"].dropna()
         roc_ta = ta_roc.dropna()
-        
+
         # Check that both have similar statistical properties
-        self.assertAlmostEqual(roc_our.mean(), roc_ta.mean(), delta=2.0, 
-                             msg="ROC means should be similar")
-        self.assertAlmostEqual(roc_our.std(), roc_ta.std(), delta=2.0, 
-                             msg="ROC standard deviations should be similar")
+        self.assertAlmostEqual(
+            roc_our.mean(), roc_ta.mean(), delta=2.0, msg="ROC means should be similar"
+        )
+        self.assertAlmostEqual(
+            roc_our.std(),
+            roc_ta.std(),
+            delta=2.0,
+            msg="ROC standard deviations should be similar",
+        )
 
     def test_stoch_rsi_indicator(self):
         """Test Stochastic RSI indicator implementation."""
@@ -107,7 +117,7 @@ class TestMomentumIndicators(unittest.TestCase):
         )
 
         # Calculate Stochastic RSI using ta package
-        ta_stoch_rsi = StochRSIIndicator(
+        StochRSIIndicator(
             close=self.pd_df["Close"], window=14, smooth1=3, smooth2=3, fillna=True
         )
 
@@ -163,12 +173,20 @@ class TestMomentumIndicators(unittest.TestCase):
         stoch_ta = ta_stoch.stoch().dropna()
         stoch_signal_our = pd_result["stoch_signal"].dropna()
         stoch_signal_ta = ta_stoch.stoch_signal().dropna()
-        
+
         # Check that both have similar statistical properties
-        self.assertAlmostEqual(stoch_our.mean(), stoch_ta.mean(), delta=5.0, 
-                             msg="Stochastic %K means should be similar")
-        self.assertAlmostEqual(stoch_signal_our.mean(), stoch_signal_ta.mean(), delta=5.0, 
-                             msg="Stochastic %D means should be similar")
+        self.assertAlmostEqual(
+            stoch_our.mean(),
+            stoch_ta.mean(),
+            delta=5.0,
+            msg="Stochastic %K means should be similar",
+        )
+        self.assertAlmostEqual(
+            stoch_signal_our.mean(),
+            stoch_signal_ta.mean(),
+            delta=5.0,
+            msg="Stochastic %D means should be similar",
+        )
 
     def test_all_momentum_indicators(self):
         """Test all momentum indicators together."""

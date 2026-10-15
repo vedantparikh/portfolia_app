@@ -1,6 +1,6 @@
-from .base import Base
 from .analysis_configuration import AnalysisConfiguration
 from .asset import Asset, MarketIndex
+from .base import Base
 from .portfolio import Portfolio, PortfolioAsset
 from .portfolio_analytics import (
     PortfolioAllocation,

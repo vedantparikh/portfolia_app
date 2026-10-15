@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { Eye, EyeOff, Lock, User, AlertCircle } from 'lucide-react';
@@ -152,7 +152,7 @@ const Login = () => {
                     {/* Register Link */}
                     <div className="text-center">
                         <p className="text-gray-400">
-                            Don't have an account?{' '}
+                            Don&apos;t have an account?{' '}
                             <Link
                                 to="/register"
                                 className="text-primary-400 hover:text-primary-300 font-medium transition-colors"

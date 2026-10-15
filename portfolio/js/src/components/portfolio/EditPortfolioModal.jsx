@@ -1,5 +1,5 @@
 import { DollarSign, Edit, Target, X } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 
 const EditPortfolioModal = ({ isOpen, onClose, portfolio, onUpdate }) => {

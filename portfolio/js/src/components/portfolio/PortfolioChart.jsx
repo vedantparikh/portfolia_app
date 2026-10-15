@@ -180,6 +180,7 @@ const PortfolioChart = ({ portfolio, stats }) => {
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- processHistoryData is recreated every render
   }, [portfolio, timeRange]);
 
   const loadAllocationData = useCallback(async () => {

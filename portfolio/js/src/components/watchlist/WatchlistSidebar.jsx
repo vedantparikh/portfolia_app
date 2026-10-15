@@ -10,7 +10,7 @@ import {
     Star,
     Trash2
 } from 'lucide-react';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import EditWatchlistModal from './EditWatchlistModal';
 
 const WatchlistSidebar = ({
@@ -160,7 +160,7 @@ const WatchlistSidebar = ({
                                         </p>
                                         <div className="flex items-center space-x-4 mt-2">
                                             <span className="text-xs text-gray-500">
-                                                {watchlist.items?.length || 0} symbols
+                                                {watchlist.item_count ?? watchlist.items?.length ?? 0} symbols
                                             </span>
                                             {watchlist.color && (
                                                 <div 
@@ -224,7 +224,7 @@ const WatchlistSidebar = ({
                     </div>
                     <div className="flex justify-between">
                         <span>Total Symbols:</span>
-                        <span>{watchlists.reduce((sum, w) => sum + (w.items?.length || 0), 0)}</span>
+                        <span>{watchlists.reduce((sum, w) => sum + (w.item_count ?? w.items?.length ?? 0), 0)}</span>
                     </div>
                 </div>
             </div>

@@ -13,7 +13,7 @@ from alembic import context
 from config import settings
 
 # Import all models so they register with Base.metadata
-from core.database.models import *  # noqa
+from core.database.models import Base  # importing the package registers every model
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -72,7 +72,7 @@ def run_migrations_online() -> None:
     """
     configuration = config.get_section(config.config_ini_section)
     configuration["sqlalchemy.url"] = get_url()
-    
+
     connectable = engine_from_config(
         configuration,
         prefix="sqlalchemy.",
@@ -80,9 +80,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()

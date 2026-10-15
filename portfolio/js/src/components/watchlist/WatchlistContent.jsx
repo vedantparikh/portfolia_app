@@ -12,7 +12,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { watchlistAPI, assetAPI } from "../../services/api";
 import {
@@ -77,6 +77,7 @@ const WatchlistContent = ({
     };
 
     loadWatchlistItems();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load only when the watchlist changes
   }, [watchlist?.id, onLoadWatchlistItems]);
 
   // Modal and dropdown state management
@@ -493,9 +494,6 @@ const WatchlistContent = ({
                     // Calculate if price change is positive or negative for styling
                     const isPositive =
                       parseFloat(item.price_change_percent_since_added || 0) >
-                      0;
-                    const isNegative =
-                      parseFloat(item.price_change_percent_since_added || 0) <
                       0;
 
                     return (

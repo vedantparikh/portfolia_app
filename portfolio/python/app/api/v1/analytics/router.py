@@ -37,7 +37,9 @@ from core.schemas.portfolio_analytics import (
     UserDashboardResponse,
 )
 from core.schemas.portfolio_risk_metrics import RiskCalculationResponse
-from core.services.portfolio_advance_risk_metrics import PortfolioAdvanceRiskMetricsService
+from core.services.portfolio_advance_risk_metrics import (
+    PortfolioAdvanceRiskMetricsService,
+)
 from core.services.portfolio_analytics_service import PortfolioAnalyticsService
 from core.services.portfolio_risk_metrics_service import PortfolioRiskMetricsService
 from core.services.utils import PeriodType
@@ -52,10 +54,10 @@ router = APIRouter(prefix="/analytics")
     response_model=PerformanceSnapshotResponse,
 )
 async def get_performance_snapshot(
-        portfolio_id: int,
-        force_refresh: bool = Query(True, description="Force refresh from yfinance"),
-        current_user: User = Depends(get_current_active_user),
-        db: Session = Depends(get_db),
+    portfolio_id: int,
+    force_refresh: bool = Query(True, description="Force refresh from yfinance"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """Get portfolio performance snapshot, always refreshing with yfinance data."""
     # Verify portfolio ownership
@@ -93,10 +95,10 @@ async def get_performance_snapshot(
     response_model=DeleteResponse,
 )
 async def delete_performance_snapshot(
-        portfolio_id: int,
-        snapshot_id: int,
-        current_user: User = Depends(get_current_active_user),
-        db: Session = Depends(get_db),
+    portfolio_id: int,
+    snapshot_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """Delete a performance snapshot."""
     # Verify portfolio ownership
@@ -141,10 +143,10 @@ async def delete_performance_snapshot(
     response_model=PortfolioPerformanceHistoryResponse,
 )
 async def get_performance_history(
-        portfolio_id: int,
-        days: int = Query(30, ge=1, le=10000, description="Number of days to look back"),
-        current_user: User = Depends(get_current_active_user),
-        db: Session = Depends(get_db),
+    portfolio_id: int,
+    days: int = Query(30, ge=1, le=10000, description="Number of days to look back"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """
     Get portfolio performance history.
@@ -190,7 +192,9 @@ async def get_performance_history(
         )
         if not latest_snapshot or not oldest_snapshot:
             should_regenerate = True
-            logger.info(f"No existing history for portfolio {portfolio_id}. Generating.")
+            logger.info(
+                f"No existing history for portfolio {portfolio_id}. Generating."
+            )
         # Check if the user is requesting data from before our oldest record.
         elif start_date.date() < oldest_snapshot.snapshot_date.date():
             should_regenerate = True
@@ -201,7 +205,9 @@ async def get_performance_history(
         # Check if the last snapshot is from a previous day
         elif latest_snapshot.snapshot_date.date() < end_date.date():
             should_regenerate = True
-            logger.info(f"Snapshots are stale (from a previous day) for portfolio {portfolio_id}. Regenerating.")
+            logger.info(
+                f"Snapshots are stale (from a previous day) for portfolio {portfolio_id}. Regenerating."
+            )
         else:
             # Snapshots are for today. Now, check for new transactions.
             latest_transaction = (
@@ -211,9 +217,14 @@ async def get_performance_history(
                 .first()
             )
             # Regenerate if a transaction has been added since the last snapshot was made
-            if latest_transaction and latest_transaction.created_at > latest_snapshot.created_at:
+            if (
+                latest_transaction
+                and latest_transaction.created_at > latest_snapshot.created_at
+            ):
                 should_regenerate = True
-                logger.info(f"New transaction detected for portfolio {portfolio_id}. Regenerating history.")
+                logger.info(
+                    f"New transaction detected for portfolio {portfolio_id}. Regenerating history."
+                )
 
         # 3. Execute logic: either regenerate or use existing data
         if should_regenerate:
@@ -221,7 +232,9 @@ async def get_performance_history(
                 portfolio_id, start_date, end_date
             )
         else:
-            logger.info(f"Returning fresh, cached history for portfolio {portfolio_id}.")
+            logger.info(
+                f"Returning fresh, cached history for portfolio {portfolio_id}."
+            )
 
         # 4. Query the database one final time to get the definitive history and return it
         final_history = (
@@ -241,7 +254,9 @@ async def get_performance_history(
         )
 
     except Exception as e:
-        logger.error(f"Failed to get performance history for portfolio {portfolio_id}: {e}")
+        logger.error(
+            f"Failed to get performance history for portfolio {portfolio_id}: {e}"
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get performance history: {str(e)}",
@@ -254,10 +269,10 @@ async def get_performance_history(
     response_model=List[PortfolioAllocationResponse],
 )
 async def set_portfolio_allocations(
-        portfolio_id: int,
-        allocations: List[PortfolioAllocationCreate],
-        current_user: User = Depends(get_current_active_user),
-        db: Session = Depends(get_db),
+    portfolio_id: int,
+    allocations: List[PortfolioAllocationCreate],
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """Set target allocations for a portfolio."""
     # Verify portfolio ownership
@@ -289,9 +304,9 @@ async def set_portfolio_allocations(
     response_model=List[PortfolioAllocationResponse],
 )
 async def get_portfolio_allocations(
-        portfolio_id: int,
-        current_user: User = Depends(get_current_active_user),
-        db: Session = Depends(get_db),
+    portfolio_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """Get portfolio target allocations."""
     # Verify portfolio ownership
@@ -327,11 +342,11 @@ async def get_portfolio_allocations(
     response_model=PortfolioAllocationResponse,
 )
 async def update_portfolio_allocation(
-        portfolio_id: int,
-        allocation_id: int,
-        allocation_data: PortfolioAllocationCreate,
-        current_user: User = Depends(get_current_active_user),
-        db: Session = Depends(get_db),
+    portfolio_id: int,
+    allocation_id: int,
+    allocation_data: PortfolioAllocationCreate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """Update a specific portfolio allocation."""
     # Verify portfolio ownership
@@ -384,10 +399,10 @@ async def update_portfolio_allocation(
     response_model=DeleteResponse,
 )
 async def delete_portfolio_allocation(
-        portfolio_id: int,
-        allocation_id: int,
-        current_user: User = Depends(get_current_active_user),
-        db: Session = Depends(get_db),
+    portfolio_id: int,
+    allocation_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """Delete a portfolio allocation."""
     # Verify portfolio ownership
@@ -432,10 +447,10 @@ async def delete_portfolio_allocation(
     response_model=AllocationAnalysisResponse,
 )
 async def analyze_portfolio_allocation(
-        portfolio_id: int,
-        force_refresh: bool = Query(True, description="Force refresh from yfinance"),
-        current_user: User = Depends(get_current_active_user),
-        db: Session = Depends(get_db),
+    portfolio_id: int,
+    force_refresh: bool = Query(True, description="Force refresh from yfinance"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """Analyze portfolio allocation and detect drift, always using latest yfinance data."""
     # Verify portfolio ownership
@@ -471,10 +486,10 @@ async def analyze_portfolio_allocation(
 # Portfolio Risk Analysis
 @router.get("/portfolios/{portfolio_id}/risk", response_model=RiskCalculationResponse)
 async def get_portfolio_risk_metrics(
-        portfolio_id: int,
-        period: str = Query(default=PeriodType.INCEPTION, description="Calculation period"),
-        current_user: User = Depends(get_current_active_user),
-        db: Session = Depends(get_db),
+    portfolio_id: int,
+    period: str = Query(default=PeriodType.INCEPTION, description="Calculation period"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """Get portfolio risk metrics."""
     # Verify portfolio ownership
@@ -497,7 +512,11 @@ async def get_portfolio_risk_metrics(
 
     try:
         # Use force_refresh parameter to ensure latest data
-        risk_metrics = await portfolio_risk_metric_service.calculate_portfolio_risk_metrics(portfolio_id, period)
+        risk_metrics = (
+            await portfolio_risk_metric_service.calculate_portfolio_risk_metrics(
+                portfolio_id, period
+            )
+        )
 
         return risk_metrics
     except ValueError as e:
@@ -506,12 +525,15 @@ async def get_portfolio_risk_metrics(
         ) from e
 
 
-@router.get("/portfolios/{portfolio_id}/advance-risk", response_model=AdvanceRiskCalculationResponse)
-async def get_portfolio_risk_metrics(
-        portfolio_id: int,
-        period: str = Query(default=PeriodType.INCEPTION, description="Calculation period"),
-        current_user: User = Depends(get_current_active_user),
-        db: Session = Depends(get_db),
+@router.get(
+    "/portfolios/{portfolio_id}/advance-risk",
+    response_model=AdvanceRiskCalculationResponse,
+)
+async def get_portfolio_advance_risk_metrics(
+    portfolio_id: int,
+    period: str = Query(default=PeriodType.INCEPTION, description="Calculation period"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """Get portfolio advance risk metrics."""
     # Verify portfolio ownership
@@ -533,9 +555,11 @@ async def get_portfolio_risk_metrics(
     portfolio_advance_risk_metric_service = PortfolioAdvanceRiskMetricsService(db)
 
     try:
-        advance_risk_metrics = await portfolio_advance_risk_metric_service.calculate_advanced_metrics(
-            portfolio_id, period
+        advance_risk_metrics = (
+            await portfolio_advance_risk_metric_service.calculate_advanced_metrics(
+                portfolio_id, period
             )
+        )
 
         return advance_risk_metrics
     except ValueError as e:
@@ -549,10 +573,10 @@ async def get_portfolio_risk_metrics(
     "/portfolios/{portfolio_id}/benchmarks", response_model=PortfolioBenchmarkResponse
 )
 async def add_portfolio_benchmark(
-        portfolio_id: int,
-        benchmark_data: PortfolioBenchmarkCreate,
-        current_user: User = Depends(get_current_active_user),
-        db: Session = Depends(get_db),
+    portfolio_id: int,
+    benchmark_data: PortfolioBenchmarkCreate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """Add a benchmark to a portfolio."""
     # Verify portfolio ownership
@@ -604,9 +628,9 @@ async def add_portfolio_benchmark(
     response_model=List[PortfolioBenchmarkResponse],
 )
 async def get_portfolio_benchmarks(
-        portfolio_id: int,
-        current_user: User = Depends(get_current_active_user),
-        db: Session = Depends(get_db),
+    portfolio_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """Get portfolio benchmarks."""
     # Verify portfolio ownership
@@ -643,10 +667,10 @@ async def get_portfolio_benchmarks(
     response_model=RebalancingEventResponse,
 )
 async def create_rebalancing_event(
-        portfolio_id: int,
-        event_data: RebalancingEventCreate,
-        current_user: User = Depends(get_current_active_user),
-        db: Session = Depends(get_db),
+    portfolio_id: int,
+    event_data: RebalancingEventCreate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """Create a rebalancing event for a portfolio."""
     # Verify portfolio ownership
@@ -693,10 +717,10 @@ async def create_rebalancing_event(
     response_model=List[RebalancingEventResponse],
 )
 async def get_rebalancing_events(
-        portfolio_id: int,
-        days: int = Query(90, ge=1, le=10000, description="Number of days to look back"),
-        current_user: User = Depends(get_current_active_user),
-        db: Session = Depends(get_db),
+    portfolio_id: int,
+    days: int = Query(90, ge=1, le=10000, description="Number of days to look back"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """Get rebalancing events for a portfolio."""
     # Verify portfolio ownership
@@ -736,10 +760,10 @@ async def get_rebalancing_events(
     "/portfolios/{portfolio_id}/summary", response_model=PortfolioAnalyticsSummary
 )
 async def get_portfolio_analytics_summary(
-        portfolio_id: int,
-        force_refresh: bool = Query(True, description="Force refresh from yfinance"),
-        current_user: User = Depends(get_current_active_user),
-        db: Session = Depends(get_db),
+    portfolio_id: int,
+    force_refresh: bool = Query(True, description="Force refresh from yfinance"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """Get comprehensive portfolio analytics summary, always refreshing with latest yfinance data."""
     # Verify portfolio ownership
@@ -778,9 +802,9 @@ async def get_portfolio_analytics_summary(
     response_model=PortfolioRebalancingRecommendation,
 )
 async def get_rebalancing_recommendations(
-        portfolio_id: int,
-        current_user: User = Depends(get_current_active_user),
-        db: Session = Depends(get_db),
+    portfolio_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """Get rebalancing recommendations for a portfolio."""
     # Verify portfolio ownership
@@ -813,11 +837,11 @@ async def get_rebalancing_recommendations(
     response_model=PerformanceComparisonResponse,
 )
 async def get_portfolio_performance_comparison(
-        portfolio_id: int,
-        benchmark_id: Optional[int] = Query(None, description="Benchmark asset ID"),
-        days: int = Query(30, ge=1, le=10000, description="Number of days to compare"),
-        current_user: User = Depends(get_current_active_user),
-        db: Session = Depends(get_db),
+    portfolio_id: int,
+    benchmark_id: Optional[int] = Query(None, description="Benchmark asset ID"),
+    days: int = Query(30, ge=1, le=10000, description="Number of days to compare"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """Get portfolio performance comparison with benchmark."""
     # Verify portfolio ownership
@@ -878,9 +902,9 @@ async def get_portfolio_performance_comparison(
 # User Analytics Dashboard
 @router.get("/users/dashboard", response_model=UserDashboardResponse)
 async def get_user_analytics_dashboard(
-        force_refresh: bool = Query(True, description="Force refresh from yfinance"),
-        current_user: User = Depends(get_current_active_user),
-        db: Session = Depends(get_db),
+    force_refresh: bool = Query(True, description="Force refresh from yfinance"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """Get comprehensive analytics dashboard for the current user, always refreshing with latest yfinance data."""
     analytics_service = PortfolioAnalyticsService(db)
@@ -891,6 +915,7 @@ async def get_user_analytics_dashboard(
             try:
                 # Get all user assets and refresh their data
                 from core.database.models import Asset
+
                 user_assets = (
                     db.query(Asset)
                     .filter(Asset.user_id == current_user.id, Asset.is_active == True)
@@ -913,9 +938,13 @@ async def get_user_analytics_dashboard(
 
                 for portfolio in user_portfolios:
                     try:
-                        await analytics_service.force_refresh_all_portfolio_data(portfolio.id)
+                        await analytics_service.force_refresh_all_portfolio_data(
+                            portfolio.id
+                        )
                     except Exception as e:
-                        logger.warning(f"Failed to refresh portfolio {portfolio.id}: {e}")
+                        logger.warning(
+                            f"Failed to refresh portfolio {portfolio.id}: {e}"
+                        )
 
             except Exception as e:
                 logger.warning(f"Failed to refresh user data: {e}")

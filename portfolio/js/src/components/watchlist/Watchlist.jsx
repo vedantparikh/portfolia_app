@@ -8,7 +8,7 @@ import {
   Star,
   Trash2,
 } from "lucide-react";
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
@@ -28,13 +28,11 @@ const Watchlist = () => {
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showAddSymbolModal, setShowAddSymbolModal] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterType, setFilterType] = useState("all");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
   const [refreshInterval, setRefreshInterval] = useState(30000); // 30 seconds default
   const [isMobile, setIsMobile] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingWatchlist, setEditingWatchlist] = useState(null);
   const [showDropdown, setShowDropdown] = useState(null);
@@ -45,7 +43,7 @@ const Watchlist = () => {
   const [removingSymbol, setRemovingSymbol] = useState(null); // Store the ID of symbol being removed
   const [creatingWatchlist, setCreatingWatchlist] = useState(false);
   const [updatingWatchlist, setUpdatingWatchlist] = useState(false);
-  const [deletingWatchlist, setDeletingWatchlist] = useState(null); // Store the ID of watchlist being deleted
+  const [, setDeletingWatchlist] = useState(null); // Store the ID of watchlist being deleted
 
   // useRef to store the interval ID so we can clear it later
   const refreshIntervalRef = useRef(null);
@@ -91,6 +89,7 @@ const Watchlist = () => {
         clearInterval(refreshIntervalRef.current);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- interval keyed on watchlist and refresh settings
   }, [selectedWatchlist, autoRefreshEnabled, refreshInterval]); // Dependencies: re-run when these change
 
   const loadWatchlists = async () => {
@@ -419,19 +418,6 @@ const Watchlist = () => {
     setSelectedWatchlist(null);
   };
 
-  const filteredWatchlists = watchlists.filter((watchlist) => {
-    const matchesSearch =
-      watchlist.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      watchlist.description?.toLowerCase().includes(searchTerm.toLowerCase());
-
-    if (filterType === "all") return matchesSearch;
-    if (filterType === "default") return matchesSearch && watchlist.is_default;
-    if (filterType === "public") return matchesSearch && watchlist.is_public;
-    if (filterType === "private") return matchesSearch && !watchlist.is_public;
-
-    return matchesSearch;
-  });
-
   if (loading) {
     return (
       <div className="min-h-screen gradient-bg flex items-center justify-center">
@@ -505,7 +491,7 @@ const Watchlist = () => {
                       {selectedWatchlist?.name || "Watchlist"}
                     </h1>
                     <p className="text-sm text-gray-400">
-                      {selectedWatchlist?.items?.length || 0} symbols •{" "}
+                      {selectedWatchlist?.items?.length ?? selectedWatchlist?.item_count ?? 0} symbols •{" "}
                       {selectedWatchlist?.is_public ? "Public" : "Private"}
                     </p>
                   </div>
@@ -713,7 +699,7 @@ const Watchlist = () => {
                           <div className="flex items-center justify-between text-sm">
                             <div className="flex items-center space-x-4">
                               <span className="text-gray-400">
-                                {watchlist.items?.length || 0} symbols
+                                {watchlist.item_count ?? watchlist.items?.length ?? 0} symbols
                               </span>
                               <div
                                 className="w-3 h-3 rounded-full"

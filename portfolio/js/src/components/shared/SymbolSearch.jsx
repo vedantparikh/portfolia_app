@@ -1,5 +1,5 @@
 import { Search, TrendingUp } from 'lucide-react';
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { marketAPI } from '../../services/api';
 import LoadingSpinner from './LoadingSpinner';
 

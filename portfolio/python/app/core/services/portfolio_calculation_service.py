@@ -10,13 +10,12 @@ Supports period-based calculations and benchmark comparisons.
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd  # type: ignore
 import pyxirr  # type: ignore
-from dateutil.relativedelta import relativedelta  # type: ignore
 from sqlalchemy.orm import Session
 
 from core.database.models import (
@@ -28,7 +27,7 @@ from core.database.models import (
     TransactionType,
 )
 from core.services.market_data_service import MarketDataService
-from core.services.utils import PeriodType, CashFlow
+from core.services.utils import CashFlow, PeriodType
 
 logger = logging.getLogger(__name__)
 
@@ -68,11 +67,11 @@ class PortfolioCalculationService:
         self._price_cache_time = {}
 
     async def calculate_portfolio_performance(
-            self,
-            portfolio_id: int,
-            user_id: int,
-            period: str = PeriodType.INCEPTION,
-            end_date: Optional[datetime] = None,
+        self,
+        portfolio_id: int,
+        user_id: int,
+        period: str = PeriodType.INCEPTION,
+        end_date: Optional[datetime] = None,
     ) -> Dict[str, Any]:
         """
         Calculate comprehensive portfolio performance metrics.
@@ -133,7 +132,9 @@ class PortfolioCalculationService:
             )
 
         # Get current portfolio value
-        current_value, value_errors = await self.get_current_portfolio_value(portfolio_id)
+        current_value, value_errors = await self.get_current_portfolio_value(
+            portfolio_id
+        )
 
         if value_errors:
             return {
@@ -186,7 +187,7 @@ class PortfolioCalculationService:
                 "twr": twr_value,
                 "mwr": xirr_value,  # MWR is essentially XIRR,
                 "volatility": volatility,
-                "max_drawdown": max_drawdown
+                "max_drawdown": max_drawdown,
             },
             "calculation_date": datetime.now(timezone.utc).isoformat(),
         }
@@ -197,11 +198,11 @@ class PortfolioCalculationService:
         return result
 
     async def calculate_benchmark_performance(
-            self,
-            benchmark_symbol: str,
-            cash_flows: List[CashFlow],
-            period: str = PeriodType.INCEPTION,
-            end_date: Optional[datetime] = None,
+        self,
+        benchmark_symbol: str,
+        cash_flows: List[CashFlow],
+        period: str = PeriodType.INCEPTION,
+        end_date: Optional[datetime] = None,
     ) -> Dict[str, Any]:
         """
         Calculate hypothetical performance if money was invested in benchmark.
@@ -276,12 +277,12 @@ class PortfolioCalculationService:
             return self._empty_benchmark_performance_result(benchmark_symbol, period)
 
     async def compare_portfolio_to_benchmark(
-            self,
-            portfolio_id: int,
-            user_id: int,
-            benchmark_symbol: str,
-            period: str = PeriodType.INCEPTION,
-            end_date: Optional[datetime] = None,
+        self,
+        portfolio_id: int,
+        user_id: int,
+        benchmark_symbol: str,
+        period: str = PeriodType.INCEPTION,
+        end_date: Optional[datetime] = None,
     ) -> Dict[str, Any]:
         """
         Compare portfolio performance to benchmark using same cash flows.
@@ -361,7 +362,7 @@ class PortfolioCalculationService:
                 ),
                 "outperforming": self._is_outperforming(
                     portfolio_metrics.get("xirr"), benchmark_metrics.get("xirr")
-                )
+                ),
             },
             "calculation_date": datetime.now(timezone.utc).isoformat(),
         }
@@ -369,10 +370,10 @@ class PortfolioCalculationService:
 
     # CAGR Calculation Methods
     def _calculate_cagr(
-            self,
-            twr_percent: Optional[float],
-            start_date: datetime,
-            end_date: datetime,
+        self,
+        twr_percent: Optional[float],
+        start_date: datetime,
+        end_date: datetime,
     ) -> Optional[float]:
         """
         Compound Annual Growth Rate, computed as the annualised time-weighted return.
@@ -394,12 +395,12 @@ class PortfolioCalculationService:
         return float((growth ** (1 / years) - 1) * 100)
 
     async def _calculate_benchmark_cagr(
-            self,
-            cash_flows: List[CashFlow],
-            price_data: pd.DataFrame,
-            current_value: float,
-            start_date: Optional[datetime],
-            end_date: datetime,
+        self,
+        cash_flows: List[CashFlow],
+        price_data: pd.DataFrame,
+        current_value: float,
+        start_date: Optional[datetime],
+        end_date: datetime,
     ) -> Optional[float]:
         """Calculate CAGR for benchmark investment."""
         try:
@@ -444,11 +445,11 @@ class PortfolioCalculationService:
 
     # XIRR Calculation Methods
     async def _calculate_xirr(
-            self,
-            all_transactions: List[Transaction],
-            current_value: float,
-            start_date: Optional[datetime],
-            end_date: datetime,
+        self,
+        all_transactions: List[Transaction],
+        current_value: float,
+        start_date: Optional[datetime],
+        end_date: datetime,
     ) -> Optional[float]:
         """
         Calculate Extended Internal Rate of Return (XIRR).
@@ -526,15 +527,18 @@ class PortfolioCalculationService:
         """
         if transaction.transaction_type == TransactionType.BUY:
             return -float(transaction.total_amount)
-        if transaction.transaction_type in (TransactionType.SELL, TransactionType.DIVIDEND):
+        if transaction.transaction_type in (
+            TransactionType.SELL,
+            TransactionType.DIVIDEND,
+        ):
             return float(transaction.total_amount)
         return None
 
     def _calculate_benchmark_xirr(
-            self,
-            cash_flows: List[CashFlow],
-            current_value: float,
-            end_date: datetime,
+        self,
+        cash_flows: List[CashFlow],
+        current_value: float,
+        end_date: datetime,
     ) -> Optional[float]:
         """Calculate XIRR for benchmark investment."""
         try:
@@ -573,7 +577,9 @@ class PortfolioCalculationService:
             return None
 
     # TWR Calculation Methods
-    def _calculate_twr(self, portfolio_history: Optional[pd.DataFrame]) -> Optional[float]:
+    def _calculate_twr(
+        self, portfolio_history: Optional[pd.DataFrame]
+    ) -> Optional[float]:
         """
         Time-Weighted Return: geometrically linked cash-flow-adjusted daily returns.
 
@@ -602,11 +608,11 @@ class PortfolioCalculationService:
             return 0.0
 
     async def _calculate_benchmark_twr(
-            self,
-            cash_flows: List[CashFlow],
-            price_data: pd.DataFrame,
-            start_date: Optional[datetime],
-            end_date: datetime,
+        self,
+        cash_flows: List[CashFlow],
+        price_data: pd.DataFrame,
+        start_date: Optional[datetime],
+        end_date: datetime,
     ) -> Optional[float]:
         """Calculate proper TWR for benchmark using sub-period analysis."""
         try:
@@ -663,10 +669,10 @@ class PortfolioCalculationService:
             return None
 
     def _create_benchmark_sub_periods(
-            self,
-            start_date: datetime,
-            end_date: datetime,
-            cash_flow_dates: List[datetime],
+        self,
+        start_date: datetime,
+        end_date: datetime,
+        cash_flow_dates: List[datetime],
     ) -> List[tuple]:
         """Create sub-periods for benchmark TWR calculation."""
         period_dates = [start_date] + cash_flow_dates + [end_date]
@@ -683,12 +689,12 @@ class PortfolioCalculationService:
         return sub_periods
 
     async def _calculate_benchmark_sub_period_return(
-            self,
-            cash_flows: List[CashFlow],
-            price_data: pd.DataFrame,
-            period_start: datetime,
-            period_end: datetime,
-            cumulative_shares_at_start: float,
+        self,
+        cash_flows: List[CashFlow],
+        price_data: pd.DataFrame,
+        period_start: datetime,
+        period_end: datetime,
+        cumulative_shares_at_start: float,
     ) -> Optional[float]:
         """Calculate return for a single benchmark sub-period."""
         try:
@@ -729,9 +735,9 @@ class PortfolioCalculationService:
 
     # Helper Methods
     async def _get_portfolio_value_at_date(
-            self,
-            all_transactions: List[Transaction],
-            target_date: Optional[datetime],
+        self,
+        all_transactions: List[Transaction],
+        target_date: Optional[datetime],
     ) -> float:
         """Get portfolio market value at a specific date."""
         try:
@@ -809,10 +815,10 @@ class PortfolioCalculationService:
             return 0.0
 
     def _calculate_benchmark_value(
-            self,
-            cash_flows: List[CashFlow],
-            price_data: pd.DataFrame,
-            as_of_date: datetime,
+        self,
+        cash_flows: List[CashFlow],
+        price_data: pd.DataFrame,
+        as_of_date: datetime,
     ) -> float:
         """Calculate value of benchmark investment at a specific date."""
         try:
@@ -851,9 +857,10 @@ class PortfolioCalculationService:
             # Check cache
             current_time = datetime.now(timezone.utc)
             if (
-                    symbol in self._price_cache
-                    and symbol in self._price_cache_time
-                    and (current_time - self._price_cache_time[symbol]).total_seconds() < 3600
+                symbol in self._price_cache
+                and symbol in self._price_cache_time
+                and (current_time - self._price_cache_time[symbol]).total_seconds()
+                < 3600
             ):
                 return self._price_cache[symbol]
 
@@ -883,7 +890,7 @@ class PortfolioCalculationService:
             return pd.DataFrame()
 
     def _get_price_for_date(
-            self, price_data: pd.DataFrame, target_date: datetime.date
+        self, price_data: pd.DataFrame, target_date: datetime.date
     ) -> Optional[float]:
         """Get closing price for a specific date."""
         try:
@@ -903,7 +910,7 @@ class PortfolioCalculationService:
             return None
 
     def _create_cash_flows_from_transactions(
-            self, transactions: List[Transaction]
+        self, transactions: List[Transaction]
     ) -> List[CashFlow]:
         """Create cash flows from portfolio transactions."""
         cash_flows = []
@@ -936,10 +943,10 @@ class PortfolioCalculationService:
         )
 
     def get_transactions(
-            self,
-            portfolio_id: int,
-            start_date: Optional[datetime],
-            end_date: datetime,
+        self,
+        portfolio_id: int,
+        start_date: Optional[datetime],
+        end_date: datetime,
     ) -> List[Transaction]:
         """Get completed transactions for a portfolio within date range."""
         query = self.db.query(Transaction).filter(
@@ -954,7 +961,7 @@ class PortfolioCalculationService:
         return query.order_by(Transaction.transaction_date).all()
 
     async def get_current_portfolio_value(
-            self, portfolio_id: int
+        self, portfolio_id: int
     ) -> tuple[float, list[str]]:
         """
         Get the current total value of the portfolio, fetch the latest asset
@@ -976,13 +983,19 @@ class PortfolioCalculationService:
 
             for asset in portfolio_assets:
                 # Get the base asset info (like its symbol)
-                asset_obj = self.db.query(Asset).filter(Asset.id == asset.asset_id).first()
+                asset_obj = (
+                    self.db.query(Asset).filter(Asset.id == asset.asset_id).first()
+                )
                 if not asset_obj:
-                    errors.append(f"Asset metadata not found for PortfolioAsset ID {asset.id}")
+                    errors.append(
+                        f"Asset metadata not found for PortfolioAsset ID {asset.id}"
+                    )
                     continue
 
                 # Fetch the new price from the market data service
-                new_price = await self.market_data_service.get_current_price(symbol=asset_obj.symbol)
+                new_price = await self.market_data_service.get_current_price(
+                    symbol=asset_obj.symbol
+                )
 
                 if new_price is not None:
                     # Calculate the new total value for this specific asset holding
@@ -1012,7 +1025,7 @@ class PortfolioCalculationService:
 
     # Utility Methods
     def _get_price_from_data(
-            self, price_data: pd.DataFrame, target_date: datetime
+        self, price_data: pd.DataFrame, target_date: datetime
     ) -> Optional[float]:
         """Get price from price data DataFrame at a specific date."""
         try:
@@ -1041,7 +1054,7 @@ class PortfolioCalculationService:
         return None
 
     def _is_outperforming(
-            self, portfolio_return: Optional[float], benchmark_return: Optional[float]
+        self, portfolio_return: Optional[float], benchmark_return: Optional[float]
     ) -> Optional[bool]:
         """Check if portfolio is outperforming benchmark."""
         if portfolio_return is not None and benchmark_return is not None:
@@ -1049,7 +1062,7 @@ class PortfolioCalculationService:
         return None
 
     def _empty_performance_result(
-            self, portfolio_id: int, period: str
+        self, portfolio_id: int, period: str
     ) -> Dict[str, Any]:
         """Return empty performance result."""
         return {
@@ -1071,7 +1084,7 @@ class PortfolioCalculationService:
         }
 
     def _empty_benchmark_performance_result(
-            self, benchmark_symbol: str, period: str
+        self, benchmark_symbol: str, period: str
     ) -> Dict[str, Any]:
         """Return empty benchmark performance result."""
         return {
@@ -1086,9 +1099,7 @@ class PortfolioCalculationService:
             },
         }
 
-    def _calculate_volatility(
-            self, portfolio_history: pd.DataFrame
-    ) -> Optional[float]:
+    def _calculate_volatility(self, portfolio_history: pd.DataFrame) -> Optional[float]:
         """Annualised volatility of the cash-flow-adjusted daily returns, in percent."""
         if portfolio_history is None or portfolio_history.empty:
             return None
@@ -1099,7 +1110,7 @@ class PortfolioCalculationService:
         return float(daily_returns.std() * np.sqrt(TRADING_DAYS_PER_YEAR) * 100)
 
     def _calculate_max_drawdown(
-            self, portfolio_history: pd.DataFrame
+        self, portfolio_history: pd.DataFrame
     ) -> Optional[float]:
         """
         Largest peak-to-trough fall of the cumulative return curve, in percent.
@@ -1118,10 +1129,10 @@ class PortfolioCalculationService:
         return float(drawdown.min() * 100)
 
     async def get_portfolio_history(
-            self,
-            all_transactions: List[Transaction],
-            start_date: Optional[datetime],
-            end_date: datetime,
+        self,
+        all_transactions: List[Transaction],
+        start_date: Optional[datetime],
+        end_date: datetime,
     ) -> Optional[pd.DataFrame]:
         """
         Daily (business-day) series of portfolio value and cash flows.
@@ -1156,7 +1167,9 @@ class PortfolioCalculationService:
             # Holdings from everything strictly before the first day of the series
             first_day = days[0].date()
             opening = [t for t in transactions if t.transaction_date.date() < first_day]
-            pending = [t for t in transactions if t.transaction_date.date() >= first_day]
+            pending = [
+                t for t in transactions if t.transaction_date.date() >= first_day
+            ]
             holdings = await self._get_holdings_at_date(opening, None)
             opening_value = await self._value_holdings(
                 holdings, (days[0] - pd.offsets.BDay(1)).date(), asset_map
@@ -1168,8 +1181,8 @@ class PortfolioCalculationService:
                 inflow = outflow = 0.0
                 # Apply every transaction up to and including this day
                 while (
-                        next_tx < len(pending)
-                        and pending[next_tx].transaction_date.date() <= day.date()
+                    next_tx < len(pending)
+                    and pending[next_tx].transaction_date.date() <= day.date()
                 ):
                     transaction = pending[next_tx]
                     next_tx += 1
@@ -1200,19 +1213,25 @@ class PortfolioCalculationService:
             return None
 
     @staticmethod
-    def _apply_to_holdings(holdings: Dict[int, float], transaction: Transaction) -> None:
+    def _apply_to_holdings(
+        holdings: Dict[int, float], transaction: Transaction
+    ) -> None:
         """Update share counts for a transaction (only buys and sells change quantity)."""
         quantity = float(transaction.quantity)
         if transaction.transaction_type == TransactionType.BUY:
-            holdings[transaction.asset_id] = holdings.get(transaction.asset_id, 0.0) + quantity
+            holdings[transaction.asset_id] = (
+                holdings.get(transaction.asset_id, 0.0) + quantity
+            )
         elif transaction.transaction_type == TransactionType.SELL:
-            holdings[transaction.asset_id] = holdings.get(transaction.asset_id, 0.0) - quantity
+            holdings[transaction.asset_id] = (
+                holdings.get(transaction.asset_id, 0.0) - quantity
+            )
 
     async def _value_holdings(
-            self,
-            holdings: Dict[int, float],
-            on_date,
-            asset_map: Dict[int, Optional[Asset]],
+        self,
+        holdings: Dict[int, float],
+        on_date,
+        asset_map: Dict[int, Optional[Asset]],
     ) -> float:
         """
         Market value of holdings at the close on `on_date`.
@@ -1240,7 +1259,7 @@ class PortfolioCalculationService:
         return total_value
 
     async def _get_holdings_at_date(
-            self, transactions: List[Transaction], target_date: Optional[datetime]
+        self, transactions: List[Transaction], target_date: Optional[datetime]
     ) -> Dict[int, float]:
         """Calculates asset holdings on a specific date (None = after all transactions)."""
         holdings = {}

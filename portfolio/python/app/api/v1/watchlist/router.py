@@ -352,7 +352,7 @@ async def bulk_add_items_to_watchlist(
         for symbol in bulk_data.symbols:
             try:
                 item_data = WatchlistItemCreate(symbol=symbol)
-                item = service.add_item_to_watchlist(
+                item = await service.add_item_to_watchlist(
                     watchlist_id, current_user.id, item_data
                 )
                 if item:

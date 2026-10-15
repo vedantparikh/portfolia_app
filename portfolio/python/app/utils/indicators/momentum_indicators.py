@@ -252,7 +252,7 @@ def calculate_macd(
     prices: pl.Series, fast: int = 12, slow: int = 26, signal: int = 9
 ) -> pl.DataFrame:
     """Calculate MACD for a price series."""
-    df = pl.DataFrame({"Close": prices})
+    pl.DataFrame({"Close": prices})
     # This would need a trend indicators class
     # For now, return empty DataFrame as in original
     print("MACD is a trend indicator; this is a stub function.")

@@ -7,7 +7,6 @@ import logging
 import re
 import uuid
 from datetime import datetime, timezone
-from decimal import Decimal
 from typing import List, Optional, Tuple
 
 from reportlab.lib import colors

@@ -1,9 +1,9 @@
 import { AlertCircle, Loader2, RefreshCw, X } from 'lucide-react';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 
-const EmailVerificationPrompt = ({ user, onVerificationComplete }) => {
+const EmailVerificationPrompt = ({ user }) => {
     const { resendVerification } = useAuth();
     const [isResending, setIsResending] = useState(false);
     const [isDismissed, setIsDismissed] = useState(false);

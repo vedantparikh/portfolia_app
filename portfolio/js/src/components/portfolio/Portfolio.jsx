@@ -9,7 +9,7 @@ import {
   TrendingUp,
   Wallet,
 } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import {

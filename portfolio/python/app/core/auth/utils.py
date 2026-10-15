@@ -44,10 +44,14 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(timezone.utc) + timedelta(
+            minutes=ACCESS_TOKEN_EXPIRE_MINUTES
+        )
 
     # jti makes every token unique, even when issued in the same second
-    to_encode.update({"exp": expire, "type": "access", "jti": secrets.token_urlsafe(16)})
+    to_encode.update(
+        {"exp": expire, "type": "access", "jti": secrets.token_urlsafe(16)}
+    )
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
@@ -58,10 +62,14 @@ def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) 
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=REFRESH_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(timezone.utc) + timedelta(
+            minutes=REFRESH_TOKEN_EXPIRE_MINUTES
+        )
 
     # jti makes every token unique, so refresh-token rotation always changes the token
-    to_encode.update({"exp": expire, "type": "refresh", "jti": secrets.token_urlsafe(16)})
+    to_encode.update(
+        {"exp": expire, "type": "refresh", "jti": secrets.token_urlsafe(16)}
+    )
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
@@ -205,9 +213,13 @@ def validate_token_expiry(token_exp: Union[int, datetime]) -> bool:
 def get_token_expiry_time(token_type: str = "access") -> datetime:
     """Get expiry time for a token type."""
     if token_type == "access":
-        return datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        return datetime.now(timezone.utc) + timedelta(
+            minutes=ACCESS_TOKEN_EXPIRE_MINUTES
+        )
     elif token_type == "refresh":
-        return datetime.now(timezone.utc) + timedelta(minutes=REFRESH_TOKEN_EXPIRE_MINUTES)
+        return datetime.now(timezone.utc) + timedelta(
+            minutes=REFRESH_TOKEN_EXPIRE_MINUTES
+        )
     else:
         raise ValueError(f"Unknown token type: {token_type}")
 

@@ -81,7 +81,6 @@ async def lifespan(app: FastAPI):
     yield
 
     # Shutdown
-    shutdown_start_time = time.time()
     logger.info("🛑 Shutting down Portfolia API...")
 
     # Log final statistics
@@ -113,6 +112,7 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
 
 @app.exception_handler(OversellError)
 async def oversell_error_handler(request: Request, exc: OversellError):

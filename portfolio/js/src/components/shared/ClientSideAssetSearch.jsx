@@ -1,5 +1,5 @@
 import { Database, Search } from 'lucide-react';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { marketAPI } from '../../services/api';
 import assetCache from '../../services/assetCache';
 import LoadingSpinner from './LoadingSpinner';
@@ -11,7 +11,6 @@ const ClientSideAssetSearch = ({
     onPriceUpdate,
     placeholder = "Search assets...",
     disabled = false,
-    showSuggestions = true,
     preloadAssets = true
 }) => {
     const [filteredAssets, setFilteredAssets] = useState([]);
@@ -182,16 +181,18 @@ const ClientSideAssetSearch = ({
         const currentIndex = filteredAssets.findIndex(asset => asset.symbol === value);
 
         switch (e.key) {
-            case 'ArrowDown':
+            case 'ArrowDown': {
                 e.preventDefault();
                 const nextIndex = currentIndex < filteredAssets.length - 1 ? currentIndex + 1 : 0;
                 onChange(filteredAssets[nextIndex].symbol);
                 break;
-            case 'ArrowUp':
+            }
+            case 'ArrowUp': {
                 e.preventDefault();
                 const prevIndex = currentIndex > 0 ? currentIndex - 1 : filteredAssets.length - 1;
                 onChange(filteredAssets[prevIndex].symbol);
                 break;
+            }
             case 'Enter':
                 e.preventDefault();
                 if (currentIndex >= 0) {
@@ -276,7 +277,7 @@ const ClientSideAssetSearch = ({
                         </div>
                     )}
 
-                    {filteredAssets.map((asset, index) => (
+                    {filteredAssets.map((asset) => (
                         <div key={asset.id} className="border-b border-dark-700 last:border-b-0">
                             <button
                                 type="button"
@@ -309,7 +310,7 @@ const ClientSideAssetSearch = ({
                         <Database size={32} className="mx-auto mb-3 text-gray-600" />
                         <p className="text-gray-400 text-sm mb-2">No assets found</p>
                         <p className="text-gray-500 text-xs">
-                            Asset "{value}" doesn't exist. Please add it first in the Assets section.
+                            Asset &quot;{value}&quot; doesn&apos;t exist. Please add it first in the Assets section.
                         </p>
                     </div>
                 </div>

@@ -5,6 +5,7 @@ from decimal import Decimal
 from typing import List, Tuple
 
 import PyPDF2
+
 from core.schemas.account_statements import (
     ParsedData,
     ParsedTransaction,
@@ -24,27 +25,39 @@ class TradeRepublicParser(PDFParser):
     def _parse_german_date(self, date_str: str) -> str:
         """Converts a German date string to ISO format (YYYY-MM-DD)."""
         month_map = {
-            'Jan': '01', 'Feb': '02', 'Mär': '03', 'Apr': '04', 'Mai': '05', 'Jun': '06',
-            'Juli': '07', 'Aug': '08', 'Sept': '09', 'Okt': '10', 'Nov': '11', 'Dez': '12'
+            "Jan": "01",
+            "Feb": "02",
+            "Mär": "03",
+            "Apr": "04",
+            "Mai": "05",
+            "Jun": "06",
+            "Juli": "07",
+            "Aug": "08",
+            "Sept": "09",
+            "Okt": "10",
+            "Nov": "11",
+            "Dez": "12",
         }
         for k, v in month_map.items():
             if k in date_str:
                 date_str = date_str.replace(k, v)
                 break
 
-        date_str = date_str.replace('.', '')
+        date_str = date_str.replace(".", "")
 
         try:
-            dt = datetime.strptime(date_str, '%d %m %Y')
-            return dt.strftime('%Y-%m-%d')
+            dt = datetime.strptime(date_str, "%d %m %Y")
+            return dt.strftime("%Y-%m-%d")
         except ValueError:
             return ""
 
     def _parse_german_number(self, num_str: str) -> Decimal:
         """Converts a German currency string to a Decimal object."""
         if not num_str:
-            return Decimal('0.0')
-        cleaned_str = num_str.replace('€', '').replace('.', '').replace(',', '.').strip()
+            return Decimal("0.0")
+        cleaned_str = (
+            num_str.replace("€", "").replace(".", "").replace(",", ".").strip()
+        )
         return Decimal(cleaned_str)
 
     def parse(self, pdf_content: bytes) -> ParsedData:
@@ -61,8 +74,8 @@ class TradeRepublicParser(PDFParser):
                 metadata=ParsingMetadata(
                     total_transactions=0,
                     parsing_confidence=0.0,
-                    warnings=[f"Error reading PDF file: {str(e)}"]
-                )
+                    warnings=[f"Error reading PDF file: {str(e)}"],
+                ),
             )
 
         statement_period = self._extract_statement_period(full_text)
@@ -79,14 +92,18 @@ class TradeRepublicParser(PDFParser):
             metadata=ParsingMetadata(
                 total_transactions=len(transactions),
                 parsing_confidence=parsing_confidence,
-                warnings=warnings
-            )
+                warnings=warnings,
+            ),
         )
 
     def _extract_statement_period(self, text: str) -> StatementPeriod:
         """Extract statement period from PDF text."""
         # Made regex more flexible with \s* to handle missing spaces.
-        period_match = re.search(r"DATUM\s*([\d]{2}\s\w+\s\d{4})\s*-\s*([\d]{2}\s\w+\s\d{4})", text, re.IGNORECASE)
+        period_match = re.search(
+            r"DATUM\s*([\d]{2}\s\w+\s\d{4})\s*-\s*([\d]{2}\s\w+\s\d{4})",
+            text,
+            re.IGNORECASE,
+        )
         if period_match:
             start_date_str, end_date_str = period_match.groups()
             start_date = self._parse_german_date(start_date_str.strip())
@@ -94,45 +111,56 @@ class TradeRepublicParser(PDFParser):
             return StatementPeriod(start_date=start_date, end_date=end_date)
         return StatementPeriod(start_date="", end_date="")
 
-    def _extract_transactions(self, full_text: str) -> Tuple[List[ParsedTransaction], List[str]]:
+    def _extract_transactions(
+        self, full_text: str
+    ) -> Tuple[List[ParsedTransaction], List[str]]:
         """Extract transactions from PDF text."""
         transactions: List[ParsedTransaction] = []
         warnings: List[str] = []
 
-        transaction_block_match = re.search(r"UMSATZÜBERSICHT(.*?)(?:BARMITTELÜBERSICHT|HINWEISE ZUM KONTOAUSZUG)",
-                                            full_text, re.DOTALL)
+        transaction_block_match = re.search(
+            r"UMSATZÜBERSICHT(.*?)(?:BARMITTELÜBERSICHT|HINWEISE ZUM KONTOAUSZUG)",
+            full_text,
+            re.DOTALL,
+        )
         if not transaction_block_match:
             return [], ["Could not find the 'UMSATZÜBERSICHT' transaction block."]
 
         content = transaction_block_match.group(1)
-        content = re.sub(r'.*?TRADE REPUBLIC.*|Seite \d+ von \d+', '', content)
-        content = re.sub(r'^\s*DATUM\s+TYP\s+BESCHREIBUNG.*$', '', content, flags=re.MULTILINE)
+        content = re.sub(r".*?TRADE REPUBLIC.*|Seite \d+ von \d+", "", content)
+        content = re.sub(
+            r"^\s*DATUM\s+TYP\s+BESCHREIBUNG.*$", "", content, flags=re.MULTILINE
+        )
 
-        lines = content.strip().split('\n')
+        lines = content.strip().split("\n")
         processed_lines = []
         for line in lines:
-            if re.match(r'^\d{2}\s\w+\.?', line.strip()):
+            if re.match(r"^\d{2}\s\w+\.?", line.strip()):
                 processed_lines.append(line)
             elif processed_lines:
                 processed_lines[-1] += f" {line.strip()}"
 
         # Switched to a robust, multi-step parsing logic that doesn't rely on consistent whitespace.
-        known_types = r"^(Handel|Zinszahlung|Erträge|Steuern|Überweisung|Kartentransaktion)"
+        known_types = (
+            r"^(Handel|Zinszahlung|Erträge|Steuern|Überweisung|Kartentransaktion)"
+        )
 
         for i, line in enumerate(processed_lines):
-            line = line.replace('€', '').strip()
+            line = line.replace("€", "").strip()
 
             # Step 1: Find the date at the start of the line
             date_match = re.match(r"^(?P<date>\d{2}\s\w+\.?\s\d{4})", line)
             if not date_match:
                 continue
 
-            date_str = date_match.group('date')
+            date_str = date_match.group("date")
 
             # Step 2: Find all numbers that look like money at the end of the line
-            amounts_in_line = re.findall(r'[\d\.]*,\d{2}', line)
+            amounts_in_line = re.findall(r"[\d\.]*,\d{2}", line)
             if len(amounts_in_line) < 2:
-                warnings.append(f"Line {i + 1} does not contain enough monetary values: '{line[:100]}...'")
+                warnings.append(
+                    f"Line {i + 1} does not contain enough monetary values: '{line[:100]}...'"
+                )
                 continue
 
             amount_str = amounts_in_line[-2]
@@ -140,61 +168,100 @@ class TradeRepublicParser(PDFParser):
             # Step 3: Isolate the middle part (type + description)
             try:
                 amount_start_index = line.rindex(amount_str)
-                middle_part = line[len(date_str):amount_start_index].strip()
+                middle_part = line[len(date_str) : amount_start_index].strip()
             except ValueError:
-                warnings.append(f"Could not isolate description in line {i + 1}: '{line[:100]}...'")
+                warnings.append(
+                    f"Could not isolate description in line {i + 1}: '{line[:100]}...'"
+                )
                 continue
 
             # Step 4: Find the transaction type and the description
             type_match = re.match(known_types, middle_part)
             if not type_match:
-                warnings.append(f"Could not determine transaction type in line {i + 1}: '{middle_part[:100]}...'")
+                warnings.append(
+                    f"Could not determine transaction type in line {i + 1}: '{middle_part[:100]}...'"
+                )
                 continue
 
             type_str = type_match.group(1)
-            desc = middle_part[len(type_str):].strip()
+            desc = middle_part[len(type_str) :].strip()
 
             # Proceed with creating the transaction object
             transaction_date = self._parse_german_date(date_str)
             total_amount = self._parse_german_number(amount_str)
 
             parsed_transaction = {
-                "id": f"temp_{len(transactions) + 1}", "transaction_date": transaction_date,
-                "total_amount": total_amount, "quantity": Decimal('0'),
-                "price": Decimal('0'), "fees": Decimal('0'),
-                "name": desc, "symbol": None, "confidence_score": 0.8, "needs_review": False
+                "id": f"temp_{len(transactions) + 1}",
+                "transaction_date": transaction_date,
+                "total_amount": total_amount,
+                "quantity": Decimal("0"),
+                "price": Decimal("0"),
+                "fees": Decimal("0"),
+                "name": desc,
+                "symbol": None,
+                "confidence_score": 0.8,
+                "needs_review": False,
             }
 
-            if type_str == 'Handel':
+            if type_str == "Handel":
                 trade_match = re.search(
                     r"(?i)(buy trade|sell trade|savings plan execution)\s+([A-Z0-9]{12})\s+(.*?),\s+quantity:\s*([\d\.,]+)",
-                    desc)
+                    desc,
+                )
                 if trade_match:
                     trade_type, isin, name, quantity_str = trade_match.groups()
                     quantity = self._parse_german_number(quantity_str)
 
-                    parsed_transaction.update({
-                        "transaction_type": 'sell' if 'sell' in trade_type.lower() else 'buy',
-                        "name": name.strip(), "symbol": isin, "quantity": quantity,
-                        "price": (total_amount / quantity) if quantity else Decimal('0'),
-                        "confidence_score": 0.95
-                    })
+                    parsed_transaction.update(
+                        {
+                            "transaction_type": "sell"
+                            if "sell" in trade_type.lower()
+                            else "buy",
+                            "name": name.strip(),
+                            "symbol": isin,
+                            "quantity": quantity,
+                            "price": (total_amount / quantity)
+                            if quantity
+                            else Decimal("0"),
+                            "confidence_score": 0.95,
+                        }
+                    )
                 else:
-                    warnings.append(f"Could not parse trade details from description: '{desc}'")
-                    parsed_transaction['needs_review'] = True
-            elif type_str == 'Erträge':
-                dividend_match = re.search(r"(?i)Cash Dividend for ISIN\s+([A-Z0-9]{12})", desc)
+                    warnings.append(
+                        f"Could not parse trade details from description: '{desc}'"
+                    )
+                    parsed_transaction["needs_review"] = True
+            elif type_str == "Erträge":
+                dividend_match = re.search(
+                    r"(?i)Cash Dividend for ISIN\s+([A-Z0-9]{12})", desc
+                )
                 symbol = dividend_match.group(1) if dividend_match else "Unknown"
                 parsed_transaction.update(
-                    {"transaction_type": "dividend", "name": f"Dividend for {symbol}", "symbol": symbol})
-            elif type_str == 'Zinszahlung':
-                parsed_transaction.update({"transaction_type": "interest", "name": "Interest Payment"})
-            elif type_str == 'Überweisung':
-                parsed_transaction.update({"transaction_type": "deposit", "name": "Incoming Transfer"})
-            elif type_str == 'Kartentransaktion':
-                parsed_transaction.update({"transaction_type": "withdrawal", "name": f"Card Transaction: {desc}"})
-            elif type_str == 'Steuern':
-                parsed_transaction.update({"transaction_type": "tax", "name": "Tax Optimisation"})
+                    {
+                        "transaction_type": "dividend",
+                        "name": f"Dividend for {symbol}",
+                        "symbol": symbol,
+                    }
+                )
+            elif type_str == "Zinszahlung":
+                parsed_transaction.update(
+                    {"transaction_type": "interest", "name": "Interest Payment"}
+                )
+            elif type_str == "Überweisung":
+                parsed_transaction.update(
+                    {"transaction_type": "deposit", "name": "Incoming Transfer"}
+                )
+            elif type_str == "Kartentransaktion":
+                parsed_transaction.update(
+                    {
+                        "transaction_type": "withdrawal",
+                        "name": f"Card Transaction: {desc}",
+                    }
+                )
+            elif type_str == "Steuern":
+                parsed_transaction.update(
+                    {"transaction_type": "tax", "name": "Tax Optimisation"}
+                )
 
             transactions.append(ParsedTransaction(**parsed_transaction))
 

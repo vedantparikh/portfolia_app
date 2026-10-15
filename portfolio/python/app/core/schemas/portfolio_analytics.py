@@ -463,10 +463,18 @@ class PortfolioAllocationResponse(BaseModel):
     portfolio_id: int = Field(..., description="Portfolio ID")
     asset_id: int = Field(..., description="Asset ID")
     target_percentage: Decimal = Field(..., description="Target allocation percentage")
-    min_percentage: Optional[Decimal] = Field(None, description="Minimum allocation percentage")
-    max_percentage: Optional[Decimal] = Field(None, description="Maximum allocation percentage")
-    rebalance_threshold: Optional[Decimal] = Field(None, description="Rebalance threshold")
-    last_rebalance_date: Optional[datetime] = Field(None, description="Last rebalance date")
+    min_percentage: Optional[Decimal] = Field(
+        None, description="Minimum allocation percentage"
+    )
+    max_percentage: Optional[Decimal] = Field(
+        None, description="Maximum allocation percentage"
+    )
+    rebalance_threshold: Optional[Decimal] = Field(
+        None, description="Rebalance threshold"
+    )
+    last_rebalance_date: Optional[datetime] = Field(
+        None, description="Last rebalance date"
+    )
     rebalance_frequency: Optional[str] = Field(None, description="Rebalance frequency")
     is_active: bool = Field(..., description="Whether allocation is active")
     created_at: datetime = Field(..., description="Creation timestamp")
@@ -481,7 +489,9 @@ class PortfolioPerformanceHistoryResponse(BaseModel):
 
     portfolio_id: int = Field(..., description="Portfolio ID")
     total_records: int = Field(..., description="Total number of records")
-    history: List[PortfolioPerformanceHistory] = Field(..., description="Performance history")
+    history: List[PortfolioPerformanceHistory] = Field(
+        ..., description="Performance history"
+    )
 
 
 class RebalancingEventResponse(BaseModel):
@@ -493,7 +503,9 @@ class RebalancingEventResponse(BaseModel):
     event_type: str = Field(..., description="Event type")
     trigger_reason: Optional[str] = Field(None, description="Trigger reason")
     pre_rebalance_value: Decimal = Field(..., description="Pre-rebalance value")
-    post_rebalance_value: Optional[Decimal] = Field(None, description="Post-rebalance value")
+    post_rebalance_value: Optional[Decimal] = Field(
+        None, description="Post-rebalance value"
+    )
     rebalancing_cost: Optional[Decimal] = Field(None, description="Rebalancing cost")
     tax_impact: Optional[Decimal] = Field(None, description="Tax impact")
     status: str = Field(..., description="Event status")
@@ -516,7 +528,9 @@ class PortfolioBenchmarkResponse(BaseModel):
     beta: Optional[Decimal] = Field(None, description="Beta")
     alpha: Optional[Decimal] = Field(None, description="Alpha")
     excess_return: Optional[Decimal] = Field(None, description="Excess return")
-    excess_return_percent: Optional[Decimal] = Field(None, description="Excess return percentage")
+    excess_return_percent: Optional[Decimal] = Field(
+        None, description="Excess return percentage"
+    )
     is_active: bool = Field(..., description="Whether benchmark is active")
     is_primary: bool = Field(..., description="Whether this is primary benchmark")
     created_at: datetime = Field(..., description="Creation timestamp")

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
     Activity,
     MoreVertical,
@@ -146,7 +146,7 @@ const PortfolioAssetCard = ({ asset, portfolioTotalValue = 0, viewMode = 'grid',
                             </p>
                         </div>
                         <div className="text-right">
-                            <p className="text-sm text-gray-400">Today's P&L</p>
+                            <p className="text-sm text-gray-400">Today&apos;s P&L</p>
                             <p className={`text-sm font-medium ${(asset.pnl || 0) >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
                                 ${asset.today_pnl?.toFixed(2) || '0.00'}
                             </p>
@@ -309,7 +309,7 @@ const PortfolioAssetCard = ({ asset, portfolioTotalValue = 0, viewMode = 'grid',
                     )}
                     {asset.today_pnl !== undefined && (
                         <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-400">Today's P&L</span>
+                            <span className="text-sm text-gray-400">Today&apos;s P&L</span>
                             <div className="text-right">
                                 <span className={`text-sm font-medium ${(asset.today_pnl || 0) >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
                                     ${asset.today_pnl?.toFixed(2) || '0.00'}

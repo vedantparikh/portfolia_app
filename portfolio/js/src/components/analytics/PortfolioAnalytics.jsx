@@ -8,7 +8,7 @@ import {
     X,
 } from 'lucide-react';
 import PropTypes from 'prop-types';
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { analyticsAPI, portfolioCalculationsAPI } from '../../services/api';
 import { formatCurrency, formatPercentage } from '../../utils/formatters.jsx';
 import LoadingSpinner from '../shared/LoadingSpinner';
@@ -331,7 +331,7 @@ const PortfolioAnalytics = ({ portfolioId }) => {
                         </div>
                         <div className="space-y-4">
                             <p className="text-sm text-gray-300">
-                                Your portfolio's risk level is assessed as:
+                                Your portfolio&apos;s risk level is assessed as:
                             </p>
                             <div className="text-center my-4">
                                 <span className={`px-4 py-2 rounded-full text-lg font-medium ${

@@ -69,10 +69,10 @@ class AccountStatementService:
         return result
 
     async def create_bulk_transactions(
-            self,
-            portfolio_id: int,
-            transactions_data: List[BulkTransactionItem],
-            user_id: int,
+        self,
+        portfolio_id: int,
+        transactions_data: List[BulkTransactionItem],
+        user_id: int,
     ) -> Tuple[List[CreatedTransaction], BulkCreateSummary]:
         """Create multiple transactions efficiently and robustly from parsed data."""
         # 1. Verify portfolio access once at the start
@@ -92,7 +92,10 @@ class AccountStatementService:
         for i, item in enumerate(transactions_data):
             try:
                 if item.transaction_type in [
-                    "deposit", "withdrawal", "interest", "tax"
+                    "deposit",
+                    "withdrawal",
+                    "interest",
+                    "tax",
                 ]:
                     continue
 

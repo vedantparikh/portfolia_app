@@ -339,7 +339,10 @@ def log_performance_metric(
 
 
 def log_error_with_context(
-    logger: logging.Logger, error: Exception, context: Optional[str] = None, **kwargs: Any
+    logger: logging.Logger,
+    error: Exception,
+    context: Optional[str] = None,
+    **kwargs: Any,
 ) -> None:
     """
     Log errors with additional context.

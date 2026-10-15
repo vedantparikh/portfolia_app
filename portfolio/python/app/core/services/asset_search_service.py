@@ -5,7 +5,7 @@ Advanced asset search and discovery service with filtering and ranking.
 
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import and_, desc, func, or_, case
+from sqlalchemy import and_, case, desc, func, or_
 from sqlalchemy.orm import Session
 
 from core.database.models import Asset
@@ -19,18 +19,18 @@ class AssetSearchService:
         self.db = db
 
     def search_assets(
-            self,
-            query: Optional[str] = None,
-            asset_type: Optional[AssetType] = None,
-            sector: Optional[str] = None,
-            exchange: Optional[str] = None,
-            country: Optional[str] = None,
-            min_market_cap: Optional[float] = None,
-            max_market_cap: Optional[float] = None,
-            sort_by: str = "symbol",
-            sort_order: str = "asc",
-            limit: int = 50,
-            offset: int = 0,
+        self,
+        query: Optional[str] = None,
+        asset_type: Optional[AssetType] = None,
+        sector: Optional[str] = None,
+        exchange: Optional[str] = None,
+        country: Optional[str] = None,
+        min_market_cap: Optional[float] = None,
+        max_market_cap: Optional[float] = None,
+        sort_by: str = "symbol",
+        sort_order: str = "asc",
+        limit: int = 50,
+        offset: int = 0,
     ) -> Dict[str, Any]:
         """Search assets with advanced filtering and sorting."""
         # Build base query
@@ -63,7 +63,7 @@ class AssetSearchService:
                     (Asset.name.ilike(f"%{term}%"), 2),
                     # Low score for description match
                     (Asset.description.ilike(f"%{term}%"), 1),
-                    else_=0
+                    else_=0,
                 )
 
             # Add the rank score to the query
@@ -264,7 +264,7 @@ class AssetSearchService:
         ]
 
     def get_search_suggestions(
-            self, query: str, limit: int = 10
+        self, query: str, limit: int = 10
     ) -> List[Dict[str, Any]]:
         """Get search suggestions based on partial query."""
         if len(query) < 2:

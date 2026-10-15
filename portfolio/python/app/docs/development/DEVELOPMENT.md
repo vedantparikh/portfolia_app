@@ -189,6 +189,7 @@ import pytest
 from unittest.mock import Mock, patch
 from services.portfolio_service import PortfolioService
 
+
 class TestPortfolioService:
     def setup_method(self):
         self.mock_db = Mock()
@@ -293,6 +294,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from core.database.models import Base
 
+
 class NewModel(Base):
     __tablename__ = "new_models"
 
@@ -324,6 +326,7 @@ from datetime import datetime, timedelta, timezone
 from jose import jwt
 from config import settings
 
+
 def create_access_token(data: dict, expires_delta: timedelta = None):
     to_encode = data.copy()
     if expires_delta:
@@ -332,7 +335,9 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
         expire = datetime.now(timezone.utc) + timedelta(minutes=15)
 
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
+    encoded_jwt = jwt.encode(
+        to_encode, settings.secret_key, algorithm=settings.algorithm
+    )
     return encoded_jwt
 ```
 
@@ -342,9 +347,12 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
 from jose import JWTError, jwt
 from config import settings
 
+
 def verify_token(token: str):
     try:
-        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+        payload = jwt.decode(
+            token, settings.secret_key, algorithms=[settings.algorithm]
+        )
         return payload
     except JWTError:
         return None
@@ -361,9 +369,11 @@ def verify_token(token: str):
 from pydantic import BaseModel
 from typing import Optional
 
+
 class NewFeatureCreate(BaseModel):
     name: str
     description: Optional[str] = None
+
 
 class NewFeatureResponse(BaseModel):
     id: int
@@ -382,6 +392,7 @@ from typing import List, Optional
 from sqlalchemy.orm import Session
 from core.database.models import NewFeature
 from models.new_feature import NewFeatureCreate
+
 
 class NewFeatureService:
     def __init__(self, db: Session):
@@ -407,11 +418,9 @@ from services.new_feature_service import NewFeatureService
 
 router = APIRouter()
 
+
 @router.post("/", response_model=NewFeatureResponse)
-def create_new_feature(
-    feature_data: NewFeatureCreate,
-    db: Session = Depends(get_db)
-):
+def create_new_feature(feature_data: NewFeatureCreate, db: Session = Depends(get_db)):
     service = NewFeatureService(db)
     return service.create_feature(feature_data)
 ```
@@ -425,7 +434,7 @@ from api.v1.new_feature import router as new_feature_router
 app.include_router(
     new_feature_router,
     prefix=f"{settings.api_v1_str}/new-feature",
-    tags=["new-feature"]
+    tags=["new-feature"],
 )
 ```
 
@@ -474,6 +483,7 @@ SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+
 @pytest.fixture
 def db():
     Base.metadata.create_all(bind=engine)
@@ -483,6 +493,7 @@ def db():
     finally:
         db.close()
         Base.metadata.drop_all(bind=engine)
+
 
 @pytest.fixture
 def client(db):
@@ -506,6 +517,7 @@ def client(db):
 import factory
 from core.database.models import User, Portfolio
 
+
 class UserFactory(factory.Factory):
     class Meta:
         model = User
@@ -515,6 +527,7 @@ class UserFactory(factory.Factory):
     password_hash = factory.LazyFunction(lambda: "hashed_password")
     is_active = True
     is_verified = True
+
 
 class PortfolioFactory(factory.Factory):
     class Meta:
@@ -536,6 +549,7 @@ def sample_user(db):
     db.refresh(user)
     return user
 
+
 @pytest.fixture
 def sample_portfolio(db, sample_user):
     portfolio = PortfolioFactory(user_id=sample_user.id)
@@ -555,6 +569,7 @@ def sample_portfolio(db, sample_user):
 import structlog
 
 logger = structlog.get_logger()
+
 
 def some_function():
     logger.info("Processing request", user_id=123, action="create")
@@ -577,6 +592,7 @@ class Settings(BaseSettings):
     debug: bool = False
     log_level: str = "INFO"
 
+
 # app/main.py
 if settings.debug:
     logging.basicConfig(level=logging.DEBUG)
@@ -588,6 +604,7 @@ if settings.debug:
 
 ```python
 import pdb
+
 
 def complex_function():
     # Set breakpoint
@@ -607,6 +624,7 @@ pip install ipdb
 ```python
 import ipdb
 
+
 def debug_function():
     ipdb.set_trace()
     # Interactive debugging session
@@ -625,9 +643,7 @@ for portfolio in portfolios:
     print(portfolio.user.username)  # Query for each portfolio
 
 # Good: Eager loading
-portfolios = db.query(Portfolio).options(
-    joinedload(Portfolio.user)
-).all()
+portfolios = db.query(Portfolio).options(joinedload(Portfolio.user)).all()
 for portfolio in portfolios:
     print(portfolio.user.username)  # No additional queries
 ```
@@ -639,11 +655,7 @@ for portfolio in portfolios:
 from sqlalchemy.pool import QueuePool
 
 engine = create_engine(
-    DATABASE_URL,
-    poolclass=QueuePool,
-    pool_size=20,
-    max_overflow=30,
-    pool_pre_ping=True
+    DATABASE_URL, poolclass=QueuePool, pool_size=20, max_overflow=30, pool_pre_ping=True
 )
 ```
 
@@ -656,11 +668,9 @@ import redis
 from config import settings
 
 redis_client = redis.Redis(
-    host=settings.redis_host,
-    port=settings.redis_port,
-    db=0,
-    decode_responses=True
+    host=settings.redis_host, port=settings.redis_port, db=0, decode_responses=True
 )
+
 
 def get_cached_data(key: str):
     cached = redis_client.get(key)
@@ -711,9 +721,9 @@ def calculate_portfolio_value(portfolio_id: int, db: Session) -> float:
 from typing import List, Optional, Union
 from decimal import Decimal
 
+
 def process_transactions(
-    transactions: List[Transaction],
-    currency: str = "USD"
+    transactions: List[Transaction], currency: str = "USD"
 ) -> Union[Decimal, None]:
     """
     Process a list of transactions and return total value.
@@ -745,8 +755,9 @@ app = FastAPI(
     description="Financial portfolio analysis and trading strategy API",
     version="1.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
 )
+
 
 class PortfolioResponse(BaseModel):
     """Portfolio information response model."""
@@ -760,7 +771,7 @@ class PortfolioResponse(BaseModel):
             "example": {
                 "id": 1,
                 "name": "My Investment Portfolio",
-                "description": "Long-term investment portfolio"
+                "description": "Long-term investment portfolio",
             }
         }
 ```
@@ -775,16 +786,17 @@ class PortfolioResponse(BaseModel):
 from pydantic import BaseModel, validator, Field
 from typing import Optional
 
+
 class PortfolioCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = Field(None, max_length=1000)
 
-    @validator('name')
+    @validator("name")
     def name_must_be_valid(cls, v):
         if not v.strip():
-            raise ValueError('Name cannot be empty')
-        if any(char in v for char in ['<', '>', '&', '"', "'"]):
-            raise ValueError('Name contains invalid characters')
+            raise ValueError("Name cannot be empty")
+        if any(char in v for char in ["<", ">", "&", '"', "'"]):
+            raise ValueError("Name contains invalid characters")
         return v.strip()
 ```
 
@@ -795,6 +807,7 @@ class PortfolioCreate(BaseModel):
 def bad_query(user_input):
     query = f"SELECT * FROM users WHERE name = '{user_input}'"
     return db.execute(query)
+
 
 # Good: Parameterized queries
 def good_query(user_input):
@@ -808,6 +821,7 @@ def good_query(user_input):
 def test_protected_endpoint_requires_auth(client):
     response = client.get("/api/v1/protected")
     assert response.status_code == 401
+
 
 def test_protected_endpoint_with_valid_token(client, valid_token):
     headers = {"Authorization": f"Bearer {valid_token}"}
@@ -846,8 +860,9 @@ async def health_check():
     return {
         "status": "healthy",
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "version": settings.version
+        "version": settings.version,
     }
+
 
 @app.get("/health/detailed")
 async def detailed_health_check(db: Session = Depends(get_db)):
@@ -862,7 +877,7 @@ async def detailed_health_check(db: Session = Depends(get_db)):
     return {
         "status": "healthy" if db_status == "healthy" else "unhealthy",
         "database": db_status,
-        "timestamp": datetime.now(timezone.utc).isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 ```
 

@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { Mail, AlertCircle, CheckCircle, ArrowLeft } from 'lucide-react';
+import { Mail, CheckCircle, ArrowLeft } from 'lucide-react';
 import { authAPI } from '../../services/api';
 import toast from 'react-hot-toast';
 
@@ -47,7 +47,7 @@ const ForgotPassword = () => {
                             </div>
                             <h2 className="text-2xl font-semibold text-gray-100 mb-2">Check Your Email</h2>
                             <p className="text-gray-400">
-                                We've sent a password reset link to your email address. Please check your inbox and click the link to reset your password.
+                                We&apos;ve sent a password reset link to your email address. Please check your inbox and click the link to reset your password.
                             </p>
                             <p className="text-xs text-gray-500 mt-2">
                                 The link will redirect you to our secure password reset form.
@@ -64,7 +64,7 @@ const ForgotPassword = () => {
                             </Link>
 
                             <p className="text-sm text-gray-400">
-                                Didn't receive the email?{' '}
+                                Didn&apos;t receive the email?{' '}
                                 <button
                                     onClick={() => setIsSubmitted(false)}
                                     className="text-primary-400 hover:text-primary-300 font-medium transition-colors"
@@ -100,7 +100,7 @@ const ForgotPassword = () => {
                     <div className="text-center mb-6">
                         <h2 className="text-2xl font-semibold text-gray-100 mb-2">Forgot Password?</h2>
                         <p className="text-gray-400">
-                            Enter your email address and we'll send you a link to reset your password.
+                            Enter your email address and we&apos;ll send you a link to reset your password.
                         </p>
                     </div>
 

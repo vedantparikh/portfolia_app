@@ -3,7 +3,7 @@ import {
     Plus,
     Target
 } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { analyticsAPI } from '../../services/api';
 import { formatCurrency, formatPercentage } from '../../utils/formatters.jsx';
 import LoadingSpinner from '../shared/LoadingSpinner';
@@ -20,6 +20,7 @@ const BenchmarkComparison = ({ portfolioId }) => {
         if (portfolioId) {
             loadBenchmarkData();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- reload only when portfolioId changes
     }, [portfolioId]);
 
     const loadBenchmarkData = async () => {
@@ -338,6 +339,7 @@ const BenchmarkComparison = ({ portfolioId }) => {
             {/* Add Benchmark Modal */}
             {showAddModal && (
                 <AddBenchmarkModal
+                    portfolioId={portfolioId}
                     onSave={handleAddBenchmark}
                     onClose={() => setShowAddModal(false)}
                 />
@@ -347,7 +349,7 @@ const BenchmarkComparison = ({ portfolioId }) => {
 };
 
 // Add Benchmark Modal Component
-const AddBenchmarkModal = ({ onSave, onClose }) => {
+const AddBenchmarkModal = ({ portfolioId, onSave, onClose }) => {
     const [formData, setFormData] = useState({
         benchmark_asset_id: '',
         benchmark_name: '',

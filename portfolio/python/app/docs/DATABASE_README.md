@@ -234,7 +234,7 @@ from database.utils import (
     get_database_stats,
     validate_database_integrity,
     cleanup_expired_sessions,
-    calculate_portfolio_value
+    calculate_portfolio_value,
 )
 
 # Get database statistics

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { cva } from 'class-variance-authority';
 
 
@@ -83,6 +83,7 @@ const TickerVisual = () => {
 
         // 3. IMPORTANT: Clean up the interval when the component is removed
         return () => clearInterval(interval);
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- start interval once on mount
     }, []); // The empty array [] ensures this effect runs only once on mount
 
     // To make the scroll seamless, we duplicate the state-driven data

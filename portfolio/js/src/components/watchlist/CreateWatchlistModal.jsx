@@ -1,5 +1,5 @@
 import { Globe, Lock, Star, X } from 'lucide-react';
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 const CreateWatchlistModal = ({ isOpen, onClose, onCreate }) => {
     const [formData, setFormData] = useState({

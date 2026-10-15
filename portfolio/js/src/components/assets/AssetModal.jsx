@@ -1,5 +1,5 @@
 import { BarChart3, Edit, Save, X } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { marketAPI } from "../../services/api";
 import {
@@ -66,6 +66,7 @@ const AssetModal = ({ asset, mode = "view", onClose, onSave, existingAssets = []
     if (asset && asset.symbol) {
       loadPriceHistory();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload only when asset or period changes
   }, [asset, chartPeriod]);
 
   const loadPriceHistory = async () => {

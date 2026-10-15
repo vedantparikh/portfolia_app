@@ -1,5 +1,5 @@
 import { AlertTriangle, Bell, X } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const EditSymbolModal = ({ isOpen, onClose, symbol, onUpdate }) => {
     const [formData, setFormData] = useState({
@@ -164,7 +164,7 @@ const EditSymbolModal = ({ isOpen, onClose, symbol, onUpdate }) => {
                                 <div className="text-xs text-yellow-300">
                                     <p className="font-medium mb-1">Price Alerts:</p>
                                     <ul className="space-y-1">
-                                        <li>• You'll receive notifications when price targets are reached</li>
+                                        <li>• You&apos;ll receive notifications when price targets are reached</li>
                                         <li>• Alerts are sent via email and in-app notifications</li>
                                         <li>• Leave empty to disable alerts</li>
                                     </ul>

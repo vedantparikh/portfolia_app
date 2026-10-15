@@ -151,18 +151,18 @@ GET /api/v1/market-data/supported-intervals
 ```python
 class MarketDataService:
     """Service for fetching market data using yfinance."""
-    
+
     def __init__(self):
         self.max_retries = 3
         self.retry_delay = 5  # seconds
         self.cache_ttl = 300  # 5 minutes
-    
+
     async def get_current_price(self, symbol: str) -> Optional[float]:
         """Get current price for a symbol."""
-        
+
     async def get_multiple_current_prices(self, symbols: List[str]) -> Dict[str, float]:
         """Get current prices for multiple symbols."""
-        
+
     async def fetch_ticker_data(
         self,
         symbol: str,
@@ -172,16 +172,18 @@ class MarketDataService:
         end_date: Optional[str] = None,
     ) -> Optional[pd.DataFrame]:
         """Fetch historical data for a symbol."""
-        
+
     async def get_ticker_info(self, symbol: str) -> Optional[Dict[str, Any]]:
         """Get company information for a symbol."""
-        
-    async def get_stock_data_for_symbols(self, symbols: List[str]) -> List[Dict[str, Any]]:
+
+    async def get_stock_data_for_symbols(
+        self, symbols: List[str]
+    ) -> List[Dict[str, Any]]:
         """Get stock data for multiple symbols."""
-        
+
     def search_symbols(self, query: str, limit: int = 10) -> List[Dict[str, str]]:
         """Search for stock symbols."""
-        
+
     def get_market_status(self) -> Dict[str, Any]:
         """Get current market status."""
 ```
@@ -213,12 +215,34 @@ DEFAULT_INTERVAL = "1d"
 
 # Supported periods
 SUPPORTED_PERIODS = [
-    "1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "ytd", "max"
+    "1d",
+    "5d",
+    "1mo",
+    "3mo",
+    "6mo",
+    "1y",
+    "2y",
+    "5y",
+    "10y",
+    "ytd",
+    "max",
 ]
 
 # Supported intervals
 SUPPORTED_INTERVALS = [
-    "1m", "2m", "5m", "15m", "30m", "60m", "90m", "1h", "1d", "5d", "1wk", "1mo", "3mo"
+    "1m",
+    "2m",
+    "5m",
+    "15m",
+    "30m",
+    "60m",
+    "90m",
+    "1h",
+    "1d",
+    "5d",
+    "1wk",
+    "1mo",
+    "3mo",
 ]
 ```
 
@@ -254,9 +278,7 @@ for data in stock_data:
 ```python
 # Get historical data for analysis
 data = await market_data_service.fetch_ticker_data(
-    symbol="AAPL",
-    period="1y",
-    interval="1d"
+    symbol="AAPL", period="1y", interval="1d"
 )
 
 # Calculate technical indicators
@@ -376,18 +398,18 @@ async def health_check() -> Dict[str, Any]:
     try:
         # Test basic functionality
         test_price = await market_data_service.get_current_price("AAPL")
-        
+
         return {
             "status": "healthy",
             "yfinance_accessible": test_price is not None,
             "cache_status": "operational",
-            "last_check": datetime.now(timezone.utc).isoformat()
+            "last_check": datetime.now(timezone.utc).isoformat(),
         }
     except Exception as e:
         return {
             "status": "unhealthy",
             "error": str(e),
-            "last_check": datetime.now(timezone.utc).isoformat()
+            "last_check": datetime.now(timezone.utc).isoformat(),
         }
 ```
 
