@@ -209,21 +209,17 @@ pdf_service = TransactionPDFService(db)
 filters = TransactionExportFilters(
     portfolio_ids=[1, 2],
     start_date=datetime(2023, 1, 1),
-    transaction_types=[TransactionType.BUY, TransactionType.SELL]
+    transaction_types=[TransactionType.BUY, TransactionType.SELL],
 )
 
 # Create options
 options = PDFExportOptions(
-    include_summary=True,
-    sort_by="transaction_date",
-    sort_order="desc"
+    include_summary=True, sort_by="transaction_date", sort_order="desc"
 )
 
 # Export PDF
 pdf_bytes, response_data = await pdf_service.export_transactions_to_pdf(
-    user=current_user,
-    filters=filters,
-    options=options
+    user=current_user, filters=filters, options=options
 )
 
 # Parse PDF

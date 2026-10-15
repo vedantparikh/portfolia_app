@@ -31,7 +31,7 @@ indicators = [
         "color": "#FF6B6B",
         "y_axis": "secondary",
         "group": "momentum",
-        "z_index": 3
+        "z_index": 3,
     },
     {
         "id": "rsi_21",
@@ -42,8 +42,8 @@ indicators = [
         "y_axis": "secondary",
         "group": "momentum",
         "z_index": 2,
-        "line_style": "dashed"
-    }
+        "line_style": "dashed",
+    },
 ]
 ```
 
@@ -53,11 +53,10 @@ The API now provides React-optimized chart data:
 
 ```python
 # Get React chart data
-response = requests.get("/api/v1/statistical-indicators/chart-data/react", params={
-    "symbol": "AAPL",
-    "period": "6mo",
-    "configuration_id": 1
-})
+response = requests.get(
+    "/api/v1/statistical-indicators/chart-data/react",
+    params={"symbol": "AAPL", "period": "6mo", "configuration_id": 1},
+)
 
 react_data = response.json()
 # Contains: price_data, indicator_series, volume_data, config, metadata
@@ -359,21 +358,24 @@ Request Body:
 import requests
 
 # Get RSI for AAPL
-response = requests.post("http://localhost:8000/api/v1/statistical-indicators/calculate", json={
-    "symbol": "AAPL",
-    "period": "6mo",
-    "interval": "1d",
-    "indicators": [
-        {
-            "indicator_name": "rsi_indicator",
-            "parameters": {"window": 14, "fillna": false},
-            "enabled": True,
-            "display_name": "RSI (14)",
-            "color": "#FF6B6B",
-            "y_axis": "secondary"
-        }
-    ]
-})
+response = requests.post(
+    "http://localhost:8000/api/v1/statistical-indicators/calculate",
+    json={
+        "symbol": "AAPL",
+        "period": "6mo",
+        "interval": "1d",
+        "indicators": [
+            {
+                "indicator_name": "rsi_indicator",
+                "parameters": {"window": 14, "fillna": false},
+                "enabled": True,
+                "display_name": "RSI (14)",
+                "color": "#FF6B6B",
+                "y_axis": "secondary",
+            }
+        ],
+    },
+)
 
 data = response.json()
 print(f"RSI values: {[row['RSI'] for row in data['data'][-5:]]}")
@@ -390,7 +392,7 @@ indicators = [
         "enabled": True,
         "display_name": "RSI (14)",
         "color": "#FF6B6B",
-        "y_axis": "secondary"
+        "y_axis": "secondary",
     },
     {
         "indicator_name": "stoch_rsi_indicator",
@@ -398,7 +400,7 @@ indicators = [
         "enabled": True,
         "display_name": "Stochastic RSI",
         "color": "#FF9F43",
-        "y_axis": "secondary"
+        "y_axis": "secondary",
     },
     {
         "indicator_name": "roc_indicator",
@@ -406,52 +408,59 @@ indicators = [
         "enabled": True,
         "display_name": "Rate of Change",
         "color": "#5F27CD",
-        "y_axis": "secondary"
-    }
+        "y_axis": "secondary",
+    },
 ]
 
-response = requests.post("http://localhost:8000/api/v1/statistical-indicators/calculate", json={
-    "symbol": "AAPL",
-    "period": "1y",
-    "interval": "1d",
-    "indicators": indicators
-})
+response = requests.post(
+    "http://localhost:8000/api/v1/statistical-indicators/calculate",
+    json={"symbol": "AAPL", "period": "1y", "interval": "1d", "indicators": indicators},
+)
 ```
 
 ### Example 3: Save and Reuse Configuration
 
 ```python
 # Create a configuration
-config_response = requests.post("http://localhost:8000/api/v1/statistical-indicators/configurations", json={
-    "name": "Momentum Analysis",
-    "description": "Comprehensive momentum indicators",
-    "indicators": indicators,
-    "is_public": False,
-    "tags": ["momentum", "custom"]
-})
+config_response = requests.post(
+    "http://localhost:8000/api/v1/statistical-indicators/configurations",
+    json={
+        "name": "Momentum Analysis",
+        "description": "Comprehensive momentum indicators",
+        "indicators": indicators,
+        "is_public": False,
+        "tags": ["momentum", "custom"],
+    },
+)
 
 config_id = config_response.json()["id"]
 
 # Use the configuration
-response = requests.post("http://localhost:8000/api/v1/statistical-indicators/calculate", json={
-    "symbol": "AAPL",
-    "period": "1y",
-    "interval": "1d",
-    "configuration_id": config_id
-})
+response = requests.post(
+    "http://localhost:8000/api/v1/statistical-indicators/calculate",
+    json={
+        "symbol": "AAPL",
+        "period": "1y",
+        "interval": "1d",
+        "configuration_id": config_id,
+    },
+)
 ```
 
 ### Example 4: Generate Chart Data
 
 ```python
 # Generate Plotly chart data
-chart_response = requests.get("http://localhost:8000/api/v1/statistical-indicators/chart-data/plotly", params={
-    "symbol": "AAPL",
-    "period": "6mo",
-    "interval": "1d",
-    "configuration_id": config_id,
-    "chart_type": "candlestick"
-})
+chart_response = requests.get(
+    "http://localhost:8000/api/v1/statistical-indicators/chart-data/plotly",
+    params={
+        "symbol": "AAPL",
+        "period": "6mo",
+        "interval": "1d",
+        "configuration_id": config_id,
+        "chart_type": "candlestick",
+    },
+)
 
 chart_data = chart_response.json()
 # Use with Plotly for visualization

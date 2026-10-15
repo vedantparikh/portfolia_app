@@ -66,7 +66,9 @@ PASSWORD_RESET_MAX_ATTEMPTS = 5
 RATE_LIMIT_WINDOW_SECONDS = 15 * 60
 
 
-def revoke_user_sessions(db: Session, user_id: int, keep_session_id: str | None = None) -> None:
+def revoke_user_sessions(
+    db: Session, user_id: int, keep_session_id: str | None = None
+) -> None:
     """Deactivate all of a user's sessions, optionally keeping one (e.g. the current one)."""
     query = db.query(UserSession).filter(
         UserSession.user_id == user_id, UserSession.is_active.is_(True)

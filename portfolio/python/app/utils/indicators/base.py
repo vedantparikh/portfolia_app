@@ -28,9 +28,9 @@ class BaseIndicator:
         self.df = self._normalize_column_names(self.df)
 
         # Updated the assertion to use the idiomatic Polars `is_empty()` method
-        assert (
-            not self.df.is_empty()
-        ), "The DataFrame is empty. No indicator calculation can be performed."
+        assert not self.df.is_empty(), (
+            "The DataFrame is empty. No indicator calculation can be performed."
+        )
 
     def _normalize_column_names(self, df: pl.DataFrame) -> pl.DataFrame:
         """Convert column names to pythonic snake_case."""

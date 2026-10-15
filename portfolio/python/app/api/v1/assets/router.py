@@ -41,9 +41,9 @@ router = APIRouter(prefix="/assets", tags=["assets"])
 
 @router.post("/", response_model=AssetSchema, status_code=status.HTTP_201_CREATED)
 async def create_asset(
-        asset_data: AssetCreate,
-        current_user: User = Depends(get_current_verified_user),
-        db: Session = Depends(get_db),
+    asset_data: AssetCreate,
+    current_user: User = Depends(get_current_verified_user),
+    db: Session = Depends(get_db),
 ):
     """Create a new financial asset for the authenticated user."""
     log_api_request(
@@ -87,8 +87,8 @@ async def create_asset(
     new_asset = AssetModel(
         symbol=asset_data.symbol.upper(),
         name=ticker_data.get("long_name")
-             or ticker_data.get("short_name")
-             or asset_data.symbol.upper(),
+        or ticker_data.get("short_name")
+        or asset_data.symbol.upper(),
         asset_type=(
             AssetType[ticker_data.get("quote_type").upper()]
             if ticker_data.get("quote_type")
@@ -115,11 +115,15 @@ async def create_asset(
     return new_asset
 
 
-@router.post("/bulk-create", response_model=AssetBulkCreateResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/bulk-create",
+    response_model=AssetBulkCreateResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_assets_bulk(
-        asset_data: AssetBulkCreateRequest,
-        current_user: User = Depends(get_current_verified_user),
-        db: Session = Depends(get_db),
+    asset_data: AssetBulkCreateRequest,
+    current_user: User = Depends(get_current_verified_user),
+    db: Session = Depends(get_db),
 ):
     """Create multiple financial assets in bulk for the authenticated user."""
     log_api_request(
@@ -137,7 +141,9 @@ async def create_assets_bulk(
     existing_symbols = {
         r[0]
         for r in db.query(AssetModel.symbol)
-        .filter(AssetModel.user_id == current_user.id, AssetModel.symbol.in_(unique_symbols))
+        .filter(
+            AssetModel.user_id == current_user.id, AssetModel.symbol.in_(unique_symbols)
+        )
         .all()
     }
 
@@ -152,12 +158,16 @@ async def create_assets_bulk(
 
         try:
             ticker_data = await market_data_service.get_ticker_info(symbol)
-            if not ticker_data or not (ticker_data.get("long_name") or ticker_data.get("short_name")):
+            if not ticker_data or not (
+                ticker_data.get("long_name") or ticker_data.get("short_name")
+            ):
                 raise ValueError("Invalid or incomplete market data received.")
 
             new_asset = AssetModel(
                 symbol=symbol,
-                name=ticker_data.get("long_name") or ticker_data.get("short_name") or symbol,
+                name=ticker_data.get("long_name")
+                or ticker_data.get("short_name")
+                or symbol,
                 asset_type=(
                     AssetType[ticker_data.get("quote_type").upper()]
                     if ticker_data.get("quote_type")
@@ -176,7 +186,9 @@ async def create_assets_bulk(
             )
             assets_to_create.append(new_asset)
         except Exception as e:
-            logger.warning("Failed to process symbol %s for bulk creation: %s", symbol, e)
+            logger.warning(
+                "Failed to process symbol %s for bulk creation: %s", symbol, e
+            )
             if asset_data.allow_minimal_on_market_data_failure:
                 etf_symbols = {"SPY", "IVV", "VOO", "QQQ", "DIA", "IWM"}
                 atype = AssetType.ETF if symbol in etf_symbols else AssetType.EQUITY
@@ -218,17 +230,17 @@ async def create_assets_bulk(
 
 @router.get("/", response_model=List[AssetSchema])
 async def get_assets(
-        skip: int = Query(0, ge=0, description="Number of assets to skip"),
-        limit: int = Query(
-            100, ge=1, le=1000, description="Maximum number of assets to return"
-        ),
-        symbol: Optional[str] = Query(None, description="Filter by symbol"),
-        asset_type: Optional[str] = Query(None, description="Filter by asset type"),
-        include_detail: bool = Query(
-            default=False, description="Include asset detail in response"
-        ),
-        current_user: User = Depends(get_current_active_user),
-        db: Session = Depends(get_db),
+    skip: int = Query(0, ge=0, description="Number of assets to skip"),
+    limit: int = Query(
+        100, ge=1, le=1000, description="Maximum number of assets to return"
+    ),
+    symbol: Optional[str] = Query(None, description="Filter by symbol"),
+    asset_type: Optional[str] = Query(None, description="Filter by asset type"),
+    include_detail: bool = Query(
+        default=False, description="Include asset detail in response"
+    ),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """Get list of financial assets for the authenticated user with optional filtering."""
     query = db.query(AssetModel).filter(
@@ -247,7 +259,7 @@ async def get_assets(
         asset_details = []
         symbols = [asset.symbol for asset in assets]
         ticker_detail_list = await market_data_service.get_symbols_info(symbols)
-        ticker_detail_map = {item['symbol']: item for item in ticker_detail_list}
+        ticker_detail_map = {item["symbol"]: item for item in ticker_detail_list}
         for asset in assets:
             asset_detail = AssetSchema(
                 id=asset.id,
@@ -266,7 +278,9 @@ async def get_assets(
                 is_active=asset.is_active,
             )
             if ticker_detail_map.get(asset.symbol):
-                asset_detail.detail = AssetDetailSchema(**ticker_detail_map[asset.symbol])
+                asset_detail.detail = AssetDetailSchema(
+                    **ticker_detail_map[asset.symbol]
+                )
             else:
                 asset_detail.detail = {}
             asset_details.append(asset_detail)
@@ -276,9 +290,9 @@ async def get_assets(
 
 @router.get("/{asset_id}", response_model=AssetSchema)
 async def get_asset(
-        asset_id: int,
-        current_user: User = Depends(get_current_active_user),
-        db: Session = Depends(get_db),
+    asset_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """Get a specific financial asset by ID for the authenticated user."""
     asset = (
@@ -301,10 +315,10 @@ async def get_asset(
 
 @router.put("/{asset_id}", response_model=AssetSchema)
 async def update_asset(
-        asset_id: int,
-        asset_update: AssetUpdate,
-        current_user: User = Depends(get_current_verified_user),
-        db: Session = Depends(get_db),
+    asset_id: int,
+    asset_update: AssetUpdate,
+    current_user: User = Depends(get_current_verified_user),
+    db: Session = Depends(get_db),
 ):
     """Update a financial asset for the authenticated user."""
     asset = (
@@ -335,9 +349,9 @@ async def update_asset(
 
 @router.delete("/{asset_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_asset(
-        asset_id: int,
-        current_user: User = Depends(get_current_verified_user),
-        db: Session = Depends(get_db),
+    asset_id: int,
+    current_user: User = Depends(get_current_verified_user),
+    db: Session = Depends(get_db),
 ):
     """Delete a financial asset for the authenticated user."""
     asset = (
@@ -364,10 +378,10 @@ async def delete_asset(
 
 @router.get("/search/{query}", response_model=AssetSearchResponse)
 async def search_assets(
-        query: str,
-        limit: int = Query(20, ge=1, le=1000, description="Maximum number of results"),
-        current_user: User = Depends(get_current_active_user),
-        db: Session = Depends(get_db),
+    query: str,
+    limit: int = Query(20, ge=1, le=1000, description="Maximum number of results"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """Search for assets by symbol or name for the authenticated user."""
     assets = (
@@ -376,8 +390,8 @@ async def search_assets(
             AssetModel.is_active == True,
             AssetModel.user_id == current_user.id,
             (
-                    AssetModel.symbol.ilike(f"%{query.upper()}%")
-                    | AssetModel.name.ilike(f"%{query}%")
+                AssetModel.symbol.ilike(f"%{query.upper()}%")
+                | AssetModel.name.ilike(f"%{query}%")
             ),
         )
         .limit(limit)
@@ -389,11 +403,11 @@ async def search_assets(
 
 @router.get("/{asset_id}/prices", response_model=AssetPrice)
 async def get_asset_prices(
-        asset_id: int,
-        period: str = Query("max", description="Data period"),
-        interval: str = Query("1d", description="Data interval"),
-        current_user: User = Depends(get_current_active_user),
-        db: Session = Depends(get_db),
+    asset_id: int,
+    period: str = Query("max", description="Data period"),
+    interval: str = Query("1d", description="Data interval"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """Get price data for a specific asset for the authenticated user."""
     asset = (

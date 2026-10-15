@@ -23,13 +23,11 @@ from core.services import PortfolioService
 router = APIRouter(prefix="/transactions", tags=["transactions"])
 
 
-@router.post(
-    "/", response_model=TransactionSchema, status_code=status.HTTP_201_CREATED
-)
+@router.post("/", response_model=TransactionSchema, status_code=status.HTTP_201_CREATED)
 async def create_transaction(
-        transaction_data: TransactionCreate,
-        current_user: User = Depends(get_current_verified_user),
-        db: Session = Depends(get_db),
+    transaction_data: TransactionCreate,
+    current_user: User = Depends(get_current_verified_user),
+    db: Session = Depends(get_db),
 ):
     """
     Create a new transaction. The service layer handles all logic,
@@ -53,11 +51,13 @@ async def create_transaction(
 
 @router.get("/", response_model=List[TransactionSchema])
 async def get_user_transactions(
-        current_user: User = Depends(get_current_active_user),
-        db: Session = Depends(get_db),
-        portfolio_id: Optional[int] = Query(None, description="Filter by a specific portfolio ID"),
-        limit: int = Query(100, ge=1, le=10000),
-        offset: int = Query(0, ge=0),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+    portfolio_id: Optional[int] = Query(
+        None, description="Filter by a specific portfolio ID"
+    ),
+    limit: int = Query(100, ge=1, le=10000),
+    offset: int = Query(0, ge=0),
 ):
     """
     Get transactions for the current user.
@@ -68,7 +68,10 @@ async def get_user_transactions(
     if portfolio_id is not None:
         # Case 1: A specific portfolio is requested
         transactions = portfolio_service.get_portfolio_transactions(
-            portfolio_id=portfolio_id, user_id=current_user.id, limit=limit, offset=offset
+            portfolio_id=portfolio_id,
+            user_id=current_user.id,
+            limit=limit,
+            offset=offset,
         )
     else:
         # Case 2: No portfolio specified, get all transactions for the user
@@ -81,9 +84,9 @@ async def get_user_transactions(
 
 @router.get("/{transaction_id}", response_model=TransactionSchema)
 async def get_transaction(
-        transaction_id: int,
-        current_user: User = Depends(get_current_active_user),
-        db: Session = Depends(get_db),
+    transaction_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """Get a specific transaction by ID."""
     portfolio_service = PortfolioService(db=db)
@@ -102,10 +105,10 @@ async def get_transaction(
 
 @router.put("/{transaction_id}", response_model=TransactionSchema)
 async def update_transaction(
-        transaction_id: int,
-        transaction_update: TransactionUpdate,
-        current_user: User = Depends(get_current_verified_user),
-        db: Session = Depends(get_db),
+    transaction_id: int,
+    transaction_update: TransactionUpdate,
+    current_user: User = Depends(get_current_verified_user),
+    db: Session = Depends(get_db),
 ):
     """Update a transaction. The service layer handles recalculation."""
     portfolio_service = PortfolioService(db=db)
@@ -126,9 +129,9 @@ async def update_transaction(
 
 @router.delete("/{transaction_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_transaction(
-        transaction_id: int,
-        current_user: User = Depends(get_current_verified_user),
-        db: Session = Depends(get_db),
+    transaction_id: int,
+    current_user: User = Depends(get_current_verified_user),
+    db: Session = Depends(get_db),
 ):
     """Delete a transaction. The service layer handles recalculation."""
     portfolio_service = PortfolioService(db=db)
@@ -147,11 +150,11 @@ async def delete_transaction(
 
 @router.get("/{portfolio_id}/summary", response_model=TransactionSummaryResponse)
 async def get_transactions_summary(
-        portfolio_id: int,
-        start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
-        end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
-        current_user: User = Depends(get_current_active_user),
-        db: Session = Depends(get_db),
+    portfolio_id: int,
+    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """Get transaction summary for a portfolio."""
     # Verify portfolio ownership

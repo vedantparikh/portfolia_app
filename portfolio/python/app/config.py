@@ -107,8 +107,10 @@ class Settings(BaseSettings):
         """Construct database URL from components."""
         if self.TESTING:
             return self.TEST_DATABASE_URL
-        return (f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:"
-                f"{self.POSTGRES_PORT}/{self.POSTGRES_DB}")
+        return (
+            f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:"
+            f"{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        )
 
     @property
     def REDIS_URL(self) -> str:
@@ -140,7 +142,9 @@ class Settings(BaseSettings):
         for name in ("SECRET_KEY", "JWT_SECRET_KEY"):
             value = getattr(self, name)
             if value in INSECURE_SECRET_DEFAULTS or len(value) < 32:
-                problems.append(f"{name} is unset, a placeholder, or shorter than 32 chars")
+                problems.append(
+                    f"{name} is unset, a placeholder, or shorter than 32 chars"
+                )
         if self.POSTGRES_PASSWORD in INSECURE_SECRET_DEFAULTS:
             problems.append("POSTGRES_PASSWORD is unset or a placeholder")
         if not self.REDIS_PASSWORD:

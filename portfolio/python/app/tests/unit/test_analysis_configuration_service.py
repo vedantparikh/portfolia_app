@@ -8,7 +8,9 @@ from core.services.analysis_configuration_service import AnalysisConfigurationSe
 
 
 def _rsi(period):
-    return IndicatorConfiguration(indicator_name="rsi_indicator", parameters={"period": period})
+    return IndicatorConfiguration(
+        indicator_name="rsi_indicator", parameters={"period": period}
+    )
 
 
 def test_create_and_update_store_indicators_as_json(test_db):

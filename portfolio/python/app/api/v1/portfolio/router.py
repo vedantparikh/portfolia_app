@@ -292,7 +292,9 @@ async def get_portfolio_summary(
 ):
     """Get portfolio summary with total value and performance metrics."""
     portfolio_service = PortfolioService(db)
-    summary = await portfolio_service.get_portfolio_summary(portfolio_id, current_user.id)
+    summary = await portfolio_service.get_portfolio_summary(
+        portfolio_id, current_user.id
+    )
 
     if not summary.portfolio_id:
         raise HTTPException(
@@ -355,7 +357,9 @@ async def refresh_portfolio_values(
 ):
     """Refresh current values and P&L for all assets in a portfolio."""
     portfolio_service = PortfolioService(db)
-    success = await portfolio_service.refresh_portfolio_values(portfolio_id, current_user.id)
+    success = await portfolio_service.refresh_portfolio_values(
+        portfolio_id, current_user.id
+    )
 
     if not success:
         raise HTTPException(

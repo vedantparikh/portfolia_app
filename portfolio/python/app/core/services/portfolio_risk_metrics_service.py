@@ -38,11 +38,11 @@ class PortfolioRiskMetricsService:
         self.ANNUALIZED_RISK_FREE_RATE = 0.03
 
     async def calculate_portfolio_risk_metrics(
-            self,
-            portfolio_id: int,
-            period: str = PeriodType.INCEPTION,
-            benchmark_symbol: str = "^GSPC",  # S&P 500 as default benchmark
-            end_date: Optional[datetime] = None,
+        self,
+        portfolio_id: int,
+        period: str = PeriodType.INCEPTION,
+        benchmark_symbol: str = "^GSPC",  # S&P 500 as default benchmark
+        end_date: Optional[datetime] = None,
     ) -> Dict[str, Any]:
         """
         Calculates a comprehensive set of risk metrics for a given portfolio and period.
@@ -150,7 +150,7 @@ class PortfolioRiskMetricsService:
         if vol is None or md is None or var_95 is None:
             return {
                 "level": "indeterminate",
-                "reasoning": "Could not determine risk level due to missing metrics."
+                "reasoning": "Could not determine risk level due to missing metrics.",
             }
 
         level = ""
@@ -212,10 +212,7 @@ class PortfolioRiskMetricsService:
                     f"The 95% Value at Risk (VaR) of <strong>{var_95:.2f}%</strong> shows a low potential for significant daily losses."
                 )
 
-        return {
-            "level": level,
-            "reasoning": " ".join(reasoning_parts)
-        }
+        return {"level": level, "reasoning": " ".join(reasoning_parts)}
 
     def _calculate_volatility(self, daily_returns: pd.Series) -> Optional[float]:
         """
@@ -246,7 +243,7 @@ class PortfolioRiskMetricsService:
         try:
             # Calculate excess returns over the daily risk-free rate
             daily_risk_free_rate = (1 + self.ANNUALIZED_RISK_FREE_RATE) ** (
-                    1 / self.TRADING_DAYS_PER_YEAR
+                1 / self.TRADING_DAYS_PER_YEAR
             ) - 1
             excess_daily_returns = daily_returns - daily_risk_free_rate
 
@@ -269,7 +266,7 @@ class PortfolioRiskMetricsService:
             return None
 
     def _calculate_var(
-            self, daily_returns: pd.Series, confidence_level: float = 0.95
+        self, daily_returns: pd.Series, confidence_level: float = 0.95
     ) -> Optional[float]:
         """
         Calculates the Value at Risk (VaR) using the historical simulation method.
@@ -318,7 +315,7 @@ class PortfolioRiskMetricsService:
         """Calculates the annualized Sortino Ratio."""
         try:
             daily_risk_free_rate = (1 + self.ANNUALIZED_RISK_FREE_RATE) ** (
-                    1 / self.TRADING_DAYS_PER_YEAR
+                1 / self.TRADING_DAYS_PER_YEAR
             ) - 1
             excess_returns = daily_returns - daily_risk_free_rate
 
@@ -327,7 +324,9 @@ class PortfolioRiskMetricsService:
             downside_deviation = np.sqrt((excess_returns.clip(upper=0) ** 2).mean())
 
             if downside_deviation == 0:
-                return None  # No downside observed: ratio is undefined (not JSON-safe inf)
+                return (
+                    None  # No downside observed: ratio is undefined (not JSON-safe inf)
+                )
 
             # Calculate and annualize Sortino
             avg_excess_return = excess_returns.mean()
@@ -339,7 +338,7 @@ class PortfolioRiskMetricsService:
             return None
 
     def _calculate_cvar(
-            self, daily_returns: pd.Series, confidence_level: float = 0.95
+        self, daily_returns: pd.Series, confidence_level: float = 0.95
     ) -> Optional[float]:
         """Calculates the Conditional Value at Risk (CVaR) or Expected Shortfall."""
         try:
@@ -352,7 +351,9 @@ class PortfolioRiskMetricsService:
             logger.error(f"Error calculating CVaR: {e}")
             return None
 
-    def _calculate_calmar_ratio(self, daily_returns: pd.Series, max_drawdown_pct: float) -> Optional[float]:
+    def _calculate_calmar_ratio(
+        self, daily_returns: pd.Series, max_drawdown_pct: float
+    ) -> Optional[float]:
         """Calculates the Calmar Ratio."""
         try:
             # max_drawdown_pct is already calculated as a negative percentage (e.g., -20.0)
@@ -373,7 +374,7 @@ class PortfolioRiskMetricsService:
             return None
 
     def _empty_risk_result(
-            self, portfolio_id: int, period: str, error_message: str
+        self, portfolio_id: int, period: str, error_message: str
     ) -> Dict[str, Any]:
         """Returns a standardized empty/error result dictionary."""
         logger.warning(f"Portfolio {portfolio_id} ({period}): {error_message}")
@@ -391,8 +392,5 @@ class PortfolioRiskMetricsService:
                 "cvar_95": None,
                 "calmar_ratio": None,
             },
-            "risk_assessment": {
-                "level": "indeterminate",
-                "reasoning": error_message
-            }
+            "risk_assessment": {"level": "indeterminate", "reasoning": error_message},
         }

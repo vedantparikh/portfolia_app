@@ -165,7 +165,11 @@ class TestPasswordReset:
         api.post("/api/v1/auth/forgot-password", json={"email": "alice@example.com"})
         token = sent_emails[0].split("token=")[1]
 
-        weak = {"token": token, "new_password": "password", "confirm_new_password": "password"}
+        weak = {
+            "token": token,
+            "new_password": "password",
+            "confirm_new_password": "password",
+        }
         assert api.post("/api/v1/auth/reset-password", json=weak).status_code == 400
 
         strong = "N3w!Passw0rdX"
@@ -308,12 +312,16 @@ class TestTransactionWrites:
         alice, tokens = register_and_login(api, test_db, "alice")
         portfolio, asset = create_portfolio_with_asset(test_db, alice, "AAPL")
         url = f"/api/v1/portfolios/{portfolio.id}/transactions"
-        api.post(url, headers=auth(tokens), json=transaction_payload(portfolio.id, asset.id))
+        api.post(
+            url, headers=auth(tokens), json=transaction_payload(portfolio.id, asset.id)
+        )
 
         response = api.post(
             url,
             headers=auth(tokens),
-            json=transaction_payload(portfolio.id, asset.id, kind="sell", quantity="11"),
+            json=transaction_payload(
+                portfolio.id, asset.id, kind="sell", quantity="11"
+            ),
         )
 
         assert response.status_code == 400

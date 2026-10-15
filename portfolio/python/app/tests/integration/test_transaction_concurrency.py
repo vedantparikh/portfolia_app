@@ -17,7 +17,9 @@ async def test_price_is_fetched_before_portfolio_asset_is_staged(test_db, monkey
     staged_at_await = []
 
     async def fake_price(self, symbol):
-        staged_at_await.append([o for o in test_db.new if isinstance(o, PortfolioAsset)])
+        staged_at_await.append(
+            [o for o in test_db.new if isinstance(o, PortfolioAsset)]
+        )
         return 110.0
 
     monkeypatch.setattr(MarketDataService, "get_current_price", fake_price)

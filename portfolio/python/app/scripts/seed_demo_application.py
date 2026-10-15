@@ -257,7 +257,9 @@ def _ensure_demo_user_db(
             existing.is_active = True
             existing.password_hash = get_password_hash(password)
             db.commit()
-            prof = db.query(UserProfile).filter(UserProfile.user_id == existing.id).first()
+            prof = (
+                db.query(UserProfile).filter(UserProfile.user_id == existing.id).first()
+            )
             if not prof:
                 db.add(
                     UserProfile(
@@ -270,7 +272,9 @@ def _ensure_demo_user_db(
                     )
                 )
                 db.commit()
-            logger.info("DB: updated demo user id=%s (verified, password reset)", existing.id)
+            logger.info(
+                "DB: updated demo user id=%s (verified, password reset)", existing.id
+            )
             return
 
         user = User(
@@ -613,7 +617,12 @@ async def run(args: argparse.Namespace) -> int:
         id_daily = p_daily.json()["id"]
         id_week = p_week.json()["id"]
         id_month = p_month.json()["id"]
-        logger.info("Created portfolios daily=%s weekly=%s monthly=%s", id_daily, id_week, id_month)
+        logger.info(
+            "Created portfolios daily=%s weekly=%s monthly=%s",
+            id_daily,
+            id_week,
+            id_month,
+        )
 
         all_syms = sorted({sym_map[t.upper()] for t in all_intended})
         bulk = await _request(
@@ -658,7 +667,9 @@ async def run(args: argparse.Namespace) -> int:
 
         sem = asyncio.Semaphore(args.concurrency)
 
-        async def post_one_tx(pid: int, spec: Tuple[str, str, Decimal, Decimal, datetime, str]) -> None:
+        async def post_one_tx(
+            pid: int, spec: Tuple[str, str, Decimal, Decimal, datetime, str]
+        ) -> None:
             sym, side, qty, price, when, note = spec
             aid = sym_to_id[sym.upper()]
             body = _tx_payload(pid, aid, side, qty, price, when, note)
@@ -734,9 +745,7 @@ async def run(args: argparse.Namespace) -> int:
                 f"/api/v1/analytics/portfolios/{pid}/benchmarks",
                 json=body,
             )
-            logger.info(
-                "POST benchmark (%s) -> id=%s", label, br.json().get("id")
-            )
+            logger.info("POST benchmark (%s) -> id=%s", label, br.json().get("id"))
 
         wl = await _request(
             client,
@@ -876,8 +885,12 @@ def parse_args() -> argparse.Namespace:
         dest="max_trades_daily",
         help="Cap API calls for daily portfolio (each is POST /transactions)",
     )
-    p.add_argument("--max-trades-weekly", type=int, default=200, dest="max_trades_weekly")
-    p.add_argument("--max-trades-monthly", type=int, default=120, dest="max_trades_monthly")
+    p.add_argument(
+        "--max-trades-weekly", type=int, default=200, dest="max_trades_weekly"
+    )
+    p.add_argument(
+        "--max-trades-monthly", type=int, default=120, dest="max_trades_monthly"
+    )
     p.add_argument(
         "--concurrency",
         type=int,

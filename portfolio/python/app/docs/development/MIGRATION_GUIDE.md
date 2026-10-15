@@ -186,11 +186,12 @@ class DBSettings:
 # app/config.py
 from pydantic_settings import BaseSettings
 
+
 class Settings(BaseSettings):
     database_url: str = "postgresql://..."
     api_host: str = "0.0.0.0"
     api_port: int = 8000
-    
+
     class Config:
         env_file = ".env"
 ```
@@ -228,9 +229,7 @@ from app.config import settings
 from app.health_check import router as health_router
 
 app = FastAPI(
-    title=settings.project_name,
-    version=settings.version,
-    debug=settings.debug
+    title=settings.project_name, version=settings.version, debug=settings.debug
 )
 
 # Include routers
@@ -240,10 +239,14 @@ app.include_router(health_router, prefix="/health", tags=["health"])
 try:
     from api.v1.auth.router import router as auth_router
     from api.v1.market.routers import router as market_router
-    
-    app.include_router(auth_router, prefix=f"{settings.api_v1_str}/auth", tags=["authentication"])
-    app.include_router(market_router, prefix=f"{settings.api_v1_str}/market", tags=["market"])
-    
+
+    app.include_router(
+        auth_router, prefix=f"{settings.api_v1_str}/auth", tags=["authentication"]
+    )
+    app.include_router(
+        market_router, prefix=f"{settings.api_v1_str}/market", tags=["market"]
+    )
+
 except ImportError as e:
     logger.warning(f"Could not import some routers: {e}")
 ```

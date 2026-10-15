@@ -30,7 +30,9 @@ def _send_email(recipient_email: str, subject: str, html_content: str):
             smtp.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
             # Send the message
             smtp.send_message(msg)
-            logger.info(f"Email with subject '{subject}' sent successfully to {recipient_email}")
+            logger.info(
+                f"Email with subject '{subject}' sent successfully to {recipient_email}"
+            )
             return True
 
     except Exception as e:
@@ -49,7 +51,9 @@ def send_forgot_password_email(recipient_email: str, reset_url: str):
             logger.error(f"HTML template not found: {html_template_path}")
             return
 
-        html_content = html_template_path.read_text().replace("{{reset_link}}", reset_url)
+        html_content = html_template_path.read_text().replace(
+            "{{reset_link}}", reset_url
+        )
         subject = "Password Reset Request"
 
         _send_email(recipient_email, subject, html_content)
@@ -69,7 +73,9 @@ def send_verification_email(recipient_email: str, verification_url: str):
             logger.error(f"HTML template not found: {html_template_path}")
             return
 
-        html_content = html_template_path.read_text().replace("{{verification_link}}", verification_url)
+        html_content = html_template_path.read_text().replace(
+            "{{verification_link}}", verification_url
+        )
         subject = "Verify Your Email Address - Portfolia"
 
         _send_email(recipient_email, subject, html_content)

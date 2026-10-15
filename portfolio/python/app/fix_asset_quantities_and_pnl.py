@@ -24,7 +24,9 @@ async def main():
 
         # 2. Iterate through each portfolio
         for portfolio in portfolios:
-            print(f"\n--- Processing Portfolio: '{portfolio.name}' (ID: {portfolio.id}) ---")
+            print(
+                f"\n--- Processing Portfolio: '{portfolio.name}' (ID: {portfolio.id}) ---"
+            )
 
             # 3. Find all unique assets that have transactions in this portfolio
             # This ensures we process assets that were fully sold and might not have a
@@ -40,7 +42,9 @@ async def main():
                 print("No transactions found for this portfolio. Skipping.")
                 continue
 
-            print(f"Found {len(asset_ids_tuples)} unique asset(s) with transaction history.")
+            print(
+                f"Found {len(asset_ids_tuples)} unique asset(s) with transaction history."
+            )
 
             # 4. For each asset, trigger the recalculation
             for (asset_id,) in asset_ids_tuples:
@@ -59,7 +63,9 @@ async def main():
 
                 except Exception as e:
                     # Log the error but continue with the next asset
-                    print(f"  ❌ ERROR processing Asset ID {asset_id} in Portfolio ID {portfolio.id}: {e}")
+                    print(
+                        f"  ❌ ERROR processing Asset ID {asset_id} in Portfolio ID {portfolio.id}: {e}"
+                    )
                     # You might want to add more sophisticated logging here
 
             print(f"--- Finished processing Portfolio '{portfolio.name}' ---")

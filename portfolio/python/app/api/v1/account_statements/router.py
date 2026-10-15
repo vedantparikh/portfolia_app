@@ -48,24 +48,23 @@ async def parse_statement(
         file_bytes = await file.read()
 
         # The service layer expects a base64 encoded string, so we encode the bytes.
-        file_content_b64 = base64.b64encode(file_bytes).decode('utf-8')
+        file_content_b64 = base64.b64encode(file_bytes).decode("utf-8")
 
         parsed_data = service.parse_statement(
             provider_id=provider_id,
             file_content=file_content_b64,
-            filename=file.filename
+            filename=file.filename,
         )
         return ParseResponse(parsed_data=parsed_data)
 
     except ValueError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
         ) from e
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An unexpected error occurred while parsing the statement: {str(e)}"
+            detail=f"An unexpected error occurred while parsing the statement: {str(e)}",
         ) from e
 
 
@@ -82,21 +81,19 @@ async def bulk_create_transactions(
         created_transactions, summary = await service.create_bulk_transactions(
             portfolio_id=request.portfolio_id,
             transactions_data=request.transactions,
-            user_id=current_user.id
+            user_id=current_user.id,
         )
 
         return BulkCreateResponse(
-            created_transactions=created_transactions,
-            summary=summary
+            created_transactions=created_transactions, summary=summary
         )
 
     except ValueError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
         ) from e
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An unexpected error occurred while creating transactions: {str(e)}"
+            detail=f"An unexpected error occurred while creating transactions: {str(e)}",
         ) from e

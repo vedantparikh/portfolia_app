@@ -61,8 +61,8 @@ setup_logging(
     enable_console=True,
     enable_file=True,
     enable_json=True,
-    max_file_size=20*1024*1024,  # 20MB
-    backup_count=10
+    max_file_size=20 * 1024 * 1024,  # 20MB
+    backup_count=10,
 )
 ```
 
@@ -86,19 +86,22 @@ logger.error("Error occurred")
 from core.logging_config import log_function_call, log_function_result
 import time
 
+
 def process_data(data, user_id):
     start_time = time.time()
-    
+
     # Log function call
-    log_function_call(logger, "process_data", data_type=type(data).__name__, user_id=user_id)
-    
+    log_function_call(
+        logger, "process_data", data_type=type(data).__name__, user_id=user_id
+    )
+
     # Process data...
     result = do_something(data)
-    
+
     # Log function result
     execution_time = time.time() - start_time
     log_function_result(logger, "process_data", result, execution_time)
-    
+
     return result
 ```
 
@@ -120,21 +123,24 @@ log_database_operation(logger, "DELETE", "sessions", session_id)
 from core.logging_config import log_api_request, log_api_response
 import time
 
+
 @app.get("/api/data")
 async def get_data(request: Request, user_id: str = None):
     start_time = time.time()
     client_ip = get_client_ip(request)
-    
+
     # Log request
     log_api_request(logger, "GET", "/api/data", user_id, client_ip, query="data")
-    
+
     # Process request...
     data = fetch_data()
-    
+
     # Log response
     response_time = time.time() - start_time
-    log_api_response(logger, "GET", "/api/data", 200, response_time, data_size=len(data))
-    
+    log_api_response(
+        logger, "GET", "/api/data", 200, response_time, data_size=len(data)
+    )
+
     return data
 ```
 
@@ -146,7 +152,9 @@ from core.logging_config import log_security_event
 # Log security events
 log_security_event(logger, "LOGIN_ATTEMPT", user_id, client_ip, "Failed password")
 log_security_event(logger, "RATE_LIMIT_EXCEEDED", None, client_ip, "API endpoint")
-log_security_event(logger, "SUSPICIOUS_ACTIVITY", user_id, client_ip, "Multiple failed logins")
+log_security_event(
+    logger, "SUSPICIOUS_ACTIVITY", user_id, client_ip, "Multiple failed logins"
+)
 ```
 
 ### Performance Metrics
@@ -156,7 +164,9 @@ from core.logging_config import log_performance_metric
 
 # Log performance metrics
 log_performance_metric(logger, "database_query_time", 0.125, "seconds", table="users")
-log_performance_metric(logger, "api_response_time", 45.2, "milliseconds", endpoint="/api/data")
+log_performance_metric(
+    logger, "api_response_time", 45.2, "milliseconds", endpoint="/api/data"
+)
 log_performance_metric(logger, "memory_usage", 128.5, "MB", component="data_processor")
 ```
 
@@ -171,12 +181,12 @@ try:
 except Exception as e:
     # Log error with context
     log_error_with_context(
-        logger, 
-        e, 
-        "Data processing operation", 
-        user_id=user_id, 
+        logger,
+        e,
+        "Data processing operation",
+        user_id=user_id,
         data_id=data_id,
-        operation_type="transform"
+        operation_type="transform",
     )
     raise
 ```
@@ -244,7 +254,9 @@ except Exception as e:
 ### 2. **Include Relevant Context**
 ```python
 # Good
-logger.info(f"User {user_id} updated profile | Fields: {updated_fields} | IP: {client_ip}")
+logger.info(
+    f"User {user_id} updated profile | Fields: {updated_fields} | IP: {client_ip}"
+)
 
 # Avoid
 logger.info("Profile updated")
@@ -333,10 +345,12 @@ If you're migrating from basic `logging.basicConfig()`:
 ```python
 # Old
 import logging
+
 logger = logging.getLogger(__name__)
 
 # New
 from core.logging_config import get_logger
+
 logger = get_logger(__name__)
 ```
 

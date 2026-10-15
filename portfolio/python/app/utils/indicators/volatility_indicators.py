@@ -7,7 +7,7 @@ class VolatilityIndicators(BaseIndicator):
     """Returns a Polars Dataframe with calculated different Volatility Indicators."""
 
     def bollinger_bands_indicator(
-            self, window: int = 20, window_dev: float = 2.0, fillna: bool = False
+        self, window: int = 20, window_dev: float = 2.0, fillna: bool = False
     ) -> pl.DataFrame:
         """
         Bollinger Bands
@@ -78,7 +78,7 @@ class VolatilityIndicators(BaseIndicator):
         return self.df
 
     def average_true_range_indicator(
-            self, window: int = 14, fillna: bool = False
+        self, window: int = 14, fillna: bool = False
     ) -> pl.DataFrame:
         """
         Average True Range (ATR)
@@ -126,12 +126,12 @@ class VolatilityIndicators(BaseIndicator):
         return self.df
 
     def keltner_channel_indicator(
-            self,
-            window: int = 20,
-            window_atr: int = 10,
-            fillna: bool = False,
-            original_version: bool = True,
-            multiplier: float = 2.0,
+        self,
+        window: int = 20,
+        window_atr: int = 10,
+        fillna: bool = False,
+        original_version: bool = True,
+        multiplier: float = 2.0,
     ) -> pl.DataFrame:
         """
         Keltner Channels
@@ -235,7 +235,7 @@ class VolatilityIndicators(BaseIndicator):
             [
                 pl.col("typical_price").alias("keltner_channel_pband"),
                 (
-                        pl.col("keltner_channel_hband") - pl.col("keltner_channel_lband")
+                    pl.col("keltner_channel_hband") - pl.col("keltner_channel_lband")
                 ).alias("keltner_channel_wband"),
             ]
         )
@@ -284,7 +284,7 @@ class VolatilityIndicators(BaseIndicator):
 
 # Convenience functions (No changes needed, these are fine)
 def calculate_atr(
-        high: pl.Series, low: pl.Series, close: pl.Series, window: int = 14
+    high: pl.Series, low: pl.Series, close: pl.Series, window: int = 14
 ) -> pl.Series:
     """Calculate Average True Range (ATR)."""
     df = pl.DataFrame({"high": high, "low": low, "close": close})
@@ -294,7 +294,7 @@ def calculate_atr(
 
 
 def calculate_bollinger_bands(
-        prices: pl.Series, window: int = 20, num_std: float = 2.0
+    prices: pl.Series, window: int = 20, num_std: float = 2.0
 ) -> pl.DataFrame:
     """Calculate Bollinger Bands."""
     df = pl.DataFrame({"close": prices})
@@ -305,11 +305,11 @@ def calculate_bollinger_bands(
 
 
 def calculate_keltner_channels(
-        high: pl.Series,
-        low: pl.Series,
-        close: pl.Series,
-        window: int = 20,
-        multiplier: float = 2.0,
+    high: pl.Series,
+    low: pl.Series,
+    close: pl.Series,
+    window: int = 20,
+    multiplier: float = 2.0,
 ) -> pl.DataFrame:
     """Calculate Keltner Channels."""
     df = pl.DataFrame({"high": high, "low": low, "close": close})

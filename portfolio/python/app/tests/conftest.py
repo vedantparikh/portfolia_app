@@ -48,7 +48,9 @@ def pytest_collection_modifyitems(config, items):
     for item in items:
         if item.nodeid in _QUARANTINED_TESTS:
             item.add_marker(
-                pytest.mark.xfail(strict=True, reason="quarantined: tests/quarantine.txt")
+                pytest.mark.xfail(
+                    strict=True, reason="quarantined: tests/quarantine.txt"
+                )
             )
 
 

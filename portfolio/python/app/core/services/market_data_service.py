@@ -73,7 +73,10 @@ class MarketDataService:
 
         # 2. Fetch missing symbols from yfinance
         if symbols_to_fetch:
-            logger.info("Fetching current prices for %d symbols from API.", len(symbols_to_fetch))
+            logger.info(
+                "Fetching current prices for %d symbols from API.",
+                len(symbols_to_fetch),
+            )
             tickers = yf.Tickers(" ".join(symbols_to_fetch))
             new_prices_to_cache: Dict[str, str] = {}
 
@@ -81,9 +84,9 @@ class MarketDataService:
                 symbol = ticker.ticker
                 try:
                     price = (
-                            ticker.info.get("regularMarketPrice")
-                            or ticker.info.get("currentPrice")
-                            or ticker.info.get("previousClose")
+                        ticker.info.get("regularMarketPrice")
+                        or ticker.info.get("currentPrice")
+                        or ticker.info.get("previousClose")
                     )
                     if price:
                         prices[symbol] = Decimal(str(price))
@@ -99,7 +102,7 @@ class MarketDataService:
                         self.redis_client.set,
                         key,
                         price_str,
-                        ex_seconds=self.price_cache_ttl
+                        ex_seconds=self.price_cache_ttl,
                     )
         return prices
 
@@ -135,7 +138,7 @@ class MarketDataService:
         if symbols_to_fetch:
             logger.info(
                 "Fetching yesterday's close for %d symbols from API in a single batch.",
-                len(symbols_to_fetch)
+                len(symbols_to_fetch),
             )
             try:
                 # Use yf.download for a true batch request. Get last 2 days.
@@ -144,7 +147,7 @@ class MarketDataService:
                     period="2d",
                     interval="1d",
                     progress=False,
-                    group_by='ticker'
+                    group_by="ticker",
                 )
 
                 if not data.empty:
@@ -157,12 +160,14 @@ class MarketDataService:
                             symbol_df = data[symbol_upper].sort_index()
 
                             # Ensure we have at least two days and a 'Close' column
-                            if len(symbol_df) > 1 and 'Close' in symbol_df.columns:
+                            if len(symbol_df) > 1 and "Close" in symbol_df.columns:
                                 # The previous close is the 'Close' of the first row
-                                previous_close = symbol_df['Close'].iloc[0]
+                                previous_close = symbol_df["Close"].iloc[0]
                                 if pd.notna(previous_close):
                                     closes[symbol_upper] = Decimal(str(previous_close))
-                                    cache_key = self._get_yesterdays_close_cache_key(symbol_upper)
+                                    cache_key = self._get_yesterdays_close_cache_key(
+                                        symbol_upper
+                                    )
                                     new_closes_to_cache[cache_key] = str(previous_close)
 
                     # 3. Cache new data (your logic is fine, just now truly batched)
@@ -172,7 +177,7 @@ class MarketDataService:
                                 self.redis_client.set,
                                 key,
                                 price_str,
-                                ex_seconds=self.close_cache_ttl
+                                ex_seconds=self.close_cache_ttl,
                             )
 
             except Exception as e:
@@ -182,8 +187,9 @@ class MarketDataService:
 
         return closes
 
-    async def get_historical_data(self, symbols: List[str], period: str = "1y", interval: str = "1d") -> Dict[
-        str, pd.DataFrame]:
+    async def get_historical_data(
+        self, symbols: List[str], period: str = "1y", interval: str = "1d"
+    ) -> Dict[str, pd.DataFrame]:
         """
         A new, optimized method for fetching historical data for multiple tickers.
         Uses yf.download and returns a dictionary of DataFrames, one for each symbol.
@@ -196,7 +202,7 @@ class MarketDataService:
                 tickers=" ".join(symbols),
                 period=period,
                 interval=interval,
-                group_by='ticker',  # Crucial for separating data by ticker
+                group_by="ticker",  # Crucial for separating data by ticker
                 progress=False,
             )
             return data
@@ -206,20 +212,24 @@ class MarketDataService:
         # yf.download returns a MultiIndex DataFrame for multiple tickers
         if isinstance(data.columns, pd.MultiIndex):
             # Create a dictionary of dataframes for each symbol
-            return {symbol: data[symbol].dropna(how='all').reset_index() for symbol in symbols if symbol in data}
+            return {
+                symbol: data[symbol].dropna(how="all").reset_index()
+                for symbol in symbols
+                if symbol in data
+            }
         # For a single ticker, it returns a simple DataFrame
         elif not data.empty:
-            return {symbols[0]: data.dropna(how='all').reset_index()}
+            return {symbols[0]: data.dropna(how="all").reset_index()}
 
         return {}
 
     async def fetch_ticker_data(
-            self,
-            symbol: str,
-            period: str = "max",
-            interval: str = "1d",
-            start_date: Optional[str] = None,
-            end_date: Optional[str] = None,
+        self,
+        symbol: str,
+        period: str = "max",
+        interval: str = "1d",
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
     ) -> pd.DataFrame:
         """
         Fetch ticker data from yfinance with retry logic.
@@ -275,9 +285,7 @@ class MarketDataService:
                     logger.error("All attempts failed for %s", symbol)
                     return pd.DataFrame()
 
-    async def search_symbols(
-            self, query: str, limit: int = 10
-    ) -> List[Dict[str, Any]]:  # noqa: ARG002
+    async def search_symbols(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:  # noqa: ARG002
         """
         Search for stock symbols using yfinance.
         Note: This is a basic implementation. For production, consider using
@@ -302,7 +310,7 @@ class MarketDataService:
                     {
                         "symbol": ticker_info["symbol"],
                         "name": ticker_info.get("longName")
-                                or ticker_info.get("shortName"),
+                        or ticker_info.get("shortName"),
                         "exchange": ticker_info.get("exchange"),
                         "currency": ticker_info.get("currency"),
                         "type": ticker_info.get("quoteType"),
@@ -373,7 +381,9 @@ class MarketDataService:
             logger.error("Error getting market status: %s", e)
             return {"is_open": None, "error": str(e)}
 
-    def _extract_ticker_information(self, ticker_info: Dict[str, Any]) -> Dict[str, Any]:
+    def _extract_ticker_information(
+        self, ticker_info: Dict[str, Any]
+    ) -> Dict[str, Any]:
         # Extract and normalize the information
         ticker_data = {
             "symbol": ticker_info.get("symbol").upper(),
@@ -386,13 +396,17 @@ class MarketDataService:
             "country": ticker_info.get("country"),
             "quote_type": ticker_info.get("quoteType"),
             "market_cap": ticker_info.get("marketCap"),
-            "current_price": ticker_info.get("currentPrice", ticker_info.get("regularMarketPrice")),
-            "price_change_percentage_24h": ticker_info.get('regularMarketChangePercent', 0),
+            "current_price": ticker_info.get(
+                "currentPrice", ticker_info.get("regularMarketPrice")
+            ),
+            "price_change_percentage_24h": ticker_info.get(
+                "regularMarketChangePercent", 0
+            ),
             "previous_close": ticker_info.get("previousClose"),
             "open": ticker_info.get("open"),
             "day_low": ticker_info.get("dayLow"),
-            "low_52w": ticker_info.get('fiftyTwoWeekLow'),
-            "high_52w": ticker_info.get('fiftyTwoWeekHigh'),
+            "low_52w": ticker_info.get("fiftyTwoWeekLow"),
+            "high_52w": ticker_info.get("fiftyTwoWeekHigh"),
             "day_high": ticker_info.get("dayHigh"),
             "volume": ticker_info.get("volume"),
             "average_volume": ticker_info.get("averageVolume"),
@@ -439,9 +453,9 @@ class MarketDataService:
         cached_data = await asyncio.to_thread(self.redis_client.mget, cache_keys)
 
         for data in cached_data.values():
-            if data and 'symbol' in data:
+            if data and "symbol" in data:
                 results.append(data)
-                symbols_found_in_cache.add(data['symbol'])
+                symbols_found_in_cache.add(data["symbol"])
 
         symbols_to_fetch = list(symbols_in_request - symbols_found_in_cache)
 
@@ -449,7 +463,11 @@ class MarketDataService:
             return results
 
         # 2. Fetch missing symbols
-        logger.info("Fetching info for %d symbols from API: %s", len(symbols_to_fetch), ", ".join(symbols_to_fetch))
+        logger.info(
+            "Fetching info for %d symbols from API: %s",
+            len(symbols_to_fetch),
+            ", ".join(symbols_to_fetch),
+        )
         tickers = yf.Tickers(" ".join(symbols_to_fetch))
         new_data_to_cache: Dict[str, Dict[str, Any]] = {}
 
@@ -474,7 +492,7 @@ class MarketDataService:
                     self.redis_client.set,
                     key,
                     data_dict,
-                    ex_seconds=self.info_cache_ttl
+                    ex_seconds=self.info_cache_ttl,
                 )
         return results
 

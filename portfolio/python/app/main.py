@@ -113,6 +113,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+
 @app.exception_handler(OversellError)
 async def oversell_error_handler(request: Request, exc: OversellError):
     """A sell larger than the position is a client error, not a server failure."""

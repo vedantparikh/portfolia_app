@@ -90,10 +90,10 @@ async def get_available_periods():
     "/portfolio/{portfolio_id}/performance", response_model=PortfolioPerformanceResponse
 )
 async def calculate_portfolio_performance(
-        portfolio_id: int,
-        request: PerformanceCalculationRequest,
-        db: Session = Depends(get_db),
-        current_user=Depends(get_current_user),
+    portfolio_id: int,
+    request: PerformanceCalculationRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     """
     Calculate comprehensive portfolio performance metrics.
@@ -127,11 +127,11 @@ async def calculate_portfolio_performance(
     "/portfolio/{portfolio_id}/performance", response_model=PortfolioPerformanceResponse
 )
 async def get_portfolio_performance(
-        portfolio_id: int,
-        period: str = Query(default=PeriodType.INCEPTION, description="Calculation period"),
-        end_date: Optional[datetime] = Query(None, description="End date for calculation"),
-        db: Session = Depends(get_db),
-        current_user=Depends(get_current_user),
+    portfolio_id: int,
+    period: str = Query(default=PeriodType.INCEPTION, description="Calculation period"),
+    end_date: Optional[datetime] = Query(None, description="End date for calculation"),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     """
     Get portfolio performance metrics for a specific period.
@@ -165,20 +165,20 @@ async def get_portfolio_performance(
     response_model=MultiPeriodPerformanceResponse,
 )
 async def get_multi_period_performance(
-        portfolio_id: int,
-        periods: List[str] = Query(
-            default=[
-                PeriodType.LAST_3_MONTHS,
-                PeriodType.LAST_6_MONTHS,
-                PeriodType.LAST_1_YEAR,
-                PeriodType.YTD,
-                PeriodType.INCEPTION,
-            ],
-            description="List of periods to calculate",
-        ),
-        end_date: Optional[datetime] = Query(None, description="End date for calculations"),
-        db: Session = Depends(get_db),
-        current_user=Depends(get_current_user),
+    portfolio_id: int,
+    periods: List[str] = Query(
+        default=[
+            PeriodType.LAST_3_MONTHS,
+            PeriodType.LAST_6_MONTHS,
+            PeriodType.LAST_1_YEAR,
+            PeriodType.YTD,
+            PeriodType.INCEPTION,
+        ],
+        description="List of periods to calculate",
+    ),
+    end_date: Optional[datetime] = Query(None, description="End date for calculations"),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     """
     Calculate portfolio performance across multiple periods.
@@ -247,9 +247,9 @@ async def get_multi_period_performance(
 
 @router.post("/benchmark/performance", response_model=BenchmarkPerformanceResponse)
 async def calculate_benchmark_performance(
-        request: BenchmarkPerformanceCalculationRequest,
-        db: Session = Depends(get_db),
-        current_user=Depends(get_current_user),
+    request: BenchmarkPerformanceCalculationRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     """
     Calculate hypothetical performance if money was invested in benchmark.
@@ -292,12 +292,12 @@ async def calculate_benchmark_performance(
     response_model=PortfolioBenchmarkComparisonResponse,
 )
 async def compare_portfolio_to_benchmark(
-        portfolio_id: int,
-        benchmark_symbol: str,
-        period: str = Query(default=PeriodType.INCEPTION, description="Comparison period"),
-        end_date: Optional[datetime] = Query(None, description="End date for comparison"),
-        db: Session = Depends(get_db),
-        current_user=Depends(get_current_user),
+    portfolio_id: int,
+    benchmark_symbol: str,
+    period: str = Query(default=PeriodType.INCEPTION, description="Comparison period"),
+    end_date: Optional[datetime] = Query(None, description="End date for comparison"),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     """
     Compare portfolio performance to benchmark using same investment schedule.
@@ -329,9 +329,9 @@ async def compare_portfolio_to_benchmark(
     "/portfolio/{portfolio_id}/overview", response_model=PortfolioPerformanceOverview
 )
 async def get_portfolio_performance_overview(
-        portfolio_id: int,
-        db: Session = Depends(get_db),
-        current_user=Depends(get_current_user),
+    portfolio_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     """
     Get comprehensive portfolio performance overview.

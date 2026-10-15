@@ -16,6 +16,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import numpy as np
 import pandas as pd
 import pytest
+
 from app.core.database.models import (
     Asset,
     Portfolio,
@@ -27,7 +28,6 @@ from app.core.database.models import (
 from app.core.services.portfolio_calculation_service import (
     PortfolioCalculationService,
 )
-
 from core.services.utils import PeriodType
 
 
@@ -181,12 +181,8 @@ class TestPortfolioCalculationService:
     ):
         """Test successful portfolio performance calculation."""
         # Mock database queries
-        calculation_service.db.query.return_value.filter.return_value.first.return_value = (
-            sample_portfolio
-        )
-        calculation_service.db.query.return_value.filter.return_value.order_by.return_value.all.return_value = (
-            sample_transactions
-        )
+        calculation_service.db.query.return_value.filter.return_value.first.return_value = sample_portfolio
+        calculation_service.db.query.return_value.filter.return_value.order_by.return_value.all.return_value = sample_transactions
         calculation_service.db.query.return_value.filter.return_value.all.return_value = [
             sample_portfolio_asset
         ]
@@ -232,9 +228,7 @@ class TestPortfolioCalculationService:
     ):
         """Test portfolio performance calculation when portfolio doesn't exist."""
         # Mock no portfolio found
-        calculation_service.db.query.return_value.filter.return_value.first.return_value = (
-            None
-        )
+        calculation_service.db.query.return_value.filter.return_value.first.return_value = None
 
         with pytest.raises(ValueError, match="Portfolio 1 not found or not accessible"):
             await calculation_service.calculate_portfolio_performance(
@@ -247,12 +241,8 @@ class TestPortfolioCalculationService:
     ):
         """Test portfolio performance calculation with no transactions."""
         # Mock portfolio exists but no transactions
-        calculation_service.db.query.return_value.filter.return_value.first.return_value = (
-            sample_portfolio
-        )
-        calculation_service.db.query.return_value.filter.return_value.order_by.return_value.all.return_value = (
-            []
-        )
+        calculation_service.db.query.return_value.filter.return_value.first.return_value = sample_portfolio
+        calculation_service.db.query.return_value.filter.return_value.order_by.return_value.all.return_value = []
 
         result = await calculation_service.calculate_portfolio_performance(
             portfolio_id=1, user_id=1
@@ -530,12 +520,8 @@ class TestPortfolioCalculationService:
     ):
         """Test portfolio to benchmark comparison."""
         # Mock portfolio performance calculation
-        calculation_service.db.query.return_value.filter.return_value.first.return_value = (
-            sample_portfolio
-        )
-        calculation_service.db.query.return_value.filter.return_value.order_by.return_value.all.return_value = (
-            sample_transactions
-        )
+        calculation_service.db.query.return_value.filter.return_value.first.return_value = sample_portfolio
+        calculation_service.db.query.return_value.filter.return_value.order_by.return_value.all.return_value = sample_transactions
         calculation_service.db.query.return_value.filter.return_value.all.return_value = [
             sample_portfolio_asset
         ]
@@ -583,7 +569,9 @@ class TestPortfolioCalculationService:
 
         assert value == 25000.0
 
-    async def test_get_current_portfolio_value_no_current_value(self, calculation_service):
+    async def test_get_current_portfolio_value_no_current_value(
+        self, calculation_service
+    ):
         """Test getting current portfolio value when current_value is None."""
         # Mock portfolio asset with None current_value
         portfolio_asset = Mock(spec=PortfolioAsset)
@@ -603,9 +591,7 @@ class TestPortfolioCalculationService:
         self, calculation_service, sample_portfolio_asset
     ):
         """Test getting current asset value."""
-        calculation_service.db.query.return_value.filter.return_value.first.return_value = (
-            sample_portfolio_asset
-        )
+        calculation_service.db.query.return_value.filter.return_value.first.return_value = sample_portfolio_asset
 
         value = calculation_service._get_current_asset_value(1, 1)
 
@@ -613,9 +599,7 @@ class TestPortfolioCalculationService:
 
     def test_get_current_asset_value_no_asset(self, calculation_service):
         """Test getting current asset value when asset doesn't exist."""
-        calculation_service.db.query.return_value.filter.return_value.first.return_value = (
-            None
-        )
+        calculation_service.db.query.return_value.filter.return_value.first.return_value = None
 
         value = calculation_service._get_current_asset_value(1, 1)
 
@@ -736,9 +720,7 @@ class TestPortfolioCalculationService:
     ):
         """Test calculating daily portfolio values."""
         # Mock asset query
-        calculation_service.db.query.return_value.filter.return_value.first.return_value = (
-            sample_asset
-        )
+        calculation_service.db.query.return_value.filter.return_value.first.return_value = sample_asset
 
         # Mock price data
         mock_price_data = pd.DataFrame(
@@ -772,9 +754,7 @@ class TestPortfolioCalculationService:
     ):
         """Test volatility calculation."""
         # Mock asset query
-        calculation_service.db.query.return_value.filter.return_value.first.return_value = (
-            sample_asset
-        )
+        calculation_service.db.query.return_value.filter.return_value.first.return_value = sample_asset
 
         # Mock price data with some volatility
         dates = pd.date_range("2024-01-01", "2024-03-01", freq="D")
@@ -830,9 +810,7 @@ class TestPortfolioCalculationService:
     ):
         """Test maximum drawdown calculation."""
         # Mock asset query
-        calculation_service.db.query.return_value.filter.return_value.first.return_value = (
-            sample_asset
-        )
+        calculation_service.db.query.return_value.filter.return_value.first.return_value = sample_asset
 
         # Mock price data with a clear drawdown pattern
         dates = pd.date_range("2024-01-01", "2024-03-01", freq="D")
@@ -879,17 +857,13 @@ class TestPortfolioCalculationService:
     ):
         """Test asset performance calculation."""
         # Mock database queries
-        calculation_service.db.query.return_value.filter.return_value.first.return_value = (
-            sample_portfolio
-        )
+        calculation_service.db.query.return_value.filter.return_value.first.return_value = sample_portfolio
 
         # Mock asset transactions query
         asset_transactions = [
             tx for tx in self._sample_transactions() if tx.asset_id == 1
         ]
-        calculation_service.db.query.return_value.filter.return_value.order_by.return_value.all.return_value = (
-            asset_transactions
-        )
+        calculation_service.db.query.return_value.filter.return_value.order_by.return_value.all.return_value = asset_transactions
 
         # Mock asset value query
         def mock_query_side_effect(*args):
@@ -1065,7 +1039,6 @@ class TestPortfolioCalculationServiceIntegration:
             "fetch_ticker_data",
             return_value=mock_price_data,
         ):
-
             result = await real_calculation_service.calculate_benchmark_performance(
                 benchmark_symbol, investment_amounts, PeriodType.INCEPTION
             )

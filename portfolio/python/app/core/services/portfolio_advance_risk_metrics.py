@@ -37,10 +37,10 @@ class PortfolioAdvanceRiskMetricsService:
         self.ANNUALIZED_RISK_FREE_RATE = 0.03  # ASSUMPTION: Constant risk-free rate
 
     async def calculate_advanced_metrics(
-            self,
-            portfolio_id: int,
-            period: str = PeriodType.YTD,
-            benchmark_symbol: str = "^GSPC",  # S&P 500 as default
+        self,
+        portfolio_id: int,
+        period: str = PeriodType.YTD,
+        benchmark_symbol: str = "^GSPC",  # S&P 500 as default
     ) -> Dict[str, Any]:
         """
         Calculates a suite of advanced risk metrics for a portfolio.
@@ -61,15 +61,21 @@ class PortfolioAdvanceRiskMetricsService:
         try:
             # 1a. Get Portfolio's True Daily Returns using PortfolioCalculationService
             # This correctly accounts for cash flows and is the basis for Beta/Alpha
-            all_transactions = self.calculation_service.get_transactions(portfolio_id, None, end_date)
+            all_transactions = self.calculation_service.get_transactions(
+                portfolio_id, None, end_date
+            )
             if not all_transactions:
-                return self._empty_result(portfolio_id, "Portfolio has no transactions.", period)
+                return self._empty_result(
+                    portfolio_id, "Portfolio has no transactions.", period
+                )
 
             portfolio_history_df = await self.calculation_service.get_portfolio_history(
                 all_transactions, start_date, end_date
             )
             if portfolio_history_df is None or portfolio_history_df.empty:
-                return self._empty_result(portfolio_id, "Could not generate portfolio history.", period)
+                return self._empty_result(
+                    portfolio_id, "Could not generate portfolio history.", period
+                )
 
             # Cash-flow-adjusted daily returns (see compute_daily_returns)
             portfolio_daily_returns = portfolio_history_df["daily_return"].dropna()
@@ -82,15 +88,25 @@ class PortfolioAdvanceRiskMetricsService:
             # This is the basis for concentration and diversification metrics
             holdings = await self.portfolio_service.get_portfolio_holdings(portfolio_id)
             if not holdings:
-                return self._empty_result(portfolio_id, "Portfolio has no current holdings.", period)
+                return self._empty_result(
+                    portfolio_id, "Portfolio has no current holdings.", period
+                )
 
-            total_portfolio_value = sum(h.current_value for h in holdings if h.current_value is not None)
+            total_portfolio_value = sum(
+                h.current_value for h in holdings if h.current_value is not None
+            )
             if total_portfolio_value == 0:
-                return self._empty_result(portfolio_id, "Portfolio value is zero.", period)
+                return self._empty_result(
+                    portfolio_id, "Portfolio value is zero.", period
+                )
 
             asset_symbols = [h.symbol for h in holdings]
             asset_weights = pd.Series(
-                {h.symbol: h.current_value / total_portfolio_value for h in holdings if h.current_value is not None}
+                {
+                    h.symbol: h.current_value / total_portfolio_value
+                    for h in holdings
+                    if h.current_value is not None
+                }
             )
 
             # 1c. Get Historical Price Data for all assets and the benchmark
@@ -98,14 +114,23 @@ class PortfolioAdvanceRiskMetricsService:
             price_data_dict = {}
             for symbol in all_symbols:
                 # Reuse the calculation service's cached price fetcher
-                price_data_dict[symbol] = await self.calculation_service.get_price_data(symbol)
+                price_data_dict[symbol] = await self.calculation_service.get_price_data(
+                    symbol
+                )
 
             # Combine individual asset prices into a single DataFrame
             asset_prices = pd.concat(
-                {s: df['Close'] for s, df in price_data_dict.items() if s in asset_symbols and df is not None}, axis=1
+                {
+                    s: df["Close"]
+                    for s, df in price_data_dict.items()
+                    if s in asset_symbols and df is not None
+                },
+                axis=1,
             )
             asset_prices.sort_index(inplace=True)
-            asset_prices = asset_prices.truncate(before=start_date.date(), after=end_date.date())
+            asset_prices = asset_prices.truncate(
+                before=start_date.date(), after=end_date.date()
+            )
             asset_returns = asset_prices.pct_change().dropna()
 
             benchmark_prices = price_data_dict.get(benchmark_symbol)
@@ -114,14 +139,24 @@ class PortfolioAdvanceRiskMetricsService:
                 benchmark_prices = pd.DataFrame()  # Empty frame to avoid errors
             else:
                 benchmark_prices.sort_index(inplace=True)
-                benchmark_prices = benchmark_prices.truncate(before=start_date.date(), after=end_date.date())
+                benchmark_prices = benchmark_prices.truncate(
+                    before=start_date.date(), after=end_date.date()
+                )
 
             if len(asset_returns) < 2 or len(portfolio_daily_returns) < 2:
-                return self._empty_result(portfolio_id, "Insufficient historical data for calculations.", period)
+                return self._empty_result(
+                    portfolio_id,
+                    "Insufficient historical data for calculations.",
+                    period,
+                )
 
         except Exception as e:
-            logger.error(f"Failed during data fetching for advanced metrics: {e}", exc_info=True)
-            return self._empty_result(portfolio_id, f"An error occurred during data fetching: {e}", period)
+            logger.error(
+                f"Failed during data fetching for advanced metrics: {e}", exc_info=True
+            )
+            return self._empty_result(
+                portfolio_id, f"An error occurred during data fetching: {e}", period
+            )
 
         # --- Step 2: Calculate Metrics ---
         beta, alpha = self._calculate_beta_and_alpha(
@@ -130,9 +165,15 @@ class PortfolioAdvanceRiskMetricsService:
 
         concentration_risk = self._calculate_concentration_risk(asset_weights)
 
-        diversification_ratio = self._calculate_diversification_ratio(asset_weights, asset_returns)
+        diversification_ratio = self._calculate_diversification_ratio(
+            asset_weights, asset_returns
+        )
 
-        effective_assets = 1 / concentration_risk if concentration_risk and concentration_risk > 0 else None
+        effective_assets = (
+            1 / concentration_risk
+            if concentration_risk and concentration_risk > 0
+            else None
+        )
 
         # --- Step 3: Assemble Result ---
         return {
@@ -150,23 +191,26 @@ class PortfolioAdvanceRiskMetricsService:
         }
 
     def _calculate_beta_and_alpha(
-            self, portfolio_returns: pd.Series, benchmark_prices: pd.DataFrame
+        self, portfolio_returns: pd.Series, benchmark_prices: pd.DataFrame
     ) -> Tuple[Optional[float], Optional[float]]:
         """Calculates Beta and Jensen's Alpha."""
         if benchmark_prices.empty:
             return None, None
         try:
-            benchmark_returns = benchmark_prices['Close'].pct_change().dropna()
+            benchmark_returns = benchmark_prices["Close"].pct_change().dropna()
 
             port_returns = portfolio_returns.copy()
             bench_returns = benchmark_returns.copy()
-            port_returns.index = pd.to_datetime(port_returns.index, errors='coerce')
-            bench_returns.index = pd.to_datetime(bench_returns.index, errors='coerce')
+            port_returns.index = pd.to_datetime(port_returns.index, errors="coerce")
+            bench_returns.index = pd.to_datetime(bench_returns.index, errors="coerce")
 
-            if hasattr(port_returns.index, 'tz') and port_returns.index.tz is not None:
+            if hasattr(port_returns.index, "tz") and port_returns.index.tz is not None:
                 port_returns.index = port_returns.index.tz_localize(None)
 
-            if hasattr(bench_returns.index, 'tz') and bench_returns.index.tz is not None:
+            if (
+                hasattr(bench_returns.index, "tz")
+                and bench_returns.index.tz is not None
+            ):
                 bench_returns.index = bench_returns.index.tz_localize(None)
 
             port_returns = port_returns.dropna()
@@ -175,10 +219,7 @@ class PortfolioAdvanceRiskMetricsService:
             # At this point, both indices *must* be tz-naive DatetimeIndex
             # The line below is where your error was (approx. line 187)
             combined = pd.DataFrame(
-                {
-                    "portfolio": port_returns,
-                    "benchmark": bench_returns
-                }
+                {"portfolio": port_returns, "benchmark": bench_returns}
             ).dropna()
 
             if len(combined) < 2:
@@ -188,7 +229,9 @@ class PortfolioAdvanceRiskMetricsService:
             variance = combined["benchmark"].var()
             beta = covariance / variance if variance != 0 else 0.0
 
-            daily_rf = (1 + self.ANNUALIZED_RISK_FREE_RATE) ** (1 / self.TRADING_DAYS_PER_YEAR) - 1
+            daily_rf = (1 + self.ANNUALIZED_RISK_FREE_RATE) ** (
+                1 / self.TRADING_DAYS_PER_YEAR
+            ) - 1
             avg_portfolio_return = combined["portfolio"].mean()
             avg_benchmark_return = combined["benchmark"].mean()
 
@@ -209,13 +252,13 @@ class PortfolioAdvanceRiskMetricsService:
             return None
         try:
             # HHI is the sum of the squares of the weights.
-            return float((weights ** 2).sum())
+            return float((weights**2).sum())
         except Exception as e:
             logger.error(f"Error calculating HHI concentration: {e}")
             return None
 
     def _calculate_diversification_ratio(
-            self, weights: pd.Series, asset_returns: pd.DataFrame
+        self, weights: pd.Series, asset_returns: pd.DataFrame
     ) -> Optional[float]:
         """Calculates the diversification ratio of the portfolio."""
         if weights.empty or asset_returns.empty:
@@ -225,12 +268,16 @@ class PortfolioAdvanceRiskMetricsService:
             aligned_weights = weights.reindex(asset_returns.columns).fillna(0)
 
             # 1. Numerator: Weighted sum of individual asset volatilities
-            individual_volatilities = asset_returns.std() * np.sqrt(self.TRADING_DAYS_PER_YEAR)
+            individual_volatilities = asset_returns.std() * np.sqrt(
+                self.TRADING_DAYS_PER_YEAR
+            )
             weighted_avg_volatility = (aligned_weights * individual_volatilities).sum()
 
             # 2. Denominator: Overall portfolio volatility
             cov_matrix = asset_returns.cov() * self.TRADING_DAYS_PER_YEAR
-            portfolio_variance = np.dot(aligned_weights.T, np.dot(cov_matrix, aligned_weights))
+            portfolio_variance = np.dot(
+                aligned_weights.T, np.dot(cov_matrix, aligned_weights)
+            )
             portfolio_volatility = np.sqrt(portfolio_variance)
 
             if portfolio_volatility == 0:
@@ -241,7 +288,9 @@ class PortfolioAdvanceRiskMetricsService:
             logger.error(f"Error calculating diversification ratio: {e}")
             return None
 
-    def _empty_result(self, portfolio_id: int, error_message: str, period: str) -> Dict[str, Any]:
+    def _empty_result(
+        self, portfolio_id: int, error_message: str, period: str
+    ) -> Dict[str, Any]:
         """Returns a standardized empty/error result dictionary."""
         logger.warning(f"Portfolio {portfolio_id}: {error_message}")
         return {

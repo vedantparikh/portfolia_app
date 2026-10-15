@@ -7,6 +7,8 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import polars as pl
+from sqlalchemy.orm import Session
+
 from app.core.schemas.statistical_indicators import (
     IndicatorCalculationRequest,
     IndicatorCalculationResponse,
@@ -18,7 +20,6 @@ from app.core.services.analysis_configuration_service import (
 )
 from app.core.services.indicator_registry_service import IndicatorRegistryService
 from app.core.services.market_data_service import MarketDataService
-from sqlalchemy.orm import Session
 
 
 class EnhancedStatisticalService:
@@ -31,7 +32,7 @@ class EnhancedStatisticalService:
         self.market_data_service = MarketDataService()
 
     async def calculate_indicators(
-            self, request: IndicatorCalculationRequest
+        self, request: IndicatorCalculationRequest
     ) -> IndicatorCalculationResponse:
         """Calculate indicators based on user configuration."""
 
@@ -134,7 +135,7 @@ class EnhancedStatisticalService:
             raise ValueError(f"Error calculating indicators: {str(e)}") from e
 
     def _prepare_indicator_data(
-            self, df: pl.DataFrame, indicator_configs: List[IndicatorConfiguration]
+        self, df: pl.DataFrame, indicator_configs: List[IndicatorConfiguration]
     ) -> List[Dict[str, Any]]:
         """Prepare indicator data for chart display."""
         indicator_data = []
@@ -171,8 +172,8 @@ class EnhancedStatisticalService:
                         indicator_data.append(
                             {
                                 "name": (
-                                        config.display_name
-                                        or f"{config.indicator_name}_{output_col}"
+                                    config.display_name
+                                    or f"{config.indicator_name}_{output_col}"
                                 ),
                                 "indicator_name": config.indicator_name,
                                 "output_column": output_col,
@@ -225,7 +226,7 @@ class EnhancedStatisticalService:
         return volume_data
 
     def _prepare_indicator_series(
-            self, df: pl.DataFrame, indicator_configs: List[IndicatorConfiguration]
+        self, df: pl.DataFrame, indicator_configs: List[IndicatorConfiguration]
     ) -> List[Dict[str, Any]]:
         """Prepare indicator series data for charts using efficient, vectorized operations."""  # noqa: E501
         indicator_series = []
@@ -257,10 +258,10 @@ class EnhancedStatisticalService:
                             .alias("date"),
                             pl.col(col_name).cast(pl.Float64).alias("value"),
                             (
-                                    pl.col(col_name).cast(pl.Utf8)
-                                    + " ("
-                                    + pl.lit(output_col)
-                                    + ")"
+                                pl.col(col_name).cast(pl.Utf8)
+                                + " ("
+                                + pl.lit(output_col)
+                                + ")"
                             ).alias("formatted_value"),
                             pl.struct(
                                 [
@@ -299,13 +300,13 @@ class EnhancedStatisticalService:
         return indicator_series
 
     def _prepare_metadata(
-            self,
-            symbol: str,
-            period: str,
-            interval: str,
-            df: pl.DataFrame,
-            indicators_count: int,
-            performance_metrics: Any,
+        self,
+        symbol: str,
+        period: str,
+        interval: str,
+        df: pl.DataFrame,
+        indicators_count: int,
+        performance_metrics: Any,
     ) -> Dict[str, Any]:
         """Prepare chart metadata."""
         return {
@@ -349,7 +350,7 @@ class EnhancedStatisticalService:
         return {name: template.dict() for name, template in templates.items()}
 
     async def create_configuration_from_template(
-            self, user_id: int, template_name: str, custom_name: Optional[str] = None
+        self, user_id: int, template_name: str, custom_name: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
         """Create a configuration from a predefined template."""
         config = self.configuration_service.create_from_template(
@@ -358,7 +359,7 @@ class EnhancedStatisticalService:
         return config.dict() if config else None
 
     async def validate_indicator_configuration(
-            self, config: IndicatorConfiguration
+        self, config: IndicatorConfiguration
     ) -> List[Dict[str, Any]]:
         """Validate an indicator configuration."""
         errors = self.indicator_registry.validate_indicator_configuration(config)
@@ -369,7 +370,7 @@ class EnhancedStatisticalService:
         return self.configuration_service.get_configuration_statistics(user_id)
 
     async def search_configurations(
-            self, query: str, user_id: Optional[int] = None, skip: int = 0, limit: int = 100
+        self, query: str, user_id: Optional[int] = None, skip: int = 0, limit: int = 100
     ) -> Dict[str, Any]:
         """Search configurations."""
         result = self.configuration_service.search_configurations(

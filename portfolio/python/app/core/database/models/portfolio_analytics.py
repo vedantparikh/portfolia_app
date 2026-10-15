@@ -100,8 +100,12 @@ class PortfolioPerformanceHistory(Base):
     __table_args__ = (
         Index("idx_portfolio_performance_portfolio_id", "portfolio_id"),
         Index("idx_portfolio_performance_date", "snapshot_date"),
-        Index("idx_portfolio_performance_portfolio_date", "portfolio_id", "snapshot_date"),
-        UniqueConstraint("portfolio_id", "snapshot_date", name="uq_portfolio_performance_date"),
+        Index(
+            "idx_portfolio_performance_portfolio_date", "portfolio_id", "snapshot_date"
+        ),
+        UniqueConstraint(
+            "portfolio_id", "snapshot_date", name="uq_portfolio_performance_date"
+        ),
     )
 
 
@@ -119,14 +123,20 @@ class PortfolioAllocation(Base):
     )
 
     # Allocation targets
-    target_percentage = Column(Numeric(10, 4), nullable=False)  # Target allocation percentage
+    target_percentage = Column(
+        Numeric(10, 4), nullable=False
+    )  # Target allocation percentage
     min_percentage = Column(Numeric(10, 4), nullable=True)  # Minimum allocation
     max_percentage = Column(Numeric(10, 4), nullable=True)  # Maximum allocation
 
     # Rebalancing
-    rebalance_threshold = Column(Numeric(10, 4), nullable=True)  # Rebalance trigger threshold
+    rebalance_threshold = Column(
+        Numeric(10, 4), nullable=True
+    )  # Rebalance trigger threshold
     last_rebalance_date = Column(DateTime(timezone=True), nullable=True)
-    rebalance_frequency = Column(String(20), nullable=True)  # daily, weekly, monthly, quarterly
+    rebalance_frequency = Column(
+        String(20), nullable=True
+    )  # daily, weekly, monthly, quarterly
 
     # Status
     is_active = Column(Boolean, default=True, nullable=False)
@@ -149,7 +159,9 @@ class PortfolioAllocation(Base):
         Index("idx_portfolio_allocations_portfolio_id", "portfolio_id"),
         Index("idx_portfolio_allocations_asset_id", "asset_id"),
         Index("idx_portfolio_allocations_active", "is_active"),
-        UniqueConstraint("portfolio_id", "asset_id", name="uq_portfolio_asset_allocation"),
+        UniqueConstraint(
+            "portfolio_id", "asset_id", name="uq_portfolio_asset_allocation"
+        ),
     )
 
 
@@ -165,7 +177,9 @@ class RebalancingEvent(Base):
     event_date = Column(DateTime(timezone=True), nullable=False)
 
     # Event details
-    event_type = Column(String(50), nullable=False)  # scheduled, threshold_triggered, manual
+    event_type = Column(
+        String(50), nullable=False
+    )  # scheduled, threshold_triggered, manual
     trigger_reason = Column(Text, nullable=True)
 
     # Pre-rebalancing state
@@ -184,7 +198,9 @@ class RebalancingEvent(Base):
     tax_impact = Column(Numeric(20, 4), nullable=True)  # Tax implications
 
     # Status
-    status = Column(String(20), default="pending", nullable=False)  # pending, completed, failed
+    status = Column(
+        String(20), default="pending", nullable=False
+    )  # pending, completed, failed
     execution_notes = Column(Text, nullable=True)
 
     created_at = Column(
