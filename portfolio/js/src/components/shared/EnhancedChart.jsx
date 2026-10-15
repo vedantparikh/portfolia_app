@@ -10,7 +10,6 @@ import {
   TrendingUp,
   X,
 } from "lucide-react";
-import PropTypes from "prop-types";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { statisticalIndicatorsAPI } from "../../services/api";
 import {
@@ -1011,31 +1010,6 @@ const EnhancedChart = ({
       )}
     </div>
   );
-};
-
-EnhancedChart.propTypes = {
-  data: PropTypes.array,
-  symbol: PropTypes.string,
-  period: PropTypes.string,
-  onPeriodChange: PropTypes.func,
-  height: PropTypes.number,
-  showVolume: PropTypes.bool,
-  loading: PropTypes.bool,
-  onRefresh: PropTypes.func,
-  showControls: PropTypes.bool,
-  showPeriodSelector: PropTypes.bool,
-  chartType: PropTypes.string,
-  theme: PropTypes.string,
-  className: PropTypes.string,
-  enableFullscreen: PropTypes.bool,
-  onFullscreenToggle: PropTypes.func,
-  showIndicators: PropTypes.bool,
-  enableIndicatorConfig: PropTypes.bool,
-  defaultIndicators: PropTypes.array,
-  onIndicatorsChange: PropTypes.func,
-  assetId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
-  showReturns: PropTypes.bool,
-  indicatorOverlayData: PropTypes.array,
 };
 
 export default EnhancedChart;

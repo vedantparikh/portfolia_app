@@ -6,7 +6,6 @@ import {
   RefreshCw,
   TrendingUp,
 } from "lucide-react";
-import PropTypes from "prop-types";
 import { useCallback, useEffect, useState } from "react";
 import { analyticsAPI, portfolioAPI } from "../../services/api";
 import {
@@ -49,7 +48,6 @@ const PortfolioChart = ({ portfolio, stats }) => {
   const [advancedMetrics, setAdvancedMetrics] = useState(null);
   const [showMetricsPanel, setShowMetricsPanel] = useState(true);
   const [portfolioConcentration, setPortfolioConcentration] = useState(null);
-
 
   const calculateAdvancedMetrics = (performanceData) => {
     if (!performanceData || performanceData.length < 2) {
@@ -239,7 +237,6 @@ const PortfolioChart = ({ portfolio, stats }) => {
       console.error("[PortfolioChart] Failed to load allocation data:", error);
     }
   }, [portfolio]);
-
 
   const processHistoryData = (historyData) => {
     if (!historyData || historyData.length === 0) {
@@ -554,15 +551,6 @@ const PortfolioChart = ({ portfolio, stats }) => {
       </div>
     </div>
   );
-};
-
-PortfolioChart.propTypes = {
-  portfolio: PropTypes.shape({
-    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
-  }),
-  stats: PropTypes.shape({
-    totalValue: PropTypes.number,
-  }),
 };
 
 export default PortfolioChart;

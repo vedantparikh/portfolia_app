@@ -6,7 +6,6 @@ import {
   RefreshCw,
   TrendingUp,
 } from "lucide-react";
-import PropTypes from "prop-types";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { statisticalIndicatorsAPI } from "../../services/api";
 
@@ -718,31 +717,6 @@ const Chart = ({
         )}
     </div>
   );
-};
-
-Chart.propTypes = {
-  data: PropTypes.array,
-  symbol: PropTypes.string,
-  period: PropTypes.string,
-  onPeriodChange: PropTypes.func,
-  height: PropTypes.number,
-  loading: PropTypes.bool,
-  onRefresh: PropTypes.func,
-  showControls: PropTypes.bool,
-  showPeriodSelector: PropTypes.bool,
-  chartType: PropTypes.string,
-  theme: PropTypes.string,
-  className: PropTypes.string,
-  enableFullscreen: PropTypes.bool,
-  onFullscreenToggle: PropTypes.func,
-  showReturns: PropTypes.bool,
-  showIndicators: PropTypes.bool,
-  selectedIndicators: PropTypes.array,
-  onIndicatorsChange: PropTypes.func,
-  isPortfolioChart: PropTypes.bool,
-  portfolioData: PropTypes.array,
-  showComparisonLine: PropTypes.bool,
-  comparisonLineName: PropTypes.string,
 };
 
 export default Chart;

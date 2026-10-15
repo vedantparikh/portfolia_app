@@ -2,7 +2,7 @@ import { AlertCircle, ArrowLeft, CheckCircle, Loader2, Mail, RefreshCw } from 'l
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext';
 
 const EmailVerification = () => {

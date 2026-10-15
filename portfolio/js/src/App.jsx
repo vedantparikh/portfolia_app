@@ -25,7 +25,7 @@ import * as Sentry from "@sentry/react";
 // Import Toaster from react-hot-toast - this shows popup notifications to users
 import { Toaster } from "react-hot-toast";
 
-// Import routing components from react-router-dom - this handles page navigation
+// Import routing components from react-router - this handles page navigation
 // - Navigate: Redirects users to different pages
 // - Route: Defines a single route (URL path)
 // - BrowserRouter: Provides routing functionality (wraps our entire app)
@@ -35,7 +35,7 @@ import {
   Route,
   BrowserRouter as Router,
   Routes,
-} from "react-router-dom";
+} from "react-router";
 
 // Import main feature components
 import Assets from "./components/assets/Assets"; // Page for viewing market assets
@@ -86,7 +86,7 @@ function App() {
     // This is called "Context" in React - it allows any component to access user login status
     <AuthProvider>
       {/* Router enables navigation between different pages/URLs */}
-      <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <Router>
         {/* Main container div with CSS class for styling */}
         <div className="App">
           {/* Routes container - defines all the different pages in our app */}

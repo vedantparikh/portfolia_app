@@ -8,7 +8,6 @@ import {
   TrendingUp,
   X
 } from "lucide-react";
-import PropTypes from "prop-types";
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { marketAPI, portfolioCalculationsAPI } from "../../services/api";
@@ -1147,10 +1146,6 @@ const PortfolioPerformanceMetrics = ({ portfolio }) => {
       )}
     </div>
   );
-};
-
-PortfolioPerformanceMetrics.propTypes = {
-  portfolio: PropTypes.object.isRequired,
 };
 
 export default PortfolioPerformanceMetrics;

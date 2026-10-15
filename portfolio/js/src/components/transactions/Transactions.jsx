@@ -12,7 +12,7 @@ import {
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { InView } from "react-intersection-observer";
-import { useLocation } from "react-router-dom";
+import { useLocation } from "react-router";
 
 import {
   accountStatementsAPI,
