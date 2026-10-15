@@ -666,13 +666,7 @@ const Portfolio = () => {
                                   </p>
                                 </div>
                                 <div className="text-right">
-                                  <p
-                                    className={`text-sm font-medium ${
-                                      transaction.transaction_type === "buy"
-                                        ? "text-success-400"
-                                        : "text-danger-400"
-                                    }`}
-                                  >
+                                  <p className="text-sm font-medium text-gray-100">
                                     {transaction.transaction_type === "buy"
                                       ? "-"
                                       : "+"}

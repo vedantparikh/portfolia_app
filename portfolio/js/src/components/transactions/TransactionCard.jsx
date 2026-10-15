@@ -91,11 +91,7 @@ const TransactionCard = ({ transaction, onEdit, onDelete }) => {
           <div className="text-right">
             <div className="flex items-center space-x-2 mb-1">
               {getTransactionArrow(transaction.transaction_type)}
-              <span
-                className={`text-lg font-semibold ${getTransactionColor(
-                  transaction.transaction_type
-                )}`}
-              >
+              <span className="text-lg font-semibold text-gray-100">
                 {(transaction.transaction_type || transaction.type) === "buy"
                   ? "-"
                   : "+"}

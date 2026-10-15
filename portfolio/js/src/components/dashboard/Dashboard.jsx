@@ -416,12 +416,7 @@ const Dashboard = () => {
                             </div>
                           </div>
                           <div className="text-right">
-                            <p
-                              className={`text-sm font-medium ${transaction.transaction_type === "buy"
-                                ? "text-danger-400"
-                                : "text-success-400"
-                                }`}
-                            >
+                            <p className="text-sm font-medium text-gray-100">
                               {transaction.transaction_type === "buy"
                                 ? "-"
                                 : "+"}
