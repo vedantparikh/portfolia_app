@@ -251,13 +251,6 @@ class MarketStatusResponse(BaseModel):
 
 
 # Missing response schemas for endpoints without response_model
-class CurrentPriceResponse(BaseModel):
-    """Current price response."""
-
-    symbol: str = Field(..., description="Stock symbol")
-    price: float = Field(..., description="Current price")
-    source: str = Field(..., description="Data source")
-    timestamp: Optional[str] = Field(None, description="Price timestamp")
 
 
 class BulkPricesResponse(BaseModel):

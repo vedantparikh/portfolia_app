@@ -349,18 +349,6 @@ export const portfolioAPI = {
   },
 
   /* 
-      GET PORTFOLIO PERFORMANCE - Get portfolio performance metrics over a specified period
-      Parameters: id (string or number), days (number)
-      Returns: Server response with portfolio performance data
-    */
-  getPortfolioPerformance: async (id, days = 30) => {
-    const response = await api.get(`/portfolios/${id}/performance`, {
-      params: { days },
-    });
-    return response.data;
-  },
-
-  /* 
       REFRESH PORTFOLIO VALUES - Refresh current values and P&L for all assets in a portfolio
       Parameters: id (string or number)
       Returns: Server response with refresh status
@@ -505,16 +493,6 @@ export const marketAPI = {
     const response = await api.get("/market-data/prices/bulk", {
       params: { symbols: Array.isArray(symbols) ? symbols : [symbols] },
     });
-    return response.data;
-  },
-
-  /* 
-      GET CURRENT PRICE - Get current price for a single symbol
-      Parameters: symbol (string) - Stock symbol to get price for
-      Returns: Server response with current price data
-    */
-  getCurrentPrice: async (symbol) => {
-    const response = await api.get(`/market-data/ticker/${symbol}/price`);
     return response.data;
   },
 

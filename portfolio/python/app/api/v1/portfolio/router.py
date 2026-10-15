@@ -22,7 +22,6 @@ from core.schemas.portfolio import (
     PortfolioAssetWithDetails,
     PortfolioCreate,
     PortfolioHolding,
-    PortfolioPerformance,
     PortfolioStatistics,
     PortfolioSummary,
     PortfolioUpdate,
@@ -320,29 +319,6 @@ async def get_portfolio_holdings(
             status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
         )
     return holdings
-
-
-@router.get("/{portfolio_id}/performance", response_model=PortfolioPerformance)
-async def get_portfolio_performance(
-    portfolio_id: int,
-    days: int = Query(
-        30, ge=1, le=365, description="Number of days for performance calculation"
-    ),
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    """Get portfolio performance metrics over a specified period."""
-    portfolio_service = PortfolioService(db)
-    performance = portfolio_service.get_portfolio_performance(
-        portfolio_id, current_user.id, days=days
-    )
-
-    if not performance:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
-        )
-
-    return performance
 
 
 @router.post(

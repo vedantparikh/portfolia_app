@@ -327,18 +327,3 @@ class PortfolioItem(BaseModel):
 
     class Config:
         from_attributes = True
-
-
-class PortfolioPerformance(BaseModel):
-    """Portfolio performance metrics."""
-
-    portfolio_id: int
-    period_days: int
-    total_return: float
-    annualized_return: Optional[float] = None
-    volatility: Optional[float] = None
-    sharpe_ratio: Optional[float] = None
-    max_drawdown: Optional[float] = None
-    beta: Optional[float] = None
-    alpha: Optional[float] = None
-    calculation_date: datetime

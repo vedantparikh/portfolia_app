@@ -4,7 +4,6 @@ API endpoints for market data operations using yfinance exclusively.
 """
 
 import logging
-from datetime import datetime, timezone
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -13,7 +12,6 @@ from core.auth.dependencies import get_current_active_user
 from core.database.models import User
 from core.schemas.market_data import (
     BulkPricesResponse,
-    CurrentPriceResponse,
     MarketStatusResponse,
     StockSearchResponse,
     SupportedIntervalsResponse,
@@ -158,40 +156,6 @@ async def get_ticker_info(
         raise HTTPException(
             status_code=500,
             detail=f"Error getting ticker info for {symbol}: {str(e)}",
-        ) from e
-
-
-@router.get("/ticker/{symbol}/price", response_model=CurrentPriceResponse)
-async def get_current_price(
-    symbol: str,
-    _current_user: User = Depends(get_current_active_user),
-):
-    """
-    Get current price for a ticker.
-    """
-    try:
-        symbol = symbol.upper()
-
-        price = await market_data_service.get_current_price(symbol)
-
-        if price is None:
-            raise HTTPException(
-                status_code=404, detail=f"No price data available for symbol {symbol}"
-            )
-
-        return CurrentPriceResponse(
-            symbol=symbol,
-            price=price,
-            source="yfinance",
-            timestamp=datetime.now(timezone.utc),
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error("Error getting price for %s: %s", symbol, e)
-        raise HTTPException(
-            status_code=500, detail=f"Error getting price for {symbol}: {str(e)}"
         ) from e
 
 

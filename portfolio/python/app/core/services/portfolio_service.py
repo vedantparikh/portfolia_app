@@ -1,7 +1,7 @@
 import asyncio
 from datetime import date
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from sqlalchemy import and_, case, desc
 from sqlalchemy.orm import Session
@@ -14,7 +14,6 @@ from core.database.models import (
     TransactionStatus,
     TransactionType,
 )
-from core.database.utils import get_portfolio_performance_summary
 from core.schemas.portfolio import (
     PortfolioAssetCreate,
     PortfolioAssetUpdate,
@@ -683,17 +682,6 @@ class PortfolioService:
             is_active=portfolio.is_active,
             is_public=portfolio.is_public,
         )
-
-    def get_portfolio_performance(
-        self, portfolio_id: int, user_id: int, days: int = 30
-    ) -> Dict[str, Any]:
-        """Get portfolio performance metrics."""
-        portfolio = self.get_portfolio(portfolio_id, user_id)
-        if not portfolio:
-            return {}
-
-        # Use utility function for performance calculation
-        return get_portfolio_performance_summary(self.db, portfolio_id, days)
 
     async def get_portfolio_holdings(
         self,

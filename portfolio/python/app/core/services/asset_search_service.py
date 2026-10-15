@@ -5,11 +5,10 @@ Advanced asset search and discovery service with filtering and ranking.
 
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import and_, case, desc, func, or_
+from sqlalchemy import and_, desc, func, or_
 from sqlalchemy.orm import Session
 
 from core.database.models import Asset
-from core.database.models.asset import AssetType
 
 
 class AssetSearchService:
@@ -17,121 +16,6 @@ class AssetSearchService:
 
     def __init__(self, db: Session):
         self.db = db
-
-    def search_assets(
-        self,
-        query: Optional[str] = None,
-        asset_type: Optional[AssetType] = None,
-        sector: Optional[str] = None,
-        exchange: Optional[str] = None,
-        country: Optional[str] = None,
-        min_market_cap: Optional[float] = None,
-        max_market_cap: Optional[float] = None,
-        sort_by: str = "symbol",
-        sort_order: str = "asc",
-        limit: int = 50,
-        offset: int = 0,
-    ) -> Dict[str, Any]:
-        """Search assets with advanced filtering and sorting."""
-        # Build base query
-        base_query = self.db.query(Asset).filter(Asset.is_active == True)
-
-        # Apply filters
-        if query:
-            search_terms = query.split()
-            # 1. Build the filter condition: All terms must be present
-            filter_conditions = []
-            for term in search_terms:
-                term_filter = or_(
-                    Asset.symbol.ilike(f"%{term}%"),
-                    Asset.name.ilike(f"%{term}%"),
-                    Asset.description.ilike(f"%{term}%"),
-                )
-                filter_conditions.append(term_filter)
-            base_query = base_query.filter(and_(*filter_conditions))
-
-            # 2. Build the ranking score
-            # We create a sum of scores for each term
-            rank_score = 0
-            for term in search_terms:
-                rank_score += case(
-                    # Highest score for exact symbol match
-                    (Asset.symbol.ilike(term), 10),
-                    # High score for name starting with the term
-                    (Asset.name.ilike(f"{term}%"), 5),
-                    # Medium score for name containing the term
-                    (Asset.name.ilike(f"%{term}%"), 2),
-                    # Low score for description match
-                    (Asset.description.ilike(f"%{term}%"), 1),
-                    else_=0,
-                )
-
-            # Add the rank score to the query
-            base_query = base_query.add_columns(rank_score.label("rank"))
-
-        if asset_type:
-            base_query = base_query.filter(Asset.asset_type == asset_type)
-
-        if sector:
-            base_query = base_query.filter(Asset.sector.ilike(f"%{sector}%"))
-
-        if exchange:
-            base_query = base_query.filter(Asset.exchange.ilike(f"%{exchange}%"))
-
-        if country:
-            base_query = base_query.filter(Asset.country.ilike(f"%{country}%"))
-
-        # Apply sorting
-        if sort_by == "symbol":
-            order_column = Asset.symbol
-        elif sort_by == "name":
-            order_column = Asset.name
-        elif sort_by == "asset_type":
-            order_column = Asset.asset_type
-        elif sort_by == "sector":
-            order_column = Asset.sector
-        elif sort_by == "created_at":
-            order_column = Asset.created_at
-        else:
-            order_column = Asset.symbol
-
-        if sort_order == "desc":
-            order_column = desc(order_column)
-
-        base_query = base_query.order_by(order_column)
-
-        # Get total count
-        total_count = base_query.count()
-
-        # Apply pagination
-        assets = base_query.offset(offset).limit(limit).all()
-
-        # Format assets for the response
-        formatted_assets = [
-            {
-                "id": asset.id,
-                "symbol": asset.symbol,
-                "name": asset.name,
-                "asset_type": asset.asset_type.value,
-                "currency": asset.currency,
-                "exchange": asset.exchange,
-                "sector": asset.sector,
-                "industry": asset.industry,
-                "country": asset.country,
-                "is_active": asset.is_active,
-                "created_at": asset.created_at,
-                "updated_at": asset.updated_at,
-            }
-            for asset in assets
-        ]
-
-        return {
-            "assets": formatted_assets,
-            "total_count": total_count,
-            "limit": limit,
-            "offset": offset,
-            "has_more": offset + limit < total_count,
-        }
 
     def get_asset_details(self, asset_id: int) -> Optional[Dict[str, Any]]:
         """Get detailed asset information."""
