@@ -491,7 +491,7 @@ const Watchlist = () => {
                       {selectedWatchlist?.name || "Watchlist"}
                     </h1>
                     <p className="text-sm text-gray-400">
-                      {selectedWatchlist?.items?.length || 0} symbols •{" "}
+                      {selectedWatchlist?.items?.length ?? selectedWatchlist?.item_count ?? 0} symbols •{" "}
                       {selectedWatchlist?.is_public ? "Public" : "Private"}
                     </p>
                   </div>
@@ -699,7 +699,7 @@ const Watchlist = () => {
                           <div className="flex items-center justify-between text-sm">
                             <div className="flex items-center space-x-4">
                               <span className="text-gray-400">
-                                {watchlist.items?.length || 0} symbols
+                                {watchlist.item_count ?? watchlist.items?.length ?? 0} symbols
                               </span>
                               <div
                                 className="w-3 h-3 rounded-full"
