@@ -16,6 +16,7 @@ import AssetFilters from '../assets/AssetFilters';
 import AssetModal from '../assets/AssetModal';
 import LoadingSpinner from '../shared/LoadingSpinner';
 import CreateTransactionModal from '../transactions/CreateTransactionModal';
+import { formatCurrency, formatPercentage } from '../../utils/formatters.jsx';
 import PortfolioAssetCard from './PortfolioAssetCard';
 
 
@@ -428,7 +429,7 @@ const PortfolioAssets = ({ portfolio }) => {
                             <p className="text-xl font-bold text-gray-100 truncate" title={highlights.bestPerformer.name}>{highlights.bestPerformer.symbol}</p>
                             <p className="text-xs text-gray-500">{highlights.bestPerformer.name}</p>
                             <p className="text-sm font-semibold text-success-400">
-                                +{highlights.bestPerformer.value.toFixed(2)}%
+                                {formatPercentage(highlights.bestPerformer.value)}
                             </p>
                         </div>
                         <div className="w-12 h-12 bg-success-600/20 rounded-lg flex items-center justify-center">
@@ -443,7 +444,7 @@ const PortfolioAssets = ({ portfolio }) => {
                             <p className="text-xl font-bold text-gray-100 truncate" title={highlights.largestHolding.name}>{highlights.largestHolding.symbol}</p>
                             <p className="text-xs text-gray-500">{highlights.largestHolding.name}</p>
                             <p className="text-sm font-semibold text-primary-400">
-                                ${highlights.largestHolding.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                {formatCurrency(highlights.largestHolding.value)}
                             </p>
                         </div>
                         <div className="w-12 h-12 bg-primary-600/20 rounded-lg flex items-center justify-center">
@@ -458,7 +459,7 @@ const PortfolioAssets = ({ portfolio }) => {
                             <p className="text-xl font-bold text-gray-100 truncate" title={highlights.topContributor.name}>{highlights.topContributor.symbol}</p>
                             <p className="text-xs text-gray-500">{highlights.topContributor.name}</p>
                             <p className="text-sm font-semibold text-success-400">
-                                +${highlights.topContributor.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                {highlights.topContributor.value >= 0 ? '+' : ''}{formatCurrency(highlights.topContributor.value)}
                             </p>
                         </div>
                         <div className="w-12 h-12 bg-success-600/20 rounded-lg flex items-center justify-center">
@@ -473,7 +474,7 @@ const PortfolioAssets = ({ portfolio }) => {
                             <p className="text-xl font-bold text-gray-100 truncate" title={highlights.dailyMover.name}>{highlights.dailyMover.symbol}</p>
                             <p className="text-xs text-gray-500">{highlights.dailyMover.name}</p>
                             <p className={`text-sm font-semibold ${highlights.dailyMover.value >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
-                                {highlights.dailyMover.value >= 0 ? '+' : ''}${highlights.dailyMover.value.toFixed(2)}
+                                {highlights.dailyMover.value >= 0 ? '+' : ''}{formatCurrency(highlights.dailyMover.value)}
                             </p>
                         </div>
                         <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${highlights.dailyMover.value >= 0 ? 'bg-success-600/20' : 'bg-danger-600/20'}`}>
