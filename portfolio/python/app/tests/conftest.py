@@ -1,4 +1,3 @@
-import asyncio
 import os
 import sys
 from typing import AsyncGenerator, Generator
@@ -130,14 +129,6 @@ def client(test_db) -> Generator:
 
     # Cleanup
     app.dependency_overrides.clear()
-
-
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create event loop for async tests."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
 
 
 @pytest.fixture(scope="function")
