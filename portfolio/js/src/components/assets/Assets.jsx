@@ -66,7 +66,6 @@ const Assets = () => {
         valueRange: 'all',
         changeRange: 'all',
         marketCapRange: 'all',
-        rsiRange: 'all',
         sortBy: 'symbol',
         sortOrder: 'asc'
     });
@@ -117,7 +116,6 @@ const Assets = () => {
             if (filters.valueRange !== 'all') apiParams.value_range = filters.valueRange;
             if (filters.changeRange !== 'all') apiParams.change_range = filters.changeRange;
             if (filters.marketCapRange !== 'all') apiParams.market_cap_range = filters.marketCapRange;
-            if (filters.rsiRange !== 'all') apiParams.rsi_range = filters.rsiRange;
 
             const response = await userAssetsAPI.getUserAssets(apiParams);
 
@@ -625,7 +623,12 @@ const Assets = () => {
 
                     {showFilters && (
                         <div className="card p-6 mb-8">
-                            <AssetFilters filters={filters} onFilterChange={handleFilterChange} />
+                            {/* The assets API only filters by type; ranges and sorting are ignored server-side */}
+                            <AssetFilters
+                                filters={filters}
+                                onFilterChange={handleFilterChange}
+                                hidden={['priceRange', 'valueRange', 'changeRange', 'marketCapRange', 'sort']}
+                            />
                         </div>
                     )}
 

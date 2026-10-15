@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { portfolioAPI, transactionAPI } from '../../services/api';
+import { portfolioAPI, transactionAPI, userAssetsAPI } from '../../services/api';
 import AssetFilters from '../assets/AssetFilters';
 import AssetModal from '../assets/AssetModal';
 import LoadingSpinner from '../shared/LoadingSpinner';
@@ -65,18 +65,31 @@ const PortfolioAssets = ({ portfolio }) => {
             setLoading(true);
             console.log('[PortfolioAssets] Loading assets for portfolio:', portfolio.id);
 
-            // Get portfolio holdings which contain the assets
-            const holdingsResponse = await portfolioAPI.getPortfolioHoldings(portfolio.id);
-            console.log('[PortfolioAssets] Holdings response:', holdingsResponse);
+            // Holdings carry the position numbers; asset details add type, market cap and 24h move
+            const [holdingsResult, detailsResult] = await Promise.allSettled([
+                portfolioAPI.getPortfolioHoldings(portfolio.id),
+                userAssetsAPI.getUserAssets({ limit: 1000, include_detail: true }),
+            ]);
+            if (holdingsResult.status === 'rejected') throw holdingsResult.reason;
+            const holdingsResponse = holdingsResult.value;
+            const assetsById = new Map(
+                (detailsResult.status === 'fulfilled' ? detailsResult.value.assets : []).map((a) => [a.id, a])
+            );
 
             // Process holdings data to create asset objects
             let portfolioAssets = [];
             if (holdingsResponse && Array.isArray(holdingsResponse) && holdingsResponse.length > 0) {
-                portfolioAssets = holdingsResponse.map(holding => ({
+                portfolioAssets = holdingsResponse.map(holding => {
+                    const asset = assetsById.get(holding.asset_id);
+                    return {
                     id: holding.asset_id,
                     symbol: holding.symbol,
                     name: holding.name,
-                    asset_type: holding.asset_type || 'EQUITY',
+                    asset_type: asset?.asset_type || 'EQUITY',
+                    sector: asset?.sector,
+                    market_cap: asset?.detail?.market_cap,
+                    volume_24h: asset?.detail?.volume_24h,
+                    price_change_percentage_24h: asset?.detail?.price_change_percentage_24h,
                     quantity: holding.quantity,
                     purchase_price: holding.cost_basis,
                     current_price: holding.current_value && holding.quantity ? holding.current_value / holding.quantity : 0,
@@ -89,7 +102,8 @@ const PortfolioAssets = ({ portfolio }) => {
                     realized_pnl_percentage: holding.realized_pnl_percent,
                     today_pnl: holding.today_pnl,
                     today_pnl_percentage: holding.today_pnl_percent
-                }));
+                    };
+                });
             }
 
             setAssets(portfolioAssets);
@@ -193,24 +207,6 @@ const PortfolioAssets = ({ portfolio }) => {
             });
         }
 
-        // RSI range filter
-        if (filters.rsiRange !== 'all') {
-            filtered = filtered.filter(asset => {
-                const rsi = asset.rsi;
-                if (rsi === null || rsi === undefined) return false;
-                switch (filters.rsiRange) {
-                    case '0-30':
-                        return rsi >= 0 && rsi <= 30;
-                    case '30-70':
-                        return rsi > 30 && rsi < 70;
-                    case '70-100':
-                        return rsi >= 70 && rsi <= 100;
-                    default:
-                        return true;
-                }
-            });
-        }
-
         // Sort
         filtered.sort((a, b) => {
             let aValue, bValue;
@@ -241,8 +237,8 @@ const PortfolioAssets = ({ portfolio }) => {
                     bValue = b.total_value || 0;
                     break;
                 default:
-                    aValue = a.symbol || '';
-                    bValue = b.symbol || '';
+                    aValue = Number(a[filters.sortBy]) || 0;
+                    bValue = Number(b[filters.sortBy]) || 0;
             }
 
             if (filters.sortBy === 'symbol' || filters.sortBy === 'name') {
