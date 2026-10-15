@@ -13,7 +13,7 @@ redis==8.1.0
 polars==2.0.0
 numpy==2.5.4
 pandas==3.0.6
-yfinance==0.2.66
+yfinance==1.7.0
 yahooquery==2.4.1
 pyarrow==26.0.0
 
