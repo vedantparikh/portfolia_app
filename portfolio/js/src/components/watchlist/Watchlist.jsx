@@ -34,7 +34,7 @@ const Watchlist = () => {
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
   const [refreshInterval, setRefreshInterval] = useState(30000); // 30 seconds default
   const [isMobile, setIsMobile] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingWatchlist, setEditingWatchlist] = useState(null);
   const [showDropdown, setShowDropdown] = useState(null);

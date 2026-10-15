@@ -33,7 +33,7 @@ const CardLoader = ({ text = "Loading..." }) => (
 
 const Dashboard = () => {
   const { user, profile, refreshUser } = useAuth();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768);
   const [isMobile, setIsMobile] = useState(false);
 
   const [dashboardData, setDashboardData] = useState({
