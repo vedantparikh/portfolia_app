@@ -38,7 +38,7 @@ class AnalysisConfigurationService:
             user_id=user_id,
             name=config_data.name,
             description=config_data.description,
-            indicators=config_data.indicators,
+            indicators=[i.model_dump(mode="json") for i in config_data.indicators],
             chart_settings=config_data.chart_settings,
             is_public=config_data.is_public,
             tags=config_data.tags
@@ -146,7 +146,7 @@ class AnalysisConfigurationService:
         if update_data.description is not None:
             db_config.description = update_data.description
         if update_data.indicators is not None:
-            db_config.indicators = update_data.indicators
+            db_config.indicators = [i.model_dump(mode="json") for i in update_data.indicators]
         if update_data.chart_settings is not None:
             db_config.chart_settings = update_data.chart_settings
         if update_data.is_public is not None:
