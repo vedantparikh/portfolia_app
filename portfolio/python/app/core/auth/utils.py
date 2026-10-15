@@ -7,9 +7,9 @@ import string
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Tuple, Union
 
+import bcrypt
 from fastapi import HTTPException, status
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from pytz import utc
 
 from config import settings
@@ -19,7 +19,6 @@ from core.logging_config import get_logger
 logger = get_logger(__name__)
 
 # Password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # JWT token configuration
 ALGORITHM = settings.JWT_ALGORITHM
@@ -28,14 +27,24 @@ ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
 REFRESH_TOKEN_EXPIRE_MINUTES = settings.REFRESH_TOKEN_EXPIRE_MINUTES
 
 
+def _bcrypt_input(password: str) -> bytes:
+    # bcrypt only uses the first 72 bytes; passlib truncated silently, bcrypt>=5 raises
+    return password.encode("utf-8")[:72]
+
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash."""
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        return bcrypt.checkpw(
+            _bcrypt_input(plain_password), hashed_password.encode("utf-8")
+        )
+    except ValueError:
+        return False
 
 
 def get_password_hash(password: str) -> str:
     """Generate password hash."""
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(_bcrypt_input(password), bcrypt.gensalt()).decode("utf-8")
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
