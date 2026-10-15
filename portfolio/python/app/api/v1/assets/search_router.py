@@ -3,18 +3,14 @@ Asset Search Router
 Advanced asset search and discovery API endpoints.
 """
 
-from typing import Optional
-
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from core.auth.dependencies import get_current_active_user
 from core.database.connection import get_db
 from core.database.models import User
-from core.database.models.asset import AssetType
 from core.schemas.market_data import (
     AssetDetailsResponse,
-    AssetSearchResponse,
     AssetTypeBreakdownResponse,
     ExchangeBreakdownResponse,
     PopularAssetsResponse,
@@ -24,44 +20,6 @@ from core.schemas.market_data import (
 from core.services.asset_search_service import AssetSearchService
 
 router = APIRouter(prefix="/assets/search", tags=["asset-search"])
-
-
-@router.get("/", response_model=AssetSearchResponse)
-async def search_assets(
-    q: Optional[str] = Query(
-        None, description="Search query for symbol, name, or description"
-    ),
-    asset_type: Optional[AssetType] = Query(None, description="Filter by asset type"),
-    sector: Optional[str] = Query(None, description="Filter by sector"),
-    exchange: Optional[str] = Query(None, description="Filter by exchange"),
-    country: Optional[str] = Query(None, description="Filter by country"),
-    sort_by: str = Query("symbol", description="Sort by field"),
-    sort_order: str = Query("asc", description="Sort order (asc/desc)"),
-    limit: int = Query(50, ge=1, le=1000, description="Maximum number of results"),
-    offset: int = Query(0, ge=0, description="Number of results to skip"),
-    current_user: User = Depends(get_current_active_user),  # noqa: ARG001
-    db: Session = Depends(get_db),
-):
-    """Search assets with advanced filtering and sorting."""
-    search_service = AssetSearchService(db)
-
-    try:
-        results = search_service.search_assets(
-            query=q,
-            asset_type=asset_type,
-            sector=sector,
-            exchange=exchange,
-            country=country,
-            sort_by=sort_by,
-            sort_order=sort_order,
-            limit=limit,
-            offset=offset,
-        )
-        return results
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        ) from e
 
 
 @router.get("/{asset_id}", response_model=AssetDetailsResponse)

@@ -432,15 +432,24 @@ const EnhancedChart = ({
       Object.entries(indicatorData).forEach(
         ([indicatorName, indicatorValues]) => {
           if (indicatorValues && indicatorValues.length > 0) {
-            const isSecondaryAxis = isSecondaryAxisIndicator(indicatorName);
-
-            const series = chart.addSeries(LineSeries, {
-              color: getIndicatorColor(indicatorName),
-              lineWidth: 2,
-              priceLineVisible: false,
-              lastValueVisible: true,
-              priceScaleId: isSecondaryAxis ? "right" : "left",
-            });
+            // Oscillators (0-100 style) get their own pane below the price;
+            // price-level overlays (SMA, EMA, ...) share the candles' scale
+            const series = chart.addSeries(
+              LineSeries,
+              {
+                color: getIndicatorColor(indicatorName),
+                lineWidth: 2,
+                priceLineVisible: false,
+                lastValueVisible: true,
+                ...(indicatorName.toLowerCase().includes("rsi") && {
+                  // Fixed 0-100 so the 30/70 bands are always visible
+                  autoscaleInfoProvider: () => ({
+                    priceRange: { minValue: 0, maxValue: 100 },
+                  }),
+                }),
+              },
+              isOscillator(indicatorName) ? 1 : 0
+            );
             series.setData(indicatorValues);
 
             if (indicatorName.toLowerCase().includes("rsi")) {
@@ -464,6 +473,10 @@ const EnhancedChart = ({
           }
         }
       );
+      const panes = chart.panes();
+      if (panes.length > 1) {
+        panes[1].setHeight(Math.round(height * 0.28));
+      }
     }
 
     if (showVolume) {
@@ -652,8 +665,8 @@ const EnhancedChart = ({
     );
   };
 
-  const isSecondaryAxisIndicator = (indicatorName) => {
-    const secondaryAxisIndicators = [
+  const isOscillator = (indicatorName) => {
+    const oscillators = [
       "rsi",
       "stoch",
       "cci",
@@ -662,7 +675,7 @@ const EnhancedChart = ({
       "momentum",
     ];
     const lowerName = indicatorName.toLowerCase();
-    return secondaryAxisIndicators.some((indicator) =>
+    return oscillators.some((indicator) =>
       lowerName.includes(indicator)
     );
   };

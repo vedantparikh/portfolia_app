@@ -300,9 +300,9 @@ const WatchlistContent = ({
       {/* Toolbar with Search, Sort, and Refresh Controls */}
       {/* This section contains all the controls for filtering and managing the watchlist */}
       <div className="p-4 border-b border-dark-700 bg-dark-900/50">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           {/* Left side: Search and Sort controls */}
-          <div className="flex items-center space-x-4">
+          <div className="flex flex-wrap items-center gap-3">
             {/* Search input with icon */}
             <div className="relative">
               {/* Search icon positioned absolutely inside the input */}
@@ -351,7 +351,7 @@ const WatchlistContent = ({
 
             {/* Refresh controls - only show if props are provided */}
             {autoRefreshEnabled !== undefined && (
-              <div className="flex items-center space-x-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {/* Auto-refresh toggle checkbox */}
                 <label className="flex items-center space-x-2 text-sm text-gray-400">
                   <input
@@ -411,6 +411,9 @@ const WatchlistContent = ({
         </div>
       </div>
 
+      {/* Header + rows scroll sideways together on narrow screens */}
+      <div className="flex-1 flex flex-col overflow-x-auto">
+      <div className="min-w-[960px] flex-1 flex flex-col">
       {/* Table Headers */}
       {/* This section defines the column headers for the symbols table */}
       <div className="bg-dark-900/50 border-b border-dark-700 px-4 py-3">
@@ -739,6 +742,8 @@ const WatchlistContent = ({
           </div>
         </div>
       )}
+      </div>
+      </div>
     </div>
   );
 };

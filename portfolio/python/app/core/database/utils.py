@@ -107,53 +107,6 @@ def calculate_portfolio_value(db: Session, portfolio_id: int) -> Dict[str, float
         }
 
 
-def get_portfolio_performance_summary(
-    db: Session, portfolio_id: int, days: int = 30
-) -> Dict[str, Any]:
-    """Get portfolio performance summary for a specific time period."""
-    try:
-        # Get portfolio transactions within the time period
-        from datetime import datetime, timedelta
-
-        end_date = datetime.now(timezone.utc)
-        start_date = end_date - timedelta(days=days)
-
-        transactions = (
-            db.query(Transaction)
-            .filter(
-                Transaction.portfolio_id == portfolio_id,
-                Transaction.transaction_date >= start_date,
-                Transaction.transaction_date <= end_date,
-            )
-            .all()
-        )
-
-        # Calculate metrics
-        total_buys = sum(1 for t in transactions if t.is_buy)
-        total_sells = sum(1 for t in transactions if t.is_sell)
-        total_volume = sum(float(t.total_amount) for t in transactions)
-
-        # Get current portfolio value
-        portfolio_value = calculate_portfolio_value(db, portfolio_id)
-
-        return {
-            "period_days": days,
-            "start_date": start_date,
-            "end_date": end_date,
-            "total_transactions": len(transactions),
-            "buy_transactions": total_buys,
-            "sell_transactions": total_sells,
-            "total_volume": total_volume,
-            "current_portfolio_value": portfolio_value["total_current_value"],
-            "total_return": portfolio_value["total_unrealized_pnl"],
-            "total_return_percent": portfolio_value["total_return_percent"],
-        }
-
-    except Exception as e:
-        logger.error(f"Error getting portfolio performance summary: {e}")
-        return {}
-
-
 def cleanup_expired_sessions(db: Session) -> int:
     """Clean up expired user sessions."""
     try:

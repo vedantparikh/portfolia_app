@@ -471,18 +471,19 @@ const Watchlist = () => {
         )}
 
         {/* Header */}
-        <header className="bg-dark-900/80 backdrop-blur-sm border-b border-dark-700 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+        <header className="bg-dark-900/80 backdrop-blur-sm border-b border-dark-700 px-4 sm:px-6 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
               {viewMode === "content" ? (
                 /* Content View Header */
                 <>
                   <button
                     onClick={handleBackToGrid}
+                    aria-label="Back to Watchlists"
                     className="flex items-center space-x-2 px-3 py-2 text-gray-400 hover:text-gray-100 hover:bg-dark-800 rounded-lg transition-colors"
                   >
                     <ArrowLeft size={20} />
-                    <span>Back to Watchlists</span>
+                    <span className="hidden sm:inline">Back to Watchlists</span>
                   </button>
                   <div className="w-px h-6 bg-dark-600"></div>
                   <Bookmark size={24} className="text-primary-400" />
@@ -501,18 +502,19 @@ const Watchlist = () => {
                 <>
                   <button
                     onClick={() => navigate("/dashboard")}
+                    aria-label="Back to Dashboard"
                     className="flex items-center space-x-2 px-3 py-2 text-gray-400 hover:text-gray-100 hover:bg-dark-800 rounded-lg transition-colors"
                   >
                     <ArrowLeft size={20} />
-                    <span>Back to Dashboard</span>
+                    <span className="hidden sm:inline">Back to Dashboard</span>
                   </button>
-                  <div className="w-px h-6 bg-dark-600"></div>
-                  <Bookmark size={24} className="text-primary-400" />
-                  <div>
+                  <div className="hidden sm:block w-px h-6 bg-dark-600"></div>
+                  <Bookmark size={24} className="hidden sm:block text-primary-400" />
+                  <div className="min-w-0">
                     <h1 className="text-xl font-semibold text-gray-100">
                       Watchlists
                     </h1>
-                    <p className="text-sm text-gray-400">
+                    <p className="hidden sm:block text-sm text-gray-400">
                       Manage your watchlists and track market symbols
                     </p>
                   </div>
@@ -520,7 +522,7 @@ const Watchlist = () => {
               )}
             </div>
 
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               {viewMode === "grid" && (
                 <>
                   <button
@@ -528,18 +530,21 @@ const Watchlist = () => {
                     disabled={isRefreshing}
                     className="flex items-center space-x-2 px-3 py-2 bg-dark-800 hover:bg-dark-700 text-gray-300 rounded-lg transition-colors disabled:opacity-50"
                     title="Refresh watchlist data"
+                    aria-label="Refresh watchlist data"
                   >
                     <RefreshCw
                       size={16}
                       className={isRefreshing ? "animate-spin" : ""}
                     />
-                    <span>{isRefreshing ? "Refreshing..." : "Refresh"}</span>
+                    <span className="hidden sm:inline">
+                      {isRefreshing ? "Refreshing..." : "Refresh"}
+                    </span>
                   </button>
 
                   <button
                     onClick={() => setShowCreateModal(true)}
                     disabled={creatingWatchlist}
-                    className="flex items-center space-x-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors disabled:opacity-50"
+                    className="flex items-center space-x-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors disabled:opacity-50 whitespace-nowrap"
                   >
                     <Plus size={16} />
                     <span>
