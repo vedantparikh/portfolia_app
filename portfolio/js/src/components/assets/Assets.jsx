@@ -617,7 +617,8 @@ const Assets = () => {
                             </button>
                         </div>
                         <p className="text-sm text-gray-400">
-                            Showing {assets.length} of {totalAssetsCount} assets
+                            Showing {assets.length}
+                            {totalAssetsCount > assets.length ? ` of ${totalAssetsCount}` : ""} assets
                         </p>
                     </div>
 
