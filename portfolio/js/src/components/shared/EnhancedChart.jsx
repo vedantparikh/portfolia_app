@@ -1,4 +1,10 @@
-import { createChart } from "lightweight-charts";
+import {
+  createChart,
+  AreaSeries,
+  CandlestickSeries,
+  HistogramSeries,
+  LineSeries,
+} from "lightweight-charts";
 import {
   Activity,
   BarChart3,
@@ -391,9 +397,8 @@ const EnhancedChart = ({
 
     let priceSeries;
 
-    // *** FIX: Replaced chart.addSeries with specific methods ***
     if (chartType === "candlestick") {
-      priceSeries = chart.addCandlestickSeries({
+      priceSeries = chart.addSeries(CandlestickSeries, {
         upColor: "#22c55e",
         downColor: "#ef4444",
         borderDownColor: "#dc2626",
@@ -408,14 +413,14 @@ const EnhancedChart = ({
         value: d.close,
       }));
       if (chartType === "area") {
-        priceSeries = chart.addAreaSeries({
+        priceSeries = chart.addSeries(AreaSeries, {
           topColor: "rgba(14, 165, 233, 0.3)",
           bottomColor: "rgba(14, 165, 233, 0.0)",
           lineColor: "#0ea5e9",
           lineWidth: 2,
         });
       } else {
-        priceSeries = chart.addLineSeries({
+        priceSeries = chart.addSeries(LineSeries, {
           color: "#0ea5e9",
           lineWidth: 2,
         });
@@ -429,7 +434,7 @@ const EnhancedChart = ({
           if (indicatorValues && indicatorValues.length > 0) {
             const isSecondaryAxis = isSecondaryAxisIndicator(indicatorName);
 
-            const series = chart.addLineSeries({ // *** FIX ***
+            const series = chart.addSeries(LineSeries, {
               color: getIndicatorColor(indicatorName),
               lineWidth: 2,
               priceLineVisible: false,
@@ -462,9 +467,11 @@ const EnhancedChart = ({
     }
 
     if (showVolume) {
-      const volumeSeries = chart.addHistogramSeries({ // *** FIX ***
+      const volumeSeries = chart.addSeries(HistogramSeries, {
         priceFormat: { type: "volume" },
         priceScaleId: "",
+      });
+      volumeSeries.priceScale().applyOptions({
         scaleMargins: { top: 0.8, bottom: 0 },
       });
       volumeSeries.setData(volumeData);
