@@ -37,17 +37,3 @@ jobs:
         if: always()
         run: docker compose down -v
 
-  frontend-lint:
-    name: frontend lint (report only until REFACTOR_PLAN Phase 0.5)
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    defaults:
-      run:
-        working-directory: portfolio/js
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "21"
-      - run: npm install --no-audit --no-fund
-      - run: npm run lint

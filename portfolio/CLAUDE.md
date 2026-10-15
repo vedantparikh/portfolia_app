@@ -22,7 +22,11 @@ Single test file (same env as the gate):
 docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD/python/app:/app" -w /app -e TESTING=true -e TEST_DATABASE_URL=sqlite:////tmp/t.db \
   -e PYTHONDONTWRITEBYTECODE=1 portfolio-api python -m pytest tests/unit/test_position_and_returns.py -q -p no:cacheprovider
 ```
-Lint (not gating yet): `docker compose exec app npm run lint` · `ruff check python/app` (use a venv).
+Lint is part of the gate, and both linters must report 0. Autofix before committing:
+```
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD/python/app:/app" -w /app portfolio-api sh -c 'ruff check --fix --no-cache . && ruff format --no-cache .'
+docker run --rm -v "$PWD/js/src:/app/src" -v "$PWD/js/.eslintrc.cjs:/app/.eslintrc.cjs:ro" portfolio-app npx eslint src --ext js,jsx --fix
+```
 Never run pytest inside the running `portfolio-api-1`, which is wired to the stack's Postgres.
 
 ## Architecture & patterns
@@ -47,7 +51,7 @@ Never run pytest inside the running `portfolio-api-1`, which is wired to the sta
 - Ask before deleting Docker volumes, changing published ports or touching anything outside `portfolio/`.
 - When a session establishes a new non-obvious fact about the project, update this file or the plan's progress log.
 
-## Known state (2026-10-14)
-- Gate: 126 passed, 42 quarantined xfail, plus 8 quarantined uncollectable files.
-- `ruff check`: about 580 issues, mostly E501. `npm run lint`: about 820 problems (mostly `react/prop-types`). Both are report-only until plan Phase 0.5.
+## Known state (2026-10-15)
+- Gate: lint clean (ruff + eslint, 0 warnings); about 130 tests passed, 42 quarantined xfail, plus 8 quarantined uncollectable files.
+- Lint policy: ruff ignores E501 (the formatter owns line length) and E712 (SQLAlchemy `== True`). ESLint has `react/prop-types` off (TS migration is planned). Use `eslint-disable-next-line react-hooks/exhaustive-deps -- <reason>` only when adding the dependency would change when the effect runs.
 - `npm test` is a placeholder. There are no frontend unit tests or e2e tests yet.

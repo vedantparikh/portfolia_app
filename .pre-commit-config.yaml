@@ -19,8 +19,9 @@ repos:
       - id: check-json
       - id: pretty-format-json
         args: ['--autofix', '--indent', '4', '--no-sort-keys', '--no-ensure-ascii']
-  - repo: https://github.com/PyCQA/flake8
-    rev: 5.0.4
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.17.0
     hooks:
-      - id: flake8
-        args: ['--max-line-length', '120']
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
