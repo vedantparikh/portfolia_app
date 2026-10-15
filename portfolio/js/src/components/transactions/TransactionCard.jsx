@@ -63,7 +63,7 @@ const TransactionCard = ({ transaction, onEdit, onDelete }) => {
                 {transaction.asset?.symbol || transaction.symbol}
               </h3>
               <span
-                className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(
+                className={`hidden sm:inline-block px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(
                   transaction.status
                 )}`}
               >

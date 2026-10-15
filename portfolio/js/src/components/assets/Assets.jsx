@@ -14,10 +14,12 @@ import {
     Settings,
     Shield,
     TrendingUp,
+    Menu,
     X,
     Zap
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import useIsMobile from '../../hooks/useIsMobile';
 import toast from 'react-hot-toast';
 import { InView } from 'react-intersection-observer';
 import { portfolioAPI, transactionAPI, userAssetsAPI } from '../../services/api';
@@ -43,6 +45,8 @@ const Assets = () => {
     const [selectedAsset, setSelectedAsset] = useState(null);
     const [showModal, setShowModal] = useState(false);
     const [showFilters, setShowFilters] = useState(false);
+    const isMobile = useIsMobile();
+    const [sidebarOpen, setSidebarOpen] = useState(false);
     const [viewMode, setViewMode] = useState('grid');
     const [modalMode, setModalMode] = useState('view');
     const [showAnalytics, setShowAnalytics] = useState(false);
@@ -387,30 +391,52 @@ const Assets = () => {
                 onToggleFilters={() => setShowFilters(!showFilters)}
                 stats={stats}
                 onQuickAction={handleQuickAction}
+                isMobile={isMobile}
+                isOpen={sidebarOpen}
+                onClose={() => setSidebarOpen(false)}
             />
+            {isMobile && sidebarOpen && (
+              <div
+                className="fixed inset-0 bg-black/50 z-40"
+                onClick={() => setSidebarOpen(false)}
+              />
+            )}
             <div className="flex-1 min-w-0 overflow-y-auto">
-                <div className="max-w-7xl mx-auto p-6">
+              {isMobile && (
+                <div className="bg-dark-900 border-b border-dark-700 p-4 flex items-center justify-between">
+                  <button
+                    onClick={() => setSidebarOpen(true)}
+                    aria-label="Open menu"
+                    className="p-2 rounded-lg hover:bg-dark-800 transition-colors"
+                  >
+                    <Menu size={20} className="text-gray-400" />
+                  </button>
+                  <h1 className="text-lg font-semibold text-gray-100">Assets</h1>
+                  <div className="w-10" />
+                </div>
+              )}
+                <div className="max-w-7xl mx-auto p-4 sm:p-6">
                     <div className="mb-8">
-                        <div className="flex items-center justify-between mb-4">
-                            <a href="/dashboard" className="flex items-center space-x-2 text-gray-400 hover:text-gray-300">
-                                <ArrowLeft size={20} /><span>Back to Dashboard</span>
+                        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                            <a href="/dashboard" aria-label="Back to Dashboard" className="flex items-center space-x-2 text-gray-400 hover:text-gray-300">
+                                <ArrowLeft size={20} /><span className="hidden sm:inline">Back to Dashboard</span>
                             </a>
-                            <div className="flex items-center space-x-3">
-                                <button onClick={handleCreateAsset} className="btn-primary flex items-center space-x-2">
+                            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                                <button onClick={handleCreateAsset} className="btn-primary flex items-center space-x-2 whitespace-nowrap">
                                     <Plus size={16} /><span>Add Asset</span>
                                 </button>
-                                <button onClick={() => setShowBulkAssetModal(true)} className="btn-secondary flex items-center space-x-2">
-                                    <Zap size={16} /><span>Bulk Entry</span>
+                                <button onClick={() => setShowBulkAssetModal(true)} aria-label="Bulk Entry" title="Bulk Entry" className="btn-secondary flex items-center space-x-2">
+                                    <Zap size={16} /><span className="hidden sm:inline">Bulk Entry</span>
                                 </button>
-                                <button onClick={() => handleRefresh(false)} className="btn-secondary flex items-center space-x-2">
-                                    <RefreshCw size={16} /><span>Refresh</span>
+                                <button onClick={() => handleRefresh(false)} aria-label="Refresh" title="Refresh" className="btn-secondary flex items-center space-x-2">
+                                    <RefreshCw size={16} /><span className="hidden sm:inline">Refresh</span>
                                 </button>
-                                <button onClick={() => setAutoRefresh(!autoRefresh)} className={`btn-outline flex items-center space-x-2 ${autoRefresh ? 'bg-primary-600 text-white' : ''}`}>
+                                <button onClick={() => setAutoRefresh(!autoRefresh)} aria-label="Toggle auto-refresh" title={autoRefresh ? 'Auto-Refresh ON' : 'Auto-Refresh OFF'} className={`btn-outline flex items-center space-x-2 ${autoRefresh ? 'bg-primary-600 text-white' : ''}`}>
                                     <RefreshCw size={16} className={autoRefresh ? 'animate-spin' : ''} />
-                                    <span>{autoRefresh ? 'Auto-Refresh ON' : 'Auto-Refresh OFF'}</span>
+                                    <span className="hidden sm:inline">{autoRefresh ? 'Auto-Refresh ON' : 'Auto-Refresh OFF'}</span>
                                 </button>
-                                <button onClick={() => setShowFilters(!showFilters)} className="btn-outline flex items-center space-x-2">
-                                    <Filter size={16} /><span>Filters</span>
+                                <button onClick={() => setShowFilters(!showFilters)} aria-label="Filters" title="Filters" className="btn-outline flex items-center space-x-2">
+                                    <Filter size={16} /><span className="hidden sm:inline">Filters</span>
                                 </button>
                             </div>
                         </div>
