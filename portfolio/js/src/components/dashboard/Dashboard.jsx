@@ -71,7 +71,11 @@ const Dashboard = () => {
       assets: true,
     });
 
-    // 1. Load Transactions (fastest)
+    // Independent sections load in parallel so a slow one doesn't block the others
+    await Promise.all([loadTransactions(), loadTopAssets(), loadPortfolios()]);
+  };
+
+  const loadTransactions = async () => {
     try {
       const transactionsResponse = await transactionAPI.getTransactions({
         limit: 5,
@@ -88,8 +92,9 @@ const Dashboard = () => {
     } finally {
       setLoadingStates((prev) => ({ ...prev, transactions: false }));
     }
+  };
 
-    // 2. Load Assets (second fastest)
+  const loadTopAssets = async () => {
     try {
       const assetsResponse = await marketAPI.getAssets({
         limit: 10,
@@ -106,8 +111,9 @@ const Dashboard = () => {
     } finally {
       setLoadingStates((prev) => ({ ...prev, assets: false }));
     }
+  };
 
-    // 3. Load Portfolios (slowest)
+  const loadPortfolios = async () => {
     try {
       const portfolios = await portfolioAPI.getPortfolios();
       if (portfolios && portfolios.length > 0) {
@@ -404,7 +410,7 @@ const Dashboard = () => {
                                 {transaction.asset.symbol}
                               </p>
                               <p className="text-xs text-gray-400">
-                                {formatDateTime(transaction.created_at)}
+                                {formatDateTime(transaction.transaction_date)}
                               </p>
                             </div>
                           </div>
