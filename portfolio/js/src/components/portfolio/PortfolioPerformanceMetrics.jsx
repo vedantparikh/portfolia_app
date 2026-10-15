@@ -14,10 +14,10 @@ import { portfolioCalculationsAPI } from "../../services/api";
 import {
   formatCurrency,
   formatMetricValue,
-  getMetricColor,
-  getMetricIcon
+  getMetricColor
 } from "../../utils/formatters.jsx";
 import LoadingSpinner from "../shared/LoadingSpinner";
+import StatCard from "../shared/StatCard";
 
 const PortfolioPerformanceMetrics = ({ portfolio }) => {
   const [loading, setLoading] = useState(false);
@@ -227,73 +227,30 @@ const PortfolioPerformanceMetrics = ({ portfolio }) => {
       {/* Performance Metrics Grid */}
       {performanceData && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {/* CAGR */}
-          <div className="card p-6">
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="text-sm font-medium text-gray-400">CAGR</h4>
-              {getMetricIcon(performanceData.metrics?.cagr)}
-            </div>
-            <p
-              className={`text-2xl font-bold ${getMetricColor(
-                performanceData.metrics?.cagr
-              )}`}
-            >
-              {formatMetricValue(performanceData.metrics?.cagr, true)}
-            </p>
-            <p className="text-xs text-gray-500 mt-1">
-              Compound Annual Growth Rate
-            </p>
-          </div>
-
-          {/* XIRR */}
-          <div className="card p-6">
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="text-sm font-medium text-gray-400">XIRR</h4>
-              {getMetricIcon(performanceData.metrics?.xirr)}
-            </div>
-            <p
-              className={`text-2xl font-bold ${getMetricColor(
-                performanceData.metrics?.xirr
-              )}`}
-            >
-              {formatMetricValue(performanceData.metrics?.xirr, true)}
-            </p>
-            <p className="text-xs text-gray-500 mt-1">
-              Extended Internal Rate of Return
-            </p>
-          </div>
-
-          {/* TWR */}
-          <div className="card p-6">
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="text-sm font-medium text-gray-400">TWR</h4>
-              {getMetricIcon(performanceData.metrics?.twr)}
-            </div>
-            <p
-              className={`text-2xl font-bold ${getMetricColor(
-                performanceData.metrics?.twr
-              )}`}
-            >
-              {formatMetricValue(performanceData.metrics?.twr, true)}
-            </p>
-            <p className="text-xs text-gray-500 mt-1">Time-Weighted Return</p>
-          </div>
-
-          {/* MWR */}
-          <div className="card p-6">
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="text-sm font-medium text-gray-400">MWR</h4>
-              {getMetricIcon(performanceData.metrics?.mwr)}
-            </div>
-            <p
-              className={`text-2xl font-bold ${getMetricColor(
-                performanceData.metrics?.mwr
-              )}`}
-            >
-              {formatMetricValue(performanceData.metrics?.mwr, true)}
-            </p>
-            <p className="text-xs text-gray-500 mt-1">Money-Weighted Return</p>
-          </div>
+          <StatCard
+            label="CAGR"
+            value={formatMetricValue(performanceData.metrics?.cagr, true)}
+            valueClassName={getMetricColor(performanceData.metrics?.cagr)}
+            sub="Compound Annual Growth Rate"
+          />
+          <StatCard
+            label="XIRR"
+            value={formatMetricValue(performanceData.metrics?.xirr, true)}
+            valueClassName={getMetricColor(performanceData.metrics?.xirr)}
+            sub="Extended Internal Rate of Return"
+          />
+          <StatCard
+            label="TWR"
+            value={formatMetricValue(performanceData.metrics?.twr, true)}
+            valueClassName={getMetricColor(performanceData.metrics?.twr)}
+            sub="Time-Weighted Return"
+          />
+          <StatCard
+            label="MWR"
+            value={formatMetricValue(performanceData.metrics?.mwr, true)}
+            valueClassName={getMetricColor(performanceData.metrics?.mwr)}
+            sub="Money-Weighted Return"
+          />
         </div>
       )}
       {/* Investment Timing Insight Card */}

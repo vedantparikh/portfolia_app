@@ -24,10 +24,10 @@ import toast from 'react-hot-toast';
 import { InView } from 'react-intersection-observer';
 import { portfolioAPI, transactionAPI, userAssetsAPI } from '../../services/api';
 import assetCache from '../../services/assetCache';
-import { formatVolume } from '../../utils/formatters';
+import { formatVolume, getChangeColor } from '../../utils/formatters';
 import AssetAnalyticsView from '../analytics/AssetAnalyticsView';
 import IndicatorConfigurationManager from '../analytics/IndicatorConfigurationManager';
-import { LoadingSpinner, Sidebar } from '../shared';
+import { LoadingSpinner, Sidebar, StatCard } from '../shared';
 import CreateTransactionModal from '../transactions/CreateTransactionModal';
 import AssetCard from './AssetCard';
 import AssetFilters from './AssetFilters';
@@ -457,168 +457,14 @@ const Assets = () => {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                        {/* Card 1: Top Gainer (24h) */}
-                        <div className="card p-6">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm text-gray-400">Top Gainer (24h)</p>
-                                    <div className="my-1">
-                                        <p
-                                            title={stats.topGainer.symbol}
-                                            className="text-xl font-bold text-gray-100"
-                                        >
-                                            {stats.topGainer.symbol}
-                                        </p>
-                                        <p className="text-sm text-gray-500 truncate max-w-32">{stats.topGainer.name}</p>
-                                    </div>
-                                    <p className="text-sm font-semibold text-success-400">
-                                        +{stats.topGainer.value.toFixed(2)}%
-                                    </p>
-                                </div>
-                                <div className="w-12 h-12 bg-success-600/20 rounded-lg flex items-center justify-center">
-                                    <Award size={24} className="text-success-400" />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Card 2: Highest Dividend Yield */}
-                        <div className="card p-6">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm text-gray-400">Highest Dividend Yield</p>
-                                    <div className="my-1">
-                                        <p
-                                            title={stats.highestDividend.symbol}
-                                            className="text-xl font-bold text-gray-100"
-                                        >
-                                            {stats.highestDividend.symbol}
-                                        </p>
-                                        <p className="text-sm text-gray-500 truncate max-w-32">{stats.highestDividend.name}</p>
-                                    </div>
-                                    <p className="text-sm font-semibold text-primary-400">
-                                        {stats.highestDividend.value.toFixed(2)}% Yield
-                                    </p>
-                                </div>
-                                <div className="w-12 h-12 bg-primary-600/20 rounded-lg flex items-center justify-center">
-                                    <Landmark size={24} className="text-primary-400" />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Card 3: Best Value (Lowest P/E) */}
-                        <div className="card p-6">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm text-gray-400">Best Value (Lowest P/E)</p>
-                                    <div className="my-1">
-                                        <p
-                                            title={stats.bestValue.symbol}
-                                            className="text-xl font-bold text-gray-100"
-                                        >
-                                            {stats.bestValue.symbol}
-                                        </p>
-                                        <p className="text-sm text-gray-500 truncate max-w-32">{stats.bestValue.name}</p>
-                                    </div>
-                                    <p className="text-sm font-semibold text-info-400">
-                                        {stats.bestValue.value.toFixed(2)} P/E Ratio
-                                    </p>
-                                </div>
-                                <div className="w-12 h-12 bg-info-600/20 rounded-lg flex items-center justify-center">
-                                    <Gem size={24} className="text-info-400" />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Card 4: Most Traded (24h) */}
-                        <div className="card p-6">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm text-gray-400">Most Traded (24h)</p>
-                                    <div className="my-1">
-                                        <p
-                                            title={stats.mostTraded.symbol}
-                                            className="text-xl font-bold text-gray-100"
-                                        >
-                                            {stats.mostTraded.symbol}
-                                        </p>
-                                        <p className="text-sm text-gray-500 truncate max-w-32">{stats.mostTraded.name}</p>
-                                    </div>
-                                    <p className="text-sm font-semibold text-warning-400">
-                                        {formatVolume(stats.mostTraded.value)} Volume
-                                    </p>
-                                </div>
-                                <div className="w-12 h-12 bg-warning-600/20 rounded-lg flex items-center justify-center">
-                                    <Zap size={24} className="text-warning-400" />
-                                </div>
-                            </div>
-                        </div>
-                        {/* Card 5: Most Stable */}
-                        <div className="card p-6">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm text-gray-400">Most Stable</p>
-                                    <div className="my-1">
-                                        <p title={stats.mostStable.symbol} className="text-xl font-bold text-gray-100">{stats.mostStable.symbol}</p>
-                                        <p className="text-sm text-gray-500">{stats.mostStable.name}</p>
-                                    </div>
-                                    <p className="text-sm font-semibold text-success-400">{stats.mostStable.value.toFixed(2)} Beta</p>
-                                </div>
-                                <div className="w-12 h-12 bg-success-600/20 rounded-lg flex items-center justify-center">
-                                    <Shield size={24} className="text-success-400" />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Card 6: Highest Growth */}
-                        <div className="card p-6">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm text-gray-400">Highest Growth</p>
-                                    <div className="my-1">
-                                        <p title={stats.highestGrowth.symbol} className="text-xl font-bold text-gray-100">{stats.highestGrowth.symbol}</p>
-                                        <p className="text-sm text-gray-500 truncate max-w-32">{stats.highestGrowth.name}</p>
-                                    </div>
-                                    <p className="text-sm font-semibold text-primary-400">+{(stats.highestGrowth.value * 100).toFixed(2)}% Revenue</p>
-                                </div>
-                                <div className="w-12 h-12 bg-primary-600/20 rounded-lg flex items-center justify-center">
-                                    <TrendingUp size={24} className="text-primary-400" />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Card 7: Strongest Momentum */}
-                        <div className="card p-6">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm text-gray-400">Strongest Momentum</p>
-                                    <div className="my-1">
-                                        <p title={stats.strongestMomentum.symbol} className="text-xl font-bold text-gray-100">{stats.strongestMomentum.symbol}</p>
-                                        <p className="text-sm text-gray-500 truncate max-w-32">{stats.strongestMomentum.name}</p>
-                                    </div>
-                                    <p className="text-sm font-semibold text-info-400">{stats.strongestMomentum.value.toFixed(1)}% of 52-Wk High</p>
-                                </div>
-                                <div className="w-12 h-12 bg-info-600/20 rounded-lg flex items-center justify-center">
-                                    <ChevronsUp size={24} className="text-info-400" />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Card 8: Top Loser (24h) */}
-                        <div className="card p-6">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm text-gray-400">Top Loser (24h)</p>
-                                    <div className="my-1">
-                                        <p title={stats.topLoser.symbol} className="text-xl font-bold text-gray-100">{stats.topLoser.symbol}</p>
-                                        <p className="text-sm text-gray-500 truncate max-w-32">{stats.topLoser.name}</p>
-                                    </div>
-                                    <p className="text-sm font-semibold text-danger-400">{stats.topLoser.value.toFixed(2)}%</p>
-                                </div>
-                                <div className="w-12 h-12 bg-danger-600/20 rounded-lg flex items-center justify-center">
-                                    <AlertTriangle size={24} className="text-danger-400" />
-                                </div>
-                            </div>
-                        </div>
+                        <StatCard label="Top Gainer (24h)" icon={Award} tone="success" value={stats.topGainer.symbol} valueTitle={stats.topGainer.symbol} sub={stats.topGainer.name} detail={`+${stats.topGainer.value.toFixed(2)}%`} detailClassName={getChangeColor(stats.topGainer.value)} />
+                        <StatCard label="Highest Dividend Yield" icon={Landmark} value={stats.highestDividend.symbol} valueTitle={stats.highestDividend.symbol} sub={stats.highestDividend.name} detail={`${stats.highestDividend.value.toFixed(2)}% Yield`} />
+                        <StatCard label="Best Value (Lowest P/E)" icon={Gem} tone="gray" value={stats.bestValue.symbol} valueTitle={stats.bestValue.symbol} sub={stats.bestValue.name} detail={`${stats.bestValue.value.toFixed(2)} P/E Ratio`} />
+                        <StatCard label="Most Traded (24h)" icon={Zap} tone="warning" value={stats.mostTraded.symbol} valueTitle={stats.mostTraded.symbol} sub={stats.mostTraded.name} detail={`${formatVolume(stats.mostTraded.value)} Volume`} />
+                        <StatCard label="Most Stable" icon={Shield} tone="success" value={stats.mostStable.symbol} valueTitle={stats.mostStable.symbol} sub={stats.mostStable.name} detail={`${stats.mostStable.value.toFixed(2)} Beta`} />
+                        <StatCard label="Highest Growth" icon={TrendingUp} value={stats.highestGrowth.symbol} valueTitle={stats.highestGrowth.symbol} sub={stats.highestGrowth.name} detail={`+${(stats.highestGrowth.value * 100).toFixed(2)}% Revenue`} />
+                        <StatCard label="Strongest Momentum" icon={ChevronsUp} tone="gray" value={stats.strongestMomentum.symbol} valueTitle={stats.strongestMomentum.symbol} sub={stats.strongestMomentum.name} detail={`${stats.strongestMomentum.value.toFixed(1)}% of 52-Wk High`} />
+                        <StatCard label="Top Loser (24h)" icon={AlertTriangle} tone="danger" value={stats.topLoser.symbol} valueTitle={stats.topLoser.symbol} sub={stats.topLoser.name} detail={`${stats.topLoser.value.toFixed(2)}%`} detailClassName={getChangeColor(stats.topLoser.value)} />
                     </div>
 
                     {showFilters && (

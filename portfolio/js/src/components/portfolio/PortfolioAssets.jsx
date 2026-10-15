@@ -15,8 +15,9 @@ import { portfolioAPI, transactionAPI, userAssetsAPI } from '../../services/api'
 import AssetFilters from '../assets/AssetFilters';
 import AssetModal from '../assets/AssetModal';
 import LoadingSpinner from '../shared/LoadingSpinner';
+import StatCard from '../shared/StatCard';
 import CreateTransactionModal from '../transactions/CreateTransactionModal';
-import { formatCurrency, formatPercentage } from '../../utils/formatters.jsx';
+import { formatCurrency, formatPercentage, getChangeColor } from '../../utils/formatters.jsx';
 import PortfolioAssetCard from './PortfolioAssetCard';
 
 
@@ -418,66 +419,10 @@ const PortfolioAssets = ({ portfolio }) => {
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="card p-6">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm text-gray-400">Best Performer</p>
-                            <p className="text-xl font-bold text-gray-100 truncate" title={highlights.bestPerformer.name}>{highlights.bestPerformer.symbol}</p>
-                            <p className="text-xs text-gray-500">{highlights.bestPerformer.name}</p>
-                            <p className="text-sm font-semibold text-success-400">
-                                {formatPercentage(highlights.bestPerformer.value)}
-                            </p>
-                        </div>
-                        <div className="w-12 h-12 bg-success-600/20 rounded-lg flex items-center justify-center">
-                            <Award size={24} className="text-success-400" />
-                        </div>
-                    </div>
-                </div>
-                <div className="card p-6">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm text-gray-400">Largest Holding</p>
-                            <p className="text-xl font-bold text-gray-100 truncate" title={highlights.largestHolding.name}>{highlights.largestHolding.symbol}</p>
-                            <p className="text-xs text-gray-500">{highlights.largestHolding.name}</p>
-                            <p className="text-sm font-semibold text-primary-400">
-                                {formatCurrency(highlights.largestHolding.value)}
-                            </p>
-                        </div>
-                        <div className="w-12 h-12 bg-primary-600/20 rounded-lg flex items-center justify-center">
-                            <Gem size={24} className="text-primary-400" />
-                        </div>
-                    </div>
-                </div>
-                <div className="card p-6">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm text-gray-400">Top Contributor</p>
-                            <p className="text-xl font-bold text-gray-100 truncate" title={highlights.topContributor.name}>{highlights.topContributor.symbol}</p>
-                            <p className="text-xs text-gray-500">{highlights.topContributor.name}</p>
-                            <p className="text-sm font-semibold text-success-400">
-                                {highlights.topContributor.value >= 0 ? '+' : ''}{formatCurrency(highlights.topContributor.value)}
-                            </p>
-                        </div>
-                        <div className="w-12 h-12 bg-success-600/20 rounded-lg flex items-center justify-center">
-                            <TrendingUp size={24} className="text-success-400" />
-                        </div>
-                    </div>
-                </div>
-                <div className="card p-6">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm text-gray-400">Daily Mover</p>
-                            <p className="text-xl font-bold text-gray-100 truncate" title={highlights.dailyMover.name}>{highlights.dailyMover.symbol}</p>
-                            <p className="text-xs text-gray-500">{highlights.dailyMover.name}</p>
-                            <p className={`text-sm font-semibold ${highlights.dailyMover.value >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
-                                {highlights.dailyMover.value >= 0 ? '+' : ''}{formatCurrency(highlights.dailyMover.value)}
-                            </p>
-                        </div>
-                        <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${highlights.dailyMover.value >= 0 ? 'bg-success-600/20' : 'bg-danger-600/20'}`}>
-                            <Activity size={24} className={highlights.dailyMover.value >= 0 ? 'text-success-400' : 'text-danger-400'} />
-                        </div>
-                    </div>
-                </div>
+                <StatCard label="Best Performer" icon={Award} tone="success" value={highlights.bestPerformer.symbol} valueTitle={highlights.bestPerformer.name} sub={highlights.bestPerformer.name} detail={formatPercentage(highlights.bestPerformer.value)} detailClassName={getChangeColor(highlights.bestPerformer.value)} />
+                <StatCard label="Largest Holding" icon={Gem} value={highlights.largestHolding.symbol} valueTitle={highlights.largestHolding.name} sub={highlights.largestHolding.name} detail={formatCurrency(highlights.largestHolding.value)} />
+                <StatCard label="Top Contributor" icon={TrendingUp} tone="success" value={highlights.topContributor.symbol} valueTitle={highlights.topContributor.name} sub={highlights.topContributor.name} detail={`${highlights.topContributor.value >= 0 ? '+' : ''}${formatCurrency(highlights.topContributor.value)}`} detailClassName={getChangeColor(highlights.topContributor.value)} />
+                <StatCard label="Daily Mover" icon={Activity} tone={highlights.dailyMover.value >= 0 ? 'success' : 'danger'} value={highlights.dailyMover.symbol} valueTitle={highlights.dailyMover.name} sub={highlights.dailyMover.name} detail={`${highlights.dailyMover.value >= 0 ? '+' : ''}${formatCurrency(highlights.dailyMover.value)}`} detailClassName={getChangeColor(highlights.dailyMover.value)} />
             </div>
             {/* Filters */}
             {showFilters && (
