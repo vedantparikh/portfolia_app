@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { useAuth } from "../../contexts/AuthContext";
 import { assetAPI, watchlistAPI } from "../../services/api";
 import EmailVerificationPrompt from "../auth/EmailVerificationPrompt";
