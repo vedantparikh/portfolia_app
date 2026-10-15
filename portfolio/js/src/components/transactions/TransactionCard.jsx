@@ -39,66 +39,57 @@ const TransactionCard = ({ transaction, onEdit, onDelete }) => {
     }
   };
 
+  const type = transaction.transaction_type || transaction.type || "unknown";
+  const subtitle = [
+    transaction.asset?.name,
+    transaction.portfolio?.name,
+    formatDate(transaction.transaction_date),
+    `#${transaction.id}`,
+  ].filter(Boolean);
+
   return (
-    <div className="card p-6 hover:bg-dark-800/50 transition-colors">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center justify-center w-12 h-12 bg-dark-800 rounded-lg">
-            {getTransactionIcon(
-              transaction.transaction_type || transaction.type
-            )}
+    <div className="card px-4 py-3 hover:bg-dark-800/50 transition-colors">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-center justify-center w-10 h-10 bg-dark-800 rounded-lg shrink-0">
+            {getTransactionIcon(type)}
           </div>
-          <div>
-            <div className="flex items-center space-x-2 mb-1">
-              <h3 className="text-lg font-semibold text-gray-100">
-                {(
-                  transaction.transaction_type ||
-                  transaction.type ||
-                  "unknown"
-                ).toUpperCase()}{" "}
-                {transaction.symbol}
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h3 className="text-base font-semibold text-gray-100">
+                <span className={getTransactionColor(type)}>
+                  {type.toUpperCase()}
+                </span>{" "}
+                {transaction.asset?.symbol || transaction.symbol}
               </h3>
               <span
-                className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(
                   transaction.status
                 )}`}
               >
                 {getStatusText(transaction.status)}
               </span>
             </div>
-            <div className="flex items-center space-x-4 text-sm text-gray-400 mb-1">
-              <span>Portfolio: {transaction.portfolio.name || "unknown"}</span>
-              <span>•</span>
-              <span>{formatDate(transaction.transaction_date)}</span>
+            <div className="text-sm text-gray-400 truncate">
+              {subtitle.join(" · ")}
             </div>
-            {/* Asset Information */}
-            {transaction.asset.name && (
-              <div className="text-sm text-gray-500">
-                {transaction.asset.name}
-                {transaction.asset.exchange && transaction.asset.asset_type && (
-                  <span className="ml-2">
-                    • {transaction.asset.exchange} •{" "}
-                    {transaction.asset.asset_type}
-                  </span>
-                )}
+            {transaction.notes && (
+              <div
+                className="text-xs text-gray-500 truncate"
+                title={transaction.notes}
+              >
+                {transaction.notes}
               </div>
             )}
           </div>
         </div>
 
-        <div className="flex items-center space-x-6">
-          {/* Transaction Details */}
+        <div className="flex items-center gap-6 shrink-0">
           <div className="text-right">
-            <div className="flex items-center space-x-2 mb-1">
-              {getTransactionArrow(transaction.transaction_type)}
-              <span
-                className={`text-lg font-semibold ${getTransactionColor(
-                  transaction.transaction_type
-                )}`}
-              >
-                {(transaction.transaction_type || transaction.type) === "buy"
-                  ? "-"
-                  : "+"}
+            <div className="flex items-center justify-end gap-2">
+              {getTransactionArrow(type)}
+              <span className="text-base font-semibold text-gray-100">
+                {type === "buy" ? "-" : "+"}
                 {formatCurrency(Math.abs(transaction.total_amount) || 0)}
               </span>
             </div>
@@ -108,9 +99,8 @@ const TransactionCard = ({ transaction, onEdit, onDelete }) => {
             </div>
           </div>
 
-          {/* Fees */}
-          {transaction.fees && transaction.fees > 0 && (
-            <div className="text-right">
+          {Number(transaction.fees) > 0 && (
+            <div className="text-right hidden md:block">
               <div className="text-sm text-gray-400">Fees</div>
               <div className="text-sm font-medium text-gray-300">
                 {formatCurrency(transaction.fees)}
@@ -118,12 +108,12 @@ const TransactionCard = ({ transaction, onEdit, onDelete }) => {
             </div>
           )}
 
-          {/* Actions */}
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-1">
             <button
               onClick={onEdit}
               className="p-2 rounded-lg hover:bg-dark-800 transition-colors"
               title="Edit transaction"
+              aria-label="Edit transaction"
             >
               <Edit size={16} className="text-gray-400" />
             </button>
@@ -131,57 +121,12 @@ const TransactionCard = ({ transaction, onEdit, onDelete }) => {
               onClick={onDelete}
               className="p-2 rounded-lg hover:bg-danger-600/20 transition-colors"
               title="Delete transaction"
+              aria-label="Delete transaction"
             >
               <Trash2 size={16} className="text-danger-400" />
             </button>
           </div>
         </div>
-      </div>
-
-      {/* Additional Details */}
-      <div className="mt-4 pt-4 border-t border-dark-700">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-          <div>
-            <span className="text-gray-400">Order ID:</span>
-            <span className="text-gray-100 ml-2 font-mono">
-              #{transaction.id}
-            </span>
-          </div>
-          <div>
-            <span className="text-gray-400">Type:</span>
-            <span
-              className={`ml-2 font-medium ${getTransactionColor(
-                transaction.transaction_type || transaction.type
-              )}`}
-            >
-              {(
-                transaction.transaction_type ||
-                transaction.type ||
-                "unknown"
-              ).toUpperCase()}
-            </span>
-          </div>
-          <div>
-            <span className="text-gray-400">Quantity:</span>
-            <span className="text-gray-100 ml-2 font-medium">
-              {formatQuantity(transaction.quantity)}
-            </span>
-          </div>
-          <div>
-            <span className="text-gray-400">Price:</span>
-            <span className="text-gray-100 ml-2 font-medium">
-              {formatCurrency(transaction.price)}
-            </span>
-          </div>
-        </div>
-
-        {/* Notes */}
-        {transaction.notes && (
-          <div className="mt-3 pt-3 border-t border-dark-800">
-            <span className="text-gray-400 text-sm">Notes:</span>
-            <p className="text-gray-300 text-sm mt-1">{transaction.notes}</p>
-          </div>
-        )}
       </div>
     </div>
   );

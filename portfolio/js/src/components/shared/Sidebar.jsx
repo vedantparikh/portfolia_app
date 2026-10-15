@@ -78,7 +78,7 @@ const Sidebar = ({
   return (
     <div
       className={`
-            fixed lg:static inset-y-0 left-0 z-50 w-64 bg-dark-900 border-r border-dark-700 
+            fixed lg:sticky lg:top-0 inset-y-0 left-0 z-50 w-64 h-screen flex flex-col shrink-0 bg-dark-900 border-r border-dark-700
             transform transition-transform duration-300 ease-in-out lg:translate-x-0
             ${isOpen ? "translate-x-0" : "-translate-x-full"}
         `}
@@ -109,109 +109,112 @@ const Sidebar = ({
         </div>
       </div>
 
-      {/* Navigation Menu */}
-      <nav className="flex-1 p-4 space-y-2">
-        {navigationItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = currentView === item.id;
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        {/* Navigation Menu */}
+        <nav className="p-4 space-y-2">
+          {navigationItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = currentView === item.id;
 
-          // Get preloader props based on item type
-          const getPreloaderProps = () => {
-            if (item.id === "transactions") return transactionButtonProps;
-            if (item.id === "portfolio") return portfolioButtonProps;
-            return {};
-          };
+            // Get preloader props based on item type
+            const getPreloaderProps = () => {
+              if (item.id === "transactions") return transactionButtonProps;
+              if (item.id === "portfolio") return portfolioButtonProps;
+              return {};
+            };
 
-          return (
-            <Link
-              key={item.id}
-              to={item.href}
-              className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
-                isActive
-                  ? "bg-primary-600/20 text-primary-400"
-                  : "text-gray-300 hover:bg-dark-800"
-              }`}
-              {...getPreloaderProps()}
-            >
-              <Icon size={18} />
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
-      </nav>
+            return (
+              <Link
+                key={item.id}
+                to={item.href}
+                className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+                  isActive
+                    ? "bg-primary-600/20 text-primary-400"
+                    : "text-gray-300 hover:bg-dark-800"
+                }`}
+                {...getPreloaderProps()}
+              >
+                <Icon size={18} />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
 
-      {/* Portfolio Selector (for Portfolio and Transactions views) */}
-      {(currentView === "portfolio" || currentView === "transactions") &&
-        portfolios.length > 0 && (
-          <div className="p-4 border-t border-dark-700">
-            <h3 className="text-sm font-medium text-gray-300 mb-3">
-              Active Portfolio
-            </h3>
-            <select
-              value={selectedPortfolio?.id || ""}
-              onChange={(e) => {
-                const portfolio = portfolios.find(
-                  (p) => p.id === parseInt(e.target.value)
-                );
-                onPortfolioChange(portfolio);
-              }}
-              className="w-full px-3 py-2 bg-dark-800 border border-dark-600 rounded-lg text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
-            >
-              {portfolios.map((portfolio) => (
-                <option key={portfolio.id} value={portfolio.id}>
-                  {portfolio.name}
-                </option>
-              ))}
-            </select>
+        {/* Portfolio Selector (for Portfolio and Transactions views) */}
+        {(currentView === "portfolio" || currentView === "transactions") &&
+          portfolios.length > 0 && (
+            <div className="p-4 border-t border-dark-700">
+              <h3 className="text-sm font-medium text-gray-300 mb-3">
+                Active Portfolio
+              </h3>
+              <select
+                value={selectedPortfolio?.id || ""}
+                onChange={(e) => {
+                  const portfolio = portfolios.find(
+                    (p) => p.id === parseInt(e.target.value)
+                  );
+                  onPortfolioChange(portfolio);
+                }}
+                className="w-full px-3 py-2 bg-dark-800 border border-dark-600 rounded-lg text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                {portfolios.map((portfolio) => (
+                  <option key={portfolio.id} value={portfolio.id}>
+                    {portfolio.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+        {/* Search */}
+        <div className="p-4 border-t border-dark-700">
+          <div className="relative">
+            <Search
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+              size={16}
+            />
+            <input
+              type="text"
+              placeholder="Search..."
+              value={searchQuery}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-dark-800 border border-dark-600 rounded-lg text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
           </div>
-        )}
-
-      {/* Search */}
-      <div className="p-4 border-t border-dark-700">
-        <div className="relative">
-          <Search
-            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-            size={16}
-          />
-          <input
-            type="text"
-            placeholder="Search..."
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-dark-800 border border-dark-600 rounded-lg text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
-          />
         </div>
-      </div>
 
-      {/* Quick Actions */}
-      <div className="p-4 border-t border-dark-700">
-        <h3 className="text-sm font-medium text-gray-300 mb-3">
-          Quick Actions
-        </h3>
-        <div className="space-y-2">
-          <button
-            onClick={() => onQuickAction("create-portfolio")}
-            className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-300 hover:bg-dark-800 transition-colors"
-          >
-            <Plus size={16} />
-            <span className="text-sm">New Portfolio</span>
-          </button>
-          <button
-            onClick={() => onQuickAction("create-transaction")}
-            className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-300 hover:bg-dark-800 transition-colors"
-            {...quickCreateProps}
-          >
-            <Plus size={16} />
-            <span className="text-sm">New Transaction</span>
-          </button>
-          <button
-            onClick={() => onQuickAction("refresh")}
-            className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-300 hover:bg-dark-800 transition-colors"
-          >
-            <RefreshCw size={16} />
-            <span className="text-sm">Refresh Data</span>
-          </button>
+        {/* Quick Actions */}
+        <div className="p-4 border-t border-dark-700">
+          <h3 className="text-sm font-medium text-gray-300 mb-3">
+            Quick Actions
+          </h3>
+          <div className="space-y-2">
+            <button
+              onClick={() => onQuickAction("create-portfolio")}
+              className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-300 hover:bg-dark-800 transition-colors"
+            >
+              <Plus size={16} />
+              <span className="text-sm">New Portfolio</span>
+            </button>
+            <button
+              onClick={() => onQuickAction("create-transaction")}
+              className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-300 hover:bg-dark-800 transition-colors"
+              {...quickCreateProps}
+            >
+              <Plus size={16} />
+              <span className="text-sm">New Transaction</span>
+            </button>
+            <button
+              onClick={() => onQuickAction("refresh")}
+              className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-300 hover:bg-dark-800 transition-colors"
+            >
+              <RefreshCw size={16} />
+              <span className="text-sm">Refresh Data</span>
+            </button>
+          </div>
         </div>
+
       </div>
 
       {/* Logout Button */}
