@@ -11,11 +11,11 @@ redis==8.1.0
 
 # Data Processing
 polars==0.20.1
-numpy>=1.21.6,<1.28.0
+numpy==2.5.4
 pandas==2.3.3
 yfinance==0.2.66
 yahooquery==2.4.1
-pyarrow==21.0.0
+pyarrow==26.0.0
 
 # HTTP and API
 httpx==0.28.1
