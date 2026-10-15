@@ -43,21 +43,11 @@ import hashlib
 import logging
 import sys
 import time
-from datetime import date
-from datetime import datetime
+from datetime import date, datetime, timedelta, timezone
 from datetime import time as dt_time
-from datetime import timedelta
-from datetime import timezone
 from decimal import Decimal
 from pathlib import Path
-from typing import Any
-from typing import Dict
-from typing import Iterable
-from typing import Iterator
-from typing import List
-from typing import Optional
-from typing import Sequence
-from typing import Tuple
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Sequence, Tuple
 
 import httpx
 
@@ -68,8 +58,10 @@ if str(_APP_ROOT) not in sys.path:
 from config import settings  # noqa: E402
 from core.auth.utils import get_password_hash  # noqa: E402
 from core.database.connection import SessionLocal  # noqa: E402
-from core.database.models import User  # noqa: E402
-from core.database.models import UserProfile
+from core.database.models import (  # noqa: E402
+    User,
+    UserProfile,
+)
 
 logger = logging.getLogger(__name__)
 UTC = timezone.utc

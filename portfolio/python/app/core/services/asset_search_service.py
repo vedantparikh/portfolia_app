@@ -5,7 +5,7 @@ Advanced asset search and discovery service with filtering and ranking.
 
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import and_, desc, func, or_, case
+from sqlalchemy import and_, case, desc, func, or_
 from sqlalchemy.orm import Session
 
 from core.database.models import Asset

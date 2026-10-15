@@ -81,7 +81,6 @@ async def lifespan(app: FastAPI):
     yield
 
     # Shutdown
-    shutdown_start_time = time.time()
     logger.info("🛑 Shutting down Portfolia API...")
 
     # Log final statistics

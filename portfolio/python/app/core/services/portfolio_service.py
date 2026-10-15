@@ -3,7 +3,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import and_, desc, case
+from sqlalchemy import and_, case, desc
 from sqlalchemy.orm import Session
 
 from core.database.models import (

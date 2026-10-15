@@ -5,6 +5,7 @@ from decimal import Decimal
 from typing import List, Tuple
 
 import PyPDF2
+
 from core.schemas.account_statements import (
     ParsedData,
     ParsedTransaction,

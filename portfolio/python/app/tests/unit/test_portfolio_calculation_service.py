@@ -16,7 +16,6 @@ from unittest.mock import AsyncMock, Mock, patch
 import numpy as np
 import pandas as pd
 import pytest
-
 from app.core.database.models import (
     Asset,
     Portfolio,
@@ -28,6 +27,7 @@ from app.core.database.models import (
 from app.core.services.portfolio_calculation_service import (
     PortfolioCalculationService,
 )
+
 from core.services.utils import PeriodType
 
 
@@ -885,7 +885,7 @@ class TestPortfolioCalculationService:
 
         # Mock asset transactions query
         asset_transactions = [
-            tx for tx in self.sample_transactions() if tx.asset_id == 1
+            tx for tx in self._sample_transactions() if tx.asset_id == 1
         ]
         calculation_service.db.query.return_value.filter.return_value.order_by.return_value.all.return_value = (
             asset_transactions
@@ -928,7 +928,7 @@ class TestPortfolioCalculationService:
         assert "metrics" in result
         assert "current_value" in result
 
-    def sample_transactions(self):
+    def _sample_transactions(self):
         """Helper method to create sample transactions for testing."""
         base_date = datetime(2024, 1, 1, tzinfo=timezone.utc)
 

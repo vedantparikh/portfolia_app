@@ -50,7 +50,7 @@ class PortfoliaParser(PDFParser):
 
             # Add a generic parsed from file warning if it's not already there from other errors
             if not any("Parsed from file:" in w for w in warnings):
-                warnings.insert(0, f"Parsed from file: transactions_report.pdf")
+                warnings.insert(0, "Parsed from file: transactions_report.pdf")
 
             return ParsedData(
                 provider="portfolia",

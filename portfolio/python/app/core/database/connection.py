@@ -44,7 +44,7 @@ async def init_db():
     try:
         # Test database connection
         with engine.connect() as connection:
-            result = connection.execute(text("SELECT 1"))
+            connection.execute(text("SELECT 1"))
             logger.info("Database connection established successfully")
         return True
     except Exception as e:
@@ -72,7 +72,7 @@ async def get_db_health() -> dict:
     try:
         # Test database connection
         with engine.connect() as connection:
-            result = connection.execute(text("SELECT 1"))
+            connection.execute(text("SELECT 1"))
             db_status = "healthy"
     except Exception as e:
         logger.error(f"Database health check failed: {e}")

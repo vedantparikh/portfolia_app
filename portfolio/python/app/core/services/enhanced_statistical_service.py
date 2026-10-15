@@ -7,8 +7,6 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import polars as pl
-from sqlalchemy.orm import Session
-
 from app.core.schemas.statistical_indicators import (
     IndicatorCalculationRequest,
     IndicatorCalculationResponse,
@@ -20,6 +18,7 @@ from app.core.services.analysis_configuration_service import (
 )
 from app.core.services.indicator_registry_service import IndicatorRegistryService
 from app.core.services.market_data_service import MarketDataService
+from sqlalchemy.orm import Session
 
 
 class EnhancedStatisticalService:

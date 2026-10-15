@@ -37,7 +37,9 @@ from core.schemas.portfolio_analytics import (
     UserDashboardResponse,
 )
 from core.schemas.portfolio_risk_metrics import RiskCalculationResponse
-from core.services.portfolio_advance_risk_metrics import PortfolioAdvanceRiskMetricsService
+from core.services.portfolio_advance_risk_metrics import (
+    PortfolioAdvanceRiskMetricsService,
+)
 from core.services.portfolio_analytics_service import PortfolioAnalyticsService
 from core.services.portfolio_risk_metrics_service import PortfolioRiskMetricsService
 from core.services.utils import PeriodType
@@ -507,7 +509,7 @@ async def get_portfolio_risk_metrics(
 
 
 @router.get("/portfolios/{portfolio_id}/advance-risk", response_model=AdvanceRiskCalculationResponse)
-async def get_portfolio_risk_metrics(
+async def get_portfolio_advance_risk_metrics(
         portfolio_id: int,
         period: str = Query(default=PeriodType.INCEPTION, description="Calculation period"),
         current_user: User = Depends(get_current_active_user),

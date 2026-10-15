@@ -6,7 +6,6 @@ from datetime import datetime
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
-
 from app.core.schemas.statistical_indicators import (
     ChartDataRequest,
     IndicatorCalculationRequest,

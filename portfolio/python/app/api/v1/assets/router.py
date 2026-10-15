@@ -3,7 +3,7 @@ Assets management router with authentication.
 """
 
 import time
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -23,15 +23,14 @@ from core.schemas.portfolio import (
     Asset as AssetSchema,
 )
 from core.schemas.portfolio import (
+    AssetBulkCreateRequest,
+    AssetBulkCreateResponse,
     AssetCreate,
     AssetPrice,
     AssetUpdate,
 )
 from core.schemas.portfolio import (
     AssetDetail as AssetDetailSchema,
-    AssetBulkCreateRequest,
-    FailedAssetInfo,
-    AssetBulkCreateResponse,
 )
 from core.services.market_data_service import market_data_service
 

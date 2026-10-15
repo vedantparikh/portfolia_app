@@ -107,7 +107,7 @@ class TestMomentumIndicators(unittest.TestCase):
         )
 
         # Calculate Stochastic RSI using ta package
-        ta_stoch_rsi = StochRSIIndicator(
+        StochRSIIndicator(
             close=self.pd_df["Close"], window=14, smooth1=3, smooth2=3, fillna=True
         )
 

@@ -27,7 +27,7 @@ class TestTrendIndicators(unittest.TestCase):
         """Set up test data."""
         # Create sample OHLCV data
         np.random.seed(42)
-        dates = np.arange(100)
+        np.arange(100)
 
         # Generate realistic price data
         close_prices = 100 + np.cumsum(np.random.randn(100) * 0.5)
@@ -282,7 +282,7 @@ class TestTrendIndicators(unittest.TestCase):
 
     def test_data_validation(self):
         """Test data validation."""
-        indicator = TrendIndicators(self.pl_df)
+        TrendIndicators(self.pl_df)
 
         # Test with empty DataFrame
         empty_df = pl.DataFrame()
@@ -291,7 +291,7 @@ class TestTrendIndicators(unittest.TestCase):
 
     def test_edge_cases(self):
         """Test edge cases."""
-        indicator = TrendIndicators(self.pl_df)
+        TrendIndicators(self.pl_df)
 
         # Test with very small dataset
         small_df = pl.DataFrame(
@@ -320,12 +320,12 @@ class TestTrendIndicators(unittest.TestCase):
         # Test our implementation performance
         start_time = time.time()
         indicator = TrendIndicators(self.pl_df)
-        our_result = indicator.macd_indicator()
+        indicator.macd_indicator()
         our_time = time.time() - start_time
 
         # Test ta package performance
         start_time = time.time()
-        ta_result = ta_trend.MACD(
+        ta_trend.MACD(
             close=self.pd_df["Close"],
             window_slow=26,
             window_fast=12,
@@ -349,7 +349,7 @@ class TestTrendIndicators(unittest.TestCase):
             {"close": [100, 101, 102, 101, 100, 99, 98, 97, 96, 95]}
         )
 
-        indicator = TrendIndicators(simple_data)
+        TrendIndicators(simple_data)
 
         # Test SMA calculation using convenience function
         sma_result = calculate_sma(simple_data["close"], window=5)

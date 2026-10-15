@@ -20,7 +20,7 @@ class TestMacdStrategy(unittest.TestCase):
         """Set up test data."""
         # Create sample OHLCV data
         np.random.seed(42)
-        dates = np.arange(100)
+        np.arange(100)
 
         # Generate realistic price data
         close_prices = 100 + np.cumsum(np.random.randn(100) * 0.5)

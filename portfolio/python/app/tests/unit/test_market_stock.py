@@ -9,7 +9,6 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pandas as pd
 import polars as pl
-
 from app.api.v1.market.stock import get_symbol_data, get_symbol_df, get_symbols
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

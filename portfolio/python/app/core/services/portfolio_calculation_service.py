@@ -10,13 +10,12 @@ Supports period-based calculations and benchmark comparisons.
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd  # type: ignore
 import pyxirr  # type: ignore
-from dateutil.relativedelta import relativedelta  # type: ignore
 from sqlalchemy.orm import Session
 
 from core.database.models import (
@@ -28,7 +27,7 @@ from core.database.models import (
     TransactionType,
 )
 from core.services.market_data_service import MarketDataService
-from core.services.utils import PeriodType, CashFlow
+from core.services.utils import CashFlow, PeriodType
 
 logger = logging.getLogger(__name__)
 

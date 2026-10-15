@@ -11,8 +11,6 @@ from typing import Any, Dict, List, Optional, Tuple, Type
 
 import pandas as pd
 import polars as pl
-from sqlalchemy.orm import Session
-
 from app.core.schemas.statistical_indicators import (
     IndicatorCalculationError,
     IndicatorCategory,
@@ -23,6 +21,8 @@ from app.core.schemas.statistical_indicators import (
     IndicatorPerformanceMetrics,
     IndicatorValidationError,
 )
+from sqlalchemy.orm import Session
+
 from utils.indicators.momentum_indicators import MomentumIndicators
 from utils.indicators.trend_indicators import TrendIndicators
 from utils.indicators.volatility_indicators import VolatilityIndicators
