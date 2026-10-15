@@ -6,7 +6,6 @@ import {
   Settings,
   Target,
 } from "lucide-react";
-import PropTypes from "prop-types";
 import { useCallback, useEffect, useState } from "react";
 import { statisticalIndicatorsAPI } from "../../services/api";
 import EnhancedChart from "../shared/EnhancedChart";
@@ -344,16 +343,6 @@ const AssetAnalyticsView = ({ asset, onRefresh, height = 500 }) => {
       )}
     </div>
   );
-};
-
-AssetAnalyticsView.propTypes = {
-  asset: PropTypes.shape({
-    symbol: PropTypes.string,
-    name: PropTypes.string,
-    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
-  }),
-  onRefresh: PropTypes.func,
-  height: PropTypes.number,
 };
 
 export default AssetAnalyticsView;

@@ -1,5 +1,4 @@
 import { ChevronDown, ChevronUp, HelpCircle, Plus, Trash2 } from "lucide-react";
-import PropTypes from "prop-types";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import assetCache from "../../services/assetCache";
@@ -507,18 +506,6 @@ const BulkTransactionModal = ({ isOpen, onClose, onSave, portfolios }) => {
       </div>
     </div>
   );
-};
-
-BulkTransactionModal.propTypes = {
-  isOpen: PropTypes.bool.isRequired,
-  onClose: PropTypes.func.isRequired,
-  onSave: PropTypes.func.isRequired,
-  portfolios: PropTypes.arrayOf(
-    PropTypes.shape({
-      id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
-      name: PropTypes.string.isRequired,
-    })
-  ).isRequired,
 };
 
 export default BulkTransactionModal;

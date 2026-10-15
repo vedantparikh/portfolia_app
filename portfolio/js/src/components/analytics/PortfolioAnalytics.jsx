@@ -7,7 +7,6 @@ import {
     Info,
     X,
 } from 'lucide-react';
-import PropTypes from 'prop-types';
 import { useCallback, useEffect, useState } from 'react';
 import { analyticsAPI, portfolioCalculationsAPI } from '../../services/api';
 import { formatCurrency, formatPercentage } from '../../utils/formatters.jsx';
@@ -70,7 +69,6 @@ const PortfolioAnalytics = ({ portfolioId }) => {
         }
     }, [portfolioId, selectedPeriod]);
 
-
     useEffect(() => {
         if (portfolioId) {
             setLoading(true);
@@ -83,7 +81,6 @@ const PortfolioAnalytics = ({ portfolioId }) => {
             loadAnalyticsData();
         }
     }, [portfolioId, selectedPeriod, loadAnalyticsData]); 
-
 
     const handleRefresh = () => {
         loadAnalyticsData(true);
@@ -166,7 +163,6 @@ const PortfolioAnalytics = ({ portfolioId }) => {
                     </button>
                 </div>
             </div>
-
 
             {/* Risk Analysis */}
             {!riskMetrics && !advanceRiskMetrics ? (
@@ -352,10 +348,6 @@ const PortfolioAnalytics = ({ portfolioId }) => {
 
         </div>
     );
-};
-
-PortfolioAnalytics.propTypes = {
-    portfolioId: PropTypes.string.isRequired,
 };
 
 export default PortfolioAnalytics;

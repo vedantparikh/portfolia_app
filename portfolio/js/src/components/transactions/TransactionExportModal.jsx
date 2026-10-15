@@ -1,5 +1,4 @@
 import { Download, Eye, X } from "lucide-react";
-import PropTypes from "prop-types";
 import { useState } from "react";
 import toast from "react-hot-toast";
 import { transactionPDFExportAPI } from "../../services/api";
@@ -31,7 +30,6 @@ const TransactionExportModal = ({ isOpen, onClose, portfolios = [] }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [previewData, setPreviewData] = useState(null);
-
 
   const sortByOptions = [
     { value: "transaction_date", label: "Transaction Date" },
@@ -626,17 +624,6 @@ const TransactionExportModal = ({ isOpen, onClose, portfolios = [] }) => {
       </div>
     </div>
   );
-};
-
-TransactionExportModal.propTypes = {
-  isOpen: PropTypes.bool.isRequired,
-  onClose: PropTypes.func.isRequired,
-  portfolios: PropTypes.arrayOf(
-    PropTypes.shape({
-      id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
-      name: PropTypes.string.isRequired,
-    })
-  ).isRequired,
 };
 
 export default TransactionExportModal;

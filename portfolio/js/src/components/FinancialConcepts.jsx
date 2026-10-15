@@ -20,7 +20,6 @@ import {
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
-import PropTypes from "prop-types";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Sidebar } from "./shared";
@@ -371,7 +370,6 @@ const FinancialConcepts = () => {
         example:
           "XIRR of 12% means your investments grew at 12% annually considering all transaction timing",
       },
-
 
       // Risk Metrics
       {
@@ -938,23 +936,6 @@ const FinancialConcepts = () => {
       </div>
     </div>
   );
-};
-
-// PropTypes for ConceptCard component
-ConceptCard.propTypes = {
-  concept: PropTypes.shape({
-    name: PropTypes.string.isRequired,
-    category: PropTypes.string.isRequired,
-    icon: PropTypes.elementType.isRequired,
-    description: PropTypes.string.isRequired,
-    formula: PropTypes.string.isRequired,
-    example: PropTypes.string.isRequired,
-    interpretation: PropTypes.shape({
-      good: PropTypes.string.isRequired,
-      bad: PropTypes.string.isRequired,
-      decision: PropTypes.string.isRequired,
-    }).isRequired,
-  }).isRequired,
 };
 
 export default FinancialConcepts;
