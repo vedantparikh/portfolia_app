@@ -20,7 +20,6 @@ import assetCache from '../services/assetCache';
 export const useAssetPreloader = (options = {}) => {
     const {
         preloadOnMount = false,
-        preloadOnHover = false,
         triggerRoutes = []
     } = options;
 

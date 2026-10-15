@@ -10,7 +10,7 @@ import {
   Target,
   TrendingUp,
 } from "lucide-react";
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { analyticsAPI, portfolioAPI } from "../../services/api";
 import { formatCurrency } from "../../utils/formatters.jsx";
 import {
@@ -25,8 +25,8 @@ const PortfolioDetail = ({ portfolio }) => {
   const [holdings, setHoldings] = useState([]);
   const [loadingHoldings, setLoadingHoldings] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
-  const [analyticsData, setAnalyticsData] = useState(null);
-  const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+  const [, setAnalyticsData] = useState(null);
+  const [, setLoadingAnalytics] = useState(false);
   const [sortConfig, setSortConfig] = useState({
     key: "value",
     direction: "descending",
@@ -38,6 +38,7 @@ const PortfolioDetail = ({ portfolio }) => {
       loadHoldings();
       loadAnalyticsData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload only when portfolio changes
   }, [portfolio]);
 
   const loadHoldings = async () => {
@@ -300,7 +301,7 @@ const PortfolioDetail = ({ portfolio }) => {
                         onClick={() => requestSort("todayGainLoss")}
                         className="flex items-center ml-auto hover:text-gray-200"
                       >
-                        Today's G/L {getSortIndicator("todayGainLoss")}
+                        Today&apos;s G/L {getSortIndicator("todayGainLoss")}
                       </button>
                     </th>
                     <th className="py-3 px-4 text-sm font-medium text-gray-400 text-right">

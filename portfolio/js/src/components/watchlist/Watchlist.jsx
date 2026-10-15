@@ -8,7 +8,7 @@ import {
   Star,
   Trash2,
 } from "lucide-react";
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
@@ -28,8 +28,6 @@ const Watchlist = () => {
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showAddSymbolModal, setShowAddSymbolModal] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterType, setFilterType] = useState("all");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
   const [refreshInterval, setRefreshInterval] = useState(30000); // 30 seconds default
@@ -45,7 +43,7 @@ const Watchlist = () => {
   const [removingSymbol, setRemovingSymbol] = useState(null); // Store the ID of symbol being removed
   const [creatingWatchlist, setCreatingWatchlist] = useState(false);
   const [updatingWatchlist, setUpdatingWatchlist] = useState(false);
-  const [deletingWatchlist, setDeletingWatchlist] = useState(null); // Store the ID of watchlist being deleted
+  const [, setDeletingWatchlist] = useState(null); // Store the ID of watchlist being deleted
 
   // useRef to store the interval ID so we can clear it later
   const refreshIntervalRef = useRef(null);
@@ -91,6 +89,7 @@ const Watchlist = () => {
         clearInterval(refreshIntervalRef.current);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- interval keyed on watchlist and refresh settings
   }, [selectedWatchlist, autoRefreshEnabled, refreshInterval]); // Dependencies: re-run when these change
 
   const loadWatchlists = async () => {
@@ -418,19 +417,6 @@ const Watchlist = () => {
     setViewMode("grid");
     setSelectedWatchlist(null);
   };
-
-  const filteredWatchlists = watchlists.filter((watchlist) => {
-    const matchesSearch =
-      watchlist.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      watchlist.description?.toLowerCase().includes(searchTerm.toLowerCase());
-
-    if (filterType === "all") return matchesSearch;
-    if (filterType === "default") return matchesSearch && watchlist.is_default;
-    if (filterType === "public") return matchesSearch && watchlist.is_public;
-    if (filterType === "private") return matchesSearch && !watchlist.is_public;
-
-    return matchesSearch;
-  });
 
   if (loading) {
     return (

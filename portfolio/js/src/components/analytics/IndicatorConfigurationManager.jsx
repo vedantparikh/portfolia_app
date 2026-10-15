@@ -8,7 +8,7 @@ import {
     Trash2,
     X
 } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { statisticalIndicatorsAPI } from '../../services/api';
 import LoadingSpinner from '../shared/LoadingSpinner';
@@ -151,59 +151,6 @@ const IndicatorConfigurationManager = ({
     const handleEditConfiguration = (config) => {
         setEditingConfig({ ...config });
         setShowEditModal(true);
-    };
-
-    const addIndicatorToConfig = (config, indicator) => {
-        const indicatorConfig = {
-            id: `${indicator.name}_${Date.now()}`,
-            indicator_name: indicator.name,
-            parameters: {},
-            enabled: true,
-            display_name: indicator.name,
-            color: getDefaultColor(config.indicators.length),
-            line_style: 'solid',
-            line_width: 1,
-            y_axis: 'secondary',
-            show_in_legend: true
-        };
-
-        // Set default parameters based on indicator definition
-        if (indicator.parameters) {
-            indicator.parameters.forEach(param => {
-                if (param.default_value !== undefined) {
-                    indicatorConfig.parameters[param.name] = param.default_value;
-                }
-            });
-        }
-
-        return {
-            ...config,
-            indicators: [...config.indicators, indicatorConfig]
-        };
-    };
-
-    const removeIndicatorFromConfig = (config, indicatorId) => {
-        return {
-            ...config,
-            indicators: config.indicators.filter(ind => ind.id !== indicatorId)
-        };
-    };
-
-    const updateIndicatorConfig = (config, indicatorId, updates) => {
-        return {
-            ...config,
-            indicators: config.indicators.map(ind =>
-                ind.id === indicatorId ? { ...ind, ...updates } : ind
-            )
-        };
-    };
-
-    const getDefaultColor = (index) => {
-        const colors = [
-            '#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6',
-            '#06B6D4', '#84CC16', '#F97316', '#EC4899', '#6366F1'
-        ];
-        return colors[index % colors.length];
     };
 
     const filteredConfigurations = configurations.filter(config => {

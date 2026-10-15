@@ -12,7 +12,6 @@ import {
   Wallet,
   X,
 } from "lucide-react";
-import React from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { useNavigationPreloader } from "../../hooks/useAssetPreloader";
@@ -22,14 +21,8 @@ const Sidebar = ({
   portfolios = [],
   selectedPortfolio = null,
   onPortfolioChange = () => {},
-  onRefresh = () => {},
-  onSearch = () => {},
   searchQuery = "",
   onSearchChange = () => {},
-  showFilters = false,
-  onToggleFilters = () => {},
-  stats = null,
-  recentTransactions = [],
   onQuickAction = () => {},
   isMobile = false,
   isOpen = true,

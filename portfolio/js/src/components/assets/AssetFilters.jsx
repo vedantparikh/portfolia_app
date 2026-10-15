@@ -1,5 +1,4 @@
 import { Filter, X } from 'lucide-react';
-import React from 'react';
 
 const AssetFilters = ({ filters, onFilterChange }) => {
     const categories = [

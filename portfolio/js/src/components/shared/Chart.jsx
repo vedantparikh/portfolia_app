@@ -28,7 +28,6 @@ const Chart = ({
   showReturns = false,
   showIndicators = false,
   selectedIndicators = [],
-  onIndicatorsChange,
   isPortfolioChart = false,
   portfolioData = null,
   showComparisonLine = false,
@@ -37,11 +36,11 @@ const Chart = ({
   const chartContainerRef = useRef(null);
   const chartRef = useRef(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [returnsData, setReturnsData] = useState({});
+  const [, setReturnsData] = useState({});
   const [showReturnsPanel, setShowReturnsPanel] = useState(false);
   const [indicatorData, setIndicatorData] = useState({});
-  const [loadingIndicators, setLoadingIndicators] = useState(false);
-  const [availableIndicators, setAvailableIndicators] = useState([]);
+  const [, setLoadingIndicators] = useState(false);
+  const [, setAvailableIndicators] = useState([]);
   const [showIndicatorsPanel, setShowIndicatorsPanel] = useState(false);
 
   const loadAvailableIndicators = async () => {

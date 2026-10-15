@@ -1,5 +1,5 @@
 import { AlertCircle, CheckCircle, FileText, Loader2, Upload, X } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { accountStatementsAPI } from '../../services/api';
 
@@ -220,7 +220,7 @@ const PDFUploadModal = ({ isOpen, onClose, onParsedData }) => {
                                 <ul className="space-y-1 text-yellow-300/80">
                                     <li>• Only PDF files are supported</li>
                                     <li>• Make sure your statement is clear and readable</li>
-                                    <li>• You'll be able to review and edit parsed data before importing</li>
+                                    <li>• You&apos;ll be able to review and edit parsed data before importing</li>
                                     <li>• Some transactions may need manual verification</li>
                                 </ul>
                             </div>

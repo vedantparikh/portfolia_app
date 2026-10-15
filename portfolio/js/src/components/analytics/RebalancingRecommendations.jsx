@@ -9,7 +9,7 @@ import {
     TrendingDown,
     TrendingUp
 } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { analyticsAPI } from '../../services/api';
 import { formatCurrency, formatPercentage } from '../../utils/formatters.jsx';
 import LoadingSpinner from '../shared/LoadingSpinner';
@@ -24,6 +24,7 @@ const RebalancingRecommendations = ({ portfolioId }) => {
         if (portfolioId) {
             loadRecommendations();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- reload only when portfolioId changes
     }, [portfolioId]);
 
     const loadRecommendations = async (forceRefresh = false) => {

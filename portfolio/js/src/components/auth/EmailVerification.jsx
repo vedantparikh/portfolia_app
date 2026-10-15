@@ -28,6 +28,7 @@ const EmailVerification = () => {
         if (token) {
             handleVerifyEmail(token);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- verify only when token changes
     }, [token]);
 
     const handleVerifyEmail = async (verificationToken) => {
@@ -200,7 +201,7 @@ const EmailVerification = () => {
                     {/* Resend Verification */}
                     <div className="mt-6 pt-6 border-t border-dark-700">
                         <p className="text-sm text-gray-400 text-center mb-4">
-                            Didn't receive the email?
+                            Didn&apos;t receive the email?
                         </p>
                         <button
                             onClick={handleResendVerification}

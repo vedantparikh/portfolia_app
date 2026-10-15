@@ -20,7 +20,7 @@
  */
 
 // Import React hooks for state management and side effects
-import React, { createContext, useContext, useEffect, useReducer } from 'react';
+import { createContext, useContext, useEffect, useReducer } from 'react';
 
 // Import our API service for authentication calls
 import { authAPI } from '../services/api';
@@ -438,6 +438,7 @@ export const AuthProvider = ({ children }) => {
   - All authentication state and functions
   - Throws error if used outside of AuthProvider
 */
+// eslint-disable-next-line react-refresh/only-export-components -- hook is colocated with its provider
 export const useAuth = () => {
     // Get the context value
     const context = useContext(AuthContext);

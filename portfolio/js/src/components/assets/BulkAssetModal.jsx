@@ -1,5 +1,5 @@
 import { Loader2, Plus, Tags, X } from 'lucide-react';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { assetAPI } from '../../services/api';
 import { SymbolSearch } from '../shared'; // Make sure this path is correct

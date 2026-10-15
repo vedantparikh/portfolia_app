@@ -3,12 +3,12 @@ import {
     Edit,
     X,
 } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { formatQuantity } from '../../utils/formatters';
 import transactionTypes, { colorSchemes } from '../../utils/transactionTypes';
 
-const EditTransactionModal = ({ isOpen, onClose, transaction, portfolios, onUpdate }) => {
+const EditTransactionModal = ({ isOpen, onClose, transaction, onUpdate }) => {
     const [formData, setFormData] = useState({
         transaction_type: 'buy',
         asset_id: '',

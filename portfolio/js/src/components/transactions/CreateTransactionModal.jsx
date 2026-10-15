@@ -1,5 +1,5 @@
 import { Calculator, Plus, Save, TrendingUp, X } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { useAuth } from "../../contexts/AuthContext";
 import { assetAPI, marketAPI } from "../../services/api";
@@ -34,7 +34,6 @@ const CreateTransactionModal = ({
   });
   const [loading, setLoading] = useState(false); // Loading state
   const [selectedAsset, setSelectedAsset] = useState(null);
-  const [isCreatingAsset, setIsCreatingAsset] = useState(false);
   const [fetchingPrice, setFetchingPrice] = useState(false);
   const [showAllTransactionTypes, setShowAllTransactionTypes] = useState(false);
   const [showAssetCreationForm, setShowAssetCreationForm] = useState(false);
@@ -670,7 +669,7 @@ const CreateTransactionModal = ({
             {/* Help Text and Create Asset Button */}
             <div className="mt-2 flex items-center justify-between">
               <div className="text-xs text-gray-500">
-                If the asset doesn't exist, you can create it below.
+                If the asset doesn&apos;t exist, you can create it below.
               </div>
               {!showAssetCreationForm && (
                 <button
@@ -703,7 +702,7 @@ const CreateTransactionModal = ({
                       Create New Asset
                     </h3>
                     <p className="text-sm text-gray-400">
-                      Create the asset "{formData.symbol}" and use it for this
+                      Create the asset &quot;{formData.symbol}&quot; and use it for this
                       transaction
                     </p>
                   </div>

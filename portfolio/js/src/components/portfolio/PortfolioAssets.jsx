@@ -9,7 +9,7 @@ import {
     Search,
     TrendingUp
 } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { portfolioAPI, transactionAPI } from '../../services/api';
 import AssetFilters from '../assets/AssetFilters';
@@ -19,7 +19,7 @@ import CreateTransactionModal from '../transactions/CreateTransactionModal';
 import PortfolioAssetCard from './PortfolioAssetCard';
 
 
-const PortfolioAssets = ({ portfolio, onRefresh }) => {
+const PortfolioAssets = ({ portfolio }) => {
     const [assets, setAssets] = useState([]);
     const [filteredAssets, setFilteredAssets] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -48,11 +48,13 @@ const PortfolioAssets = ({ portfolio, onRefresh }) => {
         if (portfolio && portfolio.id) {
             loadPortfolioAssets();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- reload only when portfolio changes
     }, [portfolio]);
 
     // Filter assets when search query or filters change
     useEffect(() => {
         filterAssets();
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- refilter only when inputs change
     }, [assets, searchQuery, filters]);
 
     const loadPortfolioAssets = async () => {
@@ -289,7 +291,7 @@ const PortfolioAssets = ({ portfolio, onRefresh }) => {
         setShowAssetModal(true);
     };
 
-    const handleDeleteAsset = async (assetId) => {
+    const handleDeleteAsset = async () => {
         if (window.confirm('Are you sure you want to remove this asset from the portfolio?')) {
             try {
                 // Remove asset from portfolio (this would need to be implemented in the API)

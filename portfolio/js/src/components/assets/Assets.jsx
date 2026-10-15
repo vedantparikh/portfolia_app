@@ -17,7 +17,7 @@ import {
     X,
     Zap
 } from 'lucide-react';
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { InView } from 'react-intersection-observer';
 import { portfolioAPI, transactionAPI, userAssetsAPI } from '../../services/api';
@@ -52,7 +52,7 @@ const Assets = () => {
     const [showTransactionModal, setShowTransactionModal] = useState(false);
     const [transactionAsset, setTransactionAsset] = useState(null);
     const [showBulkAssetModal, setShowBulkAssetModal] = useState(false);
-    const [page, setPage] = useState(1);
+    const [, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const [totalAssetsCount, setTotalAssetsCount] = useState(0);
 

@@ -1,5 +1,4 @@
 import { Filter, X } from 'lucide-react';
-import React from 'react';
 import transactionTypes from '../../utils/transactionTypes';
 
 const TransactionFilters = ({ filters, portfolios, onFilterChange }) => {

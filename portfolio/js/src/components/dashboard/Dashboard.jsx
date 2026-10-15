@@ -11,7 +11,7 @@ import {
   User,
   Wallet,
 } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { useAuth } from "../../contexts/AuthContext";
 import { marketAPI, portfolioAPI, transactionAPI } from "../../services/api";
@@ -50,6 +50,7 @@ const Dashboard = () => {
   // Load dashboard data
   useEffect(() => {
     loadDashboardData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once on mount
   }, []);
 
   // Check for mobile screen size
@@ -252,7 +253,7 @@ const Dashboard = () => {
                 Welcome back, {profile?.first_name}! 👋
               </h1>
               <p className="text-gray-400">
-                Here's what's happening with your portfolio today.
+                Here&apos;s what&apos;s happening with your portfolio today.
               </p>
             </div>
 
@@ -302,7 +303,7 @@ const Dashboard = () => {
                       <div className="hidden md:grid grid-cols-4 gap-4 px-4 text-xs text-gray-400 font-medium sticky top-0 bg-dark-900 z-10 py-2">
                         <span>Portfolio</span>
                         <span className="text-right">Total Value</span>
-                        <span className="text-right">Today's P&L</span>
+                        <span className="text-right">Today&apos;s P&L</span>
                         <span className="text-right">Total P&L</span>
                       </div>
                       {dashboardData.portfolios.map((portfolio) => (

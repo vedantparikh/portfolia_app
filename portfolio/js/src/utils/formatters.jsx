@@ -1,5 +1,4 @@
 import { ArrowDownLeft, ArrowDownRight, ArrowUpDown, ArrowUpRight, Minus, Plus, TrendingDown, TrendingUp } from 'lucide-react';
-import React from 'react';
 
 /**
  * Format price values with appropriate decimal places

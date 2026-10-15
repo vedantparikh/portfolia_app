@@ -9,7 +9,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import assetCache from "../../services/assetCache";
 import transactionTypes from "../../utils/transactionTypes";

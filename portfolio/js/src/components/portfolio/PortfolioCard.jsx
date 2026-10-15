@@ -2,11 +2,9 @@ import {
   BarChart3,
   Calendar,
   Edit,
-  Plus,
   Settings,
   Trash2,
 } from "lucide-react";
-import React from "react";
 import { LoadingSpinner } from "../shared";
 import {
   formatCurrency,

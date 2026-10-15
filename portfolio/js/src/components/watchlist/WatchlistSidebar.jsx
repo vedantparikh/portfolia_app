@@ -10,7 +10,7 @@ import {
     Star,
     Trash2
 } from 'lucide-react';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import EditWatchlistModal from './EditWatchlistModal';
 
 const WatchlistSidebar = ({
