@@ -765,7 +765,7 @@ const EnhancedChart = ({
             {enableFullscreen && (
               <button
                 onClick={handleFullscreenToggle}
-                className="p-2 text-gray-400 hover:text-gray-100 hover:bg-dark-700 rounded transition-colors"
+                className="p-2 text-gray-400 hover:text-gray-100 hover:bg-dark-700 rounded-sm transition-colors"
                 title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
               >
                 {isFullscreen ? (
@@ -778,7 +778,7 @@ const EnhancedChart = ({
             {onRefresh && (
               <button
                 onClick={onRefresh}
-                className="p-2 text-gray-400 hover:text-gray-100 hover:bg-dark-700 rounded transition-colors"
+                className="p-2 text-gray-400 hover:text-gray-100 hover:bg-dark-700 rounded-sm transition-colors"
                 title="Refresh data"
               >
                 <RefreshCw size={16} />
@@ -982,7 +982,7 @@ const EnhancedChart = ({
                   return (
                     <div
                       key={indicatorName}
-                      className="flex items-center space-x-2 px-2 py-1 bg-dark-700 rounded text-xs"
+                      className="flex items-center space-x-2 px-2 py-1 bg-dark-700 rounded-sm text-xs"
                     >
                       <div
                         className="w-2 h-2 rounded-full"

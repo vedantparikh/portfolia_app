@@ -90,7 +90,7 @@ const WatchlistSidebar = ({
                         placeholder="Search watchlists..."
                         value={searchTerm}
                         onChange={(e) => onSearchChange(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 bg-dark-800 border border-dark-600 rounded-lg text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        className="w-full pl-10 pr-4 py-2 bg-dark-800 border border-dark-600 rounded-lg text-gray-100 placeholder-gray-400 focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     />
                 </div>
 
@@ -178,7 +178,7 @@ const WatchlistSidebar = ({
                                                 e.stopPropagation();
                                                 setShowDropdown(showDropdown === watchlist.id ? null : watchlist.id);
                                             }}
-                                            className="p-1 rounded hover:bg-dark-600 transition-colors opacity-0 group-hover:opacity-100"
+                                            className="p-1 rounded-sm hover:bg-dark-600 transition-colors opacity-0 group-hover:opacity-100"
                                         >
                                             <MoreVertical size={14} className="text-gray-400" />
                                         </button>

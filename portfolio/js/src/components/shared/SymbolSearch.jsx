@@ -122,13 +122,13 @@ const SymbolSearch = ({
                     placeholder={placeholder}
                     disabled={disabled}
                     autoFocus={autoFocus}
-                    className={`w-full pl-10 pr-4 py-3 bg-dark-800 border border-dark-600 rounded-lg text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`w-full pl-10 pr-4 py-3 bg-dark-800 border border-dark-600 rounded-lg text-gray-100 placeholder-gray-400 focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:border-transparent ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                 />
                 <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
 
                 {/* Suggestions Dropdown */}
                 {showSuggestions && showSuggestionsDropdown && suggestions.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-dark-800 border border-dark-600 rounded-lg shadow-lg z-[60] max-h-48 overflow-y-auto">
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-dark-800 border border-dark-600 rounded-lg shadow-lg z-60 max-h-48 overflow-y-auto">
                         {searching && (
                             <div className="px-4 py-3 text-gray-400 text-sm">
                                 <LoadingSpinner type="ticker" size="sm" color="primary" text="Searching..." />

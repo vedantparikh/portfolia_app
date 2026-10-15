@@ -672,7 +672,7 @@ const Chart = ({
             {enableFullscreen && (
               <button
                 onClick={handleFullscreenToggle}
-                className="p-2 text-gray-400 hover:text-gray-100 hover:bg-dark-700 rounded transition-colors"
+                className="p-2 text-gray-400 hover:text-gray-100 hover:bg-dark-700 rounded-sm transition-colors"
                 title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
               >
                 {isFullscreen ? (
@@ -685,7 +685,7 @@ const Chart = ({
             {onRefresh && (
               <button
                 onClick={onRefresh}
-                className="p-2 text-gray-400 hover:text-gray-100 hover:bg-dark-700 rounded transition-colors"
+                className="p-2 text-gray-400 hover:text-gray-100 hover:bg-dark-700 rounded-sm transition-colors"
                 title="Refresh data"
               >
                 <RefreshCw size={16} />

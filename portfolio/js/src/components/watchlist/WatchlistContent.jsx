@@ -315,7 +315,7 @@ const WatchlistContent = ({
                 placeholder="Search symbols..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 bg-dark-800 border border-dark-600 rounded-lg text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent w-64"
+                className="pl-10 pr-4 py-2 bg-dark-800 border border-dark-600 rounded-lg text-gray-100 placeholder-gray-400 focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:border-transparent w-64"
               />
             </div>
 
@@ -325,7 +325,7 @@ const WatchlistContent = ({
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="px-3 py-2 bg-dark-800 border border-dark-600 rounded-lg text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="px-3 py-2 bg-dark-800 border border-dark-600 rounded-lg text-gray-100 focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               >
                 <option value="symbol">Symbol</option>
                 <option value="price">Current Price</option>
@@ -358,7 +358,7 @@ const WatchlistContent = ({
                     type="checkbox"
                     checked={autoRefreshEnabled}
                     onChange={(e) => setAutoRefreshEnabled(e.target.checked)}
-                    className="rounded border-dark-600 bg-dark-800 text-primary-600 focus:ring-primary-500"
+                    className="rounded-sm border-dark-600 bg-dark-800 text-primary-600 focus:ring-primary-500"
                   />
                   <span>Auto-refresh</span>
                 </label>
@@ -368,7 +368,7 @@ const WatchlistContent = ({
                   <select
                     value={refreshInterval}
                     onChange={(e) => setRefreshInterval(Number(e.target.value))}
-                    className="px-2 py-1 bg-dark-800 border border-dark-600 rounded text-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="px-2 py-1 bg-dark-800 border border-dark-600 rounded-sm text-gray-300 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500"
                   >
                     <option value={10000}>10s</option>
                     <option value={30000}>30s</option>
@@ -418,29 +418,29 @@ const WatchlistContent = ({
         <div className="flex items-center justify-between text-xs font-medium text-gray-400 uppercase tracking-wider">
           {/* Left side: Symbol column (flexible width) */}
           <div className="flex items-center space-x-3 flex-1">
-            <div className="w-6 flex-shrink-0"></div>{" "}
+            <div className="w-6 shrink-0"></div>{" "}
             {/* Space for drag handle */}
             <span>Symbol</span> {/* Column title */}
           </div>
 
           {/* Right side: Fixed-width data columns */}
           <div className="flex items-center space-x-6 text-right">
-            <div className="w-28 flex-shrink-0">
+            <div className="w-28 shrink-0">
               <span>Added Price & Date</span>
             </div>
-            <div className="w-28 flex-shrink-0">
+            <div className="w-28 shrink-0">
               <span>Current Price & Last Updated</span>
             </div>
-            <div className="w-24 flex-shrink-0">
+            <div className="w-24 shrink-0">
               <span>Change Since Added</span>
             </div>
-            <div className="w-20 flex-shrink-0">
+            <div className="w-20 shrink-0">
               <span>Alerts</span>
             </div>
-            <div className="w-24 flex-shrink-0">
+            <div className="w-24 shrink-0">
               <span>Notes</span>
             </div>
-            <div className="w-16 flex-shrink-0 text-center">
+            <div className="w-16 shrink-0 text-center">
               <span>Actions</span>
             </div>
           </div>
@@ -541,7 +541,7 @@ const WatchlistContent = ({
                               {/* Right side: Data columns with fixed widths */}
                               <div className="flex items-center space-x-6 text-sm">
                                 {/* Added Price & Date Column */}
-                                <div className="text-right w-28 flex-shrink-0">
+                                <div className="text-right w-28 shrink-0">
                                   <div className="text-gray-100 font-medium">
                                     ${item.added_price || "N/A"}
                                   </div>
@@ -554,7 +554,7 @@ const WatchlistContent = ({
                                 </div>
 
                                 {/* Current Price & Last Updated Column */}
-                                <div className="text-right w-28 flex-shrink-0">
+                                <div className="text-right w-28 shrink-0">
                                   <div className="text-gray-100 font-medium">
                                     ${item.current_price || "0.00"}
                                   </div>
@@ -564,7 +564,7 @@ const WatchlistContent = ({
                                 </div>
 
                                 {/* Change Since Added Column */}
-                                <div className="text-right w-24 flex-shrink-0">
+                                <div className="text-right w-24 shrink-0">
                                   <div
                                     className={`font-medium ${getChangeColor(
                                       item.price_change_percent_since_added
@@ -586,7 +586,7 @@ const WatchlistContent = ({
                                 </div>
 
                                 {/* Alerts Column */}
-                                <div className="text-right w-20 flex-shrink-0">
+                                <div className="text-right w-20 shrink-0">
                                   <div className="text-gray-100 font-medium">
                                     {item.alerts?.length || 0}
                                   </div>
@@ -596,7 +596,7 @@ const WatchlistContent = ({
                                 </div>
 
                                 {/* Notes Column - clickable if notes exist */}
-                                <div className="text-right w-24 flex-shrink-0">
+                                <div className="text-right w-24 shrink-0">
                                   <div
                                     className={`font-medium cursor-pointer transition-colors ${
                                       item.notes
@@ -620,7 +620,7 @@ const WatchlistContent = ({
                                 </div>
 
                                 {/* Actions Column - dropdown menu */}
-                                <div className="relative w-16 text-center flex-shrink-0">
+                                <div className="relative w-16 text-center shrink-0">
                                   {/* Three-dot menu button */}
                                   <button
                                     onClick={() =>
@@ -630,7 +630,7 @@ const WatchlistContent = ({
                                           : item.id
                                       )
                                     }
-                                    className="p-1 rounded hover:bg-dark-600 transition-colors opacity-0 group-hover:opacity-100"
+                                    className="p-1 rounded-sm hover:bg-dark-600 transition-colors opacity-0 group-hover:opacity-100"
                                   >
                                     <MoreVertical
                                       size={14}
@@ -695,7 +695,7 @@ const WatchlistContent = ({
 
       {/* Notes Modal - displays symbol notes */}
       {showNotesModal && selectedNotes && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-dark-900 border border-dark-700 rounded-lg w-full max-w-md mx-4">
             {/* Modal header */}
             <div className="flex items-center justify-between p-6 border-b border-dark-700">

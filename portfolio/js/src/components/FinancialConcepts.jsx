@@ -763,7 +763,7 @@ const FinancialConcepts = () => {
       {/* Mobile sidebar overlay */}
       {isMobile && sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40"
+          className="fixed inset-0 bg-black/50 z-40"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -835,7 +835,7 @@ const FinancialConcepts = () => {
                       placeholder="Search financial concepts..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 bg-dark-800 border border-gray-600 rounded-lg text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full pl-10 pr-4 py-3 bg-dark-800 border border-gray-600 rounded-lg text-gray-100 placeholder-gray-400 focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     />
                   </div>
                 </div>
@@ -845,7 +845,7 @@ const FinancialConcepts = () => {
                   <select
                     value={selectedCategory}
                     onChange={(e) => setSelectedCategory(e.target.value)}
-                    className="w-full px-4 py-3 bg-dark-800 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="w-full px-4 py-3 bg-dark-800 border border-gray-600 rounded-lg text-gray-100 focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   >
                     {categories.map((category) => (
                       <option key={category.value} value={category.value}>
@@ -865,7 +865,7 @@ const FinancialConcepts = () => {
                       setSortBy(newSortBy);
                       setSortOrder(newSortOrder);
                     }}
-                    className="w-full px-4 py-3 bg-dark-800 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="w-full px-4 py-3 bg-dark-800 border border-gray-600 rounded-lg text-gray-100 focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   >
                     <option value="name-asc">Name A-Z</option>
                     <option value="name-desc">Name Z-A</option>
