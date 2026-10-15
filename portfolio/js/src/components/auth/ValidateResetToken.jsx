@@ -68,7 +68,7 @@ const ValidateResetToken = () => {
                     {/* Footer */}
                     <div className="text-center mt-8">
                         <p className="text-xs text-gray-500">
-                            © 2024 Portfolia. All rights reserved.
+                            © {new Date().getFullYear()} Portfolia. All rights reserved.
                         </p>
                     </div>
                 </div>
@@ -102,7 +102,7 @@ const ValidateResetToken = () => {
                     {/* Footer */}
                     <div className="text-center mt-8">
                         <p className="text-xs text-gray-500">
-                            © 2024 Portfolia. All rights reserved.
+                            © {new Date().getFullYear()} Portfolia. All rights reserved.
                         </p>
                     </div>
                 </div>
@@ -145,7 +145,7 @@ const ValidateResetToken = () => {
                 {/* Footer */}
                 <div className="text-center mt-8">
                     <p className="text-xs text-gray-500">
-                        © 2024 Portfolia. All rights reserved.
+                        © {new Date().getFullYear()} Portfolia. All rights reserved.
                     </p>
                 </div>
             </div>

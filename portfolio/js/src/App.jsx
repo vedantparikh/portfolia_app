@@ -86,7 +86,7 @@ function App() {
     // This is called "Context" in React - it allows any component to access user login status
     <AuthProvider>
       {/* Router enables navigation between different pages/URLs */}
-      <Router>
+      <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         {/* Main container div with CSS class for styling */}
         <div className="App">
           {/* Routes container - defines all the different pages in our app */}
