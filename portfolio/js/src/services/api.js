@@ -439,16 +439,6 @@ export const marketAPI = {
   },
 
   /* 
-      SEARCH ASSETS - Search for assets by symbol or name
-      Parameters: query (string to search for)
-      Returns: Server response with matching assets
-    */
-  searchAssets: async (query) => {
-    const response = await api.get(`/assets/search/${query}`);
-    return response.data;
-  },
-
-  /* 
       GET ASSET PRICES - Get historical price data for an asset
       Parameters: id (asset ID), params (object with date range, interval)
       Returns: Server response with price history data
@@ -747,16 +737,6 @@ export const assetAPI = {
     */
   deleteAsset: async (id) => {
     const response = await api.delete(`/assets/${id}`);
-    return response;
-  },
-
-  /* 
-      SEARCH ASSETS - Search for assets by symbol or name
-      Parameters: query (string to search for)
-      Returns: Server response with matching assets
-    */
-  searchAssets: async (query) => {
-    const response = await api.get(`/assets/search/${query}`);
     return response;
   },
 
