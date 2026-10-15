@@ -427,30 +427,31 @@ const Portfolio = () => {
             <div className="w-10" /> {/* Spacer for centering */}
           </div>
         )}
-        <div className="max-w-7xl mx-auto p-6">
+        <div className="max-w-7xl mx-auto p-4 sm:p-6">
           {/* Header */}
           <div className="mb-8">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
               <div className="flex items-center space-x-4">
                 <a
                   href="/dashboard"
                   className="flex items-center space-x-2 text-gray-400 hover:text-gray-300 transition-colors"
+                  aria-label="Back to Dashboard"
                 >
                   <ArrowLeft size={20} />
-                  <span>Back to Dashboard</span>
+                  <span className="hidden sm:inline">Back to Dashboard</span>
                 </a>
               </div>
               <div className="flex items-center space-x-3">
                 <button
                   onClick={handleRefresh}
-                  className="btn-secondary flex items-center space-x-2"
+                  className="btn-secondary flex items-center space-x-2 whitespace-nowrap"
                 >
                   <RefreshCw size={16} />
                   <span>Refresh</span>
                 </button>
                 <button
                   onClick={() => setShowCreateModal(true)}
-                  className="btn-primary flex items-center space-x-2"
+                  className="btn-primary flex items-center space-x-2 whitespace-nowrap"
                 >
                   <Plus size={16} />
                   <span>New Portfolio</span>
@@ -467,7 +468,7 @@ const Portfolio = () => {
 
             {/* Portfolio Selector */}
             {portfolios.length > 0 && (
-              <div className="flex items-center space-x-4 mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mb-6">
                 <label className="text-sm font-medium text-gray-300">
                   Active Portfolio:
                 </label>
@@ -479,7 +480,7 @@ const Portfolio = () => {
                     );
                     setSelectedPortfolio(portfolio);
                   }}
-                  className="input-field"
+                  className="input-field w-full sm:w-auto max-w-full"
                 >
                   {portfolios.map((portfolio) => (
                     <option key={portfolio.id} value={portfolio.id}>
