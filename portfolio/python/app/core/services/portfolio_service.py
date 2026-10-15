@@ -852,7 +852,20 @@ class PortfolioService:
         """
         Recalculates an asset's complete state from its transaction history.
         This is the single source of truth for quantity, cost basis, and realized P&L.
+
+        The price is fetched before any read/write so the rest runs without an
+        await: concurrent requests for the same asset can't interleave between the
+        PortfolioAsset lookup and its insert (unique portfolio_id+asset_id).
         """
+        price_error = None
+        current_price = None
+        try:
+            asset = self.db.query(Asset).filter(Asset.id == asset_id).first()
+            if asset:
+                current_price = await self.market_data_service.get_current_price(asset.symbol)
+        except Exception as e:
+            price_error = e
+
         buy_first_sort_order = case(
             (Transaction.transaction_type == TransactionType.BUY, 1),
             (Transaction.transaction_type == TransactionType.SELL, 2),
@@ -903,27 +916,23 @@ class PortfolioService:
         )
 
         if current_quantity > 0:
-            try:
-                asset = self.db.query(Asset).filter(Asset.id == asset_id).first()
-                if asset:
-                    current_price = await self.market_data_service.get_current_price(asset.symbol)
-                    if current_price:
-                        # Prices come back as float; convert via str to avoid binary noise
-                        current_value = Decimal(str(current_price)) * portfolio_asset.quantity
-                        unrealized_pnl = current_value - portfolio_asset.cost_basis_total
-                        portfolio_asset.current_value = current_value
-                        portfolio_asset.unrealized_pnl = unrealized_pnl
-                        if portfolio_asset.cost_basis_total > 0:
-                            portfolio_asset.unrealized_pnl_percent = (
-                                                                             unrealized_pnl /
-                                                                             portfolio_asset.cost_basis_total) * 100
-                        else:
-                            portfolio_asset.unrealized_pnl_percent = Decimal("0")
-            except Exception as e:
-                print(f"Error fetching market data for asset {asset_id}: {e}")
+            if price_error is not None:
+                print(f"Error fetching market data for asset {asset_id}: {price_error}")
                 portfolio_asset.current_value = None
                 portfolio_asset.unrealized_pnl = None
                 portfolio_asset.unrealized_pnl_percent = None
+            elif current_price:
+                # Prices come back as float; convert via str to avoid binary noise
+                current_value = Decimal(str(current_price)) * portfolio_asset.quantity
+                unrealized_pnl = current_value - portfolio_asset.cost_basis_total
+                portfolio_asset.current_value = current_value
+                portfolio_asset.unrealized_pnl = unrealized_pnl
+                if portfolio_asset.cost_basis_total > 0:
+                    portfolio_asset.unrealized_pnl_percent = (
+                        unrealized_pnl / portfolio_asset.cost_basis_total
+                    ) * 100
+                else:
+                    portfolio_asset.unrealized_pnl_percent = Decimal("0")
         else:
             portfolio_asset.current_value = Decimal("0")
             portfolio_asset.unrealized_pnl = Decimal("0")
