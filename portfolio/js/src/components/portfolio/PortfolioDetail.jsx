@@ -26,6 +26,7 @@ import {
 import LoadingSpinner from "../shared/LoadingSpinner";
 import StatCard from "../shared/StatCard";
 import AllocationDonut from "./AllocationDonut";
+import ValueVsInvestedChart from "./ValueVsInvestedChart";
 
 const PortfolioDetail = ({ portfolio }) => {
   const [holdings, setHoldings] = useState([]);
@@ -477,6 +478,9 @@ const PortfolioDetail = ({ portfolio }) => {
                 Asset Allocation
               </h3>
               <AllocationDonut portfolioId={portfolio?.id} />
+            </div>
+            <div className="card p-6">
+              <ValueVsInvestedChart portfolioId={portfolio?.id} />
             </div>
           </div>
         </>
