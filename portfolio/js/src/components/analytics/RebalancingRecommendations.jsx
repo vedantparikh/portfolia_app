@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { analyticsAPI } from '../../services/api';
-import { formatCurrency, formatPercentage } from '../../utils/formatters.jsx';
+import { formatCurrency, formatPercentage, formatQuantity } from '../../utils/formatters.jsx';
 import LoadingSpinner from '../shared/LoadingSpinner';
 
 // "allocation_drift_exceeds_threshold_11.2%" -> "Allocation drift exceeds threshold 11.2%"
@@ -203,10 +203,13 @@ const RebalancingRecommendations = ({ portfolioId }) => {
                                     </div>
                                     <div>
                                         <p className="font-medium text-gray-100">
-                                            {action.action_type?.toUpperCase()} {action.asset_symbol}
+                                            {action.action_type?.toUpperCase()} {formatQuantity(action.quantity_change)} {action.asset_symbol}
+                                            <span className="text-gray-400 font-normal"> · ≈ {formatCurrency(action.trade_value)}</span>
                                         </p>
                                         <p className="text-sm text-gray-400">
                                             {action.action_type === 'buy' ? 'Underweight vs. target' : 'Overweight vs. target'}
+                                            {' · '}
+                                            {formatQuantity(action.current_quantity)} → {formatQuantity(action.target_quantity)} shares at {formatCurrency(action.price)}
                                         </p>
                                     </div>
                                 </div>

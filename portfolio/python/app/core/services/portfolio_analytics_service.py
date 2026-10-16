@@ -34,6 +34,7 @@ from core.schemas.portfolio_analytics import (
     PortfolioAllocationCreate,
 )
 from core.services.market_data_service import market_data_service
+from core.services.portfolio_service import PortfolioService
 
 logger = logging.getLogger(__name__)
 
@@ -410,110 +411,88 @@ class PortfolioAnalyticsService:
     async def analyze_portfolio_allocation(
         self, portfolio_id: int
     ) -> AllocationAnalysisResponse:
-        """Analyze portfolio allocation and detect drift from targets."""
-        # Get portfolio assets with current values
-        portfolio_assets = (
-            self.db.query(PortfolioAsset)
-            .filter(PortfolioAsset.portfolio_id == portfolio_id)
+        """
+        Current weights from live holdings, and drift against the active targets.
+        Positions without a live price are left out rather than valued at cost.
+        """
+        holdings = [
+            h
+            for h in await PortfolioService(self.db).get_portfolio_holdings(
+                portfolio_id
+            )
+            if h.quantity > 0 and h.current_value is not None
+        ]
+        targets = {
+            t.asset_id: t
+            for t in self.db.query(PortfolioAllocation)
+            .filter(
+                PortfolioAllocation.portfolio_id == portfolio_id,
+                PortfolioAllocation.is_active == True,
+            )
             .all()
-        )
-
-        if not portfolio_assets:
+        }
+        if not holdings and not targets:
             raise ValueError("Portfolio has no assets")
 
-        # Calculate current allocations using real-time prices
-        current_allocations = []
-        total_current_value = 0
+        total_value = sum((Decimal(str(h.current_value)) for h in holdings), Decimal(0))
+        by_asset = {h.asset_id: h for h in holdings}
+        names = {
+            a.id: a
+            for a in self.db.query(Asset)
+            .filter(Asset.id.in_(set(by_asset) | set(targets)))
+            .all()
+        }
 
-        for asset in portfolio_assets:
-            if asset.asset and asset.asset.symbol:
-                current_price = await market_data_service.get_current_price(
-                    asset.asset.symbol
-                )
-                if current_price:
-                    current_value = float(current_price) * float(asset.quantity)
-                else:
-                    current_value = float(asset.cost_basis_total)
-            else:
-                current_value = float(asset.cost_basis_total)
-
-            total_current_value += current_value
-
-            current_allocations.append({"asset": asset, "current_value": current_value})
-
-        # Calculate allocation percentages and create AllocationItem objects
         allocation_items = []
         allocation_drifts = []
         total_drift = Decimal("0")
         rebalancing_needed = False
-
-        for allocation in current_allocations:
-            asset = allocation["asset"]
-            current_value = allocation["current_value"]
+        for asset_id in list(by_asset) + [a for a in targets if a not in by_asset]:
+            holding = by_asset.get(asset_id)
+            asset = names.get(asset_id)
+            value = Decimal(str(holding.current_value)) if holding else Decimal(0)
             current_percentage = (
-                Decimal(str((current_value / total_current_value) * 100))
-                if total_current_value > 0
-                else Decimal("0")
+                value / total_value * 100 if total_value > 0 else Decimal(0)
             )
+            target = targets.get(asset_id)
+            target_percentage = target.target_percentage if target else None
+            symbol = asset.symbol if asset else "Unknown"
 
-            # Get target allocation if exists
-            target_allocation = (
-                self.db.query(PortfolioAllocation)
-                .filter(
-                    PortfolioAllocation.portfolio_id == portfolio_id,
-                    PortfolioAllocation.asset_id == asset.asset_id,
-                    PortfolioAllocation.is_active == True,
+            allocation_items.append(
+                AllocationItem(
+                    asset_id=asset_id,
+                    asset_symbol=symbol,
+                    asset_name=asset.name if asset else None,
+                    current_percentage=current_percentage,
+                    target_percentage=target_percentage,
+                    current_value=value,
+                    quantity=Decimal(str(holding.quantity)) if holding else Decimal(0),
                 )
-                .first()
             )
+            if target_percentage is None:
+                continue
 
-            target_percentage = (
-                target_allocation.target_percentage if target_allocation else None
-            )
-
-            allocation_item = AllocationItem(
-                asset_id=asset.asset_id,
-                asset_symbol=asset.asset.symbol if asset.asset else "Unknown",
-                asset_name=asset.asset.name if asset.asset else None,
-                current_percentage=current_percentage,
-                target_percentage=target_percentage,
-                current_value=Decimal(str(current_value)),
-                quantity=asset.quantity,
-            )
-            allocation_items.append(allocation_item)
-
-            # Calculate drift if target exists
-            if target_percentage:
-                drift_percentage = current_percentage - target_percentage
-                drift_amount = Decimal(str(total_current_value)) * (
-                    drift_percentage / 100
-                )
-                requires_rebalancing = abs(drift_percentage) > Decimal(
-                    "5"
-                )  # 5% threshold
-
-                if requires_rebalancing:
-                    rebalancing_needed = True
-
-                total_drift += abs(drift_percentage)
-
-                allocation_drift = AllocationDrift(
-                    asset_id=asset.asset_id,
-                    asset_symbol=asset.asset.symbol if asset.asset else "Unknown",
+            drift_percentage = current_percentage - target_percentage
+            threshold = target.rebalance_threshold or Decimal("5")
+            requires_rebalancing = abs(drift_percentage) > threshold
+            rebalancing_needed = rebalancing_needed or requires_rebalancing
+            total_drift += abs(drift_percentage)
+            allocation_drifts.append(
+                AllocationDrift(
+                    asset_id=asset_id,
+                    asset_symbol=symbol,
                     current_percentage=current_percentage,
                     target_percentage=target_percentage,
                     drift_percentage=drift_percentage,
-                    drift_amount=drift_amount,
+                    drift_amount=total_value * drift_percentage / 100,
                     requires_rebalancing=requires_rebalancing,
-                    recommended_action=(
-                        "buy"
-                        if drift_percentage < 0
-                        else "sell"
-                        if drift_percentage > 0
-                        else "hold"
-                    ),
+                    recommended_action="buy"
+                    if drift_percentage < 0
+                    else "sell"
+                    if drift_percentage > 0
+                    else "hold",
                 )
-                allocation_drifts.append(allocation_drift)
+            )
 
         return AllocationAnalysisResponse(
             portfolio_id=portfolio_id,
@@ -739,47 +718,54 @@ class PortfolioAnalyticsService:
                     "urgency_score": Decimal("0"),
                 }
 
-            # Generate rebalancing actions based on drift analysis
+            # Whole-portfolio value is unchanged by rebalancing, so each action is
+            # the drift amount converted to shares at the current price
+            quantities = {
+                item.asset_id: item.quantity or Decimal(0)
+                for item in allocation_analysis.current_allocations
+            }
+            values = {
+                item.asset_id: item.current_value
+                for item in allocation_analysis.current_allocations
+            }
             rebalancing_actions = []
             estimated_cost = Decimal("0")
-
             for drift in allocation_analysis.allocation_drift:
-                if drift.requires_rebalancing:
-                    # Calculate recommended action
-                    if drift.drift_percentage < -5:  # Underweight by more than 5%
-                        action_type = "buy"
-                        quantity_change = (
-                            abs(drift.drift_amount) / 100
-                        )  # Simplified calculation
-                    elif drift.drift_percentage > 5:  # Overweight by more than 5%
-                        action_type = "sell"
-                        quantity_change = (
-                            abs(drift.drift_amount) / 100
-                        )  # Simplified calculation
-                    else:
-                        action_type = "hold"
-                        quantity_change = Decimal("0")
-
-                    # Estimate transaction cost (0.1% of transaction value)
-                    transaction_cost = abs(drift.drift_amount) * Decimal("0.001")
-                    estimated_cost += transaction_cost
-
-                    rebalancing_action = {
+                if not drift.requires_rebalancing:
+                    continue
+                quantity = quantities.get(drift.asset_id, Decimal(0))
+                if quantity > 0:
+                    price = values[drift.asset_id] / quantity
+                else:
+                    live = await market_data_service.get_current_price(
+                        drift.asset_symbol
+                    )
+                    price = Decimal(str(live)) if live else None
+                if not price:
+                    continue
+                shares = (abs(drift.drift_amount) / price).quantize(Decimal("0.0001"))
+                action_type = "sell" if drift.drift_percentage > 0 else "buy"
+                # Commission assumption: 0.1% of the traded value
+                transaction_cost = abs(drift.drift_amount) * Decimal("0.001")
+                estimated_cost += transaction_cost
+                rebalancing_actions.append(
+                    {
                         "asset_id": drift.asset_id,
                         "asset_symbol": drift.asset_symbol,
                         "action_type": action_type,
-                        "current_quantity": Decimal(
-                            "0"
-                        ),  # Would need to get from portfolio assets
-                        "target_quantity": Decimal("0"),  # Would need to calculate
-                        "quantity_change": quantity_change,
+                        "current_quantity": quantity,
+                        "target_quantity": quantity - shares
+                        if action_type == "sell"
+                        else quantity + shares,
+                        "quantity_change": shares,
+                        "trade_value": abs(drift.drift_amount),
+                        "price": price,
                         "estimated_cost": transaction_cost,
                         "priority": (
                             "high" if abs(drift.drift_percentage) > 10 else "medium"
                         ),
                     }
-                    rebalancing_actions.append(rebalancing_action)
-
+                )
             # Calculate expected allocations after rebalancing
             expected_allocations = []
             for item in allocation_analysis.current_allocations:
@@ -824,11 +810,10 @@ class PortfolioAnalyticsService:
                 "current_drift": allocation_analysis.total_drift_percentage,
                 "rebalancing_actions": rebalancing_actions,
                 "estimated_cost": estimated_cost,
-                "tax_impact": estimated_cost
-                * Decimal("0.2"),  # Simplified tax estimate
+                "tax_impact": None,
                 "expected_allocations": expected_allocations,
-                "expected_risk_reduction": Decimal("5.0"),  # Simplified estimate
-                "expected_return_impact": Decimal("0.5"),  # Simplified estimate
+                "expected_risk_reduction": None,
+                "expected_return_impact": None,
                 "priority": priority,
                 "recommended_timing": recommended_timing,
                 "urgency_score": urgency_score,
