@@ -126,10 +126,14 @@ const PortfolioChart = ({ portfolio }) => {
                 }
               />
               <StatCard
-                label="Money-weighted (XIRR)"
-                value={formatPercentage(s.mwr_annualized_pct)}
-                valueClassName={getChangeColor(s.mwr_annualized_pct)}
-                sub="Per year, includes timing of deposits"
+                label="Return (money-weighted)"
+                value={formatPercentage(s.mwr_pct)}
+                valueClassName={getChangeColor(s.mwr_pct)}
+                sub={
+                  s.twr_annualized_pct != null
+                    ? `${formatPercentage(s.mwr_annualized_pct)} a year`
+                    : "Counts when money was added"
+                }
               />
             </div>
 

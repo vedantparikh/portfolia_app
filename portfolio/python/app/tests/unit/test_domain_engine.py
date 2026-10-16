@@ -20,6 +20,7 @@ from core.domain.positions import (
 from core.domain.returns import (
     annualize_pct,
     compute_daily_returns,
+    deannualize_pct,
     max_drawdown_pct,
     period_summary,
     xirr_pct,
@@ -219,6 +220,9 @@ class TestRiskAndXirr:
         assert xirr_pct(
             [(date(2024, 1, 1), -1000), (date(2024, 12, 31), 1100)]
         ) == pytest.approx(10, abs=0.05)
+
+    def test_half_year_of_a_ten_percent_rate(self):
+        assert deannualize_pct(10.0, 182) == pytest.approx(4.86, abs=0.01)
 
     def test_xirr_needs_money_in_and_out(self):
         assert xirr_pct([(date(2024, 1, 1), -1000)]) is None

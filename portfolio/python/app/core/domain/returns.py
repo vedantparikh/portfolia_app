@@ -61,6 +61,13 @@ def xirr_pct(flows: List[Tuple[date, float]]) -> Optional[float]:
     return None if rate is None or not np.isfinite(rate) else float(rate * 100)
 
 
+def deannualize_pct(rate_pct: Optional[float], days: int) -> Optional[float]:
+    """The cumulative return over `days` that an annual rate corresponds to."""
+    if rate_pct is None:
+        return None
+    return float(((1 + rate_pct / 100) ** (days / 365) - 1) * 100)
+
+
 def volatility_pct(returns: pd.Series) -> Optional[float]:
     returns = returns.dropna()
     if len(returns) < 2:
@@ -126,6 +133,7 @@ def period_summary(
     flows.append((end_date, end_value))
 
     total = twr_pct(returns)
+    mwr_annual = xirr_pct(flows)
     valid = returns.dropna()
     best = valid.idxmax() if not valid.empty else None
     worst = valid.idxmin() if not valid.empty else None
@@ -141,7 +149,8 @@ def period_summary(
         "profit": end_value - opening_value - net_contributions,
         "twr_pct": total,
         "twr_annualized_pct": annualize_pct(total, days),
-        "mwr_annualized_pct": xirr_pct(flows),
+        "mwr_pct": deannualize_pct(mwr_annual, (end_date - flows[0][0]).days),
+        "mwr_annualized_pct": mwr_annual,
         "volatility_pct": volatility_pct(returns),
         "sharpe_ratio": sharpe_ratio(returns),
         "max_drawdown_pct": max_drawdown_pct(returns),

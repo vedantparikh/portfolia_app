@@ -47,6 +47,7 @@ class PortfolioCalculationService:
         # Cache for price data to avoid multiple API calls
         self._price_cache = {}
         self._price_cache_time = {}
+        self._series_cache = {}
 
     async def calculate_portfolio_performance(
         self,
@@ -113,48 +114,31 @@ class PortfolioCalculationService:
                 period,
             )
 
-        # Get current portfolio value
-        current_value, value_errors = await self.get_current_portfolio_value(
-            portfolio_id
-        )
-
-        if value_errors:
+        try:
+            series = await self.get_portfolio_series(all_transactions, end_date)
+        except (MissingPriceError, OversellError) as e:
             return {
                 "portfolio_id": portfolio_id,
                 "portfolio_name": portfolio.name,
                 "period": actual_period,
                 "start_date": actual_start_date,
                 "end_date": end_date,
-                "current_value": current_value,
-                "errors": value_errors,
+                "current_value": 0.0,
+                "errors": [str(e)],
                 "period_adjustment": period_adjustment_info,
-                "metrics": {
-                    "cagr": None,
-                    "xirr": None,
-                    "twr": None,
-                    "mwr": None,
-                },
+                "metrics": {"cagr": None, "xirr": None, "twr": None, "mwr": None},
                 "calculation_date": datetime.now(timezone.utc).isoformat(),
             }
-        # Generate daily portfolio value history for risk calculations
-        portfolio_history_df = await self.get_portfolio_history(
-            all_transactions, actual_start_date, end_date
-        )
 
-        volatility = self._calculate_volatility(portfolio_history_df)
-        max_drawdown = self._calculate_max_drawdown(portfolio_history_df)
-
-        # Calculate XIRR
-        xirr_value = await self._calculate_xirr(
-            all_transactions, current_value, actual_start_date, end_date
+        summary = period_summary(
+            series, actual_start_date.date() if actual_start_date else None
         )
-
-        # Calculate TWR, and CAGR as the annualised TWR
-        twr_value = self._calculate_twr(portfolio_history_df)
-        period_start = actual_start_date or min(
-            t.transaction_date for t in all_transactions
-        )
-        cagr = self._calculate_cagr(twr_value, period_start, end_date)
+        twr_value = summary.get("twr_pct")
+        # CAGR is the annualised TWR; under a year it is the plain TWR
+        cagr = summary.get("twr_annualized_pct")
+        if cagr is None:
+            cagr = twr_value
+        xirr_value = summary.get("mwr_annualized_pct")
 
         result = {
             "portfolio_id": portfolio_id,
@@ -162,14 +146,14 @@ class PortfolioCalculationService:
             "period": actual_period,
             "start_date": actual_start_date,
             "end_date": end_date,
-            "current_value": current_value,
+            "current_value": summary.get("end_value", 0.0),
             "metrics": {
                 "cagr": cagr,
                 "xirr": xirr_value,
                 "twr": twr_value,
-                "mwr": xirr_value,  # MWR is essentially XIRR,
-                "volatility": volatility,
-                "max_drawdown": max_drawdown,
+                "mwr": summary.get("mwr_pct"),
+                "volatility": summary.get("volatility_pct"),
+                "max_drawdown": summary.get("max_drawdown_pct"),
             },
             "calculation_date": datetime.now(timezone.utc).isoformat(),
         }
@@ -1136,10 +1120,18 @@ class PortfolioCalculationService:
         self, all_transactions: List[Transaction], end_date: datetime
     ) -> pd.DataFrame:
         """The canonical daily series from inception (see core.domain.valuation)."""
-        asset_ids = sorted({t.asset_id for t in all_transactions})
-        closes, splits, symbols = await self.get_market_history(asset_ids)
-        trades = to_trades(all_transactions, splits)
-        return daily_series(trades, closes, end_date.date(), symbols)
+        key = (
+            tuple(sorted(getattr(t, "id", None) or id(t) for t in all_transactions)),
+            end_date.date(),
+        )
+        if key not in self._series_cache:
+            asset_ids = sorted({t.asset_id for t in all_transactions})
+            closes, splits, symbols = await self.get_market_history(asset_ids)
+            trades = to_trades(all_transactions, splits)
+            self._series_cache[key] = daily_series(
+                trades, closes, end_date.date(), symbols
+            )
+        return self._series_cache[key]
 
     async def get_performance_series(
         self, portfolio_id: int, user_id: int, period: str

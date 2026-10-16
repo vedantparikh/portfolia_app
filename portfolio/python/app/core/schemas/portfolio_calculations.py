@@ -13,12 +13,18 @@ from pydantic import BaseModel, Field
 class PerformanceMetrics(BaseModel):
     """Core performance metrics."""
 
-    cagr: Optional[float] = Field(None, description="Compound Annual Growth Rate (%)")
-    xirr: Optional[float] = Field(
-        None, description="Extended Internal Rate of Return (%)"
+    cagr: Optional[float] = Field(
+        None, description="Annualised TWR (%); the plain TWR under a year"
     )
-    twr: Optional[float] = Field(None, description="Time-Weighted Return (%)")
-    mwr: Optional[float] = Field(None, description="Money-Weighted Return (%)")
+    xirr: Optional[float] = Field(
+        None, description="Money-weighted return per year, XIRR (%)"
+    )
+    twr: Optional[float] = Field(
+        None, description="Time-weighted return over the period (%)"
+    )
+    mwr: Optional[float] = Field(
+        None, description="Money-weighted return over the period (%)"
+    )
     volatility: Optional[float] = Field(None, description="Volatility (%)")
     max_drawdown: Optional[float] = Field(None, description="Maximum Drawdown (%)")
 
@@ -344,6 +350,9 @@ class PeriodSummary(BaseModel):
     twr_pct: Optional[float] = Field(None, description="Time-weighted return (%)")
     twr_annualized_pct: Optional[float] = Field(
         None, description="Annualised TWR (%), periods of a year or more"
+    )
+    mwr_pct: Optional[float] = Field(
+        None, description="Money-weighted return over the period (%)"
     )
     mwr_annualized_pct: Optional[float] = Field(
         None, description="Money-weighted return, XIRR (%)"
