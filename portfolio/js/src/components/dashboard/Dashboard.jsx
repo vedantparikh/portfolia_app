@@ -16,7 +16,7 @@ import {
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { useAuth } from "../../contexts/AuthContext";
-import { marketAPI, portfolioAPI, transactionAPI } from "../../services/api";
+import { analyticsAPI, marketAPI, portfolioAPI, transactionAPI } from "../../services/api";
 import {
   formatCurrency,
   formatDateTime,
@@ -25,7 +25,7 @@ import {
   formatVolume,
 } from "../../utils/formatters";
 import EmailVerificationPrompt from "../auth/EmailVerificationPrompt";
-import { LoadingSpinner, Sidebar, StatCard } from "../shared";
+import { LoadingSpinner, Sidebar, Sparkline, StatCard } from "../shared";
 
 const CardLoader = ({ text = "Loading..." }) => (
   <div className="flex items-center justify-center py-8">
@@ -136,15 +136,28 @@ const Dashboard = () => {
     try {
       const portfolios = await portfolioAPI.getPortfolios();
       if (portfolios && portfolios.length > 0) {
-        const portfolioSummaries = await Promise.allSettled(
-          portfolios.map((p) => portfolioAPI.getPortfolioSummary(p.id))
-        );
+        const [portfolioSummaries, histories] = await Promise.all([
+          Promise.allSettled(
+            portfolios.map((p) => portfolioAPI.getPortfolioSummary(p.id))
+          ),
+          Promise.allSettled(
+            portfolios.map((p) =>
+              analyticsAPI.getPortfolioPerformanceHistory(p.id, 90)
+            )
+          ),
+        ]);
         const portfoliosWithStats = portfolios.map((portfolio, index) => ({
           ...portfolio,
           stats:
             portfolioSummaries[index].status === "fulfilled"
               ? portfolioSummaries[index].value
               : null,
+          history:
+            histories[index].status === "fulfilled"
+              ? [...(histories[index].value.history || [])]
+                .sort((a, b) => a.snapshot_date.localeCompare(b.snapshot_date))
+                .map((h) => Number(h.total_value))
+              : [],
         }));
         setDashboardData((prev) => ({
           ...prev,
@@ -304,6 +317,7 @@ const Dashboard = () => {
               <StatCard
                 label="US Market"
                 icon={Clock}
+                className="col-span-2 lg:col-span-1"
                 tone={marketStatus?.is_open ? "success" : "gray"}
                 value={marketStatus ? (marketStatus.is_open ? "Open" : "Closed") : "—"}
                 sub="Mon–Fri 9:30–16:00 ET"
@@ -378,6 +392,13 @@ const Dashboard = () => {
                                 portfolio.stats?.total_current_value
                               )}
                             </p>
+                            <Sparkline
+                              values={portfolio.history}
+                              width={72}
+                              height={18}
+                              className="ml-auto mt-1 text-primary-400"
+                              title="Value, last 90 days"
+                            />
                             <p className="text-xs text-gray-500 mt-1 md:hidden">
                               Total Value
                             </p>
