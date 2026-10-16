@@ -25,6 +25,7 @@ import {
 } from "../analytics";
 import LoadingSpinner from "../shared/LoadingSpinner";
 import StatCard from "../shared/StatCard";
+import AllocationDonut from "./AllocationDonut";
 
 const PortfolioDetail = ({ portfolio }) => {
   const [holdings, setHoldings] = useState([]);
@@ -475,43 +476,8 @@ const PortfolioDetail = ({ portfolio }) => {
               <h3 className="text-lg font-semibold text-gray-100 mb-4">
                 Asset Allocation
               </h3>
-              <div className="space-y-4">
-                {holdings.length > 0 ? (
-                  holdings.map((holding, index) => {
-                    const percentage =
-                      totalHoldingsValue > 0
-                        ? ((holding.value || 0) / totalHoldingsValue) * 100
-                        : 0;
-                    return (
-                      <div key={holding.id || index} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-gray-100">
-                            {holding.name}
-                            <div className="text-xs text-gray-500">
-                              {holding.symbol}
-                            </div>
-                          </span>
-                          <span className="text-sm text-gray-400">
-                            {percentage.toFixed(1)}%
-                          </span>
-                        </div>
-                        <div className="w-full bg-dark-700 rounded-full h-2">
-                          <div
-                            className="bg-primary-400 h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${Math.min(percentage, 100)}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="text-center text-gray-400 py-8">
-                    No holdings to display allocation for
-                  </div>
-                )}
-              </div>
+              <AllocationDonut portfolioId={portfolio?.id} />
             </div>
-
           </div>
         </>
       )}
