@@ -1,6 +1,7 @@
 import base64
 import logging
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import List, Tuple
 
 from sqlalchemy.orm import Session
@@ -14,7 +15,10 @@ from core.schemas.account_statements import (
     ParsedData,
     SupportedFormat,
 )
+from core.services.asset_factory import asset_from_ticker_info
+from core.services.market_data_service import MarketDataService
 from core.services.parsers.portfolia import PortfoliaParser
+from core.services.parsers.pytr_csv import PytrCsvParser
 from core.services.parsers.trade_republic import TradeRepublicParser
 from core.services.portfolio_service import PortfolioService
 
@@ -27,8 +31,10 @@ class AccountStatementService:
     def __init__(self, db: Session):
         self.db = db
         self.portfolio_service = PortfolioService(db)
+        self.market_data = MarketDataService()
         self._parsers = {
             "trade_republic": TradeRepublicParser(),
+            "pytr_csv": PytrCsvParser(),
             "portfolia": PortfoliaParser(),
         }
 
@@ -40,6 +46,13 @@ class AccountStatementService:
                 name="Trade Republic",
                 description="German neobroker",
                 supported_formats=[SupportedFormat.PDF],
+                logo_url="/logos/trade_republic.png",
+            ),
+            AccountStatementProvider(
+                id="pytr_csv",
+                name="Trade Republic (pytr CSV)",
+                description="Full history exported with `pytr export_transactions`",
+                supported_formats=[SupportedFormat.CSV],
                 logo_url="/logos/trade_republic.png",
             ),
             AccountStatementProvider(
@@ -71,6 +84,29 @@ class AccountStatementService:
 
         return result
 
+    async def _asset_for_symbol(
+        self,
+        symbol: str,
+        isin: str | None,
+        user_id: int,
+        assets_by_symbol: dict,
+        unavailable_symbols: set,
+    ) -> Asset:
+        """The user's asset for a Yahoo ticker, created (unsaved until commit) if missing."""
+        if symbol in assets_by_symbol:
+            return assets_by_symbol[symbol]
+        if symbol in unavailable_symbols:
+            raise ValueError(f"No market data for {symbol}")
+        ticker_data = await self.market_data.get_ticker_info(symbol)
+        if not ticker_data:
+            unavailable_symbols.add(symbol)
+            raise ValueError(f"No market data for {symbol}")
+        asset = asset_from_ticker_info(symbol, ticker_data, user_id, isin)
+        self.db.add(asset)
+        self.db.flush()
+        assets_by_symbol[symbol] = asset
+        return asset
+
     async def create_bulk_transactions(
         self,
         portfolio_id: int,
@@ -86,16 +122,30 @@ class AccountStatementService:
         created_transaction_models = []
         errors = []
         affected_asset_ids = set()
-        owned_asset_ids = {
-            asset_id
-            for (asset_id,) in self.db.query(Asset.id).filter(Asset.user_id == user_id)
-        }
+        owned = self.db.query(Asset).filter(Asset.user_id == user_id).all()
+        assets_by_id = {a.id: a for a in owned}
+        assets_by_symbol = {a.symbol.upper(): a for a in owned}
+        unavailable_symbols = set()
 
         # 2. Prepare all transaction models and add them to the session
         for i, item in enumerate(transactions_data):
             try:
-                if item.asset_id not in owned_asset_ids:
-                    raise ValueError(f"Asset {item.asset_id} not found")
+                if item.asset_id is not None:
+                    asset = assets_by_id.get(item.asset_id)
+                    if asset is None:
+                        raise ValueError(f"Asset {item.asset_id} not found")
+                elif item.symbol:
+                    asset = await self._asset_for_symbol(
+                        item.symbol.upper(),
+                        item.isin,
+                        user_id,
+                        assets_by_symbol,
+                        unavailable_symbols,
+                    )
+                else:
+                    raise ValueError("Choose an asset or a ticker")
+                if item.isin and not asset.isin:
+                    asset.isin = item.isin
 
                 transaction_type = TransactionType(
                     getattr(item.transaction_type, "value", item.transaction_type)
@@ -112,9 +162,11 @@ class AccountStatementService:
                         item.fees,
                         item.taxes,
                     )
+                    if abs(total_amount - item.total_amount) <= Decimal("0.01"):
+                        total_amount = item.total_amount
                 transaction = Transaction(
                     portfolio_id=portfolio_id,
-                    asset_id=item.asset_id,
+                    asset_id=asset.id,
                     transaction_type=transaction_type,
                     quantity=item.quantity,
                     price=item.price,
@@ -128,7 +180,7 @@ class AccountStatementService:
                     notes=item.notes,
                 )
                 self.db.add(transaction)
-                affected_asset_ids.add(item.asset_id)
+                affected_asset_ids.add(asset.id)
                 created_transaction_models.append(transaction)
 
             except ValueError as e:

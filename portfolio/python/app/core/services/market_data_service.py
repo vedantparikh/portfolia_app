@@ -5,7 +5,7 @@ Handles fetching real-time market data from yfinance without database storage.
 
 import asyncio
 import logging
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
@@ -29,6 +29,8 @@ class MarketDataService:
         self.price_cache_ttl: int = 60  # 1 minute for current prices
         self.close_cache_ttl: int = 12 * 60 * 60  # 12 hours for previous day's close
         self.daily_history_cache_ttl: int = 6 * 60 * 60
+        self.listing_cache_ttl: int = 7 * 24 * 60 * 60
+        self.range_cache_ttl: int = 24 * 60 * 60
 
     def _get_info_cache_key(self, symbol: str) -> str:
         """Generates a consistent cache key for ticker info."""
@@ -338,6 +340,83 @@ class MarketDataService:
             )
             for name, values in cached.items()
         }
+
+    async def search_listings(self, query: str) -> List[Dict[str, Any]]:
+        """Yahoo listings (equities, ETFs, funds, crypto) matching a name, ticker or ISIN."""
+        key = f"yfinance:listings:{query.strip().lower()}"
+        cached = await asyncio.to_thread(self.redis_client.get, key)
+        if cached is not None:
+            return cached
+
+        def fetch() -> List[Dict[str, Any]]:
+            quotes = yf.Search(query, max_results=20, news_count=0).quotes
+            return [
+                {
+                    "symbol": q["symbol"],
+                    "exchange": q.get("exchDisp") or q.get("exchange"),
+                    "quote_type": q.get("quoteType"),
+                    "name": q.get("longname") or q.get("shortname"),
+                }
+                for q in quotes
+                if q.get("symbol")
+                and q.get("quoteType")
+                in ("EQUITY", "ETF", "MUTUALFUND", "CRYPTOCURRENCY")
+            ]
+
+        try:
+            listings = await asyncio.to_thread(fetch)
+        except Exception as e:
+            logger.warning("Listing search failed for %r: %s", query, e)
+            return []
+        await asyncio.to_thread(
+            self.redis_client.set, key, listings, ex_seconds=self.listing_cache_ttl
+        )
+        return listings
+
+    async def get_daily_ranges(
+        self, symbol: str, start: date, end: date
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Daily low/high between start and end (split-adjusted, as Yahoo serves
+        them), every split of the listing (ratio by date) and its currency.
+        None when the listing has no prices in the window.
+        """
+        key = f"yfinance:ranges:{symbol.upper()}:{start}:{end}"
+        cached = await asyncio.to_thread(self.redis_client.get, key)
+        if cached is None:
+
+            def fetch() -> Dict[str, Any]:
+                ticker = yf.Ticker(symbol)
+                data = ticker.history(
+                    start=start, end=end + timedelta(days=1), auto_adjust=False
+                )
+                if not isinstance(data, pd.DataFrame) or data.empty:
+                    return {}
+                days = data.index.tz_localize(None).strftime("%Y-%m-%d")
+                splits = ticker.splits
+                return {
+                    "currency": (ticker.history_metadata or {}).get("currency"),
+                    "ranges": {
+                        day: [float(low), float(high)]
+                        for day, low, high in zip(days, data["Low"], data["High"])
+                        if pd.notna(low) and pd.notna(high)
+                    },
+                    "splits": {
+                        ts.strftime("%Y-%m-%d"): float(ratio)
+                        for ts, ratio in splits.items()
+                        if ratio > 0
+                    },
+                }
+
+            try:
+                cached = await asyncio.to_thread(fetch)
+            except Exception as e:
+                logger.info("No daily ranges for %s: %s", symbol, e)
+                cached = {}
+            await asyncio.to_thread(
+                self.redis_client.set, key, cached, ex_seconds=self.range_cache_ttl
+            )
+        return cached or None
 
     async def search_symbols(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:  # noqa: ARG002
         """

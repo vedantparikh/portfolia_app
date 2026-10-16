@@ -31,6 +31,7 @@ from core.schemas.portfolio import (
 from core.schemas.portfolio import (
     AssetDetail as AssetDetailSchema,
 )
+from core.services.asset_factory import asset_from_ticker_info
 from core.services.market_data_service import market_data_service
 
 logger = get_logger(__name__)
@@ -83,26 +84,8 @@ async def create_asset(
             detail=f"Failed to fetch market data for symbol {asset_data.symbol}",
         ) from e
 
-    new_asset = AssetModel(
-        symbol=asset_data.symbol.upper(),
-        name=ticker_data.get("long_name")
-        or ticker_data.get("short_name")
-        or asset_data.symbol.upper(),
-        asset_type=(
-            AssetType[ticker_data.get("quote_type").upper()]
-            if ticker_data.get("quote_type")
-            else AssetType.OTHER
-        ),
-        currency=ticker_data.get("currency", "USD"),
-        exchange=ticker_data.get("exchange"),
-        isin=ticker_data.get("isin"),
-        cusip=ticker_data.get("cusip"),
-        sector=ticker_data.get("sector"),
-        industry=ticker_data.get("industry"),
-        country=ticker_data.get("country"),
-        description=ticker_data.get("long_business_summary"),
-        user_id=current_user.id,
-        is_active=True,
+    new_asset = asset_from_ticker_info(
+        asset_data.symbol.upper(), ticker_data, current_user.id
     )
 
     db.add(new_asset)
@@ -162,27 +145,7 @@ async def create_assets_bulk(
             ):
                 raise ValueError("Invalid or incomplete market data received.")
 
-            new_asset = AssetModel(
-                symbol=symbol,
-                name=ticker_data.get("long_name")
-                or ticker_data.get("short_name")
-                or symbol,
-                asset_type=(
-                    AssetType[ticker_data.get("quote_type").upper()]
-                    if ticker_data.get("quote_type")
-                    else AssetType.OTHER
-                ),
-                currency=ticker_data.get("currency", "USD"),
-                exchange=ticker_data.get("exchange"),
-                isin=ticker_data.get("isin"),
-                cusip=ticker_data.get("cusip"),
-                sector=ticker_data.get("sector"),
-                industry=ticker_data.get("industry"),
-                country=ticker_data.get("country"),
-                description=ticker_data.get("long_business_summary"),
-                user_id=current_user.id,
-                is_active=True,
-            )
+            new_asset = asset_from_ticker_info(symbol, ticker_data, current_user.id)
             assets_to_create.append(new_asset)
         except Exception as e:
             logger.warning(

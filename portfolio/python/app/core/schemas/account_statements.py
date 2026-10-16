@@ -68,6 +68,22 @@ class SkippedRow(BaseModel):
     reason: str = Field(..., description="Why the row is not imported")
 
 
+class Fill(BaseModel):
+    """An executed trade price, used to identify the listing it was traded on."""
+
+    date: str = Field(..., description="Trade date in YYYY-MM-DD format")
+    price: Decimal = Field(..., description="Price per share before fees and taxes")
+
+
+class ParsedInstrument(BaseModel):
+    """One security (by ISIN) in a statement."""
+
+    isin: str = Field(..., description="ISIN")
+    name: str = Field(..., description="Name as printed in the statement")
+    transaction_count: int = Field(..., description="Importable rows for this ISIN")
+    fills: List[Fill] = Field(default_factory=list, description="Buy/sell prices")
+
+
 class ParsingMetadata(BaseModel):
     """Metadata about the parsing process."""
 
@@ -88,6 +104,9 @@ class ParsedData(BaseModel):
     )
     skipped: List[SkippedRow] = Field(
         default_factory=list, description="Rows read but not imported"
+    )
+    instruments: List[ParsedInstrument] = Field(
+        default_factory=list, description="Securities to map to assets, by ISIN"
     )
     metadata: ParsingMetadata = Field(..., description="Parsing metadata")
 
@@ -110,7 +129,13 @@ class BulkTransactionItem(BaseModel):
     """Individual transaction for bulk creation."""
 
     transaction_date: str = Field(..., description="Transaction datetime")
-    asset_id: int = Field(..., description="Asset ID")
+    asset_id: Optional[int] = Field(
+        None, description="Existing asset; otherwise `symbol` is looked up or created"
+    )
+    symbol: Optional[str] = Field(
+        None, description="Yahoo ticker when asset_id is unset"
+    )
+    isin: Optional[str] = Field(None, description="ISIN, remembered on the asset")
     transaction_type: TransactionType = Field(..., description="Transaction type")
     quantity: Decimal = Field(..., description="Transaction quantity")
     price: Decimal = Field(..., description="Price per share")
@@ -167,3 +192,38 @@ class BulkCreateResponse(BaseModel):
         ..., description="Successfully created transactions"
     )
     summary: BulkCreateSummary = Field(..., description="Creation summary")
+
+
+class ResolveInstrumentsRequest(BaseModel):
+    """Securities to match to Yahoo listings."""
+
+    instruments: List[ParsedInstrument] = Field(..., min_length=1, max_length=10)
+
+
+class ListingCandidate(BaseModel):
+    """A Yahoo listing and how well it contains the statement's fills."""
+
+    symbol: str
+    exchange: Optional[str] = None
+    currency: Optional[str] = None
+    match_percent: Optional[float] = Field(
+        None, description="Share of checked fills inside that day's low-high range"
+    )
+    fills_checked: int = 0
+
+
+class InstrumentResolution(BaseModel):
+    """Suggested listing for one ISIN."""
+
+    isin: str
+    status: str = Field(
+        ...,
+        description="existing | matched (≥90% in the account currency) | uncertain (≥50%) | unmatched",
+    )
+    suggested_symbol: Optional[str] = None
+    asset_id: Optional[int] = Field(None, description="Your asset already mapped to it")
+    candidates: List[ListingCandidate] = Field(default_factory=list)
+
+
+class ResolveInstrumentsResponse(BaseModel):
+    results: List[InstrumentResolution]

@@ -16,8 +16,11 @@ from core.schemas.account_statements import (
     BulkTransactionCreate,
     ParseResponse,
     ProvidersResponse,
+    ResolveInstrumentsRequest,
+    ResolveInstrumentsResponse,
 )
 from core.services.account_statement_service import AccountStatementService
+from core.services.isin_resolver import IsinResolver
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +73,17 @@ async def parse_statement(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred while parsing the statement",
         ) from e
+
+
+@router.post("/instruments/resolve", response_model=ResolveInstrumentsResponse)
+async def resolve_instruments(
+    request: ResolveInstrumentsRequest,
+    current_user: User = Depends(get_current_verified_user),
+    db: Session = Depends(get_db),
+) -> ResolveInstrumentsResponse:
+    """Suggest the Yahoo listing each ISIN was traded on (max 10 per call; slow when uncached)."""
+    results = await IsinResolver(db).resolve(request.instruments, current_user.id)
+    return ResolveInstrumentsResponse(results=results)
 
 
 @router.post("/transactions/bulk-create", response_model=BulkCreateResponse)

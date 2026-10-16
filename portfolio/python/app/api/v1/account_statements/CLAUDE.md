@@ -2,14 +2,15 @@
 
 **Purpose:** turn a broker PDF into reviewed transactions and create them in one atomic batch.
 
-**State (2026-10-16):** 🟡 Trade Republic: trades, savings plans and dividends import in EUR; cash rows are listed as skipped. Tested on synthetic statement text only; a real PDF check is open (the text-layout assumptions in `_extract_transactions` are unverified). Not exercised by the demo data.
+**State (2026-10-16):** 🟡 pytr CSV: parse, ISIN resolution and asset creation on import (backend; review-table UI pending). Trade Republic PDF: trades, savings plans and dividends import in EUR; cash rows are listed as skipped. Tested on synthetic statement text only; a real PDF check is open (the text-layout assumptions in `_extract_transactions` are unverified). Not exercised by the demo data.
 
 ## Backend — `router.py` (prefix `/api/v1/account-statements`), `core/services/account_statement_service.py`, `core/services/parsers/`
 | Endpoint | Behaviour |
 |---|---|
 | `GET /providers` | Supported parsers: Trade Republic (`parsers/trade_republic.py`), Portfolia's own export (`parsers/portfolia.py`) |
-| `POST /parse` (multipart `provider_id`, `file`) | Parsed rows for review (no DB writes) |
-| `POST /transactions/bulk-create` | Atomic: insert all rows, recalculate each affected asset, one commit. Also used by the manual Bulk Entry modal |
+| `POST /parse` (multipart `provider_id`, `file`) | Parsed rows for review (no DB writes), plus `skipped[]` and `instruments[]` (one per ISIN with its buy/sell fills) |
+| `POST /instruments/resolve` | ≤ 10 instruments → suggested Yahoo listing per ISIN (`isin_resolver.py`). Slow uncached (~3 s per ISIN, Yahoo); cached in Redis (search 7 d, ranges 1 d) |
+| `POST /transactions/bulk-create` | Atomic: insert all rows, recalculate each affected asset, one commit. A row gives `asset_id`, or `symbol` (+ `isin`): the user's asset with that ticker is used or created from Yahoo info (once per ticker), and the ISIN is stored on the asset so the next import maps it directly. A given `total_amount` within 1 cent of qty × price ± fees/taxes is kept as the exact cash. Also used by the manual Bulk Entry modal |
 
 ## Frontend
 `PDFUploadModal` (provider + file) → `ParsedDataTable` (map symbols to assets, inline edits, draft saved in localStorage, choose portfolio) → bulk-create. `accountStatementsAPI` in `services/api.js`.
@@ -20,6 +21,20 @@
 - **Erträge** → dividend with `total_amount` = cash received, quantity and price 0. Bulk-create keeps that amount (it no longer recomputes qty × price for dividends) and rejects a dividend ≤ 0.
 - **Zinszahlung, Überweisung, Kartentransaktion, Steuern** and unrecognised trades → `skipped[]` with a reason (`CASH_ROW_REASONS`); portfolios have no cash account. The review table lists them under "statement rows not imported".
 - Every row is `currency="EUR"`. Bulk-create stores `currency` (default: the portfolio currency) and `taxes`. Values are **not converted**: an EUR transaction on a USD-quoted asset needs FX (plan 2.3).
+
+## pytr CSV (`parsers/pytr_csv.py`, tests `tests/unit/test_pytr_csv_import.py`)
+Full Trade Republic history via `pytr export_transactions` (homelab: `appdata/trade-republic`). Ten positional columns `Date;Type;Value;Note;ISIN;Shares;Fees;Taxes;ISIN2;Shares2`; English and German headers/types; `.` or `,` decimals.
+- `Value` is the net cash moved (buy negative, incl. fees and taxes); fees and taxes are positive. Buy/Sell → price = (|value| ∓ fees ∓ taxes) / shares, `total_amount` = |value|. Dividend → `total_amount` = net value, `taxes` = withholding, quantity = shares held.
+- Skipped with a reason: Split (applied from market data; importing would double it), Swap, Spinoff, transfers, and cash rows (Deposit/Removal/Interest/Taxes/Tax Refund).
+- Rows are sorted by timestamp so same-day trades keep their execution order.
+
+## ISIN → listing (`core/services/isin_resolver.py`)
+TR fills in EUR on LS Exchange, which Yahoo doesn't carry; Yahoo's ISIN search usually returns only the primary (often USD) listing.
+- Candidates: ISIN search + name search + names of the first hits + every German venue (`.F .SG .DE .MU .DU .HM .BE .HA`) of any German code found (or of the primary ticker). Crypto pseudo-ISINs `XF000XRP0018` → `XRP-EUR`.
+- Score: share of the user's fills inside that day's low–high (±1 %), with later splits undone.
+- Ranking: 5-point buckets, then account currency, then venue order Frankfurt, Stuttgart, XETRA… (hours closest to LS Exchange).
+- Status: `existing` (user asset with that ISIN), `matched` (≥ 90 % in EUR), `uncertain` (≥ 50 %, suggested), `unmatched` (no suggestion; knock-outs/warrants `DE000H…`/`DE000V…` have no Yahoo prices, so the user picks a ticker or leaves the ISIN out).
+- Dry run on a real 2024–2026 export: 37/60 ISINs matched (778/939 rows); Nvidia/Netflix 96/100 % after split adjustment.
 
 ## Known gaps
 - No real statement in the test suite; layout drift (column order, extra amounts on a line) would show up as warnings or wrong amounts.
