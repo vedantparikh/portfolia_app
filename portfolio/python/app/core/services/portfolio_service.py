@@ -11,10 +11,9 @@ from core.database.models import (
     Portfolio,
     PortfolioAsset,
     Transaction,
-    TransactionStatus,
     TransactionType,
 )
-from core.domain.positions import OversellError, compute_position
+from core.domain.positions import OversellError, compute_position, to_trades
 from core.schemas.portfolio import (
     PortfolioAssetCreate,
     PortfolioAssetUpdate,
@@ -765,37 +764,18 @@ class PortfolioService:
         if not portfolio:
             return False
 
-        portfolio_assets_with_info = (
-            self.db.query(PortfolioAsset, Asset)
-            .join(Asset, PortfolioAsset.asset_id == Asset.id)
-            .filter(
-                PortfolioAsset.portfolio_id == portfolio_id, PortfolioAsset.quantity > 0
-            )
+        asset_ids = [
+            asset_id
+            for (asset_id,) in self.db.query(PortfolioAsset.asset_id)
+            .filter(PortfolioAsset.portfolio_id == portfolio_id)
             .all()
-        )
+        ]
+        if not asset_ids:
+            return False
 
-        if not portfolio_assets_with_info:
-            return False  # Nothing to refresh
-
-        symbols = [asset.symbol for pa, asset in portfolio_assets_with_info]
-        market_prices = await self.market_data_service.get_current_prices(symbols)
-
-        for portfolio_asset, asset_info in portfolio_assets_with_info:
-            current_price = market_prices.get(asset_info.symbol)
-            if current_price:
-                current_value = current_price * portfolio_asset.quantity
-                unrealized_pnl = current_value - portfolio_asset.cost_basis_total
-
-                portfolio_asset.current_value = current_value
-                portfolio_asset.unrealized_pnl = unrealized_pnl
-
-                if portfolio_asset.cost_basis_total > 0:
-                    portfolio_asset.unrealized_pnl_percent = (
-                        unrealized_pnl / portfolio_asset.cost_basis_total
-                    ) * 100
-                else:
-                    portfolio_asset.unrealized_pnl_percent = Decimal("0")
-
+        # Rebuild from transactions so splits since the last trade are applied
+        for asset_id in asset_ids:
+            await self.recalculate_asset_state(portfolio_id, asset_id, commit=False)
         self.db.commit()
         return True
 
@@ -833,12 +813,19 @@ class PortfolioService:
         """
         price_error = None
         current_price = None
+        splits = []
         try:
             asset = self.db.query(Asset).filter(Asset.id == asset_id).first()
             if asset:
                 current_price = await self.market_data_service.get_current_price(
                     asset.symbol
                 )
+                history = await self.market_data_service.get_daily_history(asset.symbol)
+                if history is not None:
+                    splits = [
+                        (day.date(), Decimal(str(ratio)))
+                        for day, ratio in history["splits"].items()
+                    ]
         except Exception as e:
             price_error = e
 
@@ -860,12 +847,7 @@ class PortfolioService:
             )
             .all()
         )
-        completed = [
-            tx
-            for tx in transactions
-            if tx.status in (None, TransactionStatus.COMPLETED)
-        ]
-        position = compute_position(completed)
+        position = compute_position(to_trades(transactions, {asset_id: splits}))
         current_quantity = position["quantity"]
         total_cost = position["cost_basis_total"]
 
