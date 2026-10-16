@@ -42,6 +42,29 @@ Never run pytest inside the running `portfolio-api-1`, which is wired to the sta
 - **Config:** `config.py` `settings`, fed by compose `env_file` (`python/app/.env.docker`, `js/.env.docker`). These are gitignored secrets: never print or commit them. When you add a key, also add it to the matching `.env.example`.
 - **Compose:** `docker-compose.yml` is currently the dev stack (bind mounts, reload, Vite dev server) with memory limits and log rotation. It must keep working from the `.env.example` templates, because CI runs it that way.
 
+## Feature docs (read the one for the feature you touch)
+Each feature has a `CLAUDE.md` with purpose, state, endpoints, UI, workflow, known gaps and plans. Frontend feature folders point to them.
+- Engine: `python/app/core/domain/CLAUDE.md`
+- Backend feature docs, each `python/app/api/v1/<dir>/CLAUDE.md`:
+
+  | Feature | `<dir>` |
+  |---|---|
+  | Portfolios / holdings | `portfolio` |
+  | Performance | `portfolio_calculations` |
+  | Analytics | `analytics` |
+  | Transactions | `transactions` |
+  | PDF import | `account_statements` |
+  | Watchlists | `watchlist` |
+  | Assets | `assets` |
+  | Market data | `market` |
+  | Auth | `auth` |
+  | Indicators | `statistical_indicators` |
+
+- Frontend:
+  - App shell, shared UI and conventions: `js/src/components/CLAUDE.md`
+  - Dashboard: `js/src/components/dashboard/CLAUDE.md`
+- When a change alters a feature's behaviour, state or gaps, update its doc in the same commit.
+
 ## Rules of engagement
 - Never add, upgrade or remove a dependency (pip, npm, base image, GitHub Action) without asking first.
 - After touching code, run the matching test file. **Before every commit, `scripts/verify.sh` must pass**, plus `--stack` if Docker, compose, env or startup changed. Never commit a red gate. CI runs the same script on arm64 and is a required check.
