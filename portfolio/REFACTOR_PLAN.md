@@ -191,7 +191,7 @@ Golden tests are written first for every item.
 | 🟡 2.4 | `MarketDataProvider` interface with one Yahoo implementation: unadjusted closes and corporate-action feed, Redis pipeline cache, concurrency limit and backoff. Delete the 4 duplicate search paths so a single `/assets/search` remains. **Now:** `get_daily_history` (split-adjusted, not dividend-adjusted closes + splits/dividends, Redis 6h) is the valuation source. Provider interface, backoff and single search open. | C1, H5, perf |
 | 🟡 2.5 | `domain/valuation.py`: daily holdings × unadjusted price × FX on a trading calendar, with explicit stale/missing flags. **Now:** `core/domain/valuation.py` `daily_series` on the trading-day calendar; missing price raises instead of cost fallback. FX and stale-after-N-days flags open. | H4, H6, M5 |
 | ✅ 2.6 | `domain/returns.py` and `domain/risk.py`: TWR, XIRR (with opening value), CAGR, calendar-date period returns, and risk metrics with a single risk-free rate and percent units. **Now:** `core/domain/returns.py`: TWR, XIRR (period + annual), CAGR, calendar periods, `period_summary`, one `RISK_FREE_RATE`; chart, /performance, /multi-period and risk agree exactly. | H1, H3, M6, M10 |
-| ⏳ 2.7 | Benchmark shadow portfolio built on the same functions, with a total-return index. **Now:** Benchmark endpoints still on old maths; UI shows a note. | C4, H2 |
+| ✅ 2.7 | Benchmark shadow portfolio built on the same functions, with a total-return index. **Done:** `core/domain/benchmark.py` `shadow_series` + `GET /portfolios/calculations/portfolio/{id}/benchmark`, Performance Chart "Compare with"; old benchmark endpoints and ~560 lines of legacy helpers removed. FX for foreign-currency benchmarks waits on 2.3. | C4, H2 |
 | 🟡 2.8 | Today's P&L formula and a correct previous close (time-aware rather than `iloc[0]` of 2 days). **Now:** `day_change` implemented and used by holdings/summary/overview; previous close still `yf.download(2d)` first row, 12h cache. | H5 |
 | 🟡 2.9 | Allocation and rebalancing in shares. Fix the indicator formulas (Wilder RSI/ATR/ADX, population-std Bollinger, CCI, StochRSI). **Now:** Allocation from live holdings, rebalancing in shares with the stored threshold. Indicator formulas open (PSAR stub, non-Wilder RSI/ATR/ADX, sample-std Bollinger). | M8, Low |
 | 🟡 2.10 | `PortfolioAsset` becomes a derived cache, rebuilt on every transaction write. Remove the client-writable quantity and P&L fields. **Now:** Rebuilt on every transaction write and on refresh; client-writable `PUT /portfolios/{id}/assets/{asset_id}` remains. | M1 |
@@ -311,6 +311,7 @@ Open:
 | 2026-10-16 | `chore/alembic-baseline` | — | 1.6: Alembic baseline from the models, `create_all` and the startup re-init removed, migration drift/round-trip check in the gate |
 | 2026-10-16 | `fix/tr-import` | — | 2.2: Trade Republic import keeps dividends, EUR, fees and taxes; cash rows skipped with a reason; date and confidence crashes fixed; import toasts/refresh fixed |
 | 2026-10-16 | `feat/pytr-csv-import` | — | pytr CSV provider (full TR history), ISIN → Yahoo listing resolver scored on the user's own fills, assets created on import with their ISIN; UI to follow |
+| 2026-10-16 | `feat/benchmark-shadow` | — | 2.7: shadow-portfolio benchmark (TWR = index return exactly, MWR/profit with the portfolio's own flows), `/benchmark` + `/benchmarks` endpoints, Performance Chart comparison; legacy benchmark maths deleted |
 
 
 ## 6b. Findings and to-do (2026-10-16)
@@ -342,7 +343,7 @@ Open:
 | UX | Bulk-import success toast fires on 0 rows; the market-status tile ignores US holidays | `Transactions.jsx`, `market_data_service.py` |
 
 ### Next up (suggested order)
-1. **Benchmark comparison** as a shadow portfolio on `daily_series` (2.7), shown in the Performance view.
+1. ✅ Benchmark comparison (2.7).
 2. **Trade Republic import fixes** (2.2) plus the import UI counter.
 3. **FX** (2.3): decide the source (open decision 1).
 4. ✅ Shadowed routes and the two 500s (1.2). Still open: the `str(e)` cleanup (1.3).
