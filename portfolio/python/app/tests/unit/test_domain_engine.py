@@ -1,0 +1,215 @@
+"""
+Golden tests for core/domain: split-adjusted FIFO positions, the daily value
+series and period returns. Every expected number is worked out by hand.
+"""
+
+from datetime import date, datetime, timezone
+from decimal import Decimal
+from types import SimpleNamespace
+
+import pandas as pd
+import pytest
+
+from core.database.models import Transaction, TransactionStatus, TransactionType
+from core.domain.positions import (
+    OversellError,
+    compute_position,
+    split_factor,
+    to_trades,
+)
+from core.domain.returns import (
+    compute_daily_returns,
+    max_drawdown_pct,
+    period_summary,
+    xirr_pct,
+)
+from core.domain.valuation import MissingPriceError, daily_series
+
+BUY, SELL, DIVIDEND = (
+    TransactionType.BUY,
+    TransactionType.SELL,
+    TransactionType.DIVIDEND,
+)
+
+
+def tx(
+    kind, qty, price, day, fees=0, asset_id=1, status=TransactionStatus.COMPLETED, id=0
+):
+    qty, price, fees = (Decimal(str(v)) for v in (qty, price, fees))
+    return SimpleNamespace(
+        id=id,
+        asset_id=asset_id,
+        status=status,
+        transaction_type=kind,
+        quantity=qty,
+        price=price,
+        total_amount=Transaction.compute_total_amount(kind, qty, price, fees),
+        transaction_date=datetime.combine(
+            day, datetime.min.time(), tzinfo=timezone.utc
+        ),
+    )
+
+
+def closes(prices):
+    return pd.Series(list(prices.values()), index=pd.to_datetime(list(prices.keys())))
+
+
+THU, FRI, SAT, MON, TUE = (date(2025, 1, d) for d in (2, 3, 4, 6, 7))
+
+
+class TestSplits:
+    def test_factor_only_counts_later_splits(self):
+        splits = [(date(2025, 1, 10), Decimal(2)), (date(2025, 6, 1), Decimal(3))]
+        assert split_factor(splits, date(2025, 1, 9)) == 6
+        assert split_factor(splits, date(2025, 1, 10)) == 3
+        assert split_factor(splits, date(2025, 7, 1)) == 1
+
+    def test_trade_before_split_is_in_todays_shares(self):
+        trade = to_trades(
+            [tx(BUY, 10, 100, THU)], {1: [(date(2025, 1, 10), Decimal(2))]}
+        )[0]
+        assert (trade.quantity, trade.price, trade.total_amount) == (20, 50, 1000)
+
+    def test_position_after_split_keeps_cost(self):
+        trades = to_trades(
+            [tx(BUY, 10, 100, THU), tx(SELL, 5, 60, date(2025, 1, 13))],
+            {1: [(date(2025, 1, 10), Decimal(2))]},
+        )
+        position = compute_position(trades)
+        # 20 post-split shares cost 1000; selling 5 removes 250 of cost
+        assert position["quantity"] == 15
+        assert position["cost_basis_total"] == 750
+        assert position["realized_pnl"] == 50
+
+
+class TestToTrades:
+    def test_only_completed_and_buys_before_sells(self):
+        trades = to_trades(
+            [
+                tx(SELL, 1, 10, THU, id=1),
+                tx(BUY, 1, 10, THU, id=2),
+                tx(BUY, 9, 10, THU, id=3, status=TransactionStatus.PENDING),
+                tx(BUY, 9, 10, THU, id=4, status=TransactionStatus.CANCELLED),
+            ]
+        )
+        assert [t.id for t in trades] == [2, 1]
+
+    def test_oversell_is_rejected(self):
+        with pytest.raises(OversellError):
+            compute_position(to_trades([tx(BUY, 1, 10, THU), tx(SELL, 2, 10, FRI)]))
+
+
+class TestDailySeries:
+    def test_fees_in_cost_and_weekend_trade_counts_next_trading_day(self):
+        series = daily_series(
+            to_trades([tx(BUY, 10, 100, THU, fees=5), tx(BUY, 10, 110, SAT)]),
+            {1: closes({THU: 100, FRI: 110, MON: 120})},
+            MON,
+        )
+        assert list(series.index.date) == [THU, FRI, MON]
+        assert series["value"].tolist() == [1000, 1100, 2400]
+        assert series["cost_basis"].tolist() == [1005, 1005, 2105]
+        assert series["net_invested"].tolist() == [1005, 1005, 2105]
+        assert series["inflow"].tolist() == [1005, 0, 1100]
+
+    def test_sell_uses_fifo_and_returns_net_proceeds(self):
+        series = daily_series(
+            to_trades(
+                [
+                    tx(BUY, 10, 100, THU),
+                    tx(BUY, 10, 200, FRI),
+                    tx(SELL, 15, 300, MON, fees=15),
+                ]
+            ),
+            {1: closes({THU: 100, FRI: 200, MON: 300})},
+            MON,
+        )
+        last = series.iloc[-1]
+        # sold lot 1 (1000) + half of lot 2 (1000); proceeds 4500 - 15
+        assert last["cost_basis"] == 1000
+        assert last["realized_pnl"] == 2485
+        assert last["outflow"] == 4485
+        assert last["net_invested"] == 3000 - 4485
+        assert last["value"] == 5 * 300
+
+    def test_dividend_is_cash_returned(self):
+        series = daily_series(
+            to_trades([tx(BUY, 10, 100, THU), tx(DIVIDEND, 10, 0.5, FRI)]),
+            {1: closes({THU: 100, FRI: 100})},
+            FRI,
+        )
+        assert series["dividends"].iloc[-1] == 5
+        assert series["outflow"].iloc[-1] == 5
+        assert series["net_invested"].iloc[-1] == 995
+
+    def test_price_gap_is_carried_forward(self):
+        series = daily_series(
+            to_trades([tx(BUY, 1, 10, THU), tx(BUY, 1, 50, THU, asset_id=2)]),
+            {1: closes({THU: 10, FRI: 11, MON: 12}), 2: closes({THU: 50, MON: 55})},
+            MON,
+        )
+        assert series["value"].tolist() == [60, 61, 67]
+
+    def test_held_asset_without_any_price_is_an_error_not_cost(self):
+        with pytest.raises(MissingPriceError):
+            daily_series(
+                to_trades([tx(BUY, 1, 10, THU), tx(BUY, 1, 50, THU, asset_id=2)]),
+                {1: closes({THU: 10}), 2: closes({FRI: 50})},
+                FRI,
+            )
+
+    def test_tz_aware_prices_are_used_by_date(self):
+        prices = closes({THU: 100, FRI: 110})
+        prices.index = prices.index.tz_localize("America/New_York")
+        series = daily_series(to_trades([tx(BUY, 1, 100, THU)]), {1: prices}, FRI)
+        assert series["value"].tolist() == [100, 110]
+
+
+def frame(values, inflow, outflow=None):
+    days = pd.bdate_range("2025-01-06", periods=len(values))
+    return pd.DataFrame(
+        {"value": values, "inflow": inflow, "outflow": outflow or [0] * len(values)},
+        index=days,
+    )
+
+
+class TestPeriodSummary:
+    def test_inception_profit_and_twr(self):
+        summary = period_summary(frame([1000, 1100, 1210], [1000, 0, 0]))
+        assert summary["start_value"] == 0
+        assert summary["net_contributions"] == 1000
+        assert summary["profit"] == pytest.approx(210)
+        assert summary["twr_pct"] == pytest.approx(21)
+
+    def test_mid_period_uses_previous_close_as_opening(self):
+        series = frame([1000, 1100, 1210], [1000, 0, 0])
+        summary = period_summary(series, date(2025, 1, 7))
+        assert summary["start_value"] == 1000
+        assert summary["net_contributions"] == 0
+        assert summary["profit"] == pytest.approx(210)
+        assert summary["twr_pct"] == pytest.approx(21)
+
+    def test_deposit_is_not_return(self):
+        # day 2: 1000 more arrives and the whole 2000 earns 5% -> 2100
+        summary = period_summary(frame([1000, 2100], [1000, 1000]))
+        assert summary["twr_pct"] == pytest.approx(5)
+        assert summary["profit"] == pytest.approx(100)
+
+    def test_best_and_worst_day(self):
+        summary = period_summary(frame([100, 110, 99], [100, 0, 0]))
+        assert summary["best_day"]["return_pct"] == pytest.approx(10)
+        assert summary["worst_day"]["return_pct"] == pytest.approx(-10)
+
+
+class TestRiskAndXirr:
+    def test_drawdown_counts_a_fall_from_the_start(self):
+        returns = compute_daily_returns(frame([100, 90, 99, 80], [100, 0, 0, 0]), 0)
+        assert max_drawdown_pct(returns) == pytest.approx(-20)
+
+    def test_xirr_one_year_ten_percent(self):
+        assert xirr_pct(
+            [(date(2024, 1, 1), -1000), (date(2024, 12, 31), 1100)]
+        ) == pytest.approx(10, abs=0.05)
+
+    def test_xirr_needs_money_in_and_out(self):
+        assert xirr_pct([(date(2024, 1, 1), -1000)]) is None

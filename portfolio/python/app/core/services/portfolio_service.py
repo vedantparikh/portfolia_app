@@ -1,7 +1,7 @@
 import asyncio
 from datetime import date
 from decimal import Decimal
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 from sqlalchemy import and_, case, desc
 from sqlalchemy.orm import Session
@@ -14,6 +14,7 @@ from core.database.models import (
     TransactionStatus,
     TransactionType,
 )
+from core.domain.positions import OversellError, compute_position
 from core.schemas.portfolio import (
     PortfolioAssetCreate,
     PortfolioAssetUpdate,
@@ -28,65 +29,7 @@ from core.schemas.portfolio import (
 )
 from core.services.market_data_service import MarketDataService
 
-
-class OversellError(ValueError):
-    """Raised when a sell exceeds the quantity held at that point in time."""
-
-
-def compute_position(transactions: List[Transaction]) -> Dict[str, Decimal]:
-    """
-    Rebuild a position from its transactions using FIFO lots.
-
-    `transactions` must be ordered chronologically (buys before sells on ties) and
-    contain only completed transactions. `total_amount` is the cash moved, so buy lots
-    include fees and sell proceeds are net of fees and taxes.
-
-    Raises OversellError if a sell exceeds the quantity held at that moment.
-    """
-    buy_lots: List[Dict[str, Decimal]] = []
-    realized_pnl = Decimal("0")
-    cost_of_sold = Decimal("0")
-
-    for tx in transactions:
-        if tx.transaction_type == TransactionType.BUY:
-            buy_lots.append(
-                {
-                    "quantity": Decimal(tx.quantity),
-                    "total_amount": Decimal(tx.total_amount),
-                }
-            )
-        elif tx.transaction_type == TransactionType.SELL:
-            sell_quantity = Decimal(tx.quantity)
-            held = sum((lot["quantity"] for lot in buy_lots), Decimal("0"))
-            if sell_quantity > held:
-                raise OversellError(
-                    f"Sell of {sell_quantity} on {tx.transaction_date:%Y-%m-%d} "
-                    f"exceeds the {held} units held at that date"
-                )
-
-            cost_of_goods_sold = Decimal("0")
-            while sell_quantity > 0:
-                lot = buy_lots[0]
-                take = min(sell_quantity, lot["quantity"])
-                portion = (take / lot["quantity"]) * lot["total_amount"]
-                cost_of_goods_sold += portion
-                lot["quantity"] -= take
-                lot["total_amount"] -= portion
-                sell_quantity -= take
-                if lot["quantity"] <= 0:
-                    buy_lots.pop(0)
-
-            realized_pnl += Decimal(tx.total_amount) - cost_of_goods_sold
-            cost_of_sold += cost_of_goods_sold
-
-    return {
-        "quantity": sum((lot["quantity"] for lot in buy_lots), Decimal("0")),
-        "cost_basis_total": sum(
-            (lot["total_amount"] for lot in buy_lots), Decimal("0")
-        ),
-        "realized_pnl": realized_pnl,
-        "cost_of_sold": cost_of_sold,
-    }
+__all__ = ["OversellError", "PortfolioService", "compute_position"]
 
 
 class PortfolioService:

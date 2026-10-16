@@ -26,34 +26,13 @@ from core.database.models import (
     TransactionStatus,
     TransactionType,
 )
+from core.domain.returns import compute_daily_returns
 from core.services.market_data_service import MarketDataService
 from core.services.utils import CashFlow, PeriodType
 
 logger = logging.getLogger(__name__)
 
 TRADING_DAYS_PER_YEAR = 252
-
-
-def compute_daily_returns(history: pd.DataFrame, opening_value: float) -> pd.Series:
-    """
-    Cash-flow-adjusted daily returns from a daily value series.
-
-    Buys (`inflow`) are treated as arriving at the start of the day and sales/dividends
-    (`outflow`) as leaving at the end of the day:
-
-        r_t = (V_t + outflow_t) / (V_{t-1} + inflow_t) - 1
-
-    This keeps the denominator non-negative, so a full exit is measured correctly
-    (instead of producing -100%), and a first purchase measures close vs. cost.
-    Days with no capital at risk (denominator <= 0) get NaN.
-    """
-    prev_value = history["value"].shift(1)
-    if len(prev_value):
-        prev_value.iloc[0] = opening_value
-    denominator = prev_value + history["inflow"]
-    numerator = history["value"] + history["outflow"]
-    returns = numerator / denominator.where(denominator > 0) - 1
-    return returns.replace([np.inf, -np.inf], np.nan)
 
 
 class PortfolioCalculationService:
