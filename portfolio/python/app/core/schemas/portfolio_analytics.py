@@ -42,8 +42,8 @@ class PortfolioPerformanceHistoryCreate(PortfolioPerformanceHistoryBase):
 
 
 class PortfolioPerformanceHistory(PortfolioPerformanceHistoryBase):
-    id: int
-    created_at: datetime
+    id: Optional[int] = None
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
