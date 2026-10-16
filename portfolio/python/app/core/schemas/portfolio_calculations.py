@@ -5,7 +5,7 @@ Pydantic schemas for portfolio performance calculation responses.
 """
 
 from datetime import date, datetime
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -47,23 +47,6 @@ class PortfolioPerformanceResponse(BaseModel):
     )
 
 
-class BenchmarkPerformanceResponse(BaseModel):
-    """Benchmark performance calculation response."""
-
-    benchmark_symbol: str = Field(..., description="Benchmark symbol")
-    period: str = Field(..., description="Calculation period")
-    start_date: Optional[datetime] = Field(None, description="Period start date")
-    end_date: datetime = Field(..., description="Period end date")
-    current_value: float = Field(..., description="Current hypothetical value")
-    metrics: PerformanceMetrics = Field(..., description="Performance metrics")
-    calculation_date: datetime = Field(
-        ..., description="When calculation was performed"
-    )
-    error: Optional[str] = Field(
-        None, description="Error message if calculation failed"
-    )
-
-
 class ComparisonMetrics(BaseModel):
     """Portfolio vs benchmark comparison metrics."""
 
@@ -82,18 +65,6 @@ class ComparisonMetrics(BaseModel):
     outperforming: Optional[bool] = Field(
         None, description="Whether portfolio is outperforming benchmark"
     )
-
-
-class PortfolioBenchmarkComparisonResponse(BaseModel):
-    """Portfolio vs benchmark comparison response."""
-
-    portfolio_performance: PortfolioPerformanceResponse = Field(
-        ..., description="Portfolio performance"
-    )
-    benchmark_performance: BenchmarkPerformanceResponse = Field(
-        ..., description="Benchmark performance"
-    )
-    comparison: ComparisonMetrics = Field(..., description="Comparison metrics")
 
 
 class PeriodPerformanceSummary(BaseModel):
@@ -121,20 +92,6 @@ class MultiPeriodPerformanceResponse(BaseModel):
     )
 
 
-class BenchmarkMultiPeriodPerformanceResponse(BaseModel):
-    """Multi-period performance analysis response for a benchmark."""
-
-    benchmark_symbol: str = Field(..., description="Benchmark symbol")
-    total_invested: float = Field(..., description="Total amount invested")
-    current_value: float = Field(..., description="Current hypothetical value")
-    periods: List[PeriodPerformanceSummary] = Field(
-        ..., description="Performance by period"
-    )
-    calculation_date: datetime = Field(
-        ..., description="When calculation was performed"
-    )
-
-
 class AvailablePeriod(BaseModel):
     """Available calculation period."""
 
@@ -147,19 +104,6 @@ class AvailablePeriodsResponse(BaseModel):
     """Available calculation periods response."""
 
     periods: List[AvailablePeriod] = Field(..., description="Available periods")
-
-
-class CalculationStatus(BaseModel):
-    """Calculation status response."""
-
-    status: str = Field(..., description="Calculation status")
-    message: str = Field(..., description="Status message")
-    calculation_id: Optional[str] = Field(
-        None, description="Calculation ID for tracking"
-    )
-    estimated_completion: Optional[datetime] = Field(
-        None, description="Estimated completion time"
-    )
 
 
 class PerformanceCalculationRequest(BaseModel):
@@ -176,76 +120,7 @@ class PerformanceCalculationRequest(BaseModel):
     )
 
 
-class BenchmarkPerformanceCalculationRequest(BaseModel):
-    """Request for benchmark performance calculation."""
-
-    benchmark_symbol: str = Field(..., description="Benchmark symbol")
-    investment_schedule: List[Dict[str, Any]] = Field(
-        ..., description="Investment schedule"
-    )
-    period: str = Field(..., description="Calculation period")
-    end_date: Optional[datetime] = Field(None, description="End date for calculation")
-
-
-class MultiPeriodCalculationRequest(BaseModel):
-    """Request for multi-period performance calculation."""
-
-    portfolio_id: int = Field(..., description="Portfolio ID")
-    periods: List[str] = Field(..., description="List of periods to calculate")
-    end_date: Optional[datetime] = Field(None, description="End date for calculations")
-    include_benchmark: Optional[bool] = Field(
-        False, description="Include benchmark comparison"
-    )
-    benchmark_symbol: Optional[str] = Field(
-        None, description="Benchmark symbol for comparison"
-    )
-
-
-class PerformanceExportRequest(BaseModel):
-    """Request for performance data export."""
-
-    portfolio_id: int = Field(..., description="Portfolio ID")
-    periods: List[str] = Field(..., description="Periods to include in export")
-    format: str = Field(default="json", description="Export format (json, csv, excel)")
-    include_benchmark: Optional[bool] = Field(
-        False, description="Include benchmark data"
-    )
-    benchmark_symbol: Optional[str] = Field(None, description="Benchmark symbol")
-
-
-class PerformanceExportResponse(BaseModel):
-    """Performance data export response."""
-
-    export_id: str = Field(..., description="Export ID")
-    download_url: str = Field(..., description="Download URL")
-    format: str = Field(..., description="File format")
-    size_bytes: int = Field(..., description="File size in bytes")
-    expires_at: datetime = Field(..., description="Download link expiration")
-    created_at: datetime = Field(..., description="Export creation time")
-
-
 # Error response schemas
-
-
-class CalculationError(BaseModel):
-    """Calculation error details."""
-
-    error_code: str = Field(..., description="Error code")
-    error_message: str = Field(..., description="Error message")
-    error_details: Optional[Dict[str, Any]] = Field(
-        None, description="Additional error details"
-    )
-
-
-class PerformanceCalculationErrorResponse(BaseModel):
-    """Performance calculation error response."""
-
-    portfolio_id: Optional[int] = Field(None, description="Portfolio ID")
-    asset_id: Optional[int] = Field(None, description="Asset ID")
-    benchmark_symbol: Optional[str] = Field(None, description="Benchmark symbol")
-    period: Optional[str] = Field(None, description="Calculation period")
-    error: CalculationError = Field(..., description="Error details")
-    timestamp: datetime = Field(..., description="Error timestamp")
 
 
 # Summary schemas for dashboard/overview
@@ -370,3 +245,57 @@ class PerformanceSeriesResponse(BaseModel):
     points: List[SeriesPoint]
     summary: Optional[PeriodSummary] = None
     error: Optional[str] = None
+
+
+class BenchmarkOption(BaseModel):
+    symbol: str
+    name: str
+
+
+class BenchmarkOptionsResponse(BaseModel):
+    currency: str
+    options: List[BenchmarkOption]
+
+
+class BenchmarkInfo(BaseModel):
+    symbol: str
+    name: str
+    currency: Optional[str] = None
+
+
+class BenchmarkPoint(BaseModel):
+    date: date
+    value: float = Field(..., description="Portfolio value at the close")
+    benchmark_value: float = Field(
+        ..., description="Value of the same cash flows invested in the benchmark"
+    )
+    invested: float = Field(
+        ...,
+        description="Value at the period start plus deposits minus withdrawals since",
+    )
+
+
+class BenchmarkComparisonResponse(BaseModel):
+    """The portfolio next to a shadow portfolio that put the same money into the benchmark."""
+
+    portfolio_id: int
+    period: str
+    benchmark: BenchmarkInfo
+    points: List[BenchmarkPoint]
+    portfolio: Optional[PeriodSummary] = None
+    shadow: Optional[PeriodSummary] = Field(
+        None,
+        description="Same flows invested in the benchmark; its TWR is the benchmark return",
+    )
+    difference: Optional["BenchmarkDifference"] = None
+    warnings: List[str] = Field(default_factory=list)
+    error: Optional[str] = None
+
+
+class BenchmarkDifference(BaseModel):
+    """Portfolio minus shadow; returns in percentage points."""
+
+    end_value: Optional[float] = None
+    profit: Optional[float] = None
+    twr_pct: Optional[float] = None
+    mwr_pct: Optional[float] = None

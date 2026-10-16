@@ -19,16 +19,16 @@ from core.auth.dependencies import get_current_user
 from core.database.connection import get_db
 from core.schemas.portfolio_calculations import (
     AvailablePeriodsResponse,
-    BenchmarkPerformanceCalculationRequest,
-    BenchmarkPerformanceResponse,
+    BenchmarkComparisonResponse,
+    BenchmarkOptionsResponse,
     MultiPeriodPerformanceResponse,
     PerformanceCalculationRequest,
     PerformanceSeriesResponse,
-    PortfolioBenchmarkComparisonResponse,
     PortfolioPerformanceOverview,
     PortfolioPerformanceResponse,
 )
 from core.services.portfolio_calculation_service import (
+    BENCHMARKS,
     PortfolioCalculationService,
 )
 from core.services.utils import PeriodType
@@ -270,84 +270,41 @@ async def get_multi_period_performance(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.post("/benchmark/performance", response_model=BenchmarkPerformanceResponse)
-async def calculate_benchmark_performance(
-    request: BenchmarkPerformanceCalculationRequest,
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+@router.get("/benchmarks", response_model=BenchmarkOptionsResponse)
+async def get_benchmark_options(
+    currency: str = Query("EUR", min_length=3, max_length=3),
+    current_user=Depends(get_current_user),  # noqa: ARG001
 ):
-    """
-    Calculate hypothetical performance if money was invested in benchmark.
-
-    Calculates what the performance would have been if the same investment
-    schedule was applied to a benchmark index or stock.
-    """
-    try:
-        service = PortfolioCalculationService(db)
-
-        # Convert investment schedule to datetime tuples
-        investment_amounts = []
-        for investment in request.investment_schedule:
-            investment_amounts.append(
-                (
-                    datetime.fromisoformat(investment["date"]),
-                    float(investment["amount"]),
-                )
-            )
-
-        result = await service.calculate_benchmark_performance(
-            benchmark_symbol=request.benchmark_symbol,
-            cash_flows=investment_amounts,
-            period=request.period,
-            end_date=request.end_date,
-        )
-
-        if "error" in result:
-            raise HTTPException(status_code=400, detail=result["error"])
-
-        return BenchmarkPerformanceResponse(**result)
-
-    except Exception as e:
-        logger.error(f"Error calculating benchmark performance: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+    """Suggested total-return benchmarks for a portfolio currency."""
+    currency = currency.upper()
+    return BenchmarkOptionsResponse(
+        currency=currency, options=BENCHMARKS.get(currency, [])
+    )
 
 
 @router.get(
-    "/portfolio/{portfolio_id}/compare/{benchmark_symbol}",
-    response_model=PortfolioBenchmarkComparisonResponse,
+    "/portfolio/{portfolio_id}/benchmark", response_model=BenchmarkComparisonResponse
 )
-async def compare_portfolio_to_benchmark(
+async def get_benchmark_comparison(
     portfolio_id: int,
-    benchmark_symbol: str,
-    period: str = Query(default=PeriodType.INCEPTION, description="Comparison period"),
-    end_date: Optional[datetime] = Query(None, description="End date for comparison"),
+    period: str = Query(default=PeriodType.LAST_1_YEAR, description="Period code"),
+    symbol: Optional[str] = Query(
+        None, description="Yahoo ticker; default: the portfolio's primary benchmark"
+    ),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    """
-    Compare portfolio performance to benchmark using same investment schedule.
-
-    Creates a hypothetical investment in the benchmark using the same dates
-    and amounts as the actual portfolio transactions, then compares performance.
-    """
+    """The portfolio next to the same cash flows invested in a benchmark."""
     try:
-        service = PortfolioCalculationService(db)
-
-        result = await service.compare_portfolio_to_benchmark(
-            portfolio_id=portfolio_id,
-            user_id=current_user.id,
-            benchmark_symbol=benchmark_symbol,
-            period=period,
-            end_date=end_date,
+        PeriodType.get_start_date(period)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Unknown period") from None
+    try:
+        return await PortfolioCalculationService(db).get_benchmark_comparison(
+            portfolio_id, current_user.id, period, symbol
         )
-
-        return PortfolioBenchmarkComparisonResponse(**result)
-
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except Exception as e:
-        logger.error(f"Error comparing portfolio to benchmark: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=404, detail="Portfolio not found") from e
 
 
 @router.get(

@@ -6,9 +6,16 @@ const SERIES = [
   { key: "value", label: "Value", color: "#38bdf8" },
   { key: "invested", label: "Invested", color: "#fbbf24" },
   { key: "cost_basis", label: "Cost basis", color: "#94a3b8" },
+  { key: "benchmark_value", label: "Benchmark", color: "#a78bfa" },
 ];
 
-const PerformanceSeriesChart = ({ points, showCostBasis = false, height = "h-80" }) => {
+const PerformanceSeriesChart = ({
+  points,
+  showCostBasis = false,
+  benchmarkLabel = null,
+  height = "h-80",
+}) => {
+  const showBenchmark = points?.some((p) => p.benchmark_value != null);
   const containerRef = useRef(null);
   const [hover, setHover] = useState(null);
 
@@ -48,10 +55,19 @@ const PerformanceSeriesChart = ({ points, showCostBasis = false, height = "h-80"
         .addSeries(LineSeries, line(SERIES[2].color, true))
         .setData(points.map((p) => ({ time: p.date, value: p.cost_basis })));
     }
+    if (showBenchmark) {
+      chart
+        .addSeries(LineSeries, line(SERIES[3].color, false))
+        .setData(
+          points
+            .filter((p) => p.benchmark_value != null)
+            .map((p) => ({ time: p.date, value: p.benchmark_value }))
+        );
+    }
     chart.subscribeCrosshairMove((param) => setHover(param.time ? byTime.get(param.time) : null));
     chart.timeScale().fitContent();
     return () => chart.remove();
-  }, [points, showCostBasis]);
+  }, [points, showCostBasis, showBenchmark]);
 
   const shown = hover || points?.[points.length - 1];
 
@@ -59,10 +75,14 @@ const PerformanceSeriesChart = ({ points, showCostBasis = false, height = "h-80"
     <div>
       <div className="flex flex-wrap items-center gap-x-5 gap-y-1 mb-3 text-xs">
         {shown && <span className="text-gray-400">{formatDate(`${shown.date}T12:00:00`)}</span>}
-        {SERIES.filter((s) => s.key !== "cost_basis" || showCostBasis).map((s) => (
+        {SERIES.filter(
+          (s) =>
+            (s.key !== "cost_basis" || showCostBasis) &&
+            (s.key !== "benchmark_value" || showBenchmark)
+        ).map((s) => (
           <span key={s.key} className="flex items-center gap-1.5 text-gray-400">
             <span className="w-2.5 h-0.5 rounded" style={{ backgroundColor: s.color }} />
-            {s.label}
+            {s.key === "benchmark_value" && benchmarkLabel ? benchmarkLabel : s.label}
             {shown && <span className="text-gray-100 font-medium">{formatCurrency(shown[s.key])}</span>}
           </span>
         ))}

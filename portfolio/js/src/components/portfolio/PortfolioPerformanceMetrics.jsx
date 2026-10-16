@@ -579,10 +579,10 @@ const PortfolioPerformanceMetrics = ({ portfolio }) => {
       <div className="card p-6 flex items-start gap-4">
         <BarChart3 className="w-5 h-5 mt-0.5 text-gray-500 shrink-0" />
         <div>
-          <p className="font-medium text-gray-200">Benchmark comparison is coming</p>
+          <p className="font-medium text-gray-200">Benchmark comparison</p>
           <p className="text-sm text-gray-400 mt-1">
-            Comparing these returns against an index needs a backend calculation
-            that isn&apos;t reliable yet, so it is not shown.
+            Open the Performance Chart view and choose &quot;Compare with&quot; to see what the
+            same deposits and withdrawals would have earned in an index.
           </p>
         </div>
       </div>

@@ -101,6 +101,14 @@ export const formatPercentage = (value, options = {}) => {
 };
 
 /**
+ * Difference between two percentages, in percentage points ("+1.25 pp").
+ */
+export const formatPercentagePoints = (value, options = {}) => {
+    const text = formatPercentage(value, options);
+    return text === 'N/A' ? '—' : text.replace(/%$/, ' pp');
+};
+
+/**
  * Format large numbers with appropriate suffixes (B, M, K)
  * @param {number|string|null|undefined} num - The number to format
  * @param {Object} options - Formatting options

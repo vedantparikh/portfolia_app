@@ -1368,35 +1368,26 @@ export const portfolioCalculationsAPI = {
     return response.data;
   },
 
-  /* 
-      CALCULATE BENCHMARK PERFORMANCE - Calculate hypothetical performance if money was invested in benchmark
-      Parameters: requestData (object with benchmark_symbol, investment_schedule, period, end_date)
-      Returns: Server response with benchmark performance data
+  /*
+      GET BENCHMARK OPTIONS - Suggested total-return benchmarks for a currency
+      Returns: { currency, options: [{ symbol, name }] }
     */
-  calculateBenchmarkPerformance: async (requestData) => {
-    const response = await api.post(
-      "/portfolios/calculations/benchmark/performance",
-      requestData
-    );
+  getBenchmarkOptions: async (currency) => {
+    const response = await api.get("/portfolios/calculations/benchmarks", {
+      params: { currency },
+    });
     return response.data;
   },
 
-  /* 
-      COMPARE PORTFOLIO TO BENCHMARK - Compare portfolio performance to benchmark using same investment schedule
-      Parameters: portfolioId (string or number), benchmarkSymbol (string), period (string), endDate (string)
-      Returns: Server response with portfolio vs benchmark comparison data
+  /*
+      GET BENCHMARK COMPARISON - The portfolio next to the same cash flows invested in a benchmark
+      Parameters: portfolioId, period (code), symbol (Yahoo ticker; null = portfolio default)
+      Returns: { benchmark, points[{date, value, benchmark_value, invested}], portfolio, shadow, difference, warnings, error }
     */
-  comparePortfolioToBenchmark: async (
-    portfolioId,
-    benchmarkSymbol,
-    period = "inception",
-    endDate = null
-  ) => {
+  getBenchmarkComparison: async (portfolioId, period = "1y", symbol = null) => {
     const response = await api.get(
-      `/portfolios/calculations/portfolio/${portfolioId}/compare/${benchmarkSymbol}`,
-      {
-        params: { period, end_date: endDate },
-      }
+      `/portfolios/calculations/portfolio/${portfolioId}/benchmark`,
+      { params: { period, symbol: symbol || undefined } }
     );
     return response.data;
   },
