@@ -15,9 +15,10 @@ import pandas as pd
 
 from core.database.models.transaction import TransactionType
 from core.domain.positions import Lots, Trade
+from core.errors import DomainError
 
 
-class MissingPriceError(ValueError):
+class MissingPriceError(DomainError):
     """A held asset has no closing price on or before a valuation date."""
 
 

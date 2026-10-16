@@ -30,7 +30,7 @@
 ## Known gaps
 - Duplicate search paths (`/stock/symbols` real, `/market-data/search` exact lookup); unused client fns `getMajorIndices`, `getBulkPrices`, `getTickerInfo`, `getTickerData`.
 - Market status ignores US holidays; previous close cache can be stale across a weekend morning.
-- No backoff/concurrency limit; `str(e)` in several response details.
+- No backoff/concurrency limit.
 
 ## Planned
 Plan 2.4: `MarketDataProvider` interface (Yahoo first), Redis pipeline cache, concurrency limit + backoff, one search endpoint; 2.3 FX rates (Yahoo `EURUSD=X` or ECB, open decision); 3.3 worker refreshes prices so requests never call Yahoo synchronously.

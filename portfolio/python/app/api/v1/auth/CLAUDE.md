@@ -27,7 +27,6 @@ Register → email link → `/verify-email` → login (tokens in localStorage) �
 - Tokens and user in localStorage (XSS exposure); token-clearing code duplicated in `api.js`.
 - No profile/settings page: `changePassword`, `PUT /me`, `DELETE /me` unused by the UI.
 - `core/database/models/auth.py` is a dead duplicate of the user tables; `generate_two_factor_code` unused (no 2FA).
-- `str(e)` in a response detail (router ~708).
 
 ## Planned
 Plan 1.9 (python-jose → PyJWT, hashed refresh tokens at rest, dummy hash on unknown users), 4.6 (refresh token in httpOnly cookie, access token in memory), a settings page (profile, password, delete account).

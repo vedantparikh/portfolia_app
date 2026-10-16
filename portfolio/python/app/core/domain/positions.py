@@ -14,13 +14,14 @@ from decimal import Decimal
 from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 from core.database.models.transaction import TransactionStatus, TransactionType
+from core.errors import DomainError
 
 Split = Tuple[date, Decimal]
 
 _SAME_DAY_ORDER = {TransactionType.BUY: 0, TransactionType.SELL: 1}
 
 
-class OversellError(ValueError):
+class OversellError(DomainError):
     """Raised when a sell exceeds the quantity held at that point in time."""
 
 

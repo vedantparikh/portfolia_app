@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from core.database.connection import get_db, get_db_health
+from core.errors import public_message
 
 logger = logging.getLogger(__name__)
 
@@ -70,4 +71,6 @@ async def detailed_health_check(db: Session = Depends(get_db)):
         raise
     except Exception as e:
         logger.error(f"Detailed health check failed: {e}")
-        raise HTTPException(status_code=503, detail=f"Health check failed: {str(e)}")
+        raise HTTPException(
+            status_code=503, detail=public_message(e, "Health check failed")
+        )

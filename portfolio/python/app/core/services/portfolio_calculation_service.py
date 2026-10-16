@@ -32,6 +32,7 @@ from core.domain.benchmark import shadow_series
 from core.domain.positions import OversellError, Split, to_trades
 from core.domain.returns import compute_daily_returns, period_summary, split_period
 from core.domain.valuation import MissingPriceError, daily_series
+from core.errors import NotFoundError
 from core.services.market_data_service import MarketDataService
 from core.services.utils import PeriodType
 
@@ -91,7 +92,7 @@ class PortfolioCalculationService:
         # Get portfolio and verify ownership
         portfolio = self.get_portfolio(portfolio_id, user_id)
         if not portfolio:
-            raise ValueError(f"Portfolio {portfolio_id} not found or not accessible")
+            raise NotFoundError(f"Portfolio {portfolio_id} not found")
 
         # Get all transactions for the portfolio
         all_transactions = self.get_transactions(portfolio_id, None, end_date)
@@ -603,7 +604,7 @@ class PortfolioCalculationService:
         for asset_id in asset_ids:
             asset = self.db.query(Asset).filter(Asset.id == asset_id).first()
             if not asset:
-                raise ValueError(f"Asset {asset_id} not found")
+                raise NotFoundError(f"Asset {asset_id} not found")
             symbols[asset_id] = asset.symbol
             history = await self.market_data_service.get_daily_history(asset.symbol)
             if history is None:
@@ -637,7 +638,7 @@ class PortfolioCalculationService:
     ) -> Dict[str, Any]:
         """Daily points and the period summary the performance chart shows."""
         if not self.get_portfolio(portfolio_id, user_id):
-            raise ValueError(f"Portfolio {portfolio_id} not found or not accessible")
+            raise NotFoundError(f"Portfolio {portfolio_id} not found")
         end = datetime.now(timezone.utc)
         start = PeriodType.get_start_date(period, end)
         result: Dict[str, Any] = {
@@ -690,7 +691,7 @@ class PortfolioCalculationService:
         """The portfolio next to the same cash flows invested in a benchmark."""
         portfolio = self.get_portfolio(portfolio_id, user_id)
         if not portfolio:
-            raise ValueError(f"Portfolio {portfolio_id} not found or not accessible")
+            raise NotFoundError(f"Portfolio {portfolio_id} not found")
         symbol = (symbol or self.default_benchmark(portfolio)).strip().upper()
         end = datetime.now(timezone.utc)
         start = PeriodType.get_start_date(period, end)

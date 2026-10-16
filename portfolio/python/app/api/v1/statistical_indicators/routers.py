@@ -16,6 +16,7 @@ from core.auth.dependencies import (
 from core.auth.utils import is_rate_limited
 from core.database.connection import get_db
 from core.database.models.user import User
+from core.errors import public_message
 from core.schemas.statistical_indicators import (
     AnalysisConfiguration,
     AnalysisConfigurationCreate,
@@ -72,7 +73,7 @@ async def get_available_indicators(
         )
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Error fetching indicators: {str(e)}"
+            status_code=500, detail=public_message(e, "Error fetching indicators")
         )
 
 
@@ -100,10 +101,12 @@ async def calculate_indicators(
         result = await service.calculate_indicators(request)
         return result
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(
+            status_code=400, detail=public_message(e, "Invalid indicator request")
+        )
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Error calculating indicators: {str(e)}"
+            status_code=500, detail=public_message(e, "Error calculating indicators")
         )
 
 
@@ -121,7 +124,7 @@ async def create_configuration(
         return result
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Error creating configuration: {str(e)}"
+            status_code=500, detail=public_message(e, "Error creating configuration")
         )
 
 
@@ -145,7 +148,7 @@ async def get_configurations(
         return result
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Error fetching configurations: {str(e)}"
+            status_code=500, detail=public_message(e, "Error fetching configurations")
         )
 
 
@@ -191,7 +194,7 @@ async def get_configuration(
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Error fetching configuration: {str(e)}"
+            status_code=500, detail=public_message(e, "Error fetching configuration")
         )
 
 
@@ -217,7 +220,7 @@ async def update_configuration(
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Error updating configuration: {str(e)}"
+            status_code=500, detail=public_message(e, "Error updating configuration")
         )
 
 
@@ -242,7 +245,7 @@ async def delete_configuration(
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Error deleting configuration: {str(e)}"
+            status_code=500, detail=public_message(e, "Error deleting configuration")
         )
 
 
@@ -258,7 +261,7 @@ async def get_predefined_templates(
         return templates
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Error fetching templates: {str(e)}"
+            status_code=500, detail=public_message(e, "Error fetching templates")
         )
 
 
@@ -284,7 +287,7 @@ async def create_from_template(
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Error creating from template: {str(e)}"
+            status_code=500, detail=public_message(e, "Error creating from template")
         )
 
 
@@ -301,7 +304,7 @@ async def validate_indicator_configuration(
         return errors
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Error validating configuration: {str(e)}"
+            status_code=500, detail=public_message(e, "Error validating configuration")
         )
 
 
@@ -330,7 +333,7 @@ async def duplicate_configuration(
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Error duplicating configuration: {str(e)}"
+            status_code=500, detail=public_message(e, "Error duplicating configuration")
         )
 
 
@@ -345,7 +348,7 @@ async def get_statistics(
         return stats
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Error fetching statistics: {str(e)}"
+            status_code=500, detail=public_message(e, "Error fetching statistics")
         )
 
 
@@ -362,5 +365,6 @@ async def get_popular_configurations(
         return configs
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Error fetching popular configurations: {str(e)}"
+            status_code=500,
+            detail=public_message(e, "Error fetching popular configurations"),
         )

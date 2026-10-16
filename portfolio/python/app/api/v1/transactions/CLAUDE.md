@@ -37,7 +37,6 @@ Transactions → New Transaction (pick portfolio + asset via search, buy/sell/di
 - Bulk-create success toast uses `total_created || transactionData.length` (claims success on 0).
 - PDF export hard-codes `$`; currency defaults to USD and is never converted (plan 2.3, 3.5).
 - Dividend `taxes` are not netted out of `total_amount` (plan 2.2).
-- `str(e)` in PDF export error details.
 
 ## Planned
 Plan 2.1 (schema validation per type, TRANSFER_IN/OUT lots), 2.2, 2.3, 3.5 (export in portfolio currency), server-side filtering/pagination.

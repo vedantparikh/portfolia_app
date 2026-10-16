@@ -13,7 +13,7 @@ Target host: NVIDIA Jetson AGX Xavier home server shared with ~35 other containe
 | Area | State | Most important issues |
 |---|---|---|
 | **Calculation correctness** | 🟡 Core fixed (2026-10-16) | *Fixed:* one engine in `core/domain` (FIFO with fees, automatic splits, completed-only, no cost fallback for missing prices, correct today's P&L, one risk-free rate); chart, performance, multi-period, risk, summary, holdings, overview, allocation and rebalancing all read it and agree; verified to the cent against an independent replay. *Open:* FX (EUR vs USD), Trade Republic dividends/tax/fees/currency, benchmark maths, legacy analytics snapshot metrics, indicator formulas. |
-| **Backend architecture** | ⚠️ Inconsistent | Every endpoint is `async def` but uses a sync SQLAlchemy session, so it blocks the event loop. There is no repository layer, and routers (analytics, assets, auth) run queries and commits directly. There are no domain exceptions; 53 `detail=str(e)` leak internal errors. Three config systems are stacked. Alembic owns the schema (1.6 ✅). `/assets/search` is shadowed by `/{asset_id}`. Symbol search exists in 5 places. The dashboard router is dead and never mounted. |
+| **Backend architecture** | ⚠️ Inconsistent | Every endpoint is `async def` but uses a sync SQLAlchemy session, so it blocks the event loop. There is no repository layer, and routers (analytics, assets, auth) run queries and commits directly. Domain errors and leak-free details since 1.3 (🟡). Three config systems are stacked. Alembic owns the schema (1.6 ✅). `/assets/search` is shadowed by `/{asset_id}`. Symbol search exists in 5 places. The dashboard router is dead and never mounted. |
 | **Frontend** | 🟡 Cleaner, still hard to extend | *Done:* modernised dashboard/portfolio screens, shared `StatCard`/`Sparkline`/charts, financial maths removed from the main views, React 19/Vite 8/Tailwind 4, Sentry removed. *Open:* zero tests, `api.js` 1,731 lines, no data-fetching layer, tokens in localStorage, `dangerouslySetInnerHTML`, hard-coded `$`, 24 hand-rolled modals. |
 | **Tests** | 🟡 Green gate, thin coverage | Gate: 165 passed, 42 quarantined xfail, 8 quarantined uncollectable files. Golden tests for the engine (`test_domain_engine.py`), SQLite service tests for positions/summary/series, characterisation snapshots. Still no frontend or e2e tests; integration tests mostly quarantined. |
 | **Infra / CI** | ⚠️ Gated, still dev-only | *Fixed:* CI now runs `verify.sh --stack` on arm64, compose is hardened for the shared host, and secrets are out of images. *Open:* there is a single dev compose (reload, bind mounts, DEBUG), the API image is 1.9 GB and runs as root, there is no release or deploy process, and the remaining docs are stale. |
@@ -172,7 +172,7 @@ There is no production data yet, so this is the cheapest moment to set up how re
 |---|---|
 | ⏳ 1.1 | Rewrite `config.py` as pure pydantic-settings. Collapse the duplicate keys (`SECRET_KEY`/`JWT_SECRET_KEY`, `ALGORITHM`/`JWT_ALGORITHM`). Fix `REFRESH_TOKEN_EXPIRE_DAYS`. Make Redis read its settings from config. |
 | 🟡 1.2 | Add an `app` factory with explicit router aggregation, deleting the ~230 lines of `try/import` blocks. Standardise prefixes and tags. Fix the `/assets/search` shadowing and the duplicate operationIds. **Now:** `/assets/search/{query}` removed (#73); shadowed routes fixed and pinned by `test_route_order.py` (`fix/shadowed-routes-500s`). App factory and duplicate operationIds open. |
-| ⏳ 1.3 | Add `DomainError` classes, global handlers and the uniform error envelope. Remove the `detail=str(e)` leaks and the blanket `except Exception`. **Now:** 40 `str(e)` leaks left in routers. |
+| 🟡 1.3 | Add `DomainError` classes, global handlers and the uniform error envelope. Remove the `detail=str(e)` leaks and the blanket `except Exception`. **Now:** `core/errors.py` (`DomainError`, `NotFoundError`, `public_message`); all 38 leaking details and 6 leaking response fields fixed, guarded by `test_error_messages.py`. Open: global handlers + `{error:{code,message}}` envelope (changes the frontend contract) and removing the blanket `except Exception` blocks. |
 | ⏳ 1.4 | Add middleware for request-id, structured access logging and timing. Configure logging once and remove the `print()` calls. **Now:** SQLAlchemy echoes every SQL statement to the API log in dev. |
 | ⏳ 1.5 | Add a unit-of-work session dependency and a `get_owned_portfolio` dependency. Make DB endpoints `def`. |
 | ✅ 1.6 | **Alembic as the only schema authority.** Autogenerate a baseline migration from the models. There is no production data yet, so it simply runs on empty DBs in every env, with no `stamp`. Do this **before** the first prod release (R.4) so prod is born on Alembic. Remove every `create_all` and the auto-seeding on startup. A CI check fails on model/migration drift. **Done:** baseline in `e97c82868ff5_baseline.py`, no `create_all` at startup, `scripts/check_migrations.sh` (upgrade, `alembic check`, full downgrade, upgrade) in `verify.sh`. |
@@ -312,6 +312,7 @@ Open:
 | 2026-10-16 | `fix/tr-import` | — | 2.2: Trade Republic import keeps dividends, EUR, fees and taxes; cash rows skipped with a reason; date and confidence crashes fixed; import toasts/refresh fixed |
 | 2026-10-16 | `feat/pytr-csv-import` | — | pytr CSV provider (full TR history), ISIN → Yahoo listing resolver scored on the user's own fills, assets created on import with their ISIN; UI to follow |
 | 2026-10-16 | `feat/benchmark-shadow` | — | 2.7: shadow-portfolio benchmark (TWR = index return exactly, MWR/profit with the portfolio's own flows), `/benchmark` + `/benchmarks` endpoints, Performance Chart comparison; legacy benchmark maths deleted |
+| 2026-10-16 | `fix/error-leaks` | — | 1.3: `DomainError`/`NotFoundError`/`public_message`; 38 exception texts removed from HTTP details plus 6 from response bodies and parser warnings; 404 vs 400 split on performance endpoints; static guard test |
 
 
 ## 6b. Findings and to-do (2026-10-16)
@@ -346,7 +347,7 @@ Open:
 1. ✅ Benchmark comparison (2.7).
 2. **Trade Republic import fixes** (2.2) plus the import UI counter.
 3. **FX** (2.3): decide the source (open decision 1).
-4. ✅ Shadowed routes and the two 500s (1.2). Still open: the `str(e)` cleanup (1.3).
+4. ✅ Shadowed routes and the two 500s (1.2); ✅ `str(e)` leaks (1.3, envelope still open).
 5. **Watchlist enrichment** (UI Batch 4) and an alert worker (3.3).
 6. **Indicator formulas and configuration wiring** (2.9).
 7. **Phase R release platform**, before any real data (1.6 Alembic baseline ✅).

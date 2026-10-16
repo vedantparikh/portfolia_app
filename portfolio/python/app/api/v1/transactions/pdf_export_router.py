@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from core.auth.dependencies import get_current_active_user
 from core.database.connection import get_db
 from core.database.models import User
+from core.errors import public_message
 from core.schemas.pdf_export import PDFExportResponse, TransactionExportRequest
 from core.services.transaction_pdf_export_service import TransactionPDFService
 
@@ -48,7 +49,8 @@ async def export_transactions_pdf(
 
     except ValueError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=public_message(e, "The PDF could not be created"),
         ) from e
     except Exception as e:
         logger.error(
@@ -93,7 +95,8 @@ async def download_transactions_pdf(
 
     except ValueError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=public_message(e, "The PDF could not be created"),
         ) from e
     except Exception as e:
         logger.error(

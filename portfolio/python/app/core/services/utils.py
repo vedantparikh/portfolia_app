@@ -3,6 +3,8 @@ from typing import Dict, NamedTuple, Optional
 
 from dateutil.relativedelta import relativedelta
 
+from core.errors import DomainError
+
 
 class PeriodType:
     """Standard period types for calculations."""
@@ -44,7 +46,7 @@ class PeriodType:
         elif period == cls.INCEPTION:
             return None  # No start date filter
         else:
-            raise ValueError(f"Unknown period type: {period}")
+            raise DomainError(f"Unknown period type: {period}")
 
 
 class CashFlow(NamedTuple):

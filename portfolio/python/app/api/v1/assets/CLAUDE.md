@@ -29,7 +29,6 @@ Add Asset / Bulk Entry → assets appear with live detail → click for overview
 - `createUserAsset` does an extra GET for a client-side duplicate check.
 - Unused client fns: `getAsset`, `updateAsset`, `deleteAsset`, `bulkUpdateUserAssets`.
 - Highest Growth card multiplies revenue growth by 100 (verify unit before trusting).
-- `str(e)` leaks in `router.py`.
 
 ## Planned
 Plan 1.2/2.4: one `/assets/search` (delete duplicate search paths, fix route order), server-side search/sort/pagination with `total`, 4.4 TanStack Query instead of `assetCache`.

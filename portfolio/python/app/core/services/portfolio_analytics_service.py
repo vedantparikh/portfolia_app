@@ -22,6 +22,7 @@ from core.database.models.portfolio_analytics import (
     PortfolioAllocation,
     PortfolioPerformanceHistory,
 )
+from core.errors import DomainError, public_message
 from core.schemas.portfolio_analytics import (
     AllocationAnalysisResponse,
     AllocationDrift,
@@ -114,7 +115,7 @@ class PortfolioAnalyticsService:
         )
 
         if not portfolio_assets:
-            raise ValueError("Portfolio has no assets")
+            raise DomainError("Portfolio has no assets")
 
         # Calculate basic metrics using real-time prices from yfinance
         total_cost_basis = sum(
@@ -428,7 +429,7 @@ class PortfolioAnalyticsService:
             .all()
         }
         if not holdings and not targets:
-            raise ValueError("Portfolio has no assets")
+            raise DomainError("Portfolio has no assets")
 
         total_value = sum((Decimal(str(h.current_value)) for h in holdings), Decimal(0))
         by_asset = {h.asset_id: h for h in holdings}
@@ -603,7 +604,7 @@ class PortfolioAnalyticsService:
             )
 
             if not portfolio_assets:
-                raise ValueError("Portfolio has no assets")
+                raise DomainError("Portfolio has no assets")
 
             # Calculate basic metrics using real-time prices
             total_cost_basis = sum(
@@ -888,7 +889,7 @@ class PortfolioAnalyticsService:
             )
 
             if not portfolio_assets:
-                raise ValueError("Portfolio has no assets")
+                raise DomainError("Portfolio has no assets")
 
             updated_data = {
                 "portfolio_id": portfolio_id,
@@ -932,7 +933,8 @@ class PortfolioAnalyticsService:
                         updated_data["assets_refreshed"] += 1
                     except Exception as e:
                         updated_data["errors"].append(
-                            f"Asset {portfolio_asset.asset.symbol}: {str(e)}"
+                            f"Asset {portfolio_asset.asset.symbol}: "
+                            + public_message(e, "could not be refreshed")
                         )
 
             # Refresh portfolio performance snapshot
@@ -959,7 +961,10 @@ class PortfolioAnalyticsService:
                     "snapshot_date": performance_snapshot.snapshot_date,
                 }
             except Exception as e:
-                updated_data["errors"].append(f"Performance snapshot: {str(e)}")
+                updated_data["errors"].append(
+                    "Performance snapshot: "
+                    + public_message(e, "could not be refreshed")
+                )
 
             return updated_data
 
@@ -978,13 +983,13 @@ class PortfolioAnalyticsService:
             )
 
             if not assets:
-                raise ValueError("No assets found")
+                raise DomainError("No assets found")
 
             # Get symbols
             symbols = [asset.symbol for asset in assets if asset.symbol]
 
             if not symbols:
-                raise ValueError("No symbols found for assets")
+                raise DomainError("No symbols found for assets")
 
             # Bulk fetch current prices
             current_prices = await market_data_service.get_current_prices(symbols)
@@ -1018,7 +1023,8 @@ class PortfolioAnalyticsService:
                             updated_data["assets_updated"] += 1
                         except Exception as e:
                             updated_data["errors"].append(
-                                f"Asset {asset.symbol}: {str(e)}"
+                                f"Asset {asset.symbol}: "
+                                + public_message(e, "could not be updated")
                             )
                     else:
                         updated_data["errors"].append(

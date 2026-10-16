@@ -23,7 +23,7 @@ Create list → add symbols (search) → see price, change since added, notes �
 - Alerts: `_check_price_alerts` only runs from `update_watchlist_item_prices`, which nothing calls. Item-level alert prices are never evaluated, and there is no notification channel.
 - `WatchlistPerformance` is written only on add, so there is no history.
 - No UI for rating/thesis/tags or browsing public lists. `bulkAddItemsToWatchlist` is unused by the UI.
-- Prices are shown with a hard-coded `$`, and `str(e)` appears in several 400s.
+- Prices are shown with a hard-coded `$`.
 
 ## Planned
 Batch 4 UI (agreed earlier): show change since added, days held, rating, tags, a thesis tooltip and alert thresholds. A worker evaluates alerts (plan 3.3/6.1) with a notification channel (ntfy/email, to decide).
