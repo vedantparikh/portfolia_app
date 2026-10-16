@@ -218,7 +218,7 @@ const Dashboard = () => {
     return (
       <div className="text-right">
         <p className={`font-medium ${valueColor}`}>
-          {formatCurrency(value, { showSign: true })}
+          {formatCurrency(value, { signDisplay: "exceptZero" })}
         </p>
         <p className={`text-sm ${valueColor}`}>
           {formatPercentage(percent, { showSign: true })}
