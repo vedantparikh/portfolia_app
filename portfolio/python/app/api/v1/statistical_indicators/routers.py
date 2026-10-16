@@ -149,6 +149,27 @@ async def get_configurations(
         )
 
 
+@router.get("/configurations/search", response_model=AnalysisConfigurationListResponse)
+async def search_configurations(
+    q: str = Query(..., description="Search query"),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    current_user: User = Depends(get_optional_current_user),
+    db: Session = Depends(get_db),
+):
+    """Search configurations by name, description, or tags."""
+    try:
+        service = AnalysisConfigurationService(db)
+        result = service.search_configurations(
+            q, current_user.id if current_user else None, skip, limit
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail="Error searching configurations"
+        ) from e
+
+
 @router.get("/configurations/{config_id}", response_model=AnalysisConfiguration)
 async def get_configuration(
     config_id: int,
@@ -310,27 +331,6 @@ async def duplicate_configuration(
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Error duplicating configuration: {str(e)}"
-        )
-
-
-@router.get("/configurations/search", response_model=AnalysisConfigurationListResponse)
-async def search_configurations(
-    q: str = Query(..., description="Search query"),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
-    current_user: User = Depends(get_optional_current_user),
-    db: Session = Depends(get_db),
-):
-    """Search configurations by name, description, or tags."""
-    try:
-        service = AnalysisConfigurationService(db)
-        result = service.search_configurations(
-            q, current_user.id if current_user else None, skip, limit
-        )
-        return result
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error searching configurations: {str(e)}"
         )
 
 

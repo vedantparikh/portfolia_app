@@ -749,10 +749,19 @@ class WatchlistService:
                 .all()
             )
 
+            active_alerts = (
+                self.db.query(WatchlistAlert)
+                .filter(
+                    WatchlistAlert.user_id == user_id, WatchlistAlert.is_active == True
+                )
+                .count()
+            )
+
             return {
                 "total_watchlists": total_watchlists,
                 "total_items": total_items,
                 "public_watchlists": public_watchlists,
+                "active_alerts": active_alerts,
                 "most_watched_symbols": [
                     {"symbol": item.symbol, "count": item.count}
                     for item in most_watched

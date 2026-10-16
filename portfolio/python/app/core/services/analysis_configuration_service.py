@@ -6,7 +6,7 @@ Service for managing user analysis configurations and templates.
 from datetime import datetime
 from typing import Dict, List, Optional
 
-from sqlalchemy import and_, or_
+from sqlalchemy import String, and_, cast, or_
 from sqlalchemy.orm import Session
 
 from core.database.models.analysis_configuration import (
@@ -252,7 +252,7 @@ class AnalysisConfigurationService:
             or_(
                 AnalysisConfigurationModel.name.ilike(f"%{query}%"),
                 AnalysisConfigurationModel.description.ilike(f"%{query}%"),
-                AnalysisConfigurationModel.tags.any(query),
+                cast(AnalysisConfigurationModel.tags, String).ilike(f"%{query}%"),
             )
         )
 

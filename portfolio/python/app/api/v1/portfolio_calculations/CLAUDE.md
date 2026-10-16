@@ -2,7 +2,7 @@
 
 **Purpose:** how a portfolio performed over an interval relative to the money put in, with returns and risk for that interval.
 
-**State (2026-10-16):** ✅ series, performance, multi-period agree exactly (one `period_summary`). ⚠️ benchmark endpoints use old maths. ❌ `/overview` 500s.
+**State (2026-10-16):** ✅ series, performance, multi-period agree exactly (one `period_summary`). ⚠️ benchmark endpoints use old maths. `/overview` is a thin wrapper over inception `/performance`.
 
 ## Backend — `router.py` (mounted at `/api/v1/portfolios/calculations`), `core/services/portfolio_calculation_service.py`
 | Endpoint | Behaviour |
@@ -12,7 +12,7 @@
 | `GET|POST /portfolio/{id}/performance?period=` | `metrics`: twr, mwr (both over the period), cagr (annualised TWR, plain TWR under a year), xirr (annual), volatility, max_drawdown; `current_value`. Switches to inception when the portfolio is younger than the period |
 | `GET /portfolio/{id}/multi-period?periods=` | The above for several periods; one memoised engine run per request |
 | `GET /portfolio/{id}/compare/{symbol}`, `POST /benchmark/performance` | ⚠️ Old benchmark maths (first contribution as base, no opening value, dividends dropped). UI hides it |
-| `GET /portfolio/{id}/overview` | ❌ 500 (tuple from `get_current_portfolio_value` passed as float). No UI caller |
+| `GET /portfolio/{id}/overview` | Inception `/performance` packed into `PortfolioPerformanceOverview` (current value, TWR, CAGR, volatility); per-asset lists and benchmark empty. No UI caller |
 
 Engine path: `get_transactions` (completed) → `get_market_history` (closes + splits via `MarketDataService.get_daily_history`) → `to_trades` → `daily_series` → `period_summary`. Memoised in `_series_cache` per service instance. First call for a portfolio fetches max history per symbol (~1–2 s each, cached 6 h in Redis).
 
@@ -27,5 +27,5 @@ Portfolio → Performance Chart → pick a period → read profit vs invested an
 
 ## Known gaps / planned
 - Benchmark comparison (plan 2.7): rebuild as a shadow portfolio — buy/sell a total-return index with the portfolio's own daily flows through `daily_series`, compare `period_summary`s.
-- Remove or fix `/overview`; old helpers `_calculate_xirr`, `_get_portfolio_value_at_date`, `get_current_portfolio_value`, `_calculate_benchmark_*` are legacy (benchmark only).
+- Fill or drop the empty parts of `/overview`. Old helpers `_calculate_xirr`, `_get_portfolio_value_at_date`, `get_current_portfolio_value`, `_calculate_benchmark_*` are legacy (benchmark only).
 - FX (2.3), dividend tax (2.2) affect inputs.

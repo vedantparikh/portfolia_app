@@ -903,5 +903,5 @@ async def get_user_analytics_dashboard(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get analytics dashboard: {str(e)}",
+            detail="Failed to get analytics dashboard",
         ) from e

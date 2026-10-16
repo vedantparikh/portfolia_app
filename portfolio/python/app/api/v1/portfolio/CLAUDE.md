@@ -14,7 +14,7 @@
 | `POST /{id}/refresh` | Rebuilds every position from transactions (picks up new splits) and re-prices |
 | `POST/GET /{id}/assets`, `GET /{id}/assets/details`, `PUT/DELETE /{id}/assets/{asset_id}`, `POST /{id}/assets/legacy` | Position records (`PortfolioAsset`) |
 | `POST/GET /{id}/transactions` | Portfolio-scoped transaction create/list (create triggers `recalculate_asset_state`) |
-| `GET /search`, `GET /public/discover` | Search is **shadowed** by `GET /{id}` (422); discover lists public portfolios, no UI |
+| `GET /search?search_term=&currency=`, `GET /public/discover` | Own portfolios by name/currency; discover lists public portfolios. No UI for either |
 
 `PortfolioAsset` is a **cache** rebuilt by `recalculate_asset_state(portfolio_id, asset_id)` on every transaction write and on refresh: `compute_position(to_trades(txs, splits))` + live price. Prices: `MarketDataService.get_current_prices` (Redis 60s), previous close `get_yesterdays_closes` (12h).
 
@@ -33,7 +33,7 @@ Create portfolio → add transactions (Transactions page, PDF import, or Add Pos
 
 ## Known gaps
 - `PUT /{id}/assets/{asset_id}` lets clients write quantity/cost/P&L directly (bypasses transactions) — plan 2.10.
-- `/search` shadowed; `PortfolioSummary()` returned bare for a foreign portfolio (validation error path).
+- `PortfolioSummary()` returned bare for a foreign portfolio (validation error path).
 - No FX: values assume asset currency = portfolio currency (plan 2.3).
 - Today's P&L previous close: `yf.download(period="2d")` first row, cached 12h.
 - Delete flows have no undo; holdings include zero-quantity rows in the table.

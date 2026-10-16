@@ -2,7 +2,7 @@
 
 **Purpose:** each user's instruments (symbol, type, sector…) enriched with Yahoo data; shown on the Asset Analysis page and used by transactions, portfolios and watchlists.
 
-**State (2026-10-16):** ✅ list/create/bulk-create/detail/delete work. ⚠️ search box and sorting don't filter server-side; `/assets/search/*` has no UI and likely route-order bugs.
+**State (2026-10-16):** ✅ list/create/bulk-create/detail/delete work. ⚠️ search box and sorting don't filter server-side; `/assets/search/*` has no UI.
 
 ## Backend
 - `router.py` (prefix `/api/v1/assets`):
@@ -11,7 +11,7 @@
   - `GET /` (`skip`, `limit`, `symbol` ilike, `asset_type`, `include_detail` → `detail` with price, 24h change, market cap, P/E, 52w, volume, dividend yield…; returns a bare list)
   - `GET/PUT/DELETE /{id}` (delete is soft)
   - `GET /{id}/prices`
-- `search_router.py` (prefix `/api/v1/assets/search`): `GET /{asset_id}`, `/popular`, `/suggestions`, `/breakdown/{sectors,types,exchanges}`. `/{asset_id}` is declared first, so the literal paths probably 422. No frontend caller.
+- `search_router.py` (prefix `/api/v1/assets/search`): `/popular`, `/breakdown/{sectors,types,exchanges}`, `/suggestions`, `GET /{asset_id}` (declared last). All scoped to the current user's assets. No frontend caller.
 - Services: `asset_search_service.py`, `market_data_service`. Tables `assets` (unique user_id+symbol), `market_indices`.
 
 ## Frontend — `js/src/components/assets/`
@@ -29,7 +29,7 @@ Add Asset / Bulk Entry → assets appear with live detail → click for overview
 - `createUserAsset` does an extra GET for a client-side duplicate check.
 - Unused client fns: `getAsset`, `updateAsset`, `deleteAsset`, `bulkUpdateUserAssets`.
 - Highest Growth card multiplies revenue growth by 100 (verify unit before trusting).
-- `str(e)` leaks in `search_router.py` and `router.py`.
+- `str(e)` leaks in `router.py`.
 
 ## Planned
 Plan 1.2/2.4: one `/assets/search` (delete duplicate search paths, fix route order), server-side search/sort/pagination with `total`, 4.4 TanStack Query instead of `assetCache`.

@@ -224,8 +224,8 @@ class WatchlistStatsResponse(BaseModel):
     total_watchlists: int
     total_items: int
     public_watchlists: int
-    total_gain_loss: Decimal
-    total_gain_loss_percent: Decimal
+    total_gain_loss: Optional[Decimal] = None
+    total_gain_loss_percent: Optional[Decimal] = None
     best_performing_symbol: Optional[Dict[str, Any]] = None
     worst_performing_symbol: Optional[Dict[str, Any]] = None
     most_watched_symbols: List[Dict[str, Any]]
