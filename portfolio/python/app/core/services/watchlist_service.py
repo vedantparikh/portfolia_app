@@ -11,6 +11,7 @@ from core.database.models.watchlist import (
     WatchlistItem,
     WatchlistPerformance,
 )
+from core.errors import DomainError
 from core.logging_config import get_logger
 from core.schemas.watchlist import (
     WatchlistAlertCreate,
@@ -158,7 +159,7 @@ class WatchlistService:
                 )
 
                 if other_watchlists == 0:
-                    raise ValueError("Cannot delete the only watchlist")
+                    raise DomainError("Cannot delete the only watchlist")
 
             watchlist_name = watchlist.name
             self.db.delete(watchlist)
@@ -195,7 +196,7 @@ class WatchlistService:
             )
 
             if existing_item:
-                raise ValueError(
+                raise DomainError(
                     f"Symbol {item_data.symbol} already exists in this watchlist"
                 )
 
@@ -337,7 +338,7 @@ class WatchlistService:
             )
 
             if len(items) != len(item_ids):
-                raise ValueError("Some items do not belong to this watchlist")
+                raise DomainError("Some items do not belong to this watchlist")
 
             # Update sort order
             for index, item_id in enumerate(item_ids):

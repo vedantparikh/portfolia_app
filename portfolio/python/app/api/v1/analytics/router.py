@@ -23,6 +23,7 @@ from core.database.models.portfolio_analytics import (
 )
 from core.domain.positions import OversellError
 from core.domain.valuation import MissingPriceError
+from core.errors import public_message
 from core.schemas.portfolio_advance_risk_metrics import AdvanceRiskCalculationResponse
 from core.schemas.portfolio_analytics import (
     AllocationAnalysisResponse,
@@ -91,7 +92,8 @@ async def get_performance_snapshot(
         return snapshot
     except ValueError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=public_message(e, "Performance snapshot unavailable"),
         ) from e
 
 
@@ -184,7 +186,8 @@ async def get_performance_history(
         series = await calculation.get_portfolio_series(transactions, end_date)
     except (MissingPriceError, OversellError) as e:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=public_message(e, "Performance history unavailable"),
         ) from e
 
     def money(x):
@@ -468,7 +471,8 @@ async def get_portfolio_risk_metrics(
         return risk_metrics
     except ValueError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=public_message(e, "Risk metrics unavailable"),
         ) from e
 
 
@@ -511,7 +515,8 @@ async def get_portfolio_advance_risk_metrics(
         return advance_risk_metrics
     except ValueError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=public_message(e, "Risk metrics unavailable"),
         ) from e
 
 
@@ -740,7 +745,8 @@ async def get_portfolio_analytics_summary(
         return PortfolioAnalyticsSummary(**summary)
     except ValueError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=public_message(e, "Analytics summary unavailable"),
         ) from e
 
 

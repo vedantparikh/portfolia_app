@@ -7,6 +7,7 @@ from typing import List, Tuple
 from sqlalchemy.orm import Session
 
 from core.database.models import Asset, Transaction, TransactionType
+from core.errors import DomainError, NotFoundError, public_message
 from core.schemas.account_statements import (
     AccountStatementProvider,
     BulkCreateSummary,
@@ -69,12 +70,12 @@ class AccountStatementService:
     ) -> ParsedData:
         """Parse account statement PDF."""
         if provider_id not in self._parsers:
-            raise ValueError(f"Unsupported provider: {provider_id}")
+            raise DomainError(f"Unsupported provider: {provider_id}")
 
         try:
             pdf_content = base64.b64decode(file_content)
         except Exception as e:
-            raise ValueError(f"Invalid base64 content: {str(e)}") from e
+            raise DomainError("The uploaded file could not be read") from e
 
         parser = self._parsers[provider_id]
         result = parser.parse(pdf_content)
@@ -96,11 +97,11 @@ class AccountStatementService:
         if symbol in assets_by_symbol:
             return assets_by_symbol[symbol]
         if symbol in unavailable_symbols:
-            raise ValueError(f"No market data for {symbol}")
+            raise DomainError(f"No market data for {symbol}")
         ticker_data = await self.market_data.get_ticker_info(symbol)
         if not ticker_data:
             unavailable_symbols.add(symbol)
-            raise ValueError(f"No market data for {symbol}")
+            raise DomainError(f"No market data for {symbol}")
         asset = asset_from_ticker_info(symbol, ticker_data, user_id, isin)
         self.db.add(asset)
         self.db.flush()
@@ -117,7 +118,7 @@ class AccountStatementService:
         # 1. Verify portfolio access once at the start
         portfolio = self.portfolio_service.get_portfolio(portfolio_id, user_id)
         if not portfolio:
-            raise ValueError("Portfolio not found or access denied")
+            raise NotFoundError("Portfolio not found")
 
         created_transaction_models = []
         errors = []
@@ -133,7 +134,7 @@ class AccountStatementService:
                 if item.asset_id is not None:
                     asset = assets_by_id.get(item.asset_id)
                     if asset is None:
-                        raise ValueError(f"Asset {item.asset_id} not found")
+                        raise NotFoundError(f"Asset {item.asset_id} not found")
                 elif item.symbol:
                     asset = await self._asset_for_symbol(
                         item.symbol.upper(),
@@ -143,7 +144,7 @@ class AccountStatementService:
                         unavailable_symbols,
                     )
                 else:
-                    raise ValueError("Choose an asset or a ticker")
+                    raise DomainError("Choose an asset or a ticker")
                 if item.isin and not asset.isin:
                     asset.isin = item.isin
 
@@ -152,7 +153,7 @@ class AccountStatementService:
                 )
                 if transaction_type == TransactionType.DIVIDEND:
                     if item.total_amount <= 0:
-                        raise ValueError("Dividend amount must be positive")
+                        raise DomainError("Dividend amount must be positive")
                     total_amount = item.total_amount
                 else:
                     total_amount = Transaction.compute_total_amount(
@@ -184,7 +185,10 @@ class AccountStatementService:
                 created_transaction_models.append(transaction)
 
             except ValueError as e:
-                errors.append(f"Row {i + 1} ('{item.notes}'): {e}")
+                errors.append(
+                    f"Row {i + 1} ('{item.notes}'): "
+                    + public_message(e, "invalid values")
+                )
             except Exception:
                 logger.exception("Bulk import row %s failed", i + 1)
                 errors.append(f"Row {i + 1} ('{item.notes}'): could not be created")

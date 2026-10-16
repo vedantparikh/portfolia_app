@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from core.auth.dependencies import get_current_user
 from core.database.connection import get_db
 from core.database.models import User
+from core.errors import public_message
 from core.logging_config import get_logger, log_api_request, log_api_response
 from core.schemas.portfolio_performance import (
     WatchlistBulkAddResponse,
@@ -308,7 +309,10 @@ async def delete_watchlist(
         return WatchlistDeleteResponse(message="Watchlist deleted successfully")
 
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=public_message(e, "Watchlist could not be deleted"),
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -379,7 +383,10 @@ async def add_item_to_watchlist(
         return response
 
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=public_message(e, "Item could not be added"),
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -420,7 +427,9 @@ async def bulk_add_items_to_watchlist(
                 if item:
                     added_items.append(item.symbol)
             except Exception as e:
-                failed_symbols.append({"symbol": symbol, "error": str(e)})
+                failed_symbols.append(
+                    {"symbol": symbol, "error": public_message(e, "could not be added")}
+                )
 
         result = WatchlistBulkAddResponse(
             added_items=added_items,
@@ -607,7 +616,10 @@ async def reorder_watchlist_items(
         )
 
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=public_message(e, "Items could not be reordered"),
+        )
     except HTTPException:
         raise
     except Exception as e:

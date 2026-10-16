@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from core.auth.dependencies import get_current_active_user
 from core.database.models import User
+from core.errors import public_message
 from core.schemas.market_data import (
     BulkPricesResponse,
     MarketStatusResponse,
@@ -100,7 +101,8 @@ async def get_ticker_data(
     except Exception as e:
         logger.error("Error fetching data for %s: %s", symbol, e)
         raise HTTPException(
-            status_code=500, detail=f"Error fetching data for {symbol}: {str(e)}"
+            status_code=500,
+            detail=public_message(e, f"Error fetching data for {symbol}"),
         ) from e
 
 
@@ -155,7 +157,7 @@ async def get_ticker_info(
         logger.error("Error getting ticker info for %s: %s", symbol, e)
         raise HTTPException(
             status_code=500,
-            detail=f"Error getting ticker info for {symbol}: {str(e)}",
+            detail=public_message(e, f"Error getting ticker info for {symbol}"),
         ) from e
 
 
@@ -191,7 +193,7 @@ async def get_bulk_prices(
     except Exception as e:
         logger.error("Error getting bulk prices: %s", e)
         raise HTTPException(
-            status_code=500, detail=f"Error getting bulk prices: {str(e)}"
+            status_code=500, detail=public_message(e, "Error getting bulk prices")
         ) from e
 
 
@@ -215,7 +217,7 @@ async def search_symbols(
     except Exception as e:
         logger.error("Error searching symbols for '%s': %s", query, e)
         raise HTTPException(
-            status_code=500, detail=f"Error searching symbols: {str(e)}"
+            status_code=500, detail=public_message(e, "Error searching symbols")
         ) from e
 
 
@@ -241,7 +243,7 @@ async def get_market_status(
     except Exception as e:
         logger.error("Error getting market status: %s", e)
         raise HTTPException(
-            status_code=500, detail=f"Error getting market status: {str(e)}"
+            status_code=500, detail=public_message(e, "Error getting market status")
         ) from e
 
 

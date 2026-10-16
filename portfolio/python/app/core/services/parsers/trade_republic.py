@@ -6,6 +6,7 @@ from typing import List, Tuple
 
 import pypdf
 
+from core.errors import public_message
 from core.schemas.account_statements import (
     ParsedData,
     ParsedTransaction,
@@ -87,7 +88,7 @@ class TradeRepublicParser(PDFParser):
                 transactions=[],
                 metadata=ParsingMetadata(
                     total_transactions=0,
-                    warnings=[f"Error reading PDF file: {e}"],
+                    warnings=[public_message(e, "The PDF file could not be read")],
                 ),
             )
 

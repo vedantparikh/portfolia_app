@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from core.auth.dependencies import get_current_verified_user
 from core.database.connection import get_db
 from core.database.models import User
+from core.errors import public_message
 from core.schemas.account_statements import (
     BulkCreateResponse,
     BulkTransactionCreate,
@@ -65,7 +66,8 @@ async def parse_statement(
 
     except ValueError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=public_message(e, "The statement could not be parsed"),
         ) from e
     except Exception as e:
         logger.exception("Statement parsing failed")
@@ -108,7 +110,8 @@ async def bulk_create_transactions(
 
     except ValueError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=public_message(e, "The transactions could not be created"),
         ) from e
     except Exception as e:
         logger.exception("Bulk transaction creation failed")

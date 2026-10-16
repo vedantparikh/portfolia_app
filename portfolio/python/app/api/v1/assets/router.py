@@ -17,6 +17,7 @@ from core.database.connection import get_db
 from core.database.models import Asset as AssetModel
 from core.database.models import User
 from core.database.models.asset import AssetType
+from core.errors import public_message
 from core.logging_config import get_logger, log_api_request, log_api_response
 from core.schemas.portfolio import (
     Asset as AssetSchema,
@@ -423,5 +424,5 @@ async def get_asset_prices(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error retrieving price data: {str(e)}",
+            detail=public_message(e, "Error retrieving price data"),
         ) from e

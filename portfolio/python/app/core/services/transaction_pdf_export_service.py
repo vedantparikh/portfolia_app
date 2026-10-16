@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from core.database.models import Asset, Portfolio, Transaction, User
 from core.database.models.transaction import TransactionType
+from core.errors import DomainError
 from core.schemas.pdf_export import (
     ExportedTransactionData,
     PDFExportOptions,
@@ -102,7 +103,7 @@ class TransactionPDFService:
             transactions = await self._get_filtered_transactions(user, filters)
 
             if not transactions:
-                raise ValueError("No transactions found with the specified filters")
+                raise DomainError("No transactions found with the specified filters")
 
             # Calculate summary statistics
             summary_stats = self._calculate_summary_stats(transactions, filters)

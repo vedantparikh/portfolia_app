@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from core.auth.dependencies import get_current_user
 from core.database.connection import get_db
+from core.errors import NotFoundError, public_message
 from core.schemas.portfolio_calculations import (
     AvailablePeriodsResponse,
     BenchmarkComparisonResponse,
@@ -117,8 +118,14 @@ async def calculate_portfolio_performance(
 
         return PortfolioPerformanceResponse(**result)
 
+    except NotFoundError as e:
+        raise HTTPException(
+            status_code=404, detail=public_message(e, "Portfolio not found")
+        ) from e
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(
+            status_code=400, detail=public_message(e, "Invalid request")
+        ) from e
     except Exception as e:
         logger.error(f"Error calculating portfolio performance: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
@@ -154,8 +161,14 @@ async def get_portfolio_performance(
 
         return PortfolioPerformanceResponse(**result)
 
+    except NotFoundError as e:
+        raise HTTPException(
+            status_code=404, detail=public_message(e, "Portfolio not found")
+        ) from e
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(
+            status_code=400, detail=public_message(e, "Invalid request")
+        ) from e
     except Exception as e:
         logger.error(f"Error calculating portfolio performance: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
@@ -303,7 +316,7 @@ async def get_benchmark_comparison(
         return await PortfolioCalculationService(db).get_benchmark_comparison(
             portfolio_id, current_user.id, period, symbol
         )
-    except ValueError as e:
+    except NotFoundError as e:
         raise HTTPException(status_code=404, detail="Portfolio not found") from e
 
 

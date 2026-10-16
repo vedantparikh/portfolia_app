@@ -15,6 +15,7 @@ from core.auth.dependencies import (
     get_optional_current_user,
 )
 from core.auth.utils import is_rate_limited
+from core.errors import public_message
 from core.logging_config import (
     get_logger,
     log_api_request,
@@ -160,7 +161,7 @@ async def get_symbols(
         )
 
         raise HTTPException(
-            status_code=500, detail=f"Error searching for symbols: {str(e)}"
+            status_code=500, detail=public_message(e, "Error searching for symbols")
         )
 
 
@@ -237,7 +238,8 @@ async def get_symbol_data_fresh(
 
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Error retrieving fresh data for {name}: {str(e)}"
+            status_code=500,
+            detail=public_message(e, f"Error retrieving fresh data for {name}"),
         )
 
 
@@ -271,7 +273,7 @@ async def get_stock_latest_data(
         logger.error(f"Error retrieving latest data for {symbols}: {str(e)}")
         raise HTTPException(
             status_code=500,
-            detail=f"Error retrieving latest data for {symbols}: {str(e)}",
+            detail=public_message(e, f"Error retrieving latest data for {symbols}"),
         )
 
 

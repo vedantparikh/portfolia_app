@@ -512,7 +512,7 @@ class MarketDataService:
 
         except Exception as e:
             logger.error("Error getting market status: %s", e)
-            return {"is_open": None, "error": str(e)}
+            return {"is_open": None, "error": "Market status unavailable"}
 
     def _extract_ticker_information(
         self, ticker_info: Dict[str, Any]

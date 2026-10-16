@@ -11,6 +11,7 @@ from typing import List, Tuple
 import pypdf
 
 from core.database.models.transaction import TransactionType
+from core.errors import public_message
 from core.schemas.account_statements import (
     ParsedData,
     ParsedTransaction,
@@ -69,7 +70,8 @@ class PortfoliaParser(PDFParser):
                 statement_period=StatementPeriod(start_date="", end_date=""),
                 transactions=[],
                 metadata=ParsingMetadata(
-                    total_transactions=0, warnings=[f"PDF parsing failed: {str(e)}"]
+                    total_transactions=0,
+                    warnings=[public_message(e, "The PDF file could not be read")],
                 ),
             )
 

@@ -20,6 +20,7 @@ from app.core.services.analysis_configuration_service import (
 )
 from app.core.services.indicator_registry_service import IndicatorRegistryService
 from app.core.services.market_data_service import MarketDataService
+from core.errors import DomainError, NotFoundError, public_message
 
 
 class EnhancedStatisticalService:
@@ -43,7 +44,7 @@ class EnhancedStatisticalService:
             )
 
             if market_data.empty:
-                raise ValueError(f"No market data found for symbol {request.symbol}")
+                raise DomainError(f"No market data found for symbol {request.symbol}")
 
             # Get indicator configurations
             if request.configuration_id:
@@ -52,7 +53,7 @@ class EnhancedStatisticalService:
                     user_id=None,  # Allow public configurations
                 )
                 if not config:
-                    raise ValueError(
+                    raise NotFoundError(
                         f"Configuration {request.configuration_id} not found"
                     )
                 indicator_configs = config.indicators
@@ -71,7 +72,7 @@ class EnhancedStatisticalService:
 
             if validation_errors:
                 error_messages = [e.error_message for e in validation_errors]
-                raise ValueError(f"Validation errors: {error_messages}")
+                raise DomainError(f"Validation errors: {error_messages}")
 
             # Calculate indicators
             result_df, _, performance_metrics = (
@@ -132,7 +133,9 @@ class EnhancedStatisticalService:
             )
 
         except Exception as e:
-            raise ValueError(f"Error calculating indicators: {str(e)}") from e
+            raise DomainError(
+                public_message(e, "Indicators could not be calculated")
+            ) from e
 
     def _prepare_indicator_data(
         self, df: pl.DataFrame, indicator_configs: List[IndicatorConfiguration]
