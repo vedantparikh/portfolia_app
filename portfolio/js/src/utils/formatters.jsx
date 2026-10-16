@@ -105,6 +105,17 @@ export const formatPercentage = (value, options = {}) => {
 };
 
 /**
+ * A plain number with fixed decimals (for prices whose currency is unknown).
+ */
+export const formatDecimal = (value, digits = 2) => {
+    if (value === null || value === undefined || isNaN(parseFloat(value))) return 'N/A';
+    return new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: digits,
+        maximumFractionDigits: digits,
+    }).format(parseFloat(value));
+};
+
+/**
  * Difference between two percentages, in percentage points ("+1.25 pp").
  */
 export const formatPercentagePoints = (value, options = {}) => {

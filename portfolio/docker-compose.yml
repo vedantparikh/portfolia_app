@@ -85,6 +85,42 @@ services:
       retries: 3
       start_period: 40s
 
+  # Background jobs (workers/run.py): watchlist prices and alerts. Same image as api.
+  worker:
+    build:
+      context: ./python/app
+      dockerfile: Dockerfile
+    command: ["python", "-m", "workers.run"]
+    env_file:
+      - ./python/app/.env.docker
+    depends_on:
+      # api runs the migrations on start
+      api:
+        condition: service_healthy
+    volumes:
+      - ./python/app/core:/app/core:delegated
+      - ./python/app/workers:/app/workers:delegated
+      - ./python/app/config.py:/app/config.py:delegated
+    networks:
+      - portfolio_network
+    restart: unless-stopped
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: 384m
+    healthcheck:
+      # healthy while the heartbeat is younger than two intervals (+2 min slack)
+      test:
+        - CMD
+        - python
+        - -c
+        - "import os,sys,time; i=int(os.environ.get('WORKER_INTERVAL_SECONDS','900')); sys.exit(time.time()-os.path.getmtime('/tmp/worker-heartbeat') > 2*i+120)"
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
   postgres:
     build:
       context: ./python/app

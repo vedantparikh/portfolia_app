@@ -91,6 +91,18 @@ class WatchlistItemUpdate(BaseModel):
     investment_thesis: Optional[str] = Field(None, max_length=2000)
     tags: Optional[List[str]] = Field(None, max_items=10)
     sort_order: Optional[int] = Field(None, ge=0)
+    alert_price_high: Optional[Decimal] = Field(
+        None, gt=0, description="Alert when the price reaches this or more; null clears"
+    )
+    alert_price_low: Optional[Decimal] = Field(
+        None,
+        gt=0,
+        description="Alert when the price falls to this or less; null clears",
+    )
+    alert_price_change_percent: Optional[Decimal] = Field(
+        None, gt=0, le=1000, description="Alert on a move of this % since added"
+    )
+    alerts_enabled: Optional[bool] = None
 
 
 class WatchlistItemResponse(WatchlistItemBase):
@@ -245,3 +257,35 @@ class WatchlistPerformanceSummary(BaseModel):
     best_performer: Optional[WatchlistItemResponse] = None
     worst_performer: Optional[WatchlistItemResponse] = None
     performance_by_tag: Optional[Dict[str, Dict[str, Any]]] = None
+
+
+class AlertEvent(BaseModel):
+    """A watchlist threshold that was reached."""
+
+    id: int
+    watchlist_id: int
+    watchlist_name: str
+    item_id: int
+    symbol: str
+    alert_type: str = Field(..., description="price_high, price_low or percent_change")
+    condition: str = Field(..., description="above or below")
+    threshold_value: Decimal
+    triggered_value: Optional[Decimal] = None
+    triggered_at: datetime
+    still_true: bool = Field(..., description="The condition still holds")
+    acknowledged_at: Optional[datetime] = None
+
+
+class AlertEventsResponse(BaseModel):
+    unread_count: int
+    alerts: List[AlertEvent]
+
+
+class AcknowledgeAlertsRequest(BaseModel):
+    alert_ids: Optional[List[int]] = Field(
+        None, description="Alerts to mark as read; all unread when omitted"
+    )
+
+
+class AcknowledgeAlertsResponse(BaseModel):
+    acknowledged: int

@@ -19,6 +19,7 @@ import AddSymbolModal from "./AddSymbolModal";
 import CreateWatchlistModal from "./CreateWatchlistModal";
 import EditWatchlistModal from "./EditWatchlistModal";
 import WatchlistContent from "./WatchlistContent";
+import WatchlistAlerts from "./WatchlistAlerts";
 
 const Watchlist = () => {
   const navigate = useNavigate();
@@ -45,12 +46,36 @@ const Watchlist = () => {
   const [updatingWatchlist, setUpdatingWatchlist] = useState(false);
   const [, setDeletingWatchlist] = useState(null); // Store the ID of watchlist being deleted
 
+  const [alerts, setAlerts] = useState({ unread_count: 0, alerts: [] });
+
+  const loadAlerts = async () => {
+    try {
+      setAlerts(await watchlistAPI.getAlerts(false, 50));
+    } catch (error) {
+      console.error("Failed to load alerts:", error);
+    }
+  };
+
+  const handleAcknowledgeAlerts = async (alertIds) => {
+    try {
+      await watchlistAPI.acknowledgeAlerts(alertIds);
+      await loadAlerts();
+    } catch {
+      toast.error("Could not mark alerts as read");
+    }
+  };
+
+  const openAlertItemIds = new Set(
+    alerts.alerts.filter((a) => a.still_true).map((a) => a.item_id)
+  );
+
   // useRef to store the interval ID so we can clear it later
   const refreshIntervalRef = useRef(null);
 
   // Load watchlists on component mount
   useEffect(() => {
     loadWatchlists();
+    loadAlerts();
   }, []);
 
   // Check for mobile screen size
@@ -560,6 +585,15 @@ const Watchlist = () => {
         {/* Main Content Area */}
         <main className="flex-1 p-6 overflow-auto">
           <div className="max-w-7xl mx-auto">
+            <WatchlistAlerts
+              alerts={alerts.alerts}
+              unreadCount={alerts.unread_count}
+              onAcknowledge={handleAcknowledgeAlerts}
+              onOpenWatchlist={(id) => {
+                const target = watchlists.find((w) => w.id === id);
+                if (target) handleSelectWatchlist(target);
+              }}
+            />
             {viewMode === "content" && selectedWatchlist ? (
               /* Watchlist Content View */
               <div>
@@ -578,6 +612,7 @@ const Watchlist = () => {
                   onManualRefresh={handleManualRefresh}
                   onAddSymbol={() => setShowAddSymbolModal(true)}
                   onLoadWatchlistItems={handleLoadWatchlistItems}
+                  alertItemIds={openAlertItemIds}
                   // Pass loading states
                   addingSymbol={addingSymbol}
                   removingSymbol={removingSymbol}

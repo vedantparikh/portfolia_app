@@ -11,6 +11,7 @@ from core.database.models.watchlist import (
     WatchlistItem,
     WatchlistPerformance,
 )
+from core.domain.alerts import check_alerts
 from core.errors import DomainError
 from core.logging_config import get_logger
 from core.schemas.watchlist import (
@@ -358,126 +359,174 @@ class WatchlistService:
             logger.error(f"Failed to reorder watchlist items: {e}")
             raise
 
-    async def update_watchlist_item_prices(self, symbol: str) -> bool:
-        """Update current prices for all watchlist items with a given symbol."""
-        try:
-            # Get all watchlist items with this symbol
-            items = (
-                self.db.query(WatchlistItem)
-                .filter(WatchlistItem.symbol == symbol.upper())
-                .all()
-            )
-
-            if not items:
-                return False
-
-            # Get current market price
-            try:
-                price = await self.market_data_service.get_current_price(
-                    symbol=symbol.upper()
-                )
-                if not price:
-                    return False
-
-                current_price = Decimal(str(price))
-
-                # Update all items with this symbol
-                for item in items:
-                    if item.current_price != current_price:
-                        old_price = item.current_price
-                        item.current_price = current_price
-
-                        # Calculate performance metrics
-                        if item.added_price:
-                            item.price_change_since_added = (
-                                current_price - item.added_price
-                            )
-                            item.price_change_percent_since_added = (
-                                item.price_change_since_added / item.added_price
-                            ) * 100
-
-                        # Create performance record
-                        self._create_performance_record(item.id, current_price)
-
-                        # Check alerts
-                        self._check_price_alerts(item, old_price, current_price)
-
-                self.db.commit()
-                logger.info(
-                    f"Updated prices for {len(items)} watchlist items with symbol {symbol}"
-                )
-                return True
-
-            except Exception as e:
-                logger.error(f"Failed to get market data for {symbol}: {e}")
-                return False
-
-        except Exception as e:
-            self.db.rollback()
-            logger.error(f"Failed to update prices for symbol {symbol}: {e}")
-            raise
-
-    def _create_performance_record(self, item_id: int, price: Decimal) -> None:
-        """Create a performance record for a watchlist item."""
-        try:
-            performance = WatchlistPerformance(
-                watchlist_item_id=item_id, date=datetime.now(timezone.utc), price=price
-            )
-            self.db.add(performance)
-        except Exception as e:
-            logger.error(f"Failed to create performance record: {e}")
-
-    def _check_price_alerts(
-        self, item: WatchlistItem, old_price: Optional[Decimal], new_price: Decimal
-    ) -> None:
-        """Check if any price alerts should be triggered."""
-        try:
-            if not item.alerts_enabled:
-                return
-
-            # Get active alerts for this item
-            alerts = (
-                self.db.query(WatchlistAlert)
-                .filter(
-                    and_(
-                        WatchlistAlert.watchlist_item_id == item.id,
-                        WatchlistAlert.is_active == True,
-                        WatchlistAlert.is_triggered == False,
+    async def refresh_prices_and_alerts(self) -> Dict[str, int]:
+        """
+        One worker step for every watchlist: fetch the watched symbols' prices in one
+        batch, update each item, keep one price row per item per day, and record an
+        alert event when a threshold's condition becomes true.
+        """
+        items = (
+            self.db.query(WatchlistItem)
+            .options(joinedload(WatchlistItem.watchlist))
+            .all()
+        )
+        symbols = sorted({item.symbol.upper() for item in items})
+        prices = await self.market_data_service.get_current_prices(symbols)
+        now = datetime.now(timezone.utc)
+        updated = triggered = 0
+        for item in items:
+            price = prices.get(item.symbol.upper())
+            if price is None:
+                continue
+            price = Decimal(str(price))
+            if item.current_price != price:
+                item.current_price = price
+                if item.added_price:
+                    item.price_change_since_added = price - item.added_price
+                    item.price_change_percent_since_added = (
+                        item.price_change_since_added / item.added_price * 100
                     )
-                )
-                .all()
+                self._record_daily_price(item.id, price, now)
+                updated += 1
+            triggered += self._apply_alerts(item, price, now)
+        self.db.commit()
+        return {
+            "items": len(items),
+            "symbols": len(symbols),
+            "priced": sum(1 for s in symbols if s in prices),
+            "updated": updated,
+            "triggered": triggered,
+        }
+
+    def _record_daily_price(self, item_id: int, price: Decimal, now: datetime) -> None:
+        start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        today = (
+            self.db.query(WatchlistPerformance)
+            .filter(
+                WatchlistPerformance.watchlist_item_id == item_id,
+                WatchlistPerformance.date >= start_of_day,
+            )
+            .first()
+        )
+        if today:
+            today.price, today.date = price, now
+        else:
+            self.db.add(
+                WatchlistPerformance(watchlist_item_id=item_id, date=now, price=price)
             )
 
-            for alert in alerts:
-                should_trigger = False
+    def _apply_alerts(self, item: WatchlistItem, price: Decimal, now: datetime) -> int:
+        """
+        Open events stay open while their condition holds for the same threshold;
+        a new event is recorded when a condition becomes true (or its threshold
+        changed). Returns the number of new events.
+        """
+        open_events = (
+            self.db.query(WatchlistAlert)
+            .filter(
+                WatchlistAlert.watchlist_item_id == item.id,
+                WatchlistAlert.is_triggered == True,
+                WatchlistAlert.is_active == True,
+            )
+            .all()
+        )
+        checks = (
+            check_alerts(
+                price,
+                item.added_price,
+                item.alert_price_high,
+                item.alert_price_low,
+                item.alert_price_change_percent,
+            )
+            if item.alerts_enabled
+            else []
+        )
+        holding = {c.alert_type: c for c in checks if c.holds}
+        for event in open_events:
+            check = holding.get(event.alert_type)
+            if check is None or event.threshold_value != check.threshold:
+                event.is_active = False
+        still_open = {
+            (e.alert_type, e.threshold_value) for e in open_events if e.is_active
+        }
+        fired = 0
+        for check in holding.values():
+            if (check.alert_type, check.threshold) in still_open:
+                continue
+            self.db.add(
+                WatchlistAlert(
+                    watchlist_item_id=item.id,
+                    user_id=item.watchlist.user_id,
+                    alert_type=check.alert_type,
+                    threshold_value=check.threshold,
+                    condition=check.condition,
+                    is_active=True,
+                    is_triggered=True,
+                    triggered_at=now,
+                    triggered_value=price,
+                    notify_email=False,
+                )
+            )
+            fired += 1
+        return fired
 
-                if alert.alert_type == "price_high" and alert.condition == "above":
-                    should_trigger = new_price > alert.threshold_value
-                elif alert.alert_type == "price_low" and alert.condition == "below":
-                    should_trigger = new_price < alert.threshold_value
-                elif alert.alert_type == "percent_change" and item.added_price:
-                    change_percent = (
-                        (new_price - item.added_price) / item.added_price
-                    ) * 100
-                    if alert.condition == "above":
-                        should_trigger = change_percent > alert.threshold_value
-                    elif alert.condition == "below":
-                        should_trigger = change_percent < alert.threshold_value
+    def get_alert_events(
+        self, user_id: int, unread_only: bool = False, limit: int = 50
+    ) -> Dict[str, Any]:
+        """Triggered alerts, newest first, plus how many are unread."""
+        base = self.db.query(WatchlistAlert).filter(
+            WatchlistAlert.user_id == user_id, WatchlistAlert.is_triggered == True
+        )
+        unread = base.filter(WatchlistAlert.acknowledged_at.is_(None))
+        rows = (
+            (unread if unread_only else base)
+            .options(
+                joinedload(WatchlistAlert.watchlist_item).joinedload(
+                    WatchlistItem.watchlist
+                )
+            )
+            .order_by(desc(WatchlistAlert.triggered_at))
+            .limit(limit)
+            .all()
+        )
+        return {
+            "unread_count": unread.count(),
+            "alerts": [
+                {
+                    "id": a.id,
+                    "watchlist_id": a.watchlist_item.watchlist_id,
+                    "watchlist_name": a.watchlist_item.watchlist.name,
+                    "item_id": a.watchlist_item_id,
+                    "symbol": a.watchlist_item.symbol,
+                    "alert_type": a.alert_type,
+                    "condition": a.condition,
+                    "threshold_value": a.threshold_value,
+                    "triggered_value": a.triggered_value,
+                    "triggered_at": a.triggered_at,
+                    "still_true": a.is_active,
+                    "acknowledged_at": a.acknowledged_at,
+                }
+                for a in rows
+            ],
+        }
 
-                if should_trigger:
-                    # Trigger the alert
-                    alert.is_triggered = True
-                    alert.triggered_at = datetime.now(timezone.utc)
-                    alert.triggered_value = new_price
-
-                    # Log the alert (in production, this would send notifications)
-                    logger.info(
-                        f"Price alert triggered for {item.symbol}: "
-                        f"{alert.alert_type} {alert.condition} {alert.threshold_value}"
-                    )
-
-        except Exception as e:
-            logger.error(f"Failed to check price alerts: {e}")
+    def acknowledge_alerts(
+        self, user_id: int, alert_ids: Optional[List[int]] = None
+    ) -> int:
+        """Mark the given (or all) triggered alerts as read."""
+        query = self.db.query(WatchlistAlert).filter(
+            WatchlistAlert.user_id == user_id,
+            WatchlistAlert.is_triggered == True,
+            WatchlistAlert.acknowledged_at.is_(None),
+        )
+        if alert_ids:
+            query = query.filter(WatchlistAlert.id.in_(alert_ids))
+        count = query.update(
+            {WatchlistAlert.acknowledged_at: datetime.now(timezone.utc)},
+            synchronize_session=False,
+        )
+        self.db.commit()
+        return count
 
     def create_price_alert(
         self, item_id: int, user_id: int, alert_data: WatchlistAlertCreate

@@ -1530,6 +1530,27 @@ export const transactionPDFExportAPI = {
   These methods handle all watchlist-related API calls
 */
 export const watchlistAPI = {
+  /*
+      GET ALERTS - Triggered watchlist alerts (evaluated by the worker), newest first
+      Returns: { unread_count, alerts: [{ id, symbol, watchlist_name, alert_type, condition, threshold_value, triggered_value, triggered_at, still_true, acknowledged_at }] }
+    */
+  getAlerts: async (unreadOnly = false, limit = 50) => {
+    const response = await api.get("/watchlists/alerts", {
+      params: { unread_only: unreadOnly, limit },
+    });
+    return response.data;
+  },
+
+  /*
+      ACKNOWLEDGE ALERTS - Mark alerts as read (all unread when ids is null)
+    */
+  acknowledgeAlerts: async (alertIds = null) => {
+    const response = await api.post("/watchlists/alerts/acknowledge", {
+      alert_ids: alertIds,
+    });
+    return response.data;
+  },
+
   /* 
       GET WATCHLISTS - Get all watchlists for the current user
       Parameters: includeItems (boolean to include watchlist items)
