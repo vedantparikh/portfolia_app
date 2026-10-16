@@ -293,16 +293,6 @@ class AssetSearchResultItem(BaseModel):
     is_active: bool = Field(..., description="Whether asset is active")
 
 
-class AssetSearchResponse(BaseModel):
-    """Asset search response."""
-
-    results: List[AssetSearchResultItem] = Field(..., description="Search results")
-    total_count: int = Field(..., description="Total number of results")
-    limit: int = Field(..., description="Results limit")
-    offset: int = Field(..., description="Results offset")
-    query: Optional[str] = Field(None, description="Search query")
-
-
 class AssetDetailsResponse(BaseModel):
     """Asset details response."""
 

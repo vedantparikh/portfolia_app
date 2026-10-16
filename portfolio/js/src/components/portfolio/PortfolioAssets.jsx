@@ -11,11 +11,13 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { portfolioAPI, transactionAPI } from '../../services/api';
+import { portfolioAPI, transactionAPI, userAssetsAPI } from '../../services/api';
 import AssetFilters from '../assets/AssetFilters';
 import AssetModal from '../assets/AssetModal';
 import LoadingSpinner from '../shared/LoadingSpinner';
+import StatCard from '../shared/StatCard';
 import CreateTransactionModal from '../transactions/CreateTransactionModal';
+import { formatCurrency, formatPercentage, getChangeColor } from '../../utils/formatters.jsx';
 import PortfolioAssetCard from './PortfolioAssetCard';
 
 
@@ -64,18 +66,31 @@ const PortfolioAssets = ({ portfolio }) => {
             setLoading(true);
             console.log('[PortfolioAssets] Loading assets for portfolio:', portfolio.id);
 
-            // Get portfolio holdings which contain the assets
-            const holdingsResponse = await portfolioAPI.getPortfolioHoldings(portfolio.id);
-            console.log('[PortfolioAssets] Holdings response:', holdingsResponse);
+            // Holdings carry the position numbers; asset details add type, market cap and 24h move
+            const [holdingsResult, detailsResult] = await Promise.allSettled([
+                portfolioAPI.getPortfolioHoldings(portfolio.id),
+                userAssetsAPI.getUserAssets({ limit: 1000, include_detail: true }),
+            ]);
+            if (holdingsResult.status === 'rejected') throw holdingsResult.reason;
+            const holdingsResponse = holdingsResult.value;
+            const assetsById = new Map(
+                (detailsResult.status === 'fulfilled' ? detailsResult.value.assets : []).map((a) => [a.id, a])
+            );
 
             // Process holdings data to create asset objects
             let portfolioAssets = [];
             if (holdingsResponse && Array.isArray(holdingsResponse) && holdingsResponse.length > 0) {
-                portfolioAssets = holdingsResponse.map(holding => ({
+                portfolioAssets = holdingsResponse.map(holding => {
+                    const asset = assetsById.get(holding.asset_id);
+                    return {
                     id: holding.asset_id,
                     symbol: holding.symbol,
                     name: holding.name,
-                    asset_type: holding.asset_type || 'EQUITY',
+                    asset_type: asset?.asset_type || 'EQUITY',
+                    sector: asset?.sector,
+                    market_cap: asset?.detail?.market_cap,
+                    volume_24h: asset?.detail?.volume_24h,
+                    price_change_percentage_24h: asset?.detail?.price_change_percentage_24h,
                     quantity: holding.quantity,
                     purchase_price: holding.cost_basis,
                     current_price: holding.current_value && holding.quantity ? holding.current_value / holding.quantity : 0,
@@ -88,7 +103,8 @@ const PortfolioAssets = ({ portfolio }) => {
                     realized_pnl_percentage: holding.realized_pnl_percent,
                     today_pnl: holding.today_pnl,
                     today_pnl_percentage: holding.today_pnl_percent
-                }));
+                    };
+                });
             }
 
             setAssets(portfolioAssets);
@@ -192,24 +208,6 @@ const PortfolioAssets = ({ portfolio }) => {
             });
         }
 
-        // RSI range filter
-        if (filters.rsiRange !== 'all') {
-            filtered = filtered.filter(asset => {
-                const rsi = asset.rsi;
-                if (rsi === null || rsi === undefined) return false;
-                switch (filters.rsiRange) {
-                    case '0-30':
-                        return rsi >= 0 && rsi <= 30;
-                    case '30-70':
-                        return rsi > 30 && rsi < 70;
-                    case '70-100':
-                        return rsi >= 70 && rsi <= 100;
-                    default:
-                        return true;
-                }
-            });
-        }
-
         // Sort
         filtered.sort((a, b) => {
             let aValue, bValue;
@@ -240,8 +238,8 @@ const PortfolioAssets = ({ portfolio }) => {
                     bValue = b.total_value || 0;
                     break;
                 default:
-                    aValue = a.symbol || '';
-                    bValue = b.symbol || '';
+                    aValue = Number(a[filters.sortBy]) || 0;
+                    bValue = Number(b[filters.sortBy]) || 0;
             }
 
             if (filters.sortBy === 'symbol' || filters.sortBy === 'name') {
@@ -421,66 +419,10 @@ const PortfolioAssets = ({ portfolio }) => {
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="card p-6">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm text-gray-400">Best Performer</p>
-                            <p className="text-xl font-bold text-gray-100 truncate" title={highlights.bestPerformer.name}>{highlights.bestPerformer.symbol}</p>
-                            <p className="text-xs text-gray-500">{highlights.bestPerformer.name}</p>
-                            <p className="text-sm font-semibold text-success-400">
-                                +{highlights.bestPerformer.value.toFixed(2)}%
-                            </p>
-                        </div>
-                        <div className="w-12 h-12 bg-success-600/20 rounded-lg flex items-center justify-center">
-                            <Award size={24} className="text-success-400" />
-                        </div>
-                    </div>
-                </div>
-                <div className="card p-6">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm text-gray-400">Largest Holding</p>
-                            <p className="text-xl font-bold text-gray-100 truncate" title={highlights.largestHolding.name}>{highlights.largestHolding.symbol}</p>
-                            <p className="text-xs text-gray-500">{highlights.largestHolding.name}</p>
-                            <p className="text-sm font-semibold text-primary-400">
-                                ${highlights.largestHolding.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </p>
-                        </div>
-                        <div className="w-12 h-12 bg-primary-600/20 rounded-lg flex items-center justify-center">
-                            <Gem size={24} className="text-primary-400" />
-                        </div>
-                    </div>
-                </div>
-                <div className="card p-6">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm text-gray-400">Top Contributor</p>
-                            <p className="text-xl font-bold text-gray-100 truncate" title={highlights.topContributor.name}>{highlights.topContributor.symbol}</p>
-                            <p className="text-xs text-gray-500">{highlights.topContributor.name}</p>
-                            <p className="text-sm font-semibold text-success-400">
-                                +${highlights.topContributor.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </p>
-                        </div>
-                        <div className="w-12 h-12 bg-success-600/20 rounded-lg flex items-center justify-center">
-                            <TrendingUp size={24} className="text-success-400" />
-                        </div>
-                    </div>
-                </div>
-                <div className="card p-6">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm text-gray-400">Daily Mover</p>
-                            <p className="text-xl font-bold text-gray-100 truncate" title={highlights.dailyMover.name}>{highlights.dailyMover.symbol}</p>
-                            <p className="text-xs text-gray-500">{highlights.dailyMover.name}</p>
-                            <p className={`text-sm font-semibold ${highlights.dailyMover.value >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
-                                {highlights.dailyMover.value >= 0 ? '+' : ''}${highlights.dailyMover.value.toFixed(2)}
-                            </p>
-                        </div>
-                        <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${highlights.dailyMover.value >= 0 ? 'bg-success-600/20' : 'bg-danger-600/20'}`}>
-                            <Activity size={24} className={highlights.dailyMover.value >= 0 ? 'text-success-400' : 'text-danger-400'} />
-                        </div>
-                    </div>
-                </div>
+                <StatCard label="Best Performer" icon={Award} tone="success" value={highlights.bestPerformer.symbol} valueTitle={highlights.bestPerformer.name} sub={highlights.bestPerformer.name} detail={formatPercentage(highlights.bestPerformer.value)} detailClassName={getChangeColor(highlights.bestPerformer.value)} />
+                <StatCard label="Largest Holding" icon={Gem} value={highlights.largestHolding.symbol} valueTitle={highlights.largestHolding.name} sub={highlights.largestHolding.name} detail={formatCurrency(highlights.largestHolding.value)} />
+                <StatCard label="Top Contributor" icon={TrendingUp} tone="success" value={highlights.topContributor.symbol} valueTitle={highlights.topContributor.name} sub={highlights.topContributor.name} detail={`${highlights.topContributor.value >= 0 ? '+' : ''}${formatCurrency(highlights.topContributor.value)}`} detailClassName={getChangeColor(highlights.topContributor.value)} />
+                <StatCard label="Daily Mover" icon={Activity} tone={highlights.dailyMover.value >= 0 ? 'success' : 'danger'} value={highlights.dailyMover.symbol} valueTitle={highlights.dailyMover.name} sub={highlights.dailyMover.name} detail={`${highlights.dailyMover.value >= 0 ? '+' : ''}${formatCurrency(highlights.dailyMover.value)}`} detailClassName={getChangeColor(highlights.dailyMover.value)} />
             </div>
             {/* Filters */}
             {showFilters && (

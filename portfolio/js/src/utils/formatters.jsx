@@ -444,6 +444,11 @@ export const formatMetricValue = (value, isPercentage = false) => {
 };
 
 
+export const formatRatio = (value, precision = 2) => {
+    const n = parseFloat(value);
+    return value === null || value === undefined || isNaN(n) ? "N/A" : n.toFixed(precision);
+};
+
 export const getMetricColor = (value) => {
     if (value === null || value === undefined) return "text-gray-400";
     return value >= 0 ? "text-success-400" : "text-danger-400";

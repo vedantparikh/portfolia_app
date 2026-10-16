@@ -4,15 +4,17 @@ import {
   ChevronDown,
   ChevronUp,
   ChevronsUpDown,
-  Download,
-  Plus,
   RefreshCw,
   Target,
   TrendingUp,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { analyticsAPI, portfolioAPI } from "../../services/api";
-import { formatCurrency } from "../../utils/formatters.jsx";
+import { portfolioAPI } from "../../services/api";
+import {
+  formatCurrency,
+  formatPercentage,
+  getChangeColor,
+} from "../../utils/formatters.jsx";
 import {
   BenchmarkComparison,
   PortfolioAllocationManager,
@@ -20,23 +22,24 @@ import {
   RebalancingRecommendations,
 } from "../analytics";
 import LoadingSpinner from "../shared/LoadingSpinner";
+import StatCard from "../shared/StatCard";
+import AllocationDonut from "./AllocationDonut";
+import ValueVsInvestedChart from "./ValueVsInvestedChart";
 
 const PortfolioDetail = ({ portfolio }) => {
   const [holdings, setHoldings] = useState([]);
+  const [summary, setSummary] = useState(null);
   const [loadingHoldings, setLoadingHoldings] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
-  const [, setAnalyticsData] = useState(null);
-  const [, setLoadingAnalytics] = useState(false);
   const [sortConfig, setSortConfig] = useState({
     key: "value",
     direction: "descending",
   });
 
-  // Load portfolio holdings and analytics
+  // Load portfolio holdings
   useEffect(() => {
     if (portfolio && portfolio.id) {
       loadHoldings();
-      loadAnalyticsData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reload only when portfolio changes
   }, [portfolio]);
@@ -51,10 +54,11 @@ const PortfolioDetail = ({ portfolio }) => {
         portfolio.id
       );
 
-      // Get holdings from the API
-      const holdingsResponse = await portfolioAPI.getPortfolioHoldings(
-        portfolio.id
-      );
+      const [holdingsResponse, summaryResult] = await Promise.all([
+        portfolioAPI.getPortfolioHoldings(portfolio.id),
+        portfolioAPI.getPortfolioSummary(portfolio.id).catch(() => null),
+      ]);
+      setSummary(summaryResult);
       console.log("[PortfolioDetail] Holdings response:", holdingsResponse);
 
       // Process holdings data from API response
@@ -88,30 +92,6 @@ const PortfolioDetail = ({ portfolio }) => {
       setHoldings([]);
     } finally {
       setLoadingHoldings(false);
-    }
-  };
-
-  const loadAnalyticsData = async () => {
-    if (!portfolio || !portfolio.id) return;
-
-    try {
-      setLoadingAnalytics(true);
-      const [summary, performanceSnapshot] = await Promise.allSettled([
-        analyticsAPI.getPortfolioAnalyticsSummary(portfolio.id),
-        analyticsAPI.getPerformanceSnapshot(portfolio.id),
-      ]);
-
-      setAnalyticsData({
-        summary: summary.status === "fulfilled" ? summary.value : null,
-        performanceSnapshot:
-          performanceSnapshot.status === "fulfilled"
-            ? performanceSnapshot.value
-            : null,
-      });
-    } catch (error) {
-      console.warn("[PortfolioDetail] Failed to load analytics data:", error);
-    } finally {
-      setLoadingAnalytics(false);
     }
   };
 
@@ -155,32 +135,13 @@ const PortfolioDetail = ({ portfolio }) => {
     return <ChevronUp size={14} className="ml-2" />;
   };
 
-  const totalHoldingsValue = holdings.reduce(
-    (sum, holding) => sum + (holding.value || 0),
-    0
-  );
-  const totalCost = holdings.reduce(
-    (sum, holding) => sum + (holding.quantity || 0) * (holding.avgPrice || 0),
-    0
-  );
-  const totalGainLoss = totalHoldingsValue - totalCost;
-  const totalGainLossPercent =
-    totalCost > 0 ? (totalGainLoss / totalCost) * 100 : 0;
-
-  const totalTodayGainLoss = holdings.reduce(
-    (sum, holding) => sum + (holding.todayGainLoss || 0),
-    0
-  );
-  const startOfDayValue = totalHoldingsValue - totalTodayGainLoss;
-  const totalTodayGainLossPercent =
-    startOfDayValue > 0 ? (totalTodayGainLoss / startOfDayValue) * 100 : 0;
-
+  const totalHoldingsValue = summary?.total_current_value ?? 0;
   const totalRealizedGainLoss = holdings.reduce(
     (sum, holding) => sum + (holding.realizedGainLoss || 0),
     0
   );
-  const totalRealizedGainLossPercent =
-    totalCost > 0 ? (totalRealizedGainLoss / totalCost) * 100 : 0;
+
+  const signed = (v) => formatCurrency(v, { signDisplay: "exceptZero" });
 
   const tabs = [
     { id: "overview", label: "Overview", icon: BarChart3 },
@@ -217,6 +178,40 @@ const PortfolioDetail = ({ portfolio }) => {
       {/* Tab Content */}
       {activeTab === "overview" && (
         <>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              label="Value"
+              className="col-span-2 lg:col-span-1"
+              value={summary ? formatCurrency(summary.total_current_value) : "—"}
+              sub={summary ? `${summary.total_assets} holdings` : null}
+            />
+            <StatCard
+              label="Invested"
+              value={summary ? formatCurrency(summary.total_cost_basis) : "—"}
+              sub="Cost basis"
+            />
+            <StatCard
+              label="Unrealized P&L"
+              value={summary ? signed(summary.total_unrealized_pnl) : "—"}
+              valueClassName={getChangeColor(summary?.total_unrealized_pnl)}
+              sub={
+                summary
+                  ? formatPercentage(summary.total_unrealized_pnl_percent, { showSign: true })
+                  : null
+              }
+            />
+            <StatCard
+              label="Today"
+              value={summary ? signed(summary.today_pnl) : "—"}
+              valueClassName={getChangeColor(summary?.today_pnl)}
+              sub={
+                summary
+                  ? formatPercentage(summary.today_pnl_percent, { showSign: true })
+                  : null
+              }
+            />
+          </div>
+
           {/* Holdings Overview */}
           <div className="card p-6">
             <div className="flex items-center justify-between mb-6">
@@ -232,14 +227,6 @@ const PortfolioDetail = ({ portfolio }) => {
                     className={loadingHoldings ? "animate-spin" : ""}
                   />
                   <span>Refresh</span>
-                </button>
-                <button className="btn-outline text-sm flex items-center space-x-2">
-                  <Download size={16} />
-                  <span>Export</span>
-                </button>
-                <button className="btn-primary text-sm flex items-center space-x-2">
-                  <Plus size={16} />
-                  <span>Add Position</span>
                 </button>
               </div>
             </div>
@@ -447,66 +434,25 @@ const PortfolioDetail = ({ portfolio }) => {
                         {formatCurrency(totalHoldingsValue)}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-right">
-                      <span
-                        className={`text-lg font-bold ${totalGainLoss >= 0
-                          ? "text-success-400"
-                          : "text-danger-400"
-                          }`}
-                      >
-                        {totalGainLoss >= 0 ? "+" : ""}
-                        {formatCurrency(totalGainLoss)}
-                      </span>
-                      <p
-                        className={`text-lg font-bold ${totalGainLossPercent >= 0
-                          ? "text-success-400"
-                          : "text-danger-400"
-                          }`}
-                      >
-                        {totalGainLossPercent >= 0 ? "+" : ""}
-                        {totalGainLossPercent.toFixed(2)}%
+                    <td className="py-3 px-4 text-right font-bold">
+                      <p className={getChangeColor(summary?.total_unrealized_pnl)}>
+                        {signed(summary?.total_unrealized_pnl)}
+                      </p>
+                      <p className={`text-sm ${getChangeColor(summary?.total_unrealized_pnl_percent)}`}>
+                        {formatPercentage(summary?.total_unrealized_pnl_percent, { showSign: true })}
                       </p>
                     </td>
-
-                    <td className="py-3 px-4 text-right">
-                      <span
-                        className={`text-lg font-bold ${totalTodayGainLoss >= 0
-                          ? "text-success-400"
-                          : "text-danger-400"
-                          }`}
-                      >
-                        {totalTodayGainLoss >= 0 ? "+" : ""}
-                        {formatCurrency(totalTodayGainLoss)}
-                      </span>
-                      <p
-                        className={`text-lg font-bold ${totalTodayGainLossPercent >= 0
-                          ? "text-success-400"
-                          : "text-danger-400"
-                          }`}
-                      >
-                        {totalTodayGainLossPercent >= 0 ? "+" : ""}
-                        {totalTodayGainLossPercent.toFixed(2)}%
+                    <td className="py-3 px-4 text-right font-bold">
+                      <p className={getChangeColor(summary?.today_pnl)}>
+                        {signed(summary?.today_pnl)}
+                      </p>
+                      <p className={`text-sm ${getChangeColor(summary?.today_pnl_percent)}`}>
+                        {formatPercentage(summary?.today_pnl_percent, { showSign: true })}
                       </p>
                     </td>
-
-                    <td className="py-3 px-4 text-right">
-                      <span
-                        className={`text-lg font-bold ${totalRealizedGainLoss >= 0
-                          ? "text-success-400"
-                          : "text-danger-400"
-                          }`}
-                      >
-                        {totalRealizedGainLoss >= 0 ? "+" : ""}
-                        {formatCurrency(totalRealizedGainLoss)}
-                      </span>
-                      <p
-                        className={`text-lg font-bold ${totalRealizedGainLossPercent >= 0
-                          ? "text-success-400"
-                          : "text-danger-400"
-                          }`}
-                      >
-                        {totalRealizedGainLossPercent >= 0 ? "+" : ""}
-                        {totalRealizedGainLossPercent.toFixed(2)}%
+                    <td className="py-3 px-4 text-right font-bold">
+                      <p className={getChangeColor(totalRealizedGainLoss)}>
+                        {signed(totalRealizedGainLoss)}
                       </p>
                     </td>
                   </tr>
@@ -515,93 +461,16 @@ const PortfolioDetail = ({ portfolio }) => {
             </div>
           </div>
 
-          {/* Portfolio Allocation Chart & Performance Summary */}
+          {/* Portfolio Allocation */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="card p-6">
               <h3 className="text-lg font-semibold text-gray-100 mb-4">
                 Asset Allocation
               </h3>
-              <div className="space-y-4">
-                {holdings.length > 0 ? (
-                  holdings.map((holding, index) => {
-                    const percentage =
-                      totalHoldingsValue > 0
-                        ? ((holding.value || 0) / totalHoldingsValue) * 100
-                        : 0;
-                    return (
-                      <div key={holding.id || index} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-gray-100">
-                            {holding.name}
-                            <div className="text-xs text-gray-500">
-                              {holding.symbol}
-                            </div>
-                          </span>
-                          <span className="text-sm text-gray-400">
-                            {percentage.toFixed(1)}%
-                          </span>
-                        </div>
-                        <div className="w-full bg-dark-700 rounded-full h-2">
-                          <div
-                            className="bg-primary-400 h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${Math.min(percentage, 100)}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="text-center text-gray-400 py-8">
-                    No holdings to display allocation for
-                  </div>
-                )}
-              </div>
+              <AllocationDonut portfolioId={portfolio?.id} />
             </div>
-
             <div className="card p-6">
-              <h3 className="text-lg font-semibold text-gray-100 mb-4">
-                Performance Summary
-              </h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-400">Total Invested</span>
-                  <span className="text-sm font-medium text-gray-100">
-                    {formatCurrency(totalCost)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-400">Current Value</span>
-                  <span className="text-sm font-medium text-gray-100">
-                    {formatCurrency(totalHoldingsValue)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-400">
-                    Total Gain/Loss
-                  </span>
-                  <span
-                    className={`text-sm font-medium ${totalGainLoss >= 0
-                      ? "text-success-400"
-                      : "text-danger-400"
-                      }`}
-                  >
-                    {totalGainLoss >= 0 ? "+" : ""}
-                    {formatCurrency(totalGainLoss)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-400">Total Return</span>
-                  <span
-                    className={`text-sm font-medium ${totalGainLossPercent >= 0
-                      ? "text-success-400"
-                      : "text-danger-400"
-                      }`}
-                  >
-                    {totalGainLossPercent >= 0 ? "+" : ""}
-                    {totalGainLossPercent.toFixed(2)}%
-                  </span>
-                </div>
-              </div>
+              <ValueVsInvestedChart portfolioId={portfolio?.id} />
             </div>
           </div>
         </>

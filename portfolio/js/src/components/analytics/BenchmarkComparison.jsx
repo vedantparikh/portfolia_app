@@ -5,16 +5,13 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { analyticsAPI } from '../../services/api';
-import { formatCurrency, formatPercentage } from '../../utils/formatters.jsx';
 import LoadingSpinner from '../shared/LoadingSpinner';
 
 const BenchmarkComparison = ({ portfolioId }) => {
     const [benchmarks, setBenchmarks] = useState([]);
-    const [comparison, setComparison] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [showAddModal, setShowAddModal] = useState(false);
-    const [selectedBenchmark, setSelectedBenchmark] = useState(null);
 
     useEffect(() => {
         if (portfolioId) {
@@ -30,31 +27,11 @@ const BenchmarkComparison = ({ portfolioId }) => {
 
             const benchmarksResponse = await analyticsAPI.getPortfolioBenchmarks(portfolioId);
             setBenchmarks(benchmarksResponse);
-
-            // Load comparison for the first benchmark if available
-            if (benchmarksResponse && benchmarksResponse.length > 0) {
-                const firstBenchmark = benchmarksResponse[0];
-                setSelectedBenchmark(firstBenchmark);
-                await loadComparison(firstBenchmark.id);
-            }
         } catch (err) {
             console.error('Failed to load benchmark data:', err);
             setError('Failed to load benchmark data');
         } finally {
             setLoading(false);
-        }
-    };
-
-    const loadComparison = async (benchmarkId) => {
-        try {
-            const comparisonResponse = await analyticsAPI.getPortfolioPerformanceComparison(
-                portfolioId,
-                benchmarkId,
-                30
-            );
-            setComparison(comparisonResponse);
-        } catch (err) {
-            console.error('Failed to load comparison data:', err);
         }
     };
 
@@ -69,10 +46,6 @@ const BenchmarkComparison = ({ portfolioId }) => {
         }
     };
 
-    const handleSelectBenchmark = async (benchmark) => {
-        setSelectedBenchmark(benchmark);
-        await loadComparison(benchmark.id);
-    };
 
     if (loading) {
         return (
@@ -130,11 +103,7 @@ const BenchmarkComparison = ({ portfolioId }) => {
                         {benchmarks.map((benchmark) => (
                             <div
                                 key={benchmark.id}
-                                className={`flex items-center justify-between p-4 rounded-lg cursor-pointer transition-colors ${selectedBenchmark?.id === benchmark.id
-                                    ? 'bg-primary-600/20 border border-primary-600/50'
-                                    : 'bg-dark-800 hover:bg-dark-700'
-                                    }`}
-                                onClick={() => handleSelectBenchmark(benchmark)}
+                                className="flex items-center justify-between p-4 rounded-lg bg-dark-800"
                             >
                                 <div className="flex items-center space-x-4">
                                     <div className="w-10 h-10 bg-primary-600/20 rounded-lg flex items-center justify-center">
@@ -142,196 +111,37 @@ const BenchmarkComparison = ({ portfolioId }) => {
                                     </div>
                                     <div>
                                         <p className="font-medium text-gray-100">{benchmark.benchmark_name}</p>
-                                        <p className="text-sm text-gray-400">
-                                            Type: {benchmark.benchmark_type} |
-                                            {benchmark.is_primary && <span className="text-primary-400 ml-1">Primary</span>}
+                                        <p className="text-sm text-gray-400 capitalize">
+                                            {benchmark.benchmark_type}
+                                            {benchmark.is_primary && <span className="text-primary-400"> · Primary</span>}
                                         </p>
                                     </div>
                                 </div>
-                                <div className="text-right">
-                                    <p className="text-sm text-gray-400">Beta</p>
-                                    <p className="font-medium text-gray-100">
-                                        {benchmark.beta ? parseFloat(benchmark.beta).toFixed(2) : 'N/A'}
-                                    </p>
-                                </div>
+                                {benchmark.beta != null && (
+                                    <div className="text-right">
+                                        <p className="text-sm text-gray-400">Beta</p>
+                                        <p className="font-medium text-gray-100">
+                                            {parseFloat(benchmark.beta).toFixed(2)}
+                                        </p>
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>
                 )}
             </div>
 
-            {/* Performance Comparison */}
-            {selectedBenchmark && comparison && (
-                <div className="space-y-6">
-                    {/* Comparison Summary */}
-                    <div className="card p-6">
-                        <h3 className="text-lg font-semibold text-gray-100 mb-4 flex items-center">
-                            <BarChart3 className="w-5 h-5 mr-2 text-primary-400" />
-                            Performance Comparison vs {selectedBenchmark.benchmark_name}
-                        </h3>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div className="text-center">
-                                <p className="text-sm text-gray-400">Portfolio Value</p>
-                                <p className="text-2xl font-bold text-gray-100">
-                                    {formatCurrency(comparison.portfolio_performance?.current_value || 0)}
-                                </p>
-                            </div>
-
-                            <div className="text-center">
-                                <p className="text-sm text-gray-400">Benchmark Value</p>
-                                <p className="text-2xl font-bold text-gray-100">
-                                    {formatCurrency(comparison.benchmark_performance?.current_value || 0)}
-                                </p>
-                            </div>
-
-                            <div className="text-center">
-                                <p className="text-sm text-gray-400">Outperformance</p>
-                                <p className={`text-2xl font-bold ${comparison.comparison?.outperforming
-                                    ? 'text-success-400'
-                                    : 'text-danger-400'
-                                    }`}>
-                                    {comparison.comparison?.outperforming ? '+' : ''}
-                                    {comparison.comparison?.cagr_difference ?
-                                        formatPercentage(comparison.comparison.cagr_difference) : 'N/A'}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Detailed Metrics Comparison */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div className="card p-6">
-                            <h4 className="text-md font-semibold text-gray-100 mb-4">Portfolio Metrics</h4>
-                            <div className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm text-gray-400">CAGR</span>
-                                    <span className="text-sm font-medium text-gray-100">
-                                        {comparison.portfolio_performance?.metrics?.cagr ?
-                                            formatPercentage(comparison.portfolio_performance.metrics.cagr) : 'N/A'}
-                                    </span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm text-gray-400">XIRR</span>
-                                    <span className="text-sm font-medium text-gray-100">
-                                        {comparison.portfolio_performance?.metrics?.xirr ?
-                                            formatPercentage(comparison.portfolio_performance.metrics.xirr) : 'N/A'}
-                                    </span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm text-gray-400">Volatility</span>
-                                    <span className="text-sm font-medium text-gray-100">
-                                        {comparison.portfolio_performance?.metrics?.volatility ?
-                                            formatPercentage(comparison.portfolio_performance.metrics.volatility) : 'N/A'}
-                                    </span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm text-gray-400">Sharpe Ratio</span>
-                                    <span className="text-sm font-medium text-gray-100">
-                                        {comparison.portfolio_performance?.metrics?.sharpe_ratio ?
-                                            parseFloat(comparison.portfolio_performance.metrics.sharpe_ratio).toFixed(2) : 'N/A'}
-                                    </span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm text-gray-400">Max Drawdown</span>
-                                    <span className="text-sm font-medium text-gray-100">
-                                        {comparison.portfolio_performance?.metrics?.max_drawdown ?
-                                            formatPercentage(comparison.portfolio_performance.metrics.max_drawdown) : 'N/A'}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="card p-6">
-                            <h4 className="text-md font-semibold text-gray-100 mb-4">Benchmark Metrics</h4>
-                            <div className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm text-gray-400">CAGR</span>
-                                    <span className="text-sm font-medium text-gray-100">
-                                        {comparison.benchmark_performance?.metrics?.cagr ?
-                                            formatPercentage(comparison.benchmark_performance.metrics.cagr) : 'N/A'}
-                                    </span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm text-gray-400">XIRR</span>
-                                    <span className="text-sm font-medium text-gray-100">
-                                        {comparison.benchmark_performance?.metrics?.xirr ?
-                                            formatPercentage(comparison.benchmark_performance.metrics.xirr) : 'N/A'}
-                                    </span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm text-gray-400">Volatility</span>
-                                    <span className="text-sm font-medium text-gray-100">
-                                        {comparison.benchmark_performance?.metrics?.volatility ?
-                                            formatPercentage(comparison.benchmark_performance.metrics.volatility) : 'N/A'}
-                                    </span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm text-gray-400">Sharpe Ratio</span>
-                                    <span className="text-sm font-medium text-gray-100">
-                                        {comparison.benchmark_performance?.metrics?.sharpe_ratio ?
-                                            parseFloat(comparison.benchmark_performance.metrics.sharpe_ratio).toFixed(2) : 'N/A'}
-                                    </span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm text-gray-400">Max Drawdown</span>
-                                    <span className="text-sm font-medium text-gray-100">
-                                        {comparison.benchmark_performance?.metrics?.max_drawdown ?
-                                            formatPercentage(comparison.benchmark_performance.metrics.max_drawdown) : 'N/A'}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Performance Difference */}
-                    <div className="card p-6">
-                        <h4 className="text-md font-semibold text-gray-100 mb-4">Performance Differences</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <div className="text-center p-4 bg-dark-800 rounded-lg">
-                                <p className="text-sm text-gray-400">CAGR Difference</p>
-                                <p className={`text-lg font-semibold ${comparison.comparison?.cagr_difference && comparison.comparison.cagr_difference >= 0
-                                    ? 'text-success-400'
-                                    : 'text-danger-400'
-                                    }`}>
-                                    {comparison.comparison?.cagr_difference ?
-                                        `${comparison.comparison.cagr_difference >= 0 ? '+' : ''}${formatPercentage(comparison.comparison.cagr_difference)}` : 'N/A'}
-                                </p>
-                            </div>
-
-                            <div className="text-center p-4 bg-dark-800 rounded-lg">
-                                <p className="text-sm text-gray-400">XIRR Difference</p>
-                                <p className={`text-lg font-semibold ${comparison.comparison?.xirr_difference && comparison.comparison.xirr_difference >= 0
-                                    ? 'text-success-400'
-                                    : 'text-danger-400'
-                                    }`}>
-                                    {comparison.comparison?.xirr_difference ?
-                                        `${comparison.comparison.xirr_difference >= 0 ? '+' : ''}${formatPercentage(comparison.comparison.xirr_difference)}` : 'N/A'}
-                                </p>
-                            </div>
-
-                            <div className="text-center p-4 bg-dark-800 rounded-lg">
-                                <p className="text-sm text-gray-400">TWR Difference</p>
-                                <p className={`text-lg font-semibold ${comparison.comparison?.twr_difference && comparison.comparison.twr_difference >= 0
-                                    ? 'text-success-400'
-                                    : 'text-danger-400'
-                                    }`}>
-                                    {comparison.comparison?.twr_difference ?
-                                        `${comparison.comparison.twr_difference >= 0 ? '+' : ''}${formatPercentage(comparison.comparison.twr_difference)}` : 'N/A'}
-                                </p>
-                            </div>
-
-                            <div className="text-center p-4 bg-dark-800 rounded-lg">
-                                <p className="text-sm text-gray-400">MWR Difference</p>
-                                <p className={`text-lg font-semibold ${comparison.comparison?.mwr_difference && comparison.comparison.mwr_difference >= 0
-                                    ? 'text-success-400'
-                                    : 'text-danger-400'
-                                    }`}>
-                                    {comparison.comparison?.mwr_difference ?
-                                        `${comparison.comparison.mwr_difference >= 0 ? '+' : ''}${formatPercentage(comparison.comparison.mwr_difference)}` : 'N/A'}
-                                </p>
-                            </div>
-                        </div>
+            {benchmarks.length > 0 && (
+                <div className="card p-6 flex items-start gap-4">
+                    <BarChart3 className="w-5 h-5 mt-0.5 text-gray-500 shrink-0" />
+                    <div>
+                        <p className="font-medium text-gray-200">Benchmark comparison is coming</p>
+                        <p className="text-sm text-gray-400 mt-1">
+                            Side-by-side returns, beta and alpha against your benchmarks need a
+                            backend calculation that isn&apos;t reliable yet, so they are not shown.
+                            Return and risk metrics for the portfolio itself are on the
+                            Performance Metrics and Analytics views.
+                        </p>
                     </div>
                 </div>
             )}

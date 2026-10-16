@@ -415,15 +415,6 @@ const AssetModal = ({ asset, mode = "view", onClose, onSave, existingAssets = []
                 >
                   Chart
                 </button>
-                <button
-                  onClick={() => setActiveTab("analytics")}
-                  className={`px-4 py-2 text-sm font-medium transition-colors ${activeTab === "analytics"
-                    ? "text-primary-400 border-b-2 border-primary-400"
-                    : "text-gray-400 hover:text-gray-300"
-                    }`}
-                >
-                  Analytics
-                </button>
               </div>
 
               {/* Tab Content */}
@@ -769,9 +760,7 @@ const AssetModal = ({ asset, mode = "view", onClose, onSave, existingAssets = []
                             </span>
                             <p className="text-lg font-semibold text-gray-100">
                               {asset.detail?.dividend_yield
-                                ? `${(
-                                  Number(asset.detail.dividend_yield) * 100
-                                ).toFixed(2)}%`
+                                ? `${Number(asset.detail.dividend_yield).toFixed(2)}%`
                                 : "N/A"}
                             </p>
                           </div>
@@ -956,65 +945,6 @@ const AssetModal = ({ asset, mode = "view", onClose, onSave, existingAssets = []
                   </div>
                 )}
 
-                {activeTab === "analytics" && (
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                      {/* Analytics cards */}
-                      <div className="card p-4">
-                        <h4 className="text-sm font-medium text-gray-400 mb-2">
-                          RSI (14)
-                        </h4>
-                        <p
-                          className={`text-2xl font-bold ${asset?.rsi > 70
-                            ? "text-danger-400"
-                            : asset?.rsi < 30
-                              ? "text-success-400"
-                              : "text-gray-100"
-                            }`}
-                        >
-                          {asset?.rsi ? asset.rsi.toFixed(1) : "N/A"}
-                        </p>
-                        {asset?.rsi && (
-                          <p className="text-xs text-gray-500 mt-1">
-                            {asset.rsi > 70
-                              ? "Overbought"
-                              : asset.rsi < 30
-                                ? "Oversold"
-                                : "Neutral"}
-                          </p>
-                        )}
-                      </div>
-                      <div className="card p-4">
-                        <h4 className="text-sm font-medium text-gray-400 mb-2">
-                          MACD
-                        </h4>
-                        <p
-                          className={`text-2xl font-bold ${asset?.macd > 0
-                            ? "text-success-400"
-                            : "text-danger-400"
-                            }`}
-                        >
-                          {asset?.macd ? asset.macd.toFixed(4) : "N/A"}
-                        </p>
-                      </div>
-                      <div className="card p-4">
-                        <h4 className="text-sm font-medium text-gray-400 mb-2">
-                          Volatility (20d)
-                        </h4>
-                        <p
-                          className={`text-2xl font-bold ${asset?.volatility_20d > 0.3
-                            ? "text-warning-400"
-                            : "text-gray-100"
-                            }`}
-                        >
-                          {asset?.volatility_20d
-                            ? `${(asset.volatility_20d * 100).toFixed(1)}%`
-                            : "N/A"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           )}

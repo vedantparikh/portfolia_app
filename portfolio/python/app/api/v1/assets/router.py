@@ -18,7 +18,6 @@ from core.database.models import Asset as AssetModel
 from core.database.models import User
 from core.database.models.asset import AssetType
 from core.logging_config import get_logger, log_api_request, log_api_response
-from core.schemas.market_data import AssetSearchResponse
 from core.schemas.portfolio import (
     Asset as AssetSchema,
 )
@@ -374,31 +373,6 @@ async def delete_asset(
     db.commit()
 
     return None
-
-
-@router.get("/search/{query}", response_model=AssetSearchResponse)
-async def search_assets(
-    query: str,
-    limit: int = Query(20, ge=1, le=1000, description="Maximum number of results"),
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    """Search for assets by symbol or name for the authenticated user."""
-    assets = (
-        db.query(AssetModel)
-        .filter(
-            AssetModel.is_active == True,
-            AssetModel.user_id == current_user.id,
-            (
-                AssetModel.symbol.ilike(f"%{query.upper()}%")
-                | AssetModel.name.ilike(f"%{query}%")
-            ),
-        )
-        .limit(limit)
-        .all()
-    )
-
-    return AssetSearchResponse(assets=assets, total_count=len(assets), query=query)
 
 
 @router.get("/{asset_id}/prices", response_model=AssetPrice)

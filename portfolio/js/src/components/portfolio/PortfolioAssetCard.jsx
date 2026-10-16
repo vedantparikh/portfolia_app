@@ -5,6 +5,11 @@ import {
     Plus,
     Trash2
 } from 'lucide-react';
+import {
+    formatCurrency,
+    formatPercentage,
+    formatQuantity,
+} from '../../utils/formatters.jsx';
 
 const AllocationDonut = ({ percentage = 0 }) => {
     const sqSize = 48; // Corresponds to w-12 h-12
@@ -102,56 +107,56 @@ const PortfolioAssetCard = ({ asset, portfolioTotalValue = 0, viewMode = 'grid',
                         <div className="text-right">
                             <p className="text-sm text-gray-400">Quantity</p>
                             <p className="text-lg font-semibold text-gray-100">
-                                {asset.quantity?.toFixed(4) || '0'}
+                                {formatQuantity(asset.quantity)}
                             </p>
                         </div>
 
                         <div className="text-right">
                             <p className="text-sm text-gray-400">Purchase Price</p>
                             <p className="text-sm font-medium text-gray-100">
-                                ${asset.purchase_price?.toFixed(2) || '0.00'}
+                                {formatCurrency(asset.purchase_price)}
                             </p>
                         </div>
 
                         <div className="text-right">
                             <p className="text-sm text-gray-400">Current Price</p>
                             <p className="text-sm font-medium text-gray-100">
-                                ${asset.current_price?.toFixed(2) || '0.00'}
+                                {formatCurrency(asset.current_price)}
                             </p>
                         </div>
 
                         <div className="text-right">
                             <p className="text-sm text-gray-400">Total Value</p>
                             <p className="text-lg font-semibold text-gray-100">
-                                ${asset.total_value?.toFixed(2) || '0.00'}
+                                {formatCurrency(asset.total_value)}
                             </p>
                         </div>
 
                         <div className="text-right">
                             <p className="text-sm text-gray-400">P&L</p>
                             <p className={`text-sm font-medium ${(asset.pnl || 0) >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
-                                ${asset.pnl?.toFixed(2) || '0.00'}
+                                {formatCurrency(asset.pnl)}
                             </p>
                             <p className={`text-xs ${(asset.pnl_percentage || 0) >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
-                                {asset.pnl_percentage?.toFixed(2) || '0.00'}%
+                                {formatPercentage(asset.pnl_percentage, { showSign: false })}
                             </p>
                         </div>
                         <div className="text-right">
                             <p className="text-sm text-gray-400">Realized P&L</p>
                             <p className={`text-sm font-medium ${(asset.pnl || 0) >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
-                                ${asset.realized_pnl?.toFixed(2) || '0.00'}
+                                {formatCurrency(asset.realized_pnl)}
                             </p>
                             <p className={`text-xs ${(asset.pnl_percentage || 0) >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
-                                {asset.realized_pnl_percentage?.toFixed(2) || '0.00'}%
+                                {formatPercentage(asset.realized_pnl_percentage, { showSign: false })}
                             </p>
                         </div>
                         <div className="text-right">
                             <p className="text-sm text-gray-400">Today&apos;s P&L</p>
                             <p className={`text-sm font-medium ${(asset.pnl || 0) >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
-                                ${asset.today_pnl?.toFixed(2) || '0.00'}
+                                {formatCurrency(asset.today_pnl)}
                             </p>
                             <p className={`text-xs ${(asset.pnl_percentage || 0) >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
-                                {asset.today_pnl_percentage?.toFixed(2) || '0.00'}%
+                                {formatPercentage(asset.today_pnl_percentage, { showSign: false })}
                             </p>
                         </div>
 
@@ -255,28 +260,28 @@ const PortfolioAssetCard = ({ asset, portfolioTotalValue = 0, viewMode = 'grid',
                 <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-400">Quantity</span>
                     <span className="text-lg font-bold text-gray-100">
-                        {asset.quantity?.toFixed(4) || '0'}
+                        {formatQuantity(asset.quantity)}
                     </span>
                 </div>
 
                 <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-400">Purchase Price</span>
                     <span className="text-sm font-medium text-gray-100">
-                        ${asset.purchase_price?.toFixed(2) || '0.00'}
+                        {formatCurrency(asset.purchase_price)}
                     </span>
                 </div>
 
                 <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-400">Current Price</span>
                     <span className="text-sm font-medium text-gray-100">
-                        ${asset.current_price?.toFixed(2) || '0.00'}
+                        {formatCurrency(asset.current_price)}
                     </span>
                 </div>
 
                 <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-400">Total Value</span>
                     <span className="text-lg font-bold text-gray-100">
-                        ${asset.total_value?.toFixed(2) || '0.00'}
+                        {formatCurrency(asset.total_value)}
                     </span>
                 </div>
 
@@ -286,10 +291,10 @@ const PortfolioAssetCard = ({ asset, portfolioTotalValue = 0, viewMode = 'grid',
                         <span className="text-sm text-gray-400">Unrealized P&L</span>
                         <div className="text-right">
                             <span className={`text-sm font-bold ${(asset.pnl || 0) >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
-                                ${asset.pnl?.toFixed(2) || '0.00'}
+                                {formatCurrency(asset.pnl)}
                             </span>
                             <span className={`text-xs ml-2 ${(asset.pnl_percentage || 0) >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
-                                ({asset.pnl_percentage?.toFixed(2) || '0.00'}%)
+                                ({formatPercentage(asset.pnl_percentage, { showSign: false })})
                             </span>
                         </div>
                     </div>
@@ -299,10 +304,10 @@ const PortfolioAssetCard = ({ asset, portfolioTotalValue = 0, viewMode = 'grid',
                             <span className="text-sm text-gray-400">Realized P&L</span>
                             <div className="text-right">
                                 <span className={`text-sm font-medium ${(asset.realized_pnl || 0) >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
-                                    ${asset.realized_pnl?.toFixed(2) || '0.00'}
+                                    {formatCurrency(asset.realized_pnl)}
                                 </span>
                                 <span className={`text-xs ml-2 ${(asset.realized_pnl_percentage || 0) >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
-                                    ({asset.realized_pnl_percentage?.toFixed(2) || '0.00'}%)
+                                    ({formatPercentage(asset.realized_pnl_percentage, { showSign: false })})
                                 </span>
                             </div>
                         </div>
@@ -312,10 +317,10 @@ const PortfolioAssetCard = ({ asset, portfolioTotalValue = 0, viewMode = 'grid',
                             <span className="text-sm text-gray-400">Today&apos;s P&L</span>
                             <div className="text-right">
                                 <span className={`text-sm font-medium ${(asset.today_pnl || 0) >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
-                                    ${asset.today_pnl?.toFixed(2) || '0.00'}
+                                    {formatCurrency(asset.today_pnl)}
                                 </span>
                                 <span className={`text-xs ml-2 ${(asset.today_pnl_percentage || 0) >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
-                                    ({asset.today_pnl_percentage?.toFixed(2) || '0.00'}%)
+                                    ({formatPercentage(asset.today_pnl_percentage, { showSign: false })})
                                 </span>
                             </div>
                         </div>
@@ -327,7 +332,7 @@ const PortfolioAssetCard = ({ asset, portfolioTotalValue = 0, viewMode = 'grid',
             <div className="mt-4 pt-4 border-t border-dark-700">
                 <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
                     <span>Position Performance</span>
-                    <span>{asset.pnl_percentage ? `${asset.pnl_percentage.toFixed(2)}%` : '0.00%'}</span>
+                    <span>{formatPercentage(asset.pnl_percentage, { showSign: false })}</span>
                 </div>
                 <div className="w-full bg-dark-700 rounded-full h-1.5">
                     <div

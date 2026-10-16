@@ -1,6 +1,7 @@
 import { Filter, X } from 'lucide-react';
 
-const AssetFilters = ({ filters, onFilterChange }) => {
+// `hidden` lets a page drop filters its data source cannot honour
+const AssetFilters = ({ filters, onFilterChange, hidden = [] }) => {
     const categories = [
         { value: 'all', label: 'All Categories' },
         { value: 'cryptocurrency', label: 'Cryptocurrency' },
@@ -46,13 +47,6 @@ const AssetFilters = ({ filters, onFilterChange }) => {
         { value: '1e12-', label: 'Over $1T' }
     ];
 
-    const rsiRanges = [
-        { value: 'all', label: 'All RSI' },
-        { value: '0-30', label: 'Oversold (0-30)' },
-        { value: '30-70', label: 'Neutral (30-70)' },
-        { value: '70-100', label: 'Overbought (70-100)' }
-    ];
-
     const sortOptions = [
         { value: 'symbol', label: 'Symbol' },
         { value: 'name', label: 'Name' },
@@ -60,12 +54,9 @@ const AssetFilters = ({ filters, onFilterChange }) => {
         { value: 'purchase_price', label: 'Purchase Price' },
         { value: 'current_price', label: 'Current Price' },
         { value: 'total_value', label: 'Total Value' },
-        { value: 'purchase_date', label: 'Purchase Date' },
         { value: 'market_cap', label: 'Market Cap' },
         { value: 'volume_24h', label: '24h Volume' },
-        { value: 'price_change_percentage_24h', label: '24h Change %' },
-        { value: 'rsi', label: 'RSI' },
-        { value: 'volatility_20d', label: 'Volatility' }
+        { value: 'price_change_percentage_24h', label: '24h Change %' }
     ];
 
     const sortOrders = [
@@ -84,7 +75,6 @@ const AssetFilters = ({ filters, onFilterChange }) => {
             valueRange: 'all',
             changeRange: 'all',
             marketCapRange: 'all',
-            rsiRange: 'all',
             sortBy: 'symbol',
             sortOrder: 'asc'
         });
@@ -96,7 +86,6 @@ const AssetFilters = ({ filters, onFilterChange }) => {
             filters.valueRange !== 'all' ||
             filters.changeRange !== 'all' ||
             filters.marketCapRange !== 'all' ||
-            filters.rsiRange !== 'all' ||
             filters.sortBy !== 'symbol' ||
             filters.sortOrder !== 'asc';
     };
@@ -139,6 +128,7 @@ const AssetFilters = ({ filters, onFilterChange }) => {
                 </div>
 
                 {/* Price Range Filter */}
+                {!hidden.includes('priceRange') && (
                 <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
                         Price Range
@@ -155,8 +145,10 @@ const AssetFilters = ({ filters, onFilterChange }) => {
                         ))}
                     </select>
                 </div>
+                )}
 
                 {/* Value Range Filter */}
+                {!hidden.includes('valueRange') && (
                 <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
                         Total Value
@@ -173,8 +165,10 @@ const AssetFilters = ({ filters, onFilterChange }) => {
                         ))}
                     </select>
                 </div>
+                )}
 
                 {/* Change Range Filter */}
+                {!hidden.includes('changeRange') && (
                 <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
                         24h Change
@@ -191,8 +185,10 @@ const AssetFilters = ({ filters, onFilterChange }) => {
                         ))}
                     </select>
                 </div>
+                )}
 
                 {/* Market Cap Range Filter */}
+                {!hidden.includes('marketCapRange') && (
                 <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
                         Market Cap
@@ -209,26 +205,10 @@ const AssetFilters = ({ filters, onFilterChange }) => {
                         ))}
                     </select>
                 </div>
-
-                {/* RSI Range Filter */}
-                <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                        RSI Range
-                    </label>
-                    <select
-                        value={filters.rsiRange || 'all'}
-                        onChange={(e) => handleFilterChange('rsiRange', e.target.value)}
-                        className="input-field w-full"
-                    >
-                        {rsiRanges.map((range) => (
-                            <option key={range.value} value={range.value}>
-                                {range.label}
-                            </option>
-                        ))}
-                    </select>
-                </div>
+                )}
 
                 {/* Sort By Filter */}
+                {!hidden.includes('sort') && (
                 <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
                         Sort By
@@ -245,9 +225,12 @@ const AssetFilters = ({ filters, onFilterChange }) => {
                         ))}
                     </select>
                 </div>
+                )}
+
             </div>
 
             {/* Sort Order */}
+            {!hidden.includes('sort') && (
             <div className="flex items-center space-x-4">
                 <label className="block text-sm font-medium text-gray-300">
                     Sort Order:
@@ -267,6 +250,7 @@ const AssetFilters = ({ filters, onFilterChange }) => {
                     ))}
                 </div>
             </div>
+            )}
 
             {/* Active Filters Display */}
             {hasActiveFilters() && (
@@ -287,7 +271,7 @@ const AssetFilters = ({ filters, onFilterChange }) => {
                             {changeRanges.find(r => r.value === filters.changeRange)?.label}
                         </span>
                     )}
-                    {filters.sortBy !== 'market_cap' && (
+                    {!hidden.includes('sort') && filters.sortBy !== 'symbol' && (
                         <span className="px-2 py-1 bg-primary-600/20 text-primary-400 text-xs rounded-full">
                             Sort: {sortOptions.find(o => o.value === filters.sortBy)?.label}
                         </span>

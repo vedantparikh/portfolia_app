@@ -1,8 +1,9 @@
 import {
   Activity,
   BarChart3,
-  Bell,
   Bookmark,
+  Clock,
+  Layers,
   Menu,
   Plus,
   RefreshCw,
@@ -14,16 +15,17 @@ import {
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { useAuth } from "../../contexts/AuthContext";
-import { marketAPI, portfolioAPI, transactionAPI } from "../../services/api";
+import { analyticsAPI, marketAPI, portfolioAPI, transactionAPI } from "../../services/api";
 import {
   formatCurrency,
   formatDateTime,
   formatPercentage,
   formatQuantity,
   formatVolume,
+  getChangeColor,
 } from "../../utils/formatters";
 import EmailVerificationPrompt from "../auth/EmailVerificationPrompt";
-import { LoadingSpinner, Sidebar } from "../shared";
+import { LoadingSpinner, Sidebar, Sparkline, StatCard } from "../shared";
 
 const CardLoader = ({ text = "Loading..." }) => (
   <div className="flex items-center justify-center py-8">
@@ -41,6 +43,9 @@ const Dashboard = () => {
     recentTransactions: [],
     topAssets: [],
   });
+  const [overview, setOverview] = useState(null);
+  const [movers, setMovers] = useState(null);
+  const [marketStatus, setMarketStatus] = useState(null);
   const [loadingStates, setLoadingStates] = useState({
     portfolios: true,
     transactions: true,
@@ -73,7 +78,50 @@ const Dashboard = () => {
     });
 
     // Independent sections load in parallel so a slow one doesn't block the others
-    await Promise.all([loadTransactions(), loadTopAssets(), loadPortfolios()]);
+    await Promise.all([
+      loadTransactions(),
+      loadTopAssets(),
+      loadPortfolios(),
+      loadOverview(),
+      loadMovers(),
+    ]);
+  };
+
+  const loadMovers = async () => {
+    try {
+      const portfolios = await portfolioAPI.getPortfolios();
+      const results = await Promise.allSettled(
+        portfolios.map((p) => portfolioAPI.getPortfolioHoldings(p.id))
+      );
+      const bySymbol = new Map();
+      results
+        .filter((r) => r.status === "fulfilled")
+        .flatMap((r) => r.value || [])
+        .filter((h) => h.today_pnl_percent != null)
+        .forEach((h) => bySymbol.set(h.symbol, h));
+      const sorted = [...bySymbol.values()].sort(
+        (a, b) => b.today_pnl_percent - a.today_pnl_percent
+      );
+      setMovers({
+        gainers: sorted.filter((h) => h.today_pnl_percent > 0).slice(0, 3),
+        losers: sorted
+          .filter((h) => h.today_pnl_percent < 0)
+          .reverse()
+          .slice(0, 3),
+      });
+    } catch (error) {
+      console.error("Failed to load movers:", error);
+      setMovers({ gainers: [], losers: [] });
+    }
+  };
+
+  const loadOverview = async () => {
+    const [stats, status] = await Promise.allSettled([
+      portfolioAPI.getStatisticsOverview(),
+      marketAPI.getMarketStatus(),
+    ]);
+    setOverview(stats.status === "fulfilled" ? stats.value : null);
+    setMarketStatus(status.status === "fulfilled" ? status.value : null);
   };
 
   const loadTransactions = async () => {
@@ -118,15 +166,28 @@ const Dashboard = () => {
     try {
       const portfolios = await portfolioAPI.getPortfolios();
       if (portfolios && portfolios.length > 0) {
-        const portfolioSummaries = await Promise.allSettled(
-          portfolios.map((p) => portfolioAPI.getPortfolioSummary(p.id))
-        );
+        const [portfolioSummaries, histories] = await Promise.all([
+          Promise.allSettled(
+            portfolios.map((p) => portfolioAPI.getPortfolioSummary(p.id))
+          ),
+          Promise.allSettled(
+            portfolios.map((p) =>
+              analyticsAPI.getPortfolioPerformanceHistory(p.id, 90)
+            )
+          ),
+        ]);
         const portfoliosWithStats = portfolios.map((portfolio, index) => ({
           ...portfolio,
           stats:
             portfolioSummaries[index].status === "fulfilled"
               ? portfolioSummaries[index].value
               : null,
+          history:
+            histories[index].status === "fulfilled"
+              ? [...(histories[index].value.history || [])]
+                .sort((a, b) => a.snapshot_date.localeCompare(b.snapshot_date))
+                .map((h) => Number(h.total_value))
+              : [],
         }));
         setDashboardData((prev) => ({
           ...prev,
@@ -157,7 +218,7 @@ const Dashboard = () => {
     return (
       <div className="text-right">
         <p className={`font-medium ${valueColor}`}>
-          {formatCurrency(value, { showSign: true })}
+          {formatCurrency(value, { signDisplay: "exceptZero" })}
         </p>
         <p className={`text-sm ${valueColor}`}>
           {formatPercentage(percent, { showSign: true })}
@@ -222,11 +283,6 @@ const Dashboard = () => {
             </div>
 
             <div className="flex items-center space-x-4">
-              <button className="p-2 rounded-lg hover:bg-dark-800 transition-colors relative">
-                <Bell size={20} className="text-gray-400" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-primary-500 rounded-full"></span>
-              </button>
-
               <div className="flex items-center space-x-3">
                 <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center">
                   <User size={16} className="text-white" />
@@ -255,6 +311,42 @@ const Dashboard = () => {
               <p className="text-gray-400">
                 Here&apos;s what&apos;s happening with your portfolio today.
               </p>
+            </div>
+
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+              <StatCard
+                label="Total Value"
+                icon={Wallet}
+                className="col-span-2 lg:col-span-1"
+                value={overview ? formatCurrency(overview.total_value) : "—"}
+                sub="Across all portfolios"
+              />
+              <StatCard
+                label="Portfolios"
+                icon={Layers}
+                tone="gray"
+                value={overview ? overview.active_portfolios : "—"}
+                sub={
+                  overview && overview.total_portfolios !== overview.active_portfolios
+                    ? `${overview.total_portfolios} including inactive`
+                    : "Active"
+                }
+              />
+              <StatCard
+                label="Holdings"
+                icon={BarChart3}
+                tone="gray"
+                value={overview ? overview.total_assets : "—"}
+                sub="Positions across portfolios"
+              />
+              <StatCard
+                label="US Market"
+                icon={Clock}
+                className="col-span-2 lg:col-span-1"
+                tone={marketStatus?.is_open ? "success" : "gray"}
+                value={marketStatus ? (marketStatus.is_open ? "Open" : "Closed") : "—"}
+                sub="Mon–Fri 9:30–16:00 ET"
+              />
             </div>
 
             <>
@@ -325,6 +417,13 @@ const Dashboard = () => {
                                 portfolio.stats?.total_current_value
                               )}
                             </p>
+                            <Sparkline
+                              values={portfolio.history}
+                              width={72}
+                              height={18}
+                              className="ml-auto mt-1 text-primary-400"
+                              title="Value, last 90 days"
+                            />
                             <p className="text-xs text-gray-500 mt-1 md:hidden">
                               Total Value
                             </p>
@@ -432,6 +531,65 @@ const Dashboard = () => {
                     </div>
                   )}
                 </div>
+              </div>
+
+              <div className="card p-6 mb-8">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-semibold text-gray-100">
+                    Today&apos;s Movers
+                  </h3>
+                  <span className="text-xs text-gray-500">
+                    Your holdings, by today&apos;s change
+                  </span>
+                </div>
+                {!movers ? (
+                  <CardLoader text="Loading holdings..." />
+                ) : movers.gainers.length + movers.losers.length === 0 ? (
+                  <p className="text-center py-6 text-gray-500">
+                    No price changes for your holdings yet today.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {[
+                      ["Gainers", movers.gainers],
+                      ["Losers", movers.losers],
+                    ].map(([title, rows]) => (
+                      <div key={title}>
+                        <p className="text-xs font-medium text-gray-400 mb-2">
+                          {title}
+                        </p>
+                        {rows.length === 0 ? (
+                          <p className="text-sm text-gray-500 py-2">None today</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {rows.map((h) => (
+                              <div
+                                key={h.symbol}
+                                className="flex items-center justify-between gap-3 px-4 py-2.5 bg-dark-800 rounded-lg"
+                              >
+                                <div className="min-w-0">
+                                  <p className="font-medium text-gray-100">
+                                    {h.symbol}
+                                  </p>
+                                  <p className="text-xs text-gray-400 truncate">
+                                    {h.name}
+                                  </p>
+                                </div>
+                                <p
+                                  className={`font-medium shrink-0 ${getChangeColor(h.today_pnl_percent)}`}
+                                >
+                                  {formatPercentage(h.today_pnl_percent, {
+                                    showSign: true,
+                                  })}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="card p-6 mb-8">

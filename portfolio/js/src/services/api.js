@@ -289,6 +289,15 @@ export const portfolioAPI = {
   },
 
   /* 
+      GET STATISTICS OVERVIEW - Totals across all of the user's portfolios
+      Returns: { total_portfolios, active_portfolios, total_assets, total_value }
+    */
+  getStatisticsOverview: async () => {
+    const response = await api.get("/portfolios/statistics/overview");
+    return response.data;
+  },
+
+  /* 
       CREATE PORTFOLIO - Create a new investment portfolio
       Parameters: portfolioData (object with portfolio information)
       Returns: Server response with created portfolio data
@@ -420,6 +429,15 @@ export const portfolioAPI = {
 */
 export const marketAPI = {
   /*
+  GET MARKET STATUS - Whether the US market is open right now
+  Returns: { is_open, current_time_et, timezone }
+*/
+  getMarketStatus: async () => {
+    const response = await api.get("/market-data/market-status");
+    return response.data;
+  },
+
+  /*
   GET MAJOR INDICES - Get list of major indices
   Returns: Server response with array of major indices
 */
@@ -435,16 +453,6 @@ export const marketAPI = {
     */
   getAssets: async (params = {}) => {
     const response = await api.get("/assets/", { params });
-    return response.data;
-  },
-
-  /* 
-      SEARCH ASSETS - Search for assets by symbol or name
-      Parameters: query (string to search for)
-      Returns: Server response with matching assets
-    */
-  searchAssets: async (query) => {
-    const response = await api.get(`/assets/search/${query}`);
     return response.data;
   },
 
@@ -747,16 +755,6 @@ export const assetAPI = {
     */
   deleteAsset: async (id) => {
     const response = await api.delete(`/assets/${id}`);
-    return response;
-  },
-
-  /* 
-      SEARCH ASSETS - Search for assets by symbol or name
-      Parameters: query (string to search for)
-      Returns: Server response with matching assets
-    */
-  searchAssets: async (query) => {
-    const response = await api.get(`/assets/search/${query}`);
     return response;
   },
 
