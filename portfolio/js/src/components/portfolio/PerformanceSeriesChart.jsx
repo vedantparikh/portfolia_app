@@ -1,6 +1,7 @@
+import { useMoney } from "../../hooks/useMoney";
 import { AreaSeries, LineSeries, LineStyle, createChart } from "lightweight-charts";
 import { useEffect, useRef, useState } from "react";
-import { formatCurrency, formatDate } from "../../utils/formatters.jsx";
+import { formatDate } from "../../utils/formatters.jsx";
 
 const SERIES = [
   { key: "value", label: "Value", color: "#38bdf8" },
@@ -15,6 +16,7 @@ const PerformanceSeriesChart = ({
   benchmarkLabel = null,
   height = "h-80",
 }) => {
+  const money = useMoney();
   const showBenchmark = points?.some((p) => p.benchmark_value != null);
   const containerRef = useRef(null);
   const [hover, setHover] = useState(null);
@@ -28,7 +30,7 @@ const PerformanceSeriesChart = ({
       rightPriceScale: { borderVisible: false },
       timeScale: { borderVisible: false },
       crosshair: { horzLine: { visible: false } },
-      localization: { priceFormatter: (p) => formatCurrency(p, { notation: "compact" }) },
+      localization: { priceFormatter: (p) => money(p, { notation: "compact" }) },
     });
     const byTime = new Map(points.map((p) => [p.date, p]));
     const line = (color, dashed) => ({
@@ -67,7 +69,7 @@ const PerformanceSeriesChart = ({
     chart.subscribeCrosshairMove((param) => setHover(param.time ? byTime.get(param.time) : null));
     chart.timeScale().fitContent();
     return () => chart.remove();
-  }, [points, showCostBasis, showBenchmark]);
+  }, [points, showCostBasis, showBenchmark, money]);
 
   const shown = hover || points?.[points.length - 1];
 
@@ -83,7 +85,7 @@ const PerformanceSeriesChart = ({
           <span key={s.key} className="flex items-center gap-1.5 text-gray-400">
             <span className="w-2.5 h-0.5 rounded" style={{ backgroundColor: s.color }} />
             {s.key === "benchmark_value" && benchmarkLabel ? benchmarkLabel : s.label}
-            {shown && <span className="text-gray-100 font-medium">{formatCurrency(shown[s.key])}</span>}
+            {shown && <span className="text-gray-100 font-medium">{money(shown[s.key])}</span>}
           </span>
         ))}
       </div>

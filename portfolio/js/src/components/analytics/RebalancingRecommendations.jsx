@@ -1,3 +1,4 @@
+import { useMoney } from "../../hooks/useMoney";
 import {
     AlertTriangle,
     ArrowRight,
@@ -9,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { analyticsAPI } from '../../services/api';
-import { formatCurrency, formatPercentage, formatQuantity } from '../../utils/formatters.jsx';
+import { formatPercentage, formatQuantity } from '../../utils/formatters.jsx';
 import LoadingSpinner from '../shared/LoadingSpinner';
 
 // "allocation_drift_exceeds_threshold_11.2%" -> "Allocation drift exceeds threshold 11.2%"
@@ -20,6 +21,7 @@ const humanize = (code) => {
 };
 
 const RebalancingRecommendations = ({ portfolioId }) => {
+  const money = useMoney();
     const [recommendations, setRecommendations] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -204,12 +206,12 @@ const RebalancingRecommendations = ({ portfolioId }) => {
                                     <div>
                                         <p className="font-medium text-gray-100">
                                             {action.action_type?.toUpperCase()} {formatQuantity(action.quantity_change)} {action.asset_symbol}
-                                            <span className="text-gray-400 font-normal"> · ≈ {formatCurrency(action.trade_value)}</span>
+                                            <span className="text-gray-400 font-normal"> · ≈ {money(action.trade_value)}</span>
                                         </p>
                                         <p className="text-sm text-gray-400">
                                             {action.action_type === 'buy' ? 'Underweight vs. target' : 'Overweight vs. target'}
                                             {' · '}
-                                            {formatQuantity(action.current_quantity)} → {formatQuantity(action.target_quantity)} shares at {formatCurrency(action.price)}
+                                            {formatQuantity(action.current_quantity)} → {formatQuantity(action.target_quantity)} shares at {money(action.price)}
                                         </p>
                                     </div>
                                 </div>
@@ -249,7 +251,7 @@ const RebalancingRecommendations = ({ portfolioId }) => {
                                         {formatPercentage(parseFloat(allocation.target_percentage), { showSign: false })}
                                     </p>
                                     <p className="text-sm text-gray-400">
-                                        {formatCurrency(parseFloat(allocation.current_value))}
+                                        {money(parseFloat(allocation.current_value))}
                                     </p>
                                 </div>
                             </div>

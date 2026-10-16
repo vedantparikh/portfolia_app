@@ -1,3 +1,4 @@
+import { useMoney } from "../../hooks/useMoney";
 import {
   BarChart3,
   Calculator,
@@ -11,15 +12,12 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { portfolioCalculationsAPI } from "../../services/api";
-import {
-  formatCurrency,
-  formatMetricValue,
-  getMetricColor
-} from "../../utils/formatters.jsx";
+import { formatMetricValue, getMetricColor } from "../../utils/formatters.jsx";
 import LoadingSpinner from "../shared/LoadingSpinner";
 import StatCard from "../shared/StatCard";
 
 const PortfolioPerformanceMetrics = ({ portfolio }) => {
+  const money = useMoney();
   const [loading, setLoading] = useState(false);
   const [performanceData, setPerformanceData] = useState(null);
   const [multiPeriodData, setMultiPeriodData] = useState(null);
@@ -387,7 +385,7 @@ const PortfolioPerformanceMetrics = ({ portfolio }) => {
                 Current Value
               </h5>
               <p className="text-lg font-semibold text-gray-100">
-                {formatCurrency(performanceData.current_value)}
+                {money(performanceData.current_value)}
               </p>
             </div>
           </div>

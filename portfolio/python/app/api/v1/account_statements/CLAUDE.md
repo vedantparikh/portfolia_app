@@ -14,7 +14,7 @@
 
 ## Frontend
 `PDFUploadModal` (provider + file; accepted extensions come from the provider's `supported_formats`) → `ParsedDataTable` (map symbols to assets, inline edits, draft saved in localStorage, choose portfolio) → bulk-create. `accountStatementsAPI` in `services/api.js`.
-- When the parse result has `instruments`, `InstrumentMappingPanel` resolves them 10 at a time and shows one line per ISIN: status (Your asset / Matched / Check / No match) with match %, a listing dropdown (venue, currency, % of fills), a free ticker field and an Import checkbox. Defaults: matched/existing/uncertain are included with the suggestion; unmatched are left out.
+- When the parse result has `instruments`, `InstrumentMappingPanel` resolves them 10 at a time and shows one line per ISIN: status (Your asset / Matched / Check / No match) with match %, a listing dropdown (venue, currency, % of fills), a free ticker field and an Import checkbox. Defaults: matched/existing/uncertain are included with the suggestion; unmatched are left out. Once a portfolio is selected, an included listing in another currency is flagged in red and saving is blocked until it is changed or left out.
 - A choice applies to every row of that ISIN (rows keep `isin`), unless a row's asset was picked by hand (`manual`). Left-out rows are dimmed and not sent; new tickers show a "new" badge and are sent as `symbol` + `isin`. The mapping is part of the localStorage draft (`parsedImportInstrumentMapping`).
 - Amounts are shown in each row's currency.
 
@@ -23,7 +23,7 @@
 - **Handel** → buy/sell (ISIN as symbol). The statement shows only the total, so the fee is assumed: `TRADE_FEE` = €1 per buy/sell trade, €0 for savings plan executions. `price = (total − fee) / qty` for buys, `(total + fee) / qty` for sells; `total_amount` stays the printed total.
 - **Erträge** → dividend with `total_amount` = cash received, quantity and price 0. Bulk-create keeps that amount (it no longer recomputes qty × price for dividends) and rejects a dividend ≤ 0.
 - **Zinszahlung, Überweisung, Kartentransaktion, Steuern** and unrecognised trades → `skipped[]` with a reason (`CASH_ROW_REASONS`); portfolios have no cash account. The review table lists them under "statement rows not imported".
-- Every row is `currency="EUR"`. Bulk-create stores `currency` (default: the portfolio currency) and `taxes`. Values are **not converted**: an EUR transaction on a USD-quoted asset needs FX (plan 2.3).
+- Every row is `currency="EUR"`. Bulk-create stores the portfolio currency and `taxes`, and rejects a row whose asset or statement currency differs from the portfolio's (no FX yet, plan 2.3); a new ticker in the wrong currency is not created.
 
 ## pytr CSV (`parsers/pytr_csv.py`, tests `tests/unit/test_pytr_csv_import.py`)
 Full Trade Republic history via `pytr export_transactions` (homelab: `appdata/trade-republic`). Ten positional columns `Date;Type;Value;Note;ISIN;Shares;Fees;Taxes;ISIN2;Shares2`; English and German headers/types; `.` or `,` decimals.

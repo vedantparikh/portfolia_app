@@ -1,3 +1,4 @@
+import { useMoney } from "../../hooks/useMoney";
 import {
   BarChart3,
   Calendar,
@@ -6,12 +7,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { LoadingSpinner } from "../shared";
-import {
-  formatCurrency,
-  formatPercentage,
-  getChangeColor,
-  getChangeIcon,
-} from "../../utils/formatters.jsx";
+import { formatPercentage, getChangeColor, getChangeIcon } from "../../utils/formatters.jsx";
 
 const PortfolioCard = ({
   portfolio,
@@ -22,6 +18,7 @@ const PortfolioCard = ({
   onAddPosition,
   onViewDetails,
 }) => {
+  const money = useMoney();
   const handleDelete = () => {
     if (
       window.confirm(
@@ -100,7 +97,7 @@ const PortfolioCard = ({
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-400">Total Value</span>
               <span className="text-2xl font-bold text-gray-100">
-                {formatCurrency(stats?.totalValue || 0)}
+                {money(stats?.totalValue || 0)}
               </span>
             </div>
 
@@ -113,7 +110,7 @@ const PortfolioCard = ({
                     stats?.totalGainLoss || 0
                   )}`}
                 >
-                  {formatCurrency(stats?.totalGainLoss || 0)}
+                  {money(stats?.totalGainLoss || 0)}
                 </span>
               </div>
             </div>
@@ -138,7 +135,7 @@ const PortfolioCard = ({
                     stats?.dayChange || 0
                   )}`}
                 >
-                  {formatCurrency(stats?.dayChange || 0)}
+                  {money(stats?.dayChange || 0)}
                 </span>
               </div>
             </div>

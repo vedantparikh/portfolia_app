@@ -8,7 +8,7 @@
 | Section | Source |
 |---|---|
 | Welcome header | `AuthContext` profile |
-| Overview strip (`StatCard`s): Total Value with today's change, Portfolios, Holdings, US Market | `portfolioAPI.getStatisticsOverview` (live holdings across active portfolios, today's P&L/%), `marketAPI.getMarketStatus` |
+| Overview strip (`StatCard`s): Total Value with today's change — one amount per currency ("$1,161,431.78 · €0.00"), never summed across currencies — Portfolios, Holdings, US Market | `portfolioAPI.getStatisticsOverview` (`totals[]` per currency from live holdings; ~5 s), `marketAPI.getMarketStatus` |
 | Your Portfolios: value, today's P&L, total P&L, 3-month sparkline | `getPortfolios` + `getPortfolioSummary` per portfolio + `portfolioCalculationsAPI.getPerformanceSeries(id, "3m")` |
 | Recent Transactions (5) | `transactionAPI.getTransactions({limit: 5, order: desc})` |
 | Today's Movers: top 3 / bottom 3 held symbols by today's % | `getPortfolioHoldings` per portfolio, de-duplicated by symbol. The browser only sorts |

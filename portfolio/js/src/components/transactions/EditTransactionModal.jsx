@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { formatQuantity } from '../../utils/formatters';
+import { formatCurrency, formatQuantity } from '../../utils/formatters';
 import transactionTypes, { colorSchemes } from '../../utils/transactionTypes';
 
 const EditTransactionModal = ({ isOpen, onClose, transaction, onUpdate }) => {
@@ -414,7 +414,7 @@ const EditTransactionModal = ({ isOpen, onClose, transaction, onUpdate }) => {
                                     {(() => {
                                         const selectedType = getSelectedTransactionType();
                                         const sign = ['buy', 'fee', 'transfer_out'].includes(selectedType.value) ? '-' : '+';
-                                        return `${sign}$${totalAmount.toFixed(2)}`;
+                                        return `${sign}${formatCurrency(totalAmount, { currency: transaction?.currency })}`;
                                     })()}
                                 </span>
                             </div>
@@ -424,9 +424,9 @@ const EditTransactionModal = ({ isOpen, onClose, transaction, onUpdate }) => {
                                     const monetaryTypes = ['buy', 'sell', 'dividend', 'transfer_in', 'transfer_out'];
 
                                     if (monetaryTypes.includes(selectedType.value)) {
-                                        return `${formatQuantity(formData.quantity) || 0} × $${formData.price || 0} + $${formData.fees || 0} fees`;
+                                        return `${formatQuantity(formData.quantity) || 0} × ${formatCurrency(formData.price || 0, { currency: transaction?.currency })} + ${formatCurrency(formData.fees || 0, { currency: transaction?.currency })} fees`;
                                     } else {
-                                        return `$${formData.fees || 0} fees only`;
+                                        return `${formatCurrency(formData.fees || 0, { currency: transaction?.currency })} fees only`;
                                     }
                                 })()}
                             </div>

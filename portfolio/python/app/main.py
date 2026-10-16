@@ -8,8 +8,8 @@ from fastapi.responses import JSONResponse
 
 from config import settings
 from core.database.connection import init_db
+from core.errors import DomainError, NotFoundError
 from core.logging_config import get_logger, setup_logging
-from core.services.portfolio_service import OversellError
 from health_check import router as health_router
 
 # Setup comprehensive logging
@@ -82,10 +82,11 @@ app = FastAPI(
 )
 
 
-@app.exception_handler(OversellError)
-async def oversell_error_handler(request: Request, exc: OversellError):
-    """A sell larger than the position is a client error, not a server failure."""
-    return JSONResponse(status_code=400, content={"detail": str(exc)})
+@app.exception_handler(DomainError)
+async def domain_error_handler(request: Request, exc: DomainError):
+    """Expected failures raised in services: 404 when missing, otherwise a client error."""
+    status_code = 404 if isinstance(exc, NotFoundError) else 400
+    return JSONResponse(status_code=status_code, content={"detail": str(exc)})
 
 
 # Add CORS middleware

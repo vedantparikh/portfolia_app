@@ -11,7 +11,7 @@ const STATUS = {
   unmatched: { label: "No match", icon: HelpCircle, tone: "text-gray-400" },
 };
 
-const InstrumentMappingPanel = ({ instruments, mapping, onChange }) => {
+const InstrumentMappingPanel = ({ instruments, mapping, onChange, portfolioCurrency }) => {
   const [results, setResults] = useState({});
   const [failed, setFailed] = useState(false);
 
@@ -114,6 +114,8 @@ const InstrumentMappingPanel = ({ instruments, mapping, onChange }) => {
                               onChange(instrument.isin, {
                                 symbol: e.target.value,
                                 asset_id: null,
+                                currency: result.candidates.find((c) => c.symbol === e.target.value)
+                                  ?.currency,
                                 excluded: !e.target.value,
                               })
                             }
@@ -127,6 +129,15 @@ const InstrumentMappingPanel = ({ instruments, mapping, onChange }) => {
                             ))}
                           </select>
                         )}
+                        {portfolioCurrency &&
+                          choice?.currency &&
+                          !choice.excluded &&
+                          choice.currency !== portfolioCurrency && (
+                            <p className="text-xs text-danger-400">
+                              {choice.symbol} trades in {choice.currency}; the portfolio is in{" "}
+                              {portfolioCurrency}. Pick a {portfolioCurrency} listing or leave it out.
+                            </p>
+                          )}
                         <input
                           className="input-field py-1 text-sm"
                           placeholder="or type a Yahoo ticker"

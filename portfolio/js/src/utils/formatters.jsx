@@ -5,13 +5,16 @@ import { ArrowDownLeft, ArrowDownRight, ArrowUpDown, ArrowUpRight, Minus, Plus, 
  * @param {number|string|null|undefined} price - The price value to format
  * @returns {string} Formatted price string
  */
-export const formatPrice = (price) => {
+export const formatPrice = (price, currency = 'USD') => {
     if (price === null || price === undefined) return 'N/A';
     const numericPrice = parseFloat(price);
     if (isNaN(numericPrice)) return 'N/A';
-    if (numericPrice < 0.01) return `$${numericPrice.toFixed(6)}`;
-    if (numericPrice < 1) return `$${numericPrice.toFixed(4)}`;
-    return `$${numericPrice.toFixed(2)}`;
+    const digits = numericPrice < 0.01 ? 6 : numericPrice < 1 ? 4 : 2;
+    return formatCurrency(numericPrice, {
+        currency,
+        minimumFractionDigits: digits,
+        maximumFractionDigits: digits,
+    });
 };
 
 /**
@@ -25,12 +28,13 @@ export const formatCurrency = (amount, options = {}) => {
         return options.defaultValue || '$0.00';
     }
 
+    const { currency, ...rest } = options;
     const defaultOptions = {
         style: 'currency',
-        currency: 'USD',
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
-        ...options
+        ...rest,
+        currency: currency || 'USD',
     };
 
     return new Intl.NumberFormat('en-US', defaultOptions).format(amount);

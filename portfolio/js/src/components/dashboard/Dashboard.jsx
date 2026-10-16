@@ -214,14 +214,14 @@ const Dashboard = () => {
   };
 
   // Helper component for displaying P&L stats to avoid repetitive code
-  const PnlDisplay = ({ value, percent, label }) => {
+  const PnlDisplay = ({ value, percent, label, currency }) => {
     const isPositive = value >= 0;
     const valueColor = isPositive ? "text-success-400" : "text-danger-400";
 
     return (
       <div className="text-right">
         <p className={`font-medium ${valueColor}`}>
-          {formatCurrency(value, { signDisplay: "exceptZero" })}
+          {formatCurrency(value, { signDisplay: "exceptZero", currency })}
         </p>
         <p className={`text-sm ${valueColor}`}>
           {formatPercentage(percent, { showSign: true })}
@@ -321,10 +321,21 @@ const Dashboard = () => {
                 label="Total Value"
                 icon={Wallet}
                 className="col-span-2 lg:col-span-1"
-                value={overview ? formatCurrency(overview.total_value) : "—"}
+                value={
+                  overview?.totals?.length
+                    ? overview.totals
+                        .map((t) => formatCurrency(t.total_value, { currency: t.currency }))
+                        .join(" · ")
+                    : "—"
+                }
                 sub={
-                  overview
-                    ? `${formatCurrency(overview.today_pnl, { signDisplay: "exceptZero" })} (${formatPercentage(overview.today_pnl_percent)}) today`
+                  overview?.totals?.length
+                    ? overview.totals
+                        .map(
+                          (t) =>
+                            `${formatCurrency(t.today_pnl, { signDisplay: "exceptZero", currency: t.currency })} (${formatPercentage(t.today_pnl_percent)})`
+                        )
+                        .join(" · ") + " today"
                     : "Across all portfolios"
                 }
               />
@@ -420,9 +431,9 @@ const Dashboard = () => {
                           </div>
                           <div className="text-right">
                             <p className="font-semibold text-gray-100">
-                              {formatCurrency(
-                                portfolio.stats?.total_current_value
-                              )}
+                              {formatCurrency(portfolio.stats?.total_current_value, {
+                                currency: portfolio.currency,
+                              })}
                             </p>
                             <Sparkline
                               values={portfolio.history}
@@ -436,11 +447,13 @@ const Dashboard = () => {
                             </p>
                           </div>
                           <PnlDisplay
+                            currency={portfolio.currency}
                             value={portfolio.stats?.today_pnl ?? 0}
                             percent={portfolio.stats?.today_pnl_percent ?? 0}
                           />
                           <div className="hidden md:block">
                             <PnlDisplay
+                              currency={portfolio.currency}
                               value={
                                 portfolio.stats?.total_unrealized_pnl ?? 0
                               }
@@ -526,11 +539,15 @@ const Dashboard = () => {
                               {transaction.transaction_type === "buy"
                                 ? "-"
                                 : "+"}
-                              {formatCurrency(transaction.total_amount)}
+                              {formatCurrency(transaction.total_amount, {
+                                currency: transaction.currency,
+                              })}
                             </p>
                             <p className="text-xs text-gray-400">
                               {formatQuantity(transaction.quantity)} @{" "}
-                              {formatCurrency(transaction.price)}
+                              {formatCurrency(transaction.price, {
+                                currency: transaction.currency,
+                              })}
                             </p>
                           </div>
                         </div>
@@ -648,7 +665,9 @@ const Dashboard = () => {
                             </span>
                           </div>
                           <p className="text-lg font-semibold text-gray-100">
-                            {formatCurrency(asset.detail?.current_price)}
+                            {formatCurrency(asset.detail?.current_price, {
+                              currency: asset.currency,
+                            })}
                           </p>
                         </div>
                         <div className="mt-4 pt-4 border-t border-dark-700 space-y-1">
@@ -674,9 +693,10 @@ const Dashboard = () => {
                               {asset.detail?.low_52w && asset.detail?.high_52w
                                 ? `${formatCurrency(asset.detail.low_52w, {
                                   compact: true,
+                                  currency: asset.currency,
                                 })} - ${formatCurrency(
                                   asset.detail.high_52w,
-                                  { compact: true }
+                                  { compact: true, currency: asset.currency }
                                 )}`
                                 : "N/A"}
                             </span>

@@ -1,6 +1,7 @@
+import { useMoney } from "../../hooks/useMoney";
 import { useEffect, useState } from "react";
 import { analyticsAPI } from "../../services/api";
-import { formatCurrency, formatPercentage } from "../../utils/formatters.jsx";
+import { formatPercentage } from "../../utils/formatters.jsx";
 import LoadingSpinner from "../shared/LoadingSpinner";
 
 const COLORS = [
@@ -34,6 +35,7 @@ const Ring = ({ items, radius, width, valueKey }) => {
 };
 
 const AllocationDonut = ({ portfolioId }) => {
+  const money = useMoney();
   const [analysis, setAnalysis] = useState(null);
   const [failed, setFailed] = useState(false);
 
@@ -105,7 +107,7 @@ const AllocationDonut = ({ portfolioId }) => {
                 ? a.drift != null
                   ? formatPercentage(a.drift, { precision: 1 })
                   : "—"
-                : formatCurrency(Number(a.current_value), { notation: "compact" })}
+                : money(Number(a.current_value), { notation: "compact" })}
             </span>
           </div>
         ))}

@@ -1,3 +1,4 @@
+import { useMoney } from "../../hooks/useMoney";
 import {
   Activity,
   BarChart3,
@@ -10,11 +11,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { portfolioAPI } from "../../services/api";
-import {
-  formatCurrency,
-  formatPercentage,
-  getChangeColor,
-} from "../../utils/formatters.jsx";
+import { formatPercentage, getChangeColor } from "../../utils/formatters.jsx";
 import {
   BenchmarkComparison,
   PortfolioAllocationManager,
@@ -27,6 +24,7 @@ import AllocationDonut from "./AllocationDonut";
 import ValueVsInvestedChart from "./ValueVsInvestedChart";
 
 const PortfolioDetail = ({ portfolio }) => {
+  const money = useMoney();
   const [holdings, setHoldings] = useState([]);
   const [summary, setSummary] = useState(null);
   const [loadingHoldings, setLoadingHoldings] = useState(false);
@@ -138,7 +136,7 @@ const PortfolioDetail = ({ portfolio }) => {
   const totalHoldingsValue = summary?.total_current_value ?? 0;
   const totalRealizedGainLoss = summary?.total_realized_pnl ?? 0;
 
-  const signed = (v) => formatCurrency(v, { signDisplay: "exceptZero" });
+  const signed = (v) => money(v, { signDisplay: "exceptZero" });
 
   const tabs = [
     { id: "overview", label: "Overview", icon: BarChart3 },
@@ -179,12 +177,12 @@ const PortfolioDetail = ({ portfolio }) => {
             <StatCard
               label="Value"
               className="col-span-2 lg:col-span-1"
-              value={summary ? formatCurrency(summary.total_current_value) : "—"}
+              value={summary ? money(summary.total_current_value) : "—"}
               sub={summary ? `${summary.total_assets} holdings` : null}
             />
             <StatCard
               label="Invested"
-              value={summary ? formatCurrency(summary.total_cost_basis) : "—"}
+              value={summary ? money(summary.total_cost_basis) : "—"}
               sub="Cost basis"
             />
             <StatCard
@@ -334,17 +332,17 @@ const PortfolioDetail = ({ portfolio }) => {
                         </td>
                         <td className="py-3 px-4 text-right">
                           <span className="text-gray-100">
-                            {formatCurrency(holding.avgPrice)}
+                            {money(holding.avgPrice)}
                           </span>
                         </td>
                         <td className="py-3 px-4 text-right">
                           <span className="text-gray-100">
-                            {formatCurrency(holding.currentPrice)}
+                            {money(holding.currentPrice)}
                           </span>
                         </td>
                         <td className="py-3 px-4 text-right">
                           <span className="text-gray-100 font-medium">
-                            {formatCurrency(holding.value)}
+                            {money(holding.value)}
                           </span>
                         </td>
                         <td className="py-3 px-4 text-right">
@@ -355,7 +353,7 @@ const PortfolioDetail = ({ portfolio }) => {
                               }`}
                           >
                             {(holding.gainLoss || 0) >= 0 ? "+" : ""}
-                            {formatCurrency(holding.gainLoss || 0)}
+                            {money(holding.gainLoss || 0)}
                           </span>
                           <p
                             className={`font-medium ${(holding.change || 0) >= 0
@@ -376,7 +374,7 @@ const PortfolioDetail = ({ portfolio }) => {
                               }`}
                           >
                             {(holding.todayGainLoss || 0) >= 0 ? "+" : ""}
-                            {formatCurrency(holding.todayGainLoss || 0)}
+                            {money(holding.todayGainLoss || 0)}
                           </span>
                           <p
                             className={`font-medium ${(holding.todayGainLossPercent || 0) >= 0
@@ -399,7 +397,7 @@ const PortfolioDetail = ({ portfolio }) => {
                               }`}
                           >
                             {(holding.realizedGainLoss || 0) >= 0 ? "+" : ""}
-                            {formatCurrency(holding.realizedGainLoss || 0)}
+                            {money(holding.realizedGainLoss || 0)}
                           </span>
                           <p
                             className={`font-medium ${(holding.realizedGainLossPercent || 0) >= 0
@@ -428,7 +426,7 @@ const PortfolioDetail = ({ portfolio }) => {
                     </td>
                     <td className="py-3 px-4 text-right">
                       <span className="text-lg font-bold text-gray-100">
-                        {formatCurrency(totalHoldingsValue)}
+                        {money(totalHoldingsValue)}
                       </span>
                     </td>
                     <td className="py-3 px-4 text-right font-bold">

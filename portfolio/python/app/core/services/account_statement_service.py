@@ -7,7 +7,12 @@ from typing import List, Tuple
 from sqlalchemy.orm import Session
 
 from core.database.models import Asset, Transaction, TransactionType
-from core.errors import DomainError, NotFoundError, public_message
+from core.errors import (
+    DomainError,
+    NotFoundError,
+    ensure_same_currency,
+    public_message,
+)
 from core.schemas.account_statements import (
     AccountStatementProvider,
     BulkCreateSummary,
@@ -90,6 +95,7 @@ class AccountStatementService:
         symbol: str,
         isin: str | None,
         user_id: int,
+        portfolio_currency: str,
         assets_by_symbol: dict,
         unavailable_symbols: set,
     ) -> Asset:
@@ -103,6 +109,7 @@ class AccountStatementService:
             unavailable_symbols.add(symbol)
             raise DomainError(f"No market data for {symbol}")
         asset = asset_from_ticker_info(symbol, ticker_data, user_id, isin)
+        ensure_same_currency(portfolio_currency, asset.currency, symbol)
         self.db.add(asset)
         self.db.flush()
         assets_by_symbol[symbol] = asset
@@ -140,11 +147,17 @@ class AccountStatementService:
                         item.symbol.upper(),
                         item.isin,
                         user_id,
+                        portfolio.currency,
                         assets_by_symbol,
                         unavailable_symbols,
                     )
                 else:
                     raise DomainError("Choose an asset or a ticker")
+                ensure_same_currency(portfolio.currency, asset.currency, asset.symbol)
+                if item.currency:
+                    ensure_same_currency(
+                        portfolio.currency, item.currency.upper(), "The statement"
+                    )
                 if item.isin and not asset.isin:
                     asset.isin = item.isin
 
@@ -172,7 +185,7 @@ class AccountStatementService:
                     quantity=item.quantity,
                     price=item.price,
                     total_amount=total_amount,
-                    currency=(item.currency or portfolio.currency).upper(),
+                    currency=portfolio.currency,
                     taxes=item.taxes,
                     transaction_date=datetime.strptime(
                         item.transaction_date, "%Y-%m-%d"

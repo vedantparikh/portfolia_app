@@ -1,3 +1,4 @@
+import { useMoney } from "../../hooks/useMoney";
 import {
     AlertTriangle,
     CheckCircle,
@@ -9,10 +10,11 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { analyticsAPI } from '../../services/api';
-import { formatCurrency, formatPercentage } from '../../utils/formatters.jsx';
+import { formatPercentage } from '../../utils/formatters.jsx';
 import LoadingSpinner from '../shared/LoadingSpinner';
 
 const PortfolioAllocationManager = ({ portfolioId }) => {
+  const money = useMoney();
     const [allocations, setAllocations] = useState([]);
     const [analysis, setAnalysis] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -191,7 +193,7 @@ const PortfolioAllocationManager = ({ portfolioId }) => {
                                                 {formatPercentage(parseFloat(drift.drift_percentage))}
                                             </p>
                                             <p className="text-sm text-gray-400">
-                                                {formatCurrency(parseFloat(drift.drift_amount))}
+                                                {money(parseFloat(drift.drift_amount))}
                                             </p>
                                         </div>
                                         <div className="flex items-center">

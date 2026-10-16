@@ -67,7 +67,7 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick, onDelete, onAnalytics, o
                     <div className="flex items-center space-x-8">
                         <div className="text-right">
                             <p className="text-lg font-semibold text-gray-100">
-                                {formatPrice(asset.detail?.current_price)}
+                                {formatPrice(asset.detail?.current_price, asset.currency)}
                             </p>
                             <div className="flex items-center space-x-1">
                                 {getChangeIcon(asset.detail?.price_change_percentage_24h)}
@@ -197,7 +197,7 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick, onDelete, onAnalytics, o
                     <span className="text-sm text-gray-400">Current Price</span>
                     <div className="text-right">
                         <span className="text-xl font-bold text-gray-100">
-                            {formatPrice(asset.detail?.current_price)}
+                            {formatPrice(asset.detail?.current_price, asset.currency)}
                         </span>
                         {asset.detail?.price_change_percentage_24h && (
                             <div className="flex items-center space-x-1">
@@ -227,14 +227,14 @@ const AssetCard = ({ asset, viewMode = 'grid', onClick, onDelete, onAnalytics, o
                 <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-400">52W High</span>
                     <span className="text-sm font-medium text-gray-100">
-                        {formatPrice(asset.detail?.high_52w)}
+                        {formatPrice(asset.detail?.high_52w, asset.currency)}
                     </span>
                 </div>
 
                 <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-400">52W Low</span>
                     <span className="text-sm font-medium text-gray-100">
-                        {formatPrice(asset.detail?.low_52w)}
+                        {formatPrice(asset.detail?.low_52w, asset.currency)}
                     </span>
                 </div>
 

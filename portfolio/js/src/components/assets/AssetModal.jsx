@@ -626,7 +626,7 @@ const AssetModal = ({ asset, mode = "view", onClose, onSave, existingAssets = []
                             Current Price
                           </span>
                           <p className="text-2xl font-bold text-gray-100">
-                            {formatPrice(asset?.detail?.current_price)}
+                            {formatPrice(asset?.detail?.current_price, asset?.currency)}
                           </p>
                           {asset?.detail?.price_change_percentage_24h && (
                             <div className="flex items-center space-x-1">
@@ -671,11 +671,7 @@ const AssetModal = ({ asset, mode = "view", onClose, onSave, existingAssets = []
                           </span>
                           <p className="text-lg font-semibold text-gray-100">
                             {asset?.detail?.day_high
-                              ? `${formatPrice(
-                                asset.detail?.open
-                              )} / ${formatPrice(
-                                asset.detail?.day_high
-                              )} / ${formatPrice(asset.detail?.day_low)}`
+                              ? `${formatPrice(asset.detail?.open, asset.currency)} / ${formatPrice(asset.detail?.day_high, asset.currency)} / ${formatPrice(asset.detail?.day_low, asset.currency)}`
                               : "N/A"}
                           </p>
                         </div>
@@ -685,9 +681,7 @@ const AssetModal = ({ asset, mode = "view", onClose, onSave, existingAssets = []
                           </span>
                           <p className="text-lg font-semibold text-gray-100">
                             {asset?.detail?.high_52w
-                              ? `${formatPrice(
-                                asset.detail?.high_52w
-                              )} / ${formatPrice(asset.detail?.low_52w)}`
+                              ? `${formatPrice(asset.detail?.high_52w, asset.currency)} / ${formatPrice(asset.detail?.low_52w, asset.currency)}`
                               : "N/A"}
                           </p>
                         </div>
@@ -741,7 +735,7 @@ const AssetModal = ({ asset, mode = "view", onClose, onSave, existingAssets = []
                               Book Value
                             </span>
                             <p className="text-lg font-semibold text-gray-100">
-                              {formatPrice(asset.detail?.book_value)}
+                              {formatPrice(asset.detail?.book_value, asset.currency)}
                             </p>
                           </div>
                           <div>
