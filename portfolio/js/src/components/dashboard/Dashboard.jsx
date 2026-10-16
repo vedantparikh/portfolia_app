@@ -23,6 +23,7 @@ import {
   formatPercentage,
   formatQuantity,
   formatVolume,
+  getChangeColor,
 } from "../../utils/formatters";
 import EmailVerificationPrompt from "../auth/EmailVerificationPrompt";
 import { LoadingSpinner, Sidebar, Sparkline, StatCard } from "../shared";
@@ -44,6 +45,7 @@ const Dashboard = () => {
     topAssets: [],
   });
   const [overview, setOverview] = useState(null);
+  const [movers, setMovers] = useState(null);
   const [marketStatus, setMarketStatus] = useState(null);
   const [loadingStates, setLoadingStates] = useState({
     portfolios: true,
@@ -82,7 +84,36 @@ const Dashboard = () => {
       loadTopAssets(),
       loadPortfolios(),
       loadOverview(),
+      loadMovers(),
     ]);
+  };
+
+  const loadMovers = async () => {
+    try {
+      const portfolios = await portfolioAPI.getPortfolios();
+      const results = await Promise.allSettled(
+        portfolios.map((p) => portfolioAPI.getPortfolioHoldings(p.id))
+      );
+      const bySymbol = new Map();
+      results
+        .filter((r) => r.status === "fulfilled")
+        .flatMap((r) => r.value || [])
+        .filter((h) => h.today_pnl_percent != null)
+        .forEach((h) => bySymbol.set(h.symbol, h));
+      const sorted = [...bySymbol.values()].sort(
+        (a, b) => b.today_pnl_percent - a.today_pnl_percent
+      );
+      setMovers({
+        gainers: sorted.filter((h) => h.today_pnl_percent > 0).slice(0, 3),
+        losers: sorted
+          .filter((h) => h.today_pnl_percent < 0)
+          .reverse()
+          .slice(0, 3),
+      });
+    } catch (error) {
+      console.error("Failed to load movers:", error);
+      setMovers({ gainers: [], losers: [] });
+    }
   };
 
   const loadOverview = async () => {
@@ -506,6 +537,65 @@ const Dashboard = () => {
                     </div>
                   )}
                 </div>
+              </div>
+
+              <div className="card p-6 mb-8">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-semibold text-gray-100">
+                    Today&apos;s Movers
+                  </h3>
+                  <span className="text-xs text-gray-500">
+                    Your holdings, by today&apos;s change
+                  </span>
+                </div>
+                {!movers ? (
+                  <CardLoader text="Loading holdings..." />
+                ) : movers.gainers.length + movers.losers.length === 0 ? (
+                  <p className="text-center py-6 text-gray-500">
+                    No price changes for your holdings yet today.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {[
+                      ["Gainers", movers.gainers],
+                      ["Losers", movers.losers],
+                    ].map(([title, rows]) => (
+                      <div key={title}>
+                        <p className="text-xs font-medium text-gray-400 mb-2">
+                          {title}
+                        </p>
+                        {rows.length === 0 ? (
+                          <p className="text-sm text-gray-500 py-2">None today</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {rows.map((h) => (
+                              <div
+                                key={h.symbol}
+                                className="flex items-center justify-between gap-3 px-4 py-2.5 bg-dark-800 rounded-lg"
+                              >
+                                <div className="min-w-0">
+                                  <p className="font-medium text-gray-100">
+                                    {h.symbol}
+                                  </p>
+                                  <p className="text-xs text-gray-400 truncate">
+                                    {h.name}
+                                  </p>
+                                </div>
+                                <p
+                                  className={`font-medium shrink-0 ${getChangeColor(h.today_pnl_percent)}`}
+                                >
+                                  {formatPercentage(h.today_pnl_percent, {
+                                    showSign: true,
+                                  })}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="card p-6 mb-8">
