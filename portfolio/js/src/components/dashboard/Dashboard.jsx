@@ -1,4 +1,5 @@
 import {
+  Bell,
   Activity,
   BarChart3,
   Bookmark,
@@ -20,6 +21,7 @@ import {
   portfolioAPI,
   portfolioCalculationsAPI,
   transactionAPI,
+  watchlistAPI,
 } from "../../services/api";
 import {
   formatCurrency,
@@ -49,6 +51,7 @@ const Dashboard = () => {
     topAssets: [],
   });
   const [overview, setOverview] = useState(null);
+  const [unreadAlerts, setUnreadAlerts] = useState(0);
   const [movers, setMovers] = useState(null);
   const [marketStatus, setMarketStatus] = useState(null);
   const [loadingStates, setLoadingStates] = useState({
@@ -121,12 +124,14 @@ const Dashboard = () => {
   };
 
   const loadOverview = async () => {
-    const [stats, status] = await Promise.allSettled([
+    const [stats, status, alerts] = await Promise.allSettled([
       portfolioAPI.getStatisticsOverview(),
       marketAPI.getMarketStatus(),
+      watchlistAPI.getAlerts(true, 1),
     ]);
     setOverview(stats.status === "fulfilled" ? stats.value : null);
     setMarketStatus(status.status === "fulfilled" ? status.value : null);
+    setUnreadAlerts(alerts.status === "fulfilled" ? alerts.value.unread_count : 0);
   };
 
   const loadTransactions = async () => {
@@ -314,6 +319,15 @@ const Dashboard = () => {
               <p className="text-gray-400">
                 Here&apos;s what&apos;s happening with your portfolio today.
               </p>
+              {unreadAlerts > 0 && (
+                <a
+                  href="/watchlist"
+                  className="inline-flex items-center gap-2 mt-2 text-sm text-warning-300 hover:text-warning-200"
+                >
+                  <Bell size={16} />
+                  {unreadAlerts} new watchlist {unreadAlerts === 1 ? "alert" : "alerts"}
+                </a>
+              )}
             </div>
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

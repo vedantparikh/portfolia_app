@@ -150,6 +150,7 @@ class WatchlistAlert(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     is_triggered = Column(Boolean, default=False, nullable=False)
     triggered_at = Column(DateTime(timezone=True), nullable=True)
+    acknowledged_at = Column(DateTime(timezone=True), nullable=True)
     triggered_value = Column(
         Numeric(10, 2), nullable=True
     )  # Value when alert was triggered

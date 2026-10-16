@@ -202,7 +202,7 @@ Golden tests are written first for every item.
 |---|---|
 | 🟡 3.1 | Merge `portfolio_service`, `portfolio_calculation_service`, `portfolio_analytics_service`, `portfolio_risk_metrics_service`, `portfolio_advance_risk_metrics` and `portfolio_dashboard_service` into `modules/portfolios` (CRUD and holdings) plus `modules/analytics` (which orchestrates the domain functions and owns snapshots). Remove the dead dashboard router and service, or mount them properly. **Now:** Maths extracted to `core/domain`; service merge not started. |
 | ⏳ 3.2 | Move all DB access out of the analytics, assets and auth routers into repositories. |
-| ⏳ 3.3 | Snapshots are persisted by a **background worker** (daily close, plus on transaction change), not inside request handlers. The same worker refreshes prices and FX. **Now:** Legacy snapshot writes (`create_performance_snapshot`) still happen in requests (analytics `/summary`). |
+| 🟡 3.3 | Snapshots are persisted by a **background worker** (daily close, plus on transaction change), not inside request handlers. The same worker refreshes prices and FX. **Now:** `workers/run.py` refreshes watchlist prices and evaluates alerts; snapshots, holdings prices and FX not yet. **Now:** Legacy snapshot writes (`create_performance_snapshot`) still happen in requests (analytics `/summary`). |
 | ⏳ 3.4 | Replace the pickle `RedisClient` with a typed wrapper. Delete `SingletonMeta`, `watchlist_alert_service` (or finish it), the FHIR leftovers and `fix_asset_quantities_and_pnl.py` (which becomes a management command: `portfolia recalc`). |
 | ⏳ 3.5 | Move the PDF export and transaction export to portfolio currency and formatted money. Stop summing volume across currencies. **Now:** PDF export hard-codes `$`. |
 | ⏳ 3.6 | Enforce mypy (strict on `domain/` and `core/`, gradually elsewhere). Add an OpenAPI snapshot test so contract changes are deliberate. |
@@ -254,7 +254,7 @@ js/e2e/       Playwright specs
 ### Phase 6: Production hardening (≈1 week; the deployment basics moved to Phase R)
 | # | Work |
 |---|---|
-| ⏳ 6.1 | Add a worker service (prices, FX, snapshots) to the release images and compose files, with its own memory limit. |
+| 🟡 6.1 | Add a worker service (prices, FX, snapshots) to the release images and compose files, with its own memory limit. **Now:** `worker` service in the dev compose (384 MB, heartbeat healthcheck); prod images/compose still to come with R.1/R.2. |
 | ⏳ 6.2 | Redis requires a password. Add a Trivy scan to the release workflow, which fails on critical CVEs. Run Playwright e2e against the release images in staging before promotion. |
 | ⏳ 6.3 | Optional GPU profile (§1b): `portfolio-gpu-worker` and the ollama `LLMProvider`, only once a feature needs them. |
 | 🟡 6.4 | Docs: one root README (quick start, architecture diagram, dev/staging/prod commands, runbooks for deploy, rollback and restore), `docs/adr/` (sync DB, calc engine conventions, FX source, GPU strategy, release strategy), and `CONTRIBUTING.md` ("how to add a feature module"). **Now:** Per-feature `CLAUDE.md` docs added (2026-10-16); root README still stale. |
@@ -314,6 +314,7 @@ Open:
 | 2026-10-16 | `feat/benchmark-shadow` | — | 2.7: shadow-portfolio benchmark (TWR = index return exactly, MWR/profit with the portfolio's own flows), `/benchmark` + `/benchmarks` endpoints, Performance Chart comparison; legacy benchmark maths deleted |
 | 2026-10-16 | `fix/error-leaks` | — | 1.3: `DomainError`/`NotFoundError`/`public_message`; 38 exception texts removed from HTTP details plus 6 from response bodies and parser warnings; 404 vs 400 split on performance endpoints; static guard test |
 | 2026-10-16 | `feat/single-currency-portfolios` | — | Currency guard on manual/bulk/pytr transaction writes, global DomainError handler, per-currency overview totals, money formatted in the portfolio/row/asset currency (`useMoney`), import review flags wrong-currency listings |
+| 2026-10-16 | `feat/watchlist-alerts` | — | Alerts work: thresholds now save, pure `check_alerts`, notify-once-per-crossing events, `worker` service (prices + alerts every 15 min), `/watchlists/alerts` + acknowledge, in-app alerts panel/bell/dashboard link; migration `acknowledged_at` |
 
 
 ## 6b. Findings and to-do (2026-10-16)
@@ -349,7 +350,7 @@ Open:
 2. **Trade Republic import fixes** (2.2) plus the import UI counter.
 3. **FX** (2.3): decide the source (open decision 1).
 4. ✅ Shadowed routes and the two 500s (1.2); ✅ `str(e)` leaks (1.3, envelope still open).
-5. **Watchlist enrichment** (UI Batch 4) and an alert worker (3.3).
+5. ✅ Watchlist alerts + worker (3.3 partly). Open: watchlist enrichment (UI Batch 4).
 6. **Indicator formulas and configuration wiring** (2.9).
 7. **Phase R release platform**, before any real data (1.6 Alembic baseline ✅).
 

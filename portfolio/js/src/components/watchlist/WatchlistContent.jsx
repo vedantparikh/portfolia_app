@@ -1,6 +1,7 @@
 import { DragDropContext, Draggable, Droppable } from "@hello-pangea/dnd";
 import {
   AlertTriangle,
+  Bell,
   Edit3,
   GripVertical,
   MoreVertical,
@@ -43,6 +44,7 @@ const WatchlistContent = ({
   // Loading states
   addingSymbol,
   removingSymbol,
+  alertItemIds = new Set(),
 }) => {
   // useState is a React Hook that lets you add state to functional components
   // Each useState call returns an array with two elements: [currentValue, setterFunction]
@@ -536,8 +538,15 @@ const WatchlistContent = ({
                                   <h4 className="text-sm font-medium text-gray-100">
                                     {item.company_name || "Unknown Company"}
                                   </h4>
-                                  <p className="text-xs text-gray-400 truncate">
+                                  <p className="text-xs text-gray-400 truncate flex items-center gap-1">
                                     {item.symbol}
+                                    {alertItemIds.has(item.id) && (
+                                      <Bell
+                                        size={12}
+                                        className="text-warning-400"
+                                        aria-label="Alert condition is true"
+                                      />
+                                    )}
                                   </p>
                                 </div>
                               </div>
