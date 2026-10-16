@@ -231,25 +231,25 @@ const PortfolioPerformanceMetrics = ({ portfolio }) => {
             label="CAGR"
             value={formatMetricValue(performanceData.metrics?.cagr, true)}
             valueClassName={getMetricColor(performanceData.metrics?.cagr)}
-            sub="Compound Annual Growth Rate"
+            sub="Time-weighted, per year"
           />
           <StatCard
             label="XIRR"
             value={formatMetricValue(performanceData.metrics?.xirr, true)}
             valueClassName={getMetricColor(performanceData.metrics?.xirr)}
-            sub="Extended Internal Rate of Return"
+            sub="Money-weighted, per year"
           />
           <StatCard
             label="TWR"
             value={formatMetricValue(performanceData.metrics?.twr, true)}
             valueClassName={getMetricColor(performanceData.metrics?.twr)}
-            sub="Time-Weighted Return"
+            sub="Time-weighted, this period"
           />
           <StatCard
             label="MWR"
             value={formatMetricValue(performanceData.metrics?.mwr, true)}
             valueClassName={getMetricColor(performanceData.metrics?.mwr)}
-            sub="Money-Weighted Return"
+            sub="Money-weighted, this period"
           />
         </div>
       )}

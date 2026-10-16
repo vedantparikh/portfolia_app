@@ -1,0 +1,75 @@
+import { AreaSeries, LineSeries, LineStyle, createChart } from "lightweight-charts";
+import { useEffect, useRef, useState } from "react";
+import { formatCurrency, formatDate } from "../../utils/formatters.jsx";
+
+const SERIES = [
+  { key: "value", label: "Value", color: "#38bdf8" },
+  { key: "invested", label: "Invested", color: "#fbbf24" },
+  { key: "cost_basis", label: "Cost basis", color: "#94a3b8" },
+];
+
+const PerformanceSeriesChart = ({ points, showCostBasis = false, height = "h-80" }) => {
+  const containerRef = useRef(null);
+  const [hover, setHover] = useState(null);
+
+  useEffect(() => {
+    if (!containerRef.current || !points?.length) return;
+    const chart = createChart(containerRef.current, {
+      autoSize: true,
+      layout: { background: { color: "transparent" }, textColor: "#94a3b8" },
+      grid: { vertLines: { visible: false }, horzLines: { color: "#1e293b" } },
+      rightPriceScale: { borderVisible: false },
+      timeScale: { borderVisible: false },
+      crosshair: { horzLine: { visible: false } },
+      localization: { priceFormatter: (p) => formatCurrency(p, { notation: "compact" }) },
+    });
+    const byTime = new Map(points.map((p) => [p.date, p]));
+    const line = (color, dashed) => ({
+      color,
+      lineWidth: dashed ? 1 : 2,
+      lineStyle: dashed ? LineStyle.Dashed : LineStyle.Solid,
+      priceLineVisible: false,
+      lastValueVisible: false,
+    });
+    chart
+      .addSeries(AreaSeries, {
+        lineColor: SERIES[0].color,
+        topColor: "rgba(56, 189, 248, 0.25)",
+        bottomColor: "rgba(56, 189, 248, 0)",
+        lineWidth: 2,
+        priceLineVisible: false,
+      })
+      .setData(points.map((p) => ({ time: p.date, value: p.value })));
+    chart
+      .addSeries(LineSeries, line(SERIES[1].color, false))
+      .setData(points.map((p) => ({ time: p.date, value: p.invested })));
+    if (showCostBasis) {
+      chart
+        .addSeries(LineSeries, line(SERIES[2].color, true))
+        .setData(points.map((p) => ({ time: p.date, value: p.cost_basis })));
+    }
+    chart.subscribeCrosshairMove((param) => setHover(param.time ? byTime.get(param.time) : null));
+    chart.timeScale().fitContent();
+    return () => chart.remove();
+  }, [points, showCostBasis]);
+
+  const shown = hover || points?.[points.length - 1];
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-1 mb-3 text-xs">
+        {shown && <span className="text-gray-400">{formatDate(`${shown.date}T12:00:00`)}</span>}
+        {SERIES.filter((s) => s.key !== "cost_basis" || showCostBasis).map((s) => (
+          <span key={s.key} className="flex items-center gap-1.5 text-gray-400">
+            <span className="w-2.5 h-0.5 rounded" style={{ backgroundColor: s.color }} />
+            {s.label}
+            {shown && <span className="text-gray-100 font-medium">{formatCurrency(shown[s.key])}</span>}
+          </span>
+        ))}
+      </div>
+      <div ref={containerRef} className={height} />
+    </div>
+  );
+};
+
+export default PerformanceSeriesChart;

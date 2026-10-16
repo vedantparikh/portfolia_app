@@ -6,6 +6,8 @@ import numpy as np
 import pandas as pd  # type: ignore
 from sqlalchemy.orm import Session
 
+from core.domain.returns import RISK_FREE_RATE
+
 # Import the services it will depend on
 from core.services.portfolio_calculation_service import PortfolioCalculationService
 from core.services.portfolio_service import PortfolioService
@@ -34,7 +36,7 @@ class PortfolioAdvanceRiskMetricsService:
         self.portfolio_service = PortfolioService(db)
         # Define constants used in calculations
         self.TRADING_DAYS_PER_YEAR = 252
-        self.ANNUALIZED_RISK_FREE_RATE = 0.03  # ASSUMPTION: Constant risk-free rate
+        self.ANNUALIZED_RISK_FREE_RATE = RISK_FREE_RATE
 
     async def calculate_advanced_metrics(
         self,

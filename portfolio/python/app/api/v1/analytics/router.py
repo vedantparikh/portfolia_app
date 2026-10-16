@@ -5,20 +5,24 @@ Comprehensive API endpoints for portfolio analysis, risk management, and perform
 
 import logging
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from typing import List, Optional
 
+import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from core.auth.dependencies import get_current_active_user
 from core.database.connection import get_db
-from core.database.models import Portfolio, Transaction, User
+from core.database.models import Portfolio, User
 from core.database.models.portfolio_analytics import (
     PortfolioAllocation,
     PortfolioBenchmark,
     PortfolioPerformanceHistory,
     RebalancingEvent,
 )
+from core.domain.positions import OversellError
+from core.domain.valuation import MissingPriceError
 from core.schemas.portfolio_advance_risk_metrics import AdvanceRiskCalculationResponse
 from core.schemas.portfolio_analytics import (
     AllocationAnalysisResponse,
@@ -41,6 +45,7 @@ from core.services.portfolio_advance_risk_metrics import (
     PortfolioAdvanceRiskMetricsService,
 )
 from core.services.portfolio_analytics_service import PortfolioAnalyticsService
+from core.services.portfolio_calculation_service import PortfolioCalculationService
 from core.services.portfolio_risk_metrics_service import PortfolioRiskMetricsService
 from core.services.utils import PeriodType
 
@@ -149,9 +154,8 @@ async def get_performance_history(
     db: Session = Depends(get_db),
 ):
     """
-    Get portfolio performance history.
-    This endpoint uses intelligent caching to avoid recalculating fresh data.
-    It regenerates history only if it's stale or a new transaction has been added.
+    Daily value and FIFO cost basis for the last `days`, newest first, from the
+    canonical engine (see /portfolios/calculations/portfolio/{id}/performance/series).
     """
     # 1. Verify portfolio ownership
     portfolio = (
@@ -168,99 +172,42 @@ async def get_performance_history(
             status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
         )
 
-    analytics_service = PortfolioAnalyticsService(db)
+    calculation = PortfolioCalculationService(db)
     end_date = datetime.now(timezone.utc)
-    start_date = end_date - timedelta(days=days)
-
-    try:
-        # 2. Determine if a recalculation is necessary
-        should_regenerate = False
-
-        # Get the most recently created snapshot for this portfolio
-        latest_snapshot = (
-            db.query(PortfolioPerformanceHistory)
-            .filter(PortfolioPerformanceHistory.portfolio_id == portfolio_id)
-            .order_by(PortfolioPerformanceHistory.snapshot_date.desc())
-            .first()
-        )
-        # Get the OLDEST snapshot to check the depth of our history
-        oldest_snapshot = (
-            db.query(PortfolioPerformanceHistory)
-            .filter(PortfolioPerformanceHistory.portfolio_id == portfolio_id)
-            .order_by(PortfolioPerformanceHistory.snapshot_date.asc())
-            .first()
-        )
-        if not latest_snapshot or not oldest_snapshot:
-            should_regenerate = True
-            logger.info(
-                f"No existing history for portfolio {portfolio_id}. Generating."
-            )
-        # Check if the user is requesting data from before our oldest record.
-        elif start_date.date() < oldest_snapshot.snapshot_date.date():
-            should_regenerate = True
-            logger.info(
-                f"Requested history (from {start_date.date()}) is older than the oldest snapshot ("
-                f"{oldest_snapshot.snapshot_date.date()}). Regenerating to backfill."
-            )
-        # Check if the last snapshot is from a previous day
-        elif latest_snapshot.snapshot_date.date() < end_date.date():
-            should_regenerate = True
-            logger.info(
-                f"Snapshots are stale (from a previous day) for portfolio {portfolio_id}. Regenerating."
-            )
-        else:
-            # Snapshots are for today. Now, check for new transactions.
-            latest_transaction = (
-                db.query(Transaction)
-                .filter(Transaction.portfolio_id == portfolio_id)
-                .order_by(Transaction.created_at.desc())
-                .first()
-            )
-            # Regenerate if a transaction has been added since the last snapshot was made
-            if (
-                latest_transaction
-                and latest_transaction.created_at > latest_snapshot.created_at
-            ):
-                should_regenerate = True
-                logger.info(
-                    f"New transaction detected for portfolio {portfolio_id}. Regenerating history."
-                )
-
-        # 3. Execute logic: either regenerate or use existing data
-        if should_regenerate:
-            await analytics_service.generate_historical_performance_snapshots(
-                portfolio_id, start_date, end_date
-            )
-        else:
-            logger.info(
-                f"Returning fresh, cached history for portfolio {portfolio_id}."
-            )
-
-        # 4. Query the database one final time to get the definitive history and return it
-        final_history = (
-            db.query(PortfolioPerformanceHistory)
-            .filter(
-                PortfolioPerformanceHistory.portfolio_id == portfolio_id,
-                PortfolioPerformanceHistory.snapshot_date >= start_date,
-            )
-            .order_by(PortfolioPerformanceHistory.snapshot_date.desc())
-            .all()
-        )
-
+    start = (end_date - timedelta(days=days)).date()
+    transactions = calculation.get_transactions(portfolio_id, None, end_date)
+    if not transactions:
         return PortfolioPerformanceHistoryResponse(
-            portfolio_id=portfolio_id,
-            total_records=len(final_history),
-            history=final_history,
+            portfolio_id=portfolio_id, total_records=0, history=[]
         )
-
-    except Exception as e:
-        logger.error(
-            f"Failed to get performance history for portfolio {portfolio_id}: {e}"
-        )
+    try:
+        series = await calculation.get_portfolio_series(transactions, end_date)
+    except (MissingPriceError, OversellError) as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get performance history: {str(e)}",
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)
         ) from e
+
+    def money(x):
+        return Decimal(str(round(x, 2)))
+
+    history = []
+    for day, row in series[series.index >= pd.Timestamp(start)][::-1].iterrows():
+        value, cost = money(row["value"]), money(row["cost_basis"])
+        history.append(
+            {
+                "portfolio_id": portfolio_id,
+                "snapshot_date": day.to_pydatetime().replace(tzinfo=timezone.utc),
+                "total_value": value,
+                "total_cost_basis": cost,
+                "total_unrealized_pnl": value - cost,
+                "total_unrealized_pnl_percent": (
+                    (value - cost) / cost * 100 if cost else Decimal(0)
+                ).quantize(Decimal("0.0001")),
+            }
+        )
+    return PortfolioPerformanceHistoryResponse(
+        portfolio_id=portfolio_id, total_records=len(history), history=history
+    )
 
 
 # Portfolio Allocation Management

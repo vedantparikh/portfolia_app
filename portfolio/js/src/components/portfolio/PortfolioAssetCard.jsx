@@ -55,7 +55,7 @@ const AllocationDonut = ({ percentage = 0 }) => {
 };
 
 // Custom portfolio asset display component
-const PortfolioAssetCard = ({ asset, portfolioTotalValue = 0, viewMode = 'grid', onClick, onTransaction, onAnalytics, onDelete }) => {
+const PortfolioAssetCard = ({ asset, viewMode = 'grid', onClick, onTransaction, onAnalytics, onDelete }) => {
     const [showMenu, setShowMenu] = useState(false);
 
     const handleMenuClick = (e) => {
@@ -81,7 +81,7 @@ const PortfolioAssetCard = ({ asset, portfolioTotalValue = 0, viewMode = 'grid',
         onAnalytics && onAnalytics();
     };
 
-    const allocation = portfolioTotalValue > 0 && asset.total_value ? (asset.total_value / portfolioTotalValue) * 100 : 0;
+    const allocation = asset.weight_percent ?? 0;
 
     if (viewMode === 'list') {
         return (

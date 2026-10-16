@@ -641,39 +641,6 @@ export const userAssetsAPI = {
   },
 
   /* 
-      GET USER ASSET SUMMARY - Get summary statistics for user's assets
-      Returns: Server response with asset summary data
-    */
-  getUserAssetSummary: async () => {
-    // Get all user assets first
-    const assetsResponse = await userAssetsAPI.getUserAssets();
-    const assets = assetsResponse.assets || [];
-
-    // Calculate summary statistics
-    const totalValue = assets.reduce((sum, asset) => {
-      const value = (asset.quantity || 0) * (asset.current_price || 0);
-      return sum + value;
-    }, 0);
-
-    const totalInvested = assets.reduce((sum, asset) => {
-      const invested = (asset.quantity || 0) * (asset.purchase_price || 0);
-      return sum + invested;
-    }, 0);
-
-    const totalPnL = totalValue - totalInvested;
-    const totalPnLPercentage =
-      totalInvested > 0 ? (totalPnL / totalInvested) * 100 : 0;
-
-    return {
-      total_assets: assets.length,
-      total_value: totalValue,
-      total_invested: totalInvested,
-      total_pnl: totalPnL,
-      total_pnl_percentage: totalPnLPercentage,
-    };
-  },
-
-  /* 
       BULK UPDATE USER ASSETS - Update multiple assets at once
       Parameters: updates (array of asset update objects)
       Returns: Server response with updated assets data
@@ -1321,6 +1288,19 @@ export const portfolioCalculationsAPI = {
     */
   getAvailablePeriods: async () => {
     const response = await api.get("/portfolios/calculations/periods");
+    return response.data;
+  },
+
+  /* 
+      GET PERFORMANCE SERIES - Daily value, net invested and cost basis plus the period summary
+      Parameters: portfolioId (string or number), period (1m, 3m, 6m, ytd, 1y, 2y, 3y, 5y, inception)
+      Returns: { points: [{ date, value, net_invested, cost_basis }], summary, error }
+    */
+  getPerformanceSeries: async (portfolioId, period = "1y") => {
+    const response = await api.get(
+      `/portfolios/calculations/portfolio/${portfolioId}/performance/series`,
+      { params: { period } }
+    );
     return response.data;
   },
 

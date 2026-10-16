@@ -3,7 +3,6 @@ Portfolio Analytics Service
 Comprehensive service for portfolio analysis, risk management, and performance tracking.
 """
 
-import datetime as dt
 import logging
 import math
 from datetime import datetime, timedelta, timezone
@@ -12,15 +11,12 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from core.database.models import (
     Asset,
     Portfolio,
     PortfolioAsset,
-    Transaction,
-    TransactionType,
 )
 from core.database.models.portfolio_analytics import (
     PortfolioAllocation,
@@ -34,6 +30,7 @@ from core.schemas.portfolio_analytics import (
     PortfolioAllocationCreate,
 )
 from core.services.market_data_service import market_data_service
+from core.services.portfolio_service import PortfolioService
 
 logger = logging.getLogger(__name__)
 
@@ -410,110 +407,88 @@ class PortfolioAnalyticsService:
     async def analyze_portfolio_allocation(
         self, portfolio_id: int
     ) -> AllocationAnalysisResponse:
-        """Analyze portfolio allocation and detect drift from targets."""
-        # Get portfolio assets with current values
-        portfolio_assets = (
-            self.db.query(PortfolioAsset)
-            .filter(PortfolioAsset.portfolio_id == portfolio_id)
+        """
+        Current weights from live holdings, and drift against the active targets.
+        Positions without a live price are left out rather than valued at cost.
+        """
+        holdings = [
+            h
+            for h in await PortfolioService(self.db).get_portfolio_holdings(
+                portfolio_id
+            )
+            if h.quantity > 0 and h.current_value is not None
+        ]
+        targets = {
+            t.asset_id: t
+            for t in self.db.query(PortfolioAllocation)
+            .filter(
+                PortfolioAllocation.portfolio_id == portfolio_id,
+                PortfolioAllocation.is_active == True,
+            )
             .all()
-        )
-
-        if not portfolio_assets:
+        }
+        if not holdings and not targets:
             raise ValueError("Portfolio has no assets")
 
-        # Calculate current allocations using real-time prices
-        current_allocations = []
-        total_current_value = 0
+        total_value = sum((Decimal(str(h.current_value)) for h in holdings), Decimal(0))
+        by_asset = {h.asset_id: h for h in holdings}
+        names = {
+            a.id: a
+            for a in self.db.query(Asset)
+            .filter(Asset.id.in_(set(by_asset) | set(targets)))
+            .all()
+        }
 
-        for asset in portfolio_assets:
-            if asset.asset and asset.asset.symbol:
-                current_price = await market_data_service.get_current_price(
-                    asset.asset.symbol
-                )
-                if current_price:
-                    current_value = float(current_price) * float(asset.quantity)
-                else:
-                    current_value = float(asset.cost_basis_total)
-            else:
-                current_value = float(asset.cost_basis_total)
-
-            total_current_value += current_value
-
-            current_allocations.append({"asset": asset, "current_value": current_value})
-
-        # Calculate allocation percentages and create AllocationItem objects
         allocation_items = []
         allocation_drifts = []
         total_drift = Decimal("0")
         rebalancing_needed = False
-
-        for allocation in current_allocations:
-            asset = allocation["asset"]
-            current_value = allocation["current_value"]
+        for asset_id in list(by_asset) + [a for a in targets if a not in by_asset]:
+            holding = by_asset.get(asset_id)
+            asset = names.get(asset_id)
+            value = Decimal(str(holding.current_value)) if holding else Decimal(0)
             current_percentage = (
-                Decimal(str((current_value / total_current_value) * 100))
-                if total_current_value > 0
-                else Decimal("0")
+                value / total_value * 100 if total_value > 0 else Decimal(0)
             )
+            target = targets.get(asset_id)
+            target_percentage = target.target_percentage if target else None
+            symbol = asset.symbol if asset else "Unknown"
 
-            # Get target allocation if exists
-            target_allocation = (
-                self.db.query(PortfolioAllocation)
-                .filter(
-                    PortfolioAllocation.portfolio_id == portfolio_id,
-                    PortfolioAllocation.asset_id == asset.asset_id,
-                    PortfolioAllocation.is_active == True,
+            allocation_items.append(
+                AllocationItem(
+                    asset_id=asset_id,
+                    asset_symbol=symbol,
+                    asset_name=asset.name if asset else None,
+                    current_percentage=current_percentage,
+                    target_percentage=target_percentage,
+                    current_value=value,
+                    quantity=Decimal(str(holding.quantity)) if holding else Decimal(0),
                 )
-                .first()
             )
+            if target_percentage is None:
+                continue
 
-            target_percentage = (
-                target_allocation.target_percentage if target_allocation else None
-            )
-
-            allocation_item = AllocationItem(
-                asset_id=asset.asset_id,
-                asset_symbol=asset.asset.symbol if asset.asset else "Unknown",
-                asset_name=asset.asset.name if asset.asset else None,
-                current_percentage=current_percentage,
-                target_percentage=target_percentage,
-                current_value=Decimal(str(current_value)),
-                quantity=asset.quantity,
-            )
-            allocation_items.append(allocation_item)
-
-            # Calculate drift if target exists
-            if target_percentage:
-                drift_percentage = current_percentage - target_percentage
-                drift_amount = Decimal(str(total_current_value)) * (
-                    drift_percentage / 100
-                )
-                requires_rebalancing = abs(drift_percentage) > Decimal(
-                    "5"
-                )  # 5% threshold
-
-                if requires_rebalancing:
-                    rebalancing_needed = True
-
-                total_drift += abs(drift_percentage)
-
-                allocation_drift = AllocationDrift(
-                    asset_id=asset.asset_id,
-                    asset_symbol=asset.asset.symbol if asset.asset else "Unknown",
+            drift_percentage = current_percentage - target_percentage
+            threshold = target.rebalance_threshold or Decimal("5")
+            requires_rebalancing = abs(drift_percentage) > threshold
+            rebalancing_needed = rebalancing_needed or requires_rebalancing
+            total_drift += abs(drift_percentage)
+            allocation_drifts.append(
+                AllocationDrift(
+                    asset_id=asset_id,
+                    asset_symbol=symbol,
                     current_percentage=current_percentage,
                     target_percentage=target_percentage,
                     drift_percentage=drift_percentage,
-                    drift_amount=drift_amount,
+                    drift_amount=total_value * drift_percentage / 100,
                     requires_rebalancing=requires_rebalancing,
-                    recommended_action=(
-                        "buy"
-                        if drift_percentage < 0
-                        else "sell"
-                        if drift_percentage > 0
-                        else "hold"
-                    ),
+                    recommended_action="buy"
+                    if drift_percentage < 0
+                    else "sell"
+                    if drift_percentage > 0
+                    else "hold",
                 )
-                allocation_drifts.append(allocation_drift)
+            )
 
         return AllocationAnalysisResponse(
             portfolio_id=portfolio_id,
@@ -739,47 +714,54 @@ class PortfolioAnalyticsService:
                     "urgency_score": Decimal("0"),
                 }
 
-            # Generate rebalancing actions based on drift analysis
+            # Whole-portfolio value is unchanged by rebalancing, so each action is
+            # the drift amount converted to shares at the current price
+            quantities = {
+                item.asset_id: item.quantity or Decimal(0)
+                for item in allocation_analysis.current_allocations
+            }
+            values = {
+                item.asset_id: item.current_value
+                for item in allocation_analysis.current_allocations
+            }
             rebalancing_actions = []
             estimated_cost = Decimal("0")
-
             for drift in allocation_analysis.allocation_drift:
-                if drift.requires_rebalancing:
-                    # Calculate recommended action
-                    if drift.drift_percentage < -5:  # Underweight by more than 5%
-                        action_type = "buy"
-                        quantity_change = (
-                            abs(drift.drift_amount) / 100
-                        )  # Simplified calculation
-                    elif drift.drift_percentage > 5:  # Overweight by more than 5%
-                        action_type = "sell"
-                        quantity_change = (
-                            abs(drift.drift_amount) / 100
-                        )  # Simplified calculation
-                    else:
-                        action_type = "hold"
-                        quantity_change = Decimal("0")
-
-                    # Estimate transaction cost (0.1% of transaction value)
-                    transaction_cost = abs(drift.drift_amount) * Decimal("0.001")
-                    estimated_cost += transaction_cost
-
-                    rebalancing_action = {
+                if not drift.requires_rebalancing:
+                    continue
+                quantity = quantities.get(drift.asset_id, Decimal(0))
+                if quantity > 0:
+                    price = values[drift.asset_id] / quantity
+                else:
+                    live = await market_data_service.get_current_price(
+                        drift.asset_symbol
+                    )
+                    price = Decimal(str(live)) if live else None
+                if not price:
+                    continue
+                shares = (abs(drift.drift_amount) / price).quantize(Decimal("0.0001"))
+                action_type = "sell" if drift.drift_percentage > 0 else "buy"
+                # Commission assumption: 0.1% of the traded value
+                transaction_cost = abs(drift.drift_amount) * Decimal("0.001")
+                estimated_cost += transaction_cost
+                rebalancing_actions.append(
+                    {
                         "asset_id": drift.asset_id,
                         "asset_symbol": drift.asset_symbol,
                         "action_type": action_type,
-                        "current_quantity": Decimal(
-                            "0"
-                        ),  # Would need to get from portfolio assets
-                        "target_quantity": Decimal("0"),  # Would need to calculate
-                        "quantity_change": quantity_change,
+                        "current_quantity": quantity,
+                        "target_quantity": quantity - shares
+                        if action_type == "sell"
+                        else quantity + shares,
+                        "quantity_change": shares,
+                        "trade_value": abs(drift.drift_amount),
+                        "price": price,
                         "estimated_cost": transaction_cost,
                         "priority": (
                             "high" if abs(drift.drift_percentage) > 10 else "medium"
                         ),
                     }
-                    rebalancing_actions.append(rebalancing_action)
-
+                )
             # Calculate expected allocations after rebalancing
             expected_allocations = []
             for item in allocation_analysis.current_allocations:
@@ -824,11 +806,10 @@ class PortfolioAnalyticsService:
                 "current_drift": allocation_analysis.total_drift_percentage,
                 "rebalancing_actions": rebalancing_actions,
                 "estimated_cost": estimated_cost,
-                "tax_impact": estimated_cost
-                * Decimal("0.2"),  # Simplified tax estimate
+                "tax_impact": None,
                 "expected_allocations": expected_allocations,
-                "expected_risk_reduction": Decimal("5.0"),  # Simplified estimate
-                "expected_return_impact": Decimal("0.5"),  # Simplified estimate
+                "expected_risk_reduction": None,
+                "expected_return_impact": None,
                 "priority": priority,
                 "recommended_timing": recommended_timing,
                 "urgency_score": urgency_score,
@@ -1051,383 +1032,4 @@ class PortfolioAnalyticsService:
 
         except Exception as e:
             logger.error(f"Failed to bulk update asset prices: {e}")
-            raise
-
-    async def generate_historical_performance_snapshots(
-        self, portfolio_id: int, start_date: datetime, end_date: datetime
-    ) -> List[PortfolioPerformanceHistory]:
-        """
-        Generate historical performance snapshots for a portfolio using yfinance data.
-
-        This method:
-        1. Calculates portfolio values for EVERY day in the requested range
-        2. Uses historical close prices to calculate daily unrealized P&L
-        3. Always starts from the first transaction date if requested start date is earlier
-        4. Is transaction-aware and reconstructs portfolio holdings for each day
-        5. Creates a snapshot for each day showing total value, cost basis, and unrealized P&L
-
-        Args:
-            portfolio_id: ID of the portfolio to generate snapshots for
-            start_date: Requested start date (will be adjusted to first transaction date if earlier)
-            end_date: End date for snapshot generation
-
-        Returns:
-            List of PortfolioPerformanceHistory objects, one for each day
-        """
-        try:
-            # Normalize start and end dates to midnight.
-            start_date = datetime.combine(start_date.date(), datetime.min.time())
-            end_date = datetime.combine(end_date.date(), datetime.min.time())
-
-            logger.info(
-                "Generating transaction-aware historical snapshots for portfolio %s "
-                "from %s to %s",
-                portfolio_id,
-                start_date.date(),
-                end_date.date(),
-            )
-
-            # Get the date of the first-ever transaction for this portfolio (inception).
-            first_transaction_date = (
-                self.db.query(func.min(Transaction.transaction_date))
-                .filter(Transaction.portfolio_id == portfolio_id)
-                .scalar()
-            )
-
-            if not first_transaction_date:
-                logger.warning(
-                    f"No transactions found for portfolio {portfolio_id}. Cannot generate history."
-                )
-                return []
-
-            # Get the latest snapshot we already have in the database.
-            latest_snapshot = (
-                self.db.query(PortfolioPerformanceHistory)
-                .filter(PortfolioPerformanceHistory.portfolio_id == portfolio_id)
-                .order_by(PortfolioPerformanceHistory.snapshot_date.desc())
-                .first()
-            )
-
-            effective_start_date = start_date
-
-            if latest_snapshot is None:
-                # CASE 1: NO DATA EXISTS. Perform initial, full calculation from inception.
-                logger.info(
-                    "No existing snapshots found. Performing initial full calculation."
-                )
-                effective_start_date = datetime.combine(
-                    first_transaction_date.date(), datetime.min.time()
-                )
-
-            else:
-                latest_snapshot_date = datetime.combine(
-                    latest_snapshot.snapshot_date.date(), datetime.min.time()
-                )
-
-                # CASE 2: EXTEND FORWARD. The request is for a period after our last record.
-                if start_date > latest_snapshot_date:
-                    logger.info(
-                        "Request is for a future period. Extending existing snapshots."
-                    )
-                    effective_start_date = latest_snapshot_date + timedelta(days=1)
-                    # If the new start is after the end, there's nothing to do.
-                    if effective_start_date > end_date:
-                        logger.info(
-                            "History is already up-to-date. No new snapshots needed."
-                        )
-                        return []
-
-                # CASE 3: RECALCULATE/BACKFILL. The request overlaps or is for the past.
-                else:
-                    logger.info(
-                        "Request overlaps with existing data. Recalculating period to ensure consistency."
-                    )
-                    # We must delete everything from the requested start_date onwards.
-                    (
-                        self.db.query(PortfolioPerformanceHistory)
-                        .filter(
-                            PortfolioPerformanceHistory.portfolio_id == portfolio_id,
-                            PortfolioPerformanceHistory.snapshot_date >= start_date,
-                        )
-                        .delete(synchronize_session=False)
-                    )
-                    effective_start_date = start_date
-
-            # Ensure we don't calculate for a period before the first transaction.
-            first_transaction_datetime = datetime.combine(
-                first_transaction_date.date(), datetime.min.time()
-            )
-            if effective_start_date < first_transaction_datetime:
-                effective_start_date = first_transaction_datetime
-
-            logger.info(
-                f"Effective calculation range set to: {effective_start_date.date()} to {end_date.date()}"
-            )
-
-            # 1. DELETE EXISTING SNAPSHOTS in the date range to avoid duplicates.
-            (
-                self.db.query(PortfolioPerformanceHistory)
-                .filter(
-                    PortfolioPerformanceHistory.portfolio_id == portfolio_id,
-                    PortfolioPerformanceHistory.snapshot_date >= start_date,
-                    PortfolioPerformanceHistory.snapshot_date <= end_date,
-                )
-                .delete(synchronize_session=False)
-            )
-
-            # 2. FETCH ALL TRANSACTIONS up to the end of the period.
-            transactions = (
-                self.db.query(Transaction)
-                .filter(
-                    Transaction.portfolio_id == portfolio_id,
-                    Transaction.transaction_date <= end_date,
-                )
-                .order_by(Transaction.transaction_date)
-                .all()
-            )
-
-            if not transactions:
-                logger.warning(
-                    f"No transactions found for portfolio {portfolio_id}. Cannot generate history."
-                )
-                self.db.commit()
-                return []
-
-            first_transaction_date = (
-                self.db.query(func.min(Transaction.transaction_date))
-                .filter(Transaction.portfolio_id == portfolio_id)
-                .scalar()
-            )
-
-            if not first_transaction_date:
-                first_transaction_date = transactions[0].transaction_date
-
-            # Always start from the first transaction date if the requested start date is before it
-            # This ensures we never generate snapshots for dates before any transactions exist
-            # and that we always start from the first transaction date when requested period is longer than
-            # transaction history
-            first_transaction_datetime = datetime.combine(
-                first_transaction_date.date(), datetime.min.time()
-            )
-
-            if start_date < first_transaction_datetime:
-                effective_start_date = first_transaction_datetime
-                logger.info(
-                    "Requested start date (%s) is before first transaction date (%s). "
-                    "Starting from first transaction date instead.",
-                    start_date.date(),
-                    first_transaction_date.date(),
-                )
-            else:
-                effective_start_date = start_date
-
-            logger.info(
-                "First transaction date: %s, Requested start date: %s, "
-                "Effective calculation start date set to: %s",
-                first_transaction_date.date(),
-                start_date.date(),
-                effective_start_date.date(),
-            )
-
-            # We need price data from before the first transaction to value it on its own day.
-            price_fetch_start_date = first_transaction_date - timedelta(days=1)
-
-            # 3. FETCH ALL REQUIRED HISTORICAL PRICE DATA in a single batch.
-            asset_ids = list({tx.asset_id for tx in transactions})
-            assets = self.db.query(Asset).filter(Asset.id.in_(asset_ids)).all()
-            asset_map = {asset.id: asset for asset in assets}
-
-            asset_price_data = {}
-            for asset_id in asset_ids:
-                asset = asset_map.get(asset_id)
-                if asset and asset.symbol:
-                    try:
-                        price_data = await market_data_service.fetch_ticker_data(
-                            symbol=asset.symbol,
-                            start_date=price_fetch_start_date.strftime("%Y-%m-%d"),
-                            end_date=end_date.strftime("%Y-%m-%d"),
-                            interval="1d",
-                        )
-                        if price_data is not None and not price_data.empty:
-                            asset_price_data[asset_id] = price_data
-                    except Exception as e:
-                        logger.warning(
-                            "Failed to fetch price data for %s: %s", asset.symbol, e
-                        )
-
-            # 4. PRE-PROCESS TRANSACTIONS by grouping them by date.
-            transactions_by_date: Dict[dt.date, List[Transaction]] = {}
-            for tx in transactions:
-                tx_date = tx.transaction_date.date()
-                if tx_date not in transactions_by_date:
-                    transactions_by_date[tx_date] = []
-                transactions_by_date[tx_date].append(tx)
-
-            # 5. CALCULATE INITIAL HOLDINGS state before the effective_start_date.
-            current_holdings = {}
-            # FIX: Use the effective_start_date to establish the correct initial state.
-            for tx in transactions:
-                if tx.transaction_date.date() < effective_start_date.date():
-                    asset_id = tx.asset_id
-                    if asset_id not in current_holdings:
-                        current_holdings[asset_id] = {
-                            "quantity": Decimal(0),
-                            "cost_basis": Decimal(0),
-                        }
-
-                    if tx.transaction_type == TransactionType.BUY:
-                        current_holdings[asset_id]["quantity"] += tx.quantity
-                        current_holdings[asset_id]["cost_basis"] += (
-                            tx.quantity * tx.price
-                        )
-                    elif tx.transaction_type == TransactionType.SELL:
-                        if current_holdings[asset_id]["quantity"] > 0:
-                            avg_cost = (
-                                current_holdings[asset_id]["cost_basis"]
-                                / current_holdings[asset_id]["quantity"]
-                            )
-                            cost_basis_reduction = tx.quantity * avg_cost
-                            current_holdings[asset_id]["cost_basis"] -= (
-                                cost_basis_reduction
-                            )
-                            current_holdings[asset_id]["quantity"] -= tx.quantity
-
-            # 6. MAIN LOOP to generate a snapshot for each day.
-            snapshots = []
-            # FIX: Start the loop from the effective_start_date.
-            current_date = effective_start_date
-            while current_date <= end_date:
-                date_key = current_date.date()
-
-                # A. Update holdings with any transactions that occurred on the current day.
-                if date_key in transactions_by_date:
-                    for tx in transactions_by_date[date_key]:
-                        asset_id = tx.asset_id
-                        if asset_id not in current_holdings:
-                            current_holdings[asset_id] = {
-                                "quantity": Decimal(0),
-                                "cost_basis": Decimal(0),
-                            }
-
-                        if tx.transaction_type == TransactionType.BUY:
-                            current_holdings[asset_id]["quantity"] += tx.quantity
-                            current_holdings[asset_id]["cost_basis"] += (
-                                tx.quantity * tx.price
-                            )
-                        elif tx.transaction_type == TransactionType.SELL:
-                            if current_holdings[asset_id]["quantity"] > 0:
-                                avg_cost = (
-                                    current_holdings[asset_id]["cost_basis"]
-                                    / current_holdings[asset_id]["quantity"]
-                                )
-                                cost_basis_reduction = tx.quantity * avg_cost
-                                current_holdings[asset_id]["cost_basis"] -= (
-                                    cost_basis_reduction
-                                )
-                                current_holdings[asset_id]["quantity"] -= tx.quantity
-
-                # B. Calculate total value and cost basis for the current day.
-                total_value = Decimal(0)
-                total_cost_basis = Decimal(0)
-
-                for asset_id, holding in list(current_holdings.items()):
-                    quantity = holding["quantity"]
-
-                    if quantity <= 0:
-                        del current_holdings[asset_id]
-                        continue
-
-                    total_cost_basis += holding["cost_basis"]
-
-                    price_data = asset_price_data.get(asset_id)
-                    if price_data is not None:
-                        try:
-                            # Ensure Date column is in datetime format for comparison
-                            if not pd.api.types.is_datetime64_any_dtype(
-                                price_data["Date"]
-                            ):
-                                price_data["Date"] = pd.to_datetime(price_data["Date"])
-
-                            # Find the most recent price on or before the current snapshot date
-                            prev_rows = price_data[
-                                price_data["Date"].dt.date <= date_key
-                            ]
-                            if not prev_rows.empty:
-                                # Since data is sorted descending, get the first row (most recent)
-                                close_price = Decimal(str(prev_rows.iloc[0]["Close"]))
-                                asset_value = close_price * quantity
-                                logger.debug(
-                                    "Asset %s on %s: quantity=%s, close_price=%s, value=%s",
-                                    asset_id,
-                                    date_key,
-                                    quantity,
-                                    close_price,
-                                    asset_value,
-                                )
-                            else:
-                                # Fallback if no price data is found before this date
-                                asset_value = holding["cost_basis"]
-                                logger.debug(
-                                    "Asset %s on %s: No price data found, using cost basis %s",
-                                    asset_id,
-                                    date_key,
-                                    asset_value,
-                                )
-                        except Exception as e:
-                            logger.warning(
-                                "Error processing price data for asset %s on %s: %s",
-                                asset_id,
-                                date_key,
-                                e,
-                            )
-                            asset_value = holding["cost_basis"]
-                    else:
-                        # Fallback if price data for the asset couldn't be fetched
-                        asset_value = holding["cost_basis"]
-                        logger.debug(
-                            "Asset %s on %s: No price data available, using cost basis %s",
-                            asset_id,
-                            date_key,
-                            asset_value,
-                        )
-
-                    total_value += asset_value
-
-                # C. ALWAYS create a snapshot, even if values are zero.
-                total_unrealized_pnl = total_value - total_cost_basis
-                total_unrealized_pnl_percent = (
-                    (total_unrealized_pnl / total_cost_basis * 100)
-                    if total_cost_basis > 0
-                    else Decimal(0)
-                )
-
-                snapshot = PortfolioPerformanceHistory(
-                    portfolio_id=portfolio_id,
-                    snapshot_date=current_date,
-                    total_value=total_value,
-                    total_cost_basis=total_cost_basis,
-                    total_unrealized_pnl=total_unrealized_pnl,
-                    total_unrealized_pnl_percent=total_unrealized_pnl_percent,
-                )
-
-                self.db.add(snapshot)
-                snapshots.append(snapshot)
-
-                current_date += timedelta(days=1)
-
-            # 7. COMMIT all changes to the database.
-            self.db.commit()
-            for snapshot in snapshots:
-                self.db.refresh(snapshot)
-
-            logger.info(
-                "Generated %s new historical snapshots for portfolio %s",
-                len(snapshots),
-                portfolio_id,
-            )
-            return snapshots
-
-        except Exception as e:
-            logger.error("Failed to generate historical performance snapshots: %s", e)
-            self.db.rollback()
             raise

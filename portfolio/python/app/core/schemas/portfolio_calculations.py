@@ -4,7 +4,7 @@ Portfolio Calculations Schemas
 Pydantic schemas for portfolio performance calculation responses.
 """
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
@@ -13,12 +13,18 @@ from pydantic import BaseModel, Field
 class PerformanceMetrics(BaseModel):
     """Core performance metrics."""
 
-    cagr: Optional[float] = Field(None, description="Compound Annual Growth Rate (%)")
-    xirr: Optional[float] = Field(
-        None, description="Extended Internal Rate of Return (%)"
+    cagr: Optional[float] = Field(
+        None, description="Annualised TWR (%); the plain TWR under a year"
     )
-    twr: Optional[float] = Field(None, description="Time-Weighted Return (%)")
-    mwr: Optional[float] = Field(None, description="Money-Weighted Return (%)")
+    xirr: Optional[float] = Field(
+        None, description="Money-weighted return per year, XIRR (%)"
+    )
+    twr: Optional[float] = Field(
+        None, description="Time-weighted return over the period (%)"
+    )
+    mwr: Optional[float] = Field(
+        None, description="Money-weighted return over the period (%)"
+    )
     volatility: Optional[float] = Field(None, description="Volatility (%)")
     max_drawdown: Optional[float] = Field(None, description="Maximum Drawdown (%)")
 
@@ -310,3 +316,57 @@ class PortfolioPerformanceOverview(BaseModel):
         ..., description="Worst performing assets"
     )
     calculation_date: datetime = Field(..., description="Overview calculation date")
+
+
+class SeriesPoint(BaseModel):
+    """One trading day of the portfolio value history."""
+
+    date: date
+    value: float = Field(..., description="Market value at the close")
+    invested: float = Field(
+        ...,
+        description="Value at the period start plus deposits minus withdrawals since",
+    )
+    cost_basis: float = Field(..., description="FIFO cost of the open positions")
+
+
+class DayReturn(BaseModel):
+    date: date
+    return_pct: float
+
+
+class PeriodSummary(BaseModel):
+    """Performance over one period, from the same daily series as the chart."""
+
+    start_date: date
+    end_date: date
+    trading_days: int
+    start_value: float = Field(..., description="Value at the close before the period")
+    end_value: float
+    deposits: float
+    withdrawals: float = Field(..., description="Sale proceeds and dividends")
+    net_contributions: float
+    profit: float = Field(..., description="end - start - net contributions")
+    twr_pct: Optional[float] = Field(None, description="Time-weighted return (%)")
+    twr_annualized_pct: Optional[float] = Field(
+        None, description="Annualised TWR (%), periods of a year or more"
+    )
+    mwr_pct: Optional[float] = Field(
+        None, description="Money-weighted return over the period (%)"
+    )
+    mwr_annualized_pct: Optional[float] = Field(
+        None, description="Money-weighted return, XIRR (%)"
+    )
+    volatility_pct: Optional[float] = Field(None, description="Annualised (%)")
+    sharpe_ratio: Optional[float] = None
+    max_drawdown_pct: Optional[float] = None
+    best_day: Optional[DayReturn] = None
+    worst_day: Optional[DayReturn] = None
+
+
+class PerformanceSeriesResponse(BaseModel):
+    portfolio_id: int
+    period: str
+    points: List[SeriesPoint]
+    summary: Optional[PeriodSummary] = None
+    error: Optional[str] = None

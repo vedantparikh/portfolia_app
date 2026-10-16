@@ -13,7 +13,7 @@ from core.auth.dependencies import (
     get_current_verified_user,
 )
 from core.database.connection import get_db
-from core.database.models import Portfolio, User
+from core.database.models import Portfolio, TransactionStatus, TransactionType, User
 from core.database.models import Transaction as TransactionModel
 from core.schemas.portfolio import Transaction as TransactionSchema
 from core.schemas.portfolio import TransactionCreate, TransactionUpdate
@@ -202,25 +202,25 @@ async def get_transactions_summary(
     transactions = query.all()
 
     # Calculate summary
-    total_buy_value = sum(
-        float(t.quantity * t.price) for t in transactions if t.transaction_type == "buy"
-    )
-    total_sell_value = sum(
-        float(t.quantity * t.price)
-        for t in transactions
-        if t.transaction_type == "sell"
-    )
-    total_dividends = sum(
-        float(t.quantity * t.price)
-        for t in transactions
-        if t.transaction_type == "dividend"
-    )
-    total_fees = sum(float(t.fees or 0) for t in transactions)
+    completed = [
+        t for t in transactions if t.status in (None, TransactionStatus.COMPLETED)
+    ]
+
+    def cash(kind):
+        return sum(
+            float(t.total_amount) for t in completed if t.transaction_type == kind
+        )
+
+    # Cash actually moved: buys include fees and taxes, sells are net proceeds
+    total_buy_value = cash(TransactionType.BUY)
+    total_sell_value = cash(TransactionType.SELL)
+    total_dividends = cash(TransactionType.DIVIDEND)
+    total_fees = sum(float(t.fees or 0) for t in completed)
 
     return TransactionSummaryResponse(
         portfolio_id=portfolio_id,
         portfolio_name=portfolio.name,
-        total_transactions=len(transactions),
+        total_transactions=len(completed),
         total_buy_value=round(total_buy_value, 2),
         total_sell_value=round(total_sell_value, 2),
         total_dividends=round(total_dividends, 2),

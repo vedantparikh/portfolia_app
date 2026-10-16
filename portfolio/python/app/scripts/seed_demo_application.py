@@ -39,7 +39,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import hashlib
 import logging
 import sys
 import time
@@ -149,13 +148,44 @@ def _monthly_trade_dates(start: date, end: date) -> List[date]:
     return out
 
 
-def _synthetic_price(symbol: str, day_index: int) -> Decimal:
-    digest = hashlib.sha256(f"{symbol}:demo-seed".encode()).digest()
-    base = 50 + (int.from_bytes(digest[:2], "big") % 450)
-    noise = ((day_index * 1103515245 + 12345) % 1000) / 10000.0
-    walk = (day_index % 97) * 0.12 - 5.0
-    p = base + walk + noise * 10
-    return Decimal(str(round(max(p, 1.0), 4)))
+class _MarketHistory:
+    """
+    Real Yahoo history for the demo, in the prices a broker statement would show.
+    Yahoo closes and dividends are split-adjusted back in time, so they are
+    multiplied by the splits that came later to get the price actually paid.
+    """
+
+    def __init__(self, symbols: Sequence[str], start: date) -> None:
+        import yfinance as yf
+
+        self.closes: Dict[str, Dict[date, Decimal]] = {}
+        self.splits: Dict[str, Dict[date, Decimal]] = {}
+        self.dividends: Dict[str, Dict[date, Decimal]] = {}
+        for sym in symbols:
+            h = yf.Ticker(sym).history(start=start, auto_adjust=False, actions=True)
+            days = [d.date() for d in h.index.tz_localize(None)]
+            splits = {
+                d: Decimal(str(r)) for d, r in zip(days, h["Stock Splits"]) if r > 0
+            }
+
+            def later(day: date, splits=splits) -> Decimal:
+                f = Decimal(1)
+                for ex, r in splits.items():
+                    if ex > day:
+                        f *= r
+                return f
+
+            self.splits[sym] = splits
+            self.closes[sym] = {
+                d: (Decimal(str(c)) * later(d)).quantize(Decimal("0.0001"))
+                for d, c in zip(days, h["Close"])
+                if c == c
+            }
+            self.dividends[sym] = {
+                d: (Decimal(str(v)) * later(d)).quantize(Decimal("0.000001"))
+                for d, v in zip(days, h["Dividends"])
+                if v > 0
+            }
 
 
 class _Rng:
@@ -180,44 +210,56 @@ def _simulate_trades(
     trades_per_day_prob: float,
     label: str,
     max_trades: Optional[int],
+    market: _MarketHistory,
 ) -> List[Tuple[str, str, Decimal, Decimal, datetime, str]]:
-    """Returns (symbol, buy|sell, qty, price, when, note)."""
+    """
+    Returns (symbol, buy|sell|dividend, qty, price, when, note) in date order.
+
+    Trades are spread evenly over the whole period (the probability is thinned
+    so about `max_trades` happen), at the real close of the day. Shares follow
+    splits, and every dividend paid on shares held becomes a transaction.
+    """
     rng = _Rng(rng_seed)
     out: List[Tuple[str, str, Decimal, Decimal, datetime, str]] = []
     positions: Dict[str, Decimal] = {s: Decimal("0") for s in symbols_in_order}
-    day_index = 0
-    trade_dates_list = list(trade_dates)
+    trade_days = set(trade_dates)
+    if not trade_days:
+        return out
+    if max_trades:
+        trades_per_day_prob = min(
+            trades_per_day_prob, max_trades / (len(trade_days) * len(symbols_in_order))
+        )
+    first, last = min(trade_days), max(trade_days)
+    build_until = first + (last - first) * 0.3
 
-    start_idx = {s: i for i, s in enumerate(symbols_in_order)}
-
-    for d in trade_dates_list:
-        if max_trades is not None and len(out) >= max_trades:
-            break
-        day_index += 1
+    for d in _business_days(first, last):
         for sym in symbols_in_order:
-            if max_trades is not None and len(out) >= max_trades:
-                break
-            if not rng.choice_bool(trades_per_day_prob):
+            if d in market.splits[sym]:
+                positions[sym] *= market.splits[sym][d]
+            div = market.dividends[sym].get(d)
+            if div and positions[sym] > 0:
+                when = datetime.combine(d, dt_time(12, 0), tzinfo=UTC)
+                out.append(
+                    (sym, "dividend", positions[sym], div, when, f"[{label}] dividend")
+                )
+
+        if d not in trade_days:
+            continue
+        for sym in symbols_in_order:
+            price = market.closes[sym].get(d)
+            if price is None or not rng.choice_bool(trades_per_day_prob):
                 continue
-
-            price = _synthetic_price(sym, day_index + start_idx.get(sym, 0) * 17)
             pos = positions[sym]
-            build_phase = day_index < len(trade_dates_list) * 0.4
-
-            if pos <= 0 or build_phase:
+            if pos <= 0 or d <= build_until:
                 q = Decimal(str(rng.randint(5, 35))) + Decimal("0.25")
                 when = datetime.combine(d, dt_time(14, 30), tzinfo=UTC)
                 out.append((sym, "buy", q, price, when, f"[{label}] accumulate"))
                 positions[sym] += q
-                continue
-
-            if rng.choice_bool(0.28) and pos > Decimal("0.01"):
+            elif rng.choice_bool(0.28):
                 sell_frac = Decimal(str(rng.randint(15, 35))) / Decimal("100")
-                q = (pos * sell_frac).quantize(Decimal("0.0001"))
+                q = min((pos * sell_frac).quantize(Decimal("0.0001")), pos)
                 if q <= 0:
                     continue
-                if q > pos:
-                    q = pos
                 when = datetime.combine(d, dt_time(15, 0), tzinfo=UTC)
                 out.append((sym, "sell", q, price, when, f"[{label}] trim"))
                 positions[sym] -= q
@@ -540,6 +582,10 @@ async def run(args: argparse.Namespace) -> int:
         weekly_syms = [sym_map[t.upper()] for t in WEEK_PORTFOLIO_TICKERS]
         monthly_syms = [sym_map[t.upper()] for t in MONTH_PORTFOLIO_TICKERS]
 
+        logger.info("Loading real price history from Yahoo")
+        market = await asyncio.to_thread(
+            _MarketHistory, sorted(set(daily_syms + weekly_syms + monthly_syms)), start
+        )
         daily_trades = _simulate_trades(
             daily_syms,
             day_days,
@@ -547,6 +593,7 @@ async def run(args: argparse.Namespace) -> int:
             args.daily_trade_prob,
             "daily",
             args.max_trades_daily,
+            market,
         )
         weekly_trades = _simulate_trades(
             weekly_syms,
@@ -555,6 +602,7 @@ async def run(args: argparse.Namespace) -> int:
             1.0,
             "weekly",
             args.max_trades_weekly,
+            market,
         )
         monthly_trades = _simulate_trades(
             monthly_syms,
@@ -563,6 +611,7 @@ async def run(args: argparse.Namespace) -> int:
             1.0,
             "monthly",
             args.max_trades_monthly,
+            market,
         )
         logger.info(
             "Synthetic trade rows: daily=%s weekly=%s monthly=%s",
@@ -678,12 +727,17 @@ async def run(args: argparse.Namespace) -> int:
                     client, base, auth, "POST", "/api/v1/transactions/", json=body
                 )
 
-        logger.info("Posting daily portfolio transactions...")
-        await asyncio.gather(*[post_one_tx(id_daily, t) for t in daily_trades])
-        logger.info("Posting weekly portfolio transactions...")
-        await asyncio.gather(*[post_one_tx(id_week, t) for t in weekly_trades])
-        logger.info("Posting monthly portfolio transactions...")
-        await asyncio.gather(*[post_one_tx(id_month, t) for t in monthly_trades])
+        async def post_in_order(pid: int, trades) -> None:
+            # In date order: the API rejects a sell posted before its buys
+            for t in trades:
+                await post_one_tx(pid, t)
+
+        logger.info("Posting transactions (each portfolio in date order)...")
+        await asyncio.gather(
+            post_in_order(id_daily, daily_trades),
+            post_in_order(id_week, weekly_trades),
+            post_in_order(id_month, monthly_trades),
+        )
 
         def alloc_body(pid: int, symbols: Sequence[str]) -> List[Dict[str, Any]]:
             aids = [sym_to_id[s.upper()] for s in symbols]

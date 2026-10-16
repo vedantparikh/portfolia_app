@@ -7,6 +7,7 @@ from dateutil.relativedelta import relativedelta
 class PeriodType:
     """Standard period types for calculations."""
 
+    LAST_1_MONTH = "1m"
     LAST_3_MONTHS = "3m"
     LAST_6_MONTHS = "6m"
     LAST_1_YEAR = "1y"
@@ -24,7 +25,9 @@ class PeriodType:
         if base_date is None:
             base_date = datetime.now(timezone.utc)
 
-        if period == cls.LAST_3_MONTHS:
+        if period == cls.LAST_1_MONTH:
+            return base_date - relativedelta(months=1)
+        elif period == cls.LAST_3_MONTHS:
             return base_date - relativedelta(months=3)
         elif period == cls.LAST_6_MONTHS:
             return base_date - relativedelta(months=6)

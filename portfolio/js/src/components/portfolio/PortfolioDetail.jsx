@@ -74,7 +74,7 @@ const PortfolioDetail = ({ portfolio }) => {
           name: holding.name,
           quantity: holding.quantity,
           avgPrice: holding.cost_basis,
-          currentPrice: holding.current_value / holding.quantity,
+          currentPrice: holding.current_price,
           value: holding.current_value,
           change: holding.unrealized_pnl_percent,
           gainLoss: holding.unrealized_pnl,
@@ -136,10 +136,7 @@ const PortfolioDetail = ({ portfolio }) => {
   };
 
   const totalHoldingsValue = summary?.total_current_value ?? 0;
-  const totalRealizedGainLoss = holdings.reduce(
-    (sum, holding) => sum + (holding.realizedGainLoss || 0),
-    0
-  );
+  const totalRealizedGainLoss = summary?.total_realized_pnl ?? 0;
 
   const signed = (v) => formatCurrency(v, { signDisplay: "exceptZero" });
 

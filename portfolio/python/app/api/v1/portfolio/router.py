@@ -374,7 +374,7 @@ async def get_portfolio_statistics(
 ):
     """Get overall portfolio statistics for the authenticated user."""
     portfolio_service = PortfolioService(db)
-    statistics = portfolio_service.get_portfolio_statistics(current_user.id)
+    statistics = await portfolio_service.get_portfolio_statistics(current_user.id)
     return statistics
 
 

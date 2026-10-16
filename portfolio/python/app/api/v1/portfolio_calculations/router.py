@@ -23,6 +23,7 @@ from core.schemas.portfolio_calculations import (
     BenchmarkPerformanceResponse,
     MultiPeriodPerformanceResponse,
     PerformanceCalculationRequest,
+    PerformanceSeriesResponse,
     PortfolioBenchmarkComparisonResponse,
     PortfolioPerformanceOverview,
     PortfolioPerformanceResponse,
@@ -158,6 +159,30 @@ async def get_portfolio_performance(
     except Exception as e:
         logger.error(f"Error calculating portfolio performance: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get(
+    "/portfolio/{portfolio_id}/performance/series",
+    response_model=PerformanceSeriesResponse,
+)
+async def get_performance_series(
+    portfolio_id: int,
+    period: str = Query(default=PeriodType.LAST_1_YEAR, description="Period code"),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Daily value, net invested and cost basis plus the period's returns and risk."""
+    try:
+        PeriodType.get_start_date(period)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Unknown period") from None
+    try:
+        service = PortfolioCalculationService(db)
+        return await service.get_performance_series(
+            portfolio_id, current_user.id, period
+        )
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Portfolio not found") from None
 
 
 @router.get(

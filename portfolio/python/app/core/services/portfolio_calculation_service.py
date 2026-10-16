@@ -11,7 +11,8 @@ Supports period-based calculations and benchmark comparisons.
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from decimal import Decimal
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd  # type: ignore
@@ -26,34 +27,15 @@ from core.database.models import (
     TransactionStatus,
     TransactionType,
 )
+from core.domain.positions import OversellError, Split, to_trades
+from core.domain.returns import compute_daily_returns, period_summary, split_period
+from core.domain.valuation import MissingPriceError, daily_series
 from core.services.market_data_service import MarketDataService
 from core.services.utils import CashFlow, PeriodType
 
 logger = logging.getLogger(__name__)
 
 TRADING_DAYS_PER_YEAR = 252
-
-
-def compute_daily_returns(history: pd.DataFrame, opening_value: float) -> pd.Series:
-    """
-    Cash-flow-adjusted daily returns from a daily value series.
-
-    Buys (`inflow`) are treated as arriving at the start of the day and sales/dividends
-    (`outflow`) as leaving at the end of the day:
-
-        r_t = (V_t + outflow_t) / (V_{t-1} + inflow_t) - 1
-
-    This keeps the denominator non-negative, so a full exit is measured correctly
-    (instead of producing -100%), and a first purchase measures close vs. cost.
-    Days with no capital at risk (denominator <= 0) get NaN.
-    """
-    prev_value = history["value"].shift(1)
-    if len(prev_value):
-        prev_value.iloc[0] = opening_value
-    denominator = prev_value + history["inflow"]
-    numerator = history["value"] + history["outflow"]
-    returns = numerator / denominator.where(denominator > 0) - 1
-    return returns.replace([np.inf, -np.inf], np.nan)
 
 
 class PortfolioCalculationService:
@@ -65,6 +47,7 @@ class PortfolioCalculationService:
         # Cache for price data to avoid multiple API calls
         self._price_cache = {}
         self._price_cache_time = {}
+        self._series_cache = {}
 
     async def calculate_portfolio_performance(
         self,
@@ -131,48 +114,31 @@ class PortfolioCalculationService:
                 period,
             )
 
-        # Get current portfolio value
-        current_value, value_errors = await self.get_current_portfolio_value(
-            portfolio_id
-        )
-
-        if value_errors:
+        try:
+            series = await self.get_portfolio_series(all_transactions, end_date)
+        except (MissingPriceError, OversellError) as e:
             return {
                 "portfolio_id": portfolio_id,
                 "portfolio_name": portfolio.name,
                 "period": actual_period,
                 "start_date": actual_start_date,
                 "end_date": end_date,
-                "current_value": current_value,
-                "errors": value_errors,
+                "current_value": 0.0,
+                "errors": [str(e)],
                 "period_adjustment": period_adjustment_info,
-                "metrics": {
-                    "cagr": None,
-                    "xirr": None,
-                    "twr": None,
-                    "mwr": None,
-                },
+                "metrics": {"cagr": None, "xirr": None, "twr": None, "mwr": None},
                 "calculation_date": datetime.now(timezone.utc).isoformat(),
             }
-        # Generate daily portfolio value history for risk calculations
-        portfolio_history_df = await self.get_portfolio_history(
-            all_transactions, actual_start_date, end_date
-        )
 
-        volatility = self._calculate_volatility(portfolio_history_df)
-        max_drawdown = self._calculate_max_drawdown(portfolio_history_df)
-
-        # Calculate XIRR
-        xirr_value = await self._calculate_xirr(
-            all_transactions, current_value, actual_start_date, end_date
+        summary = period_summary(
+            series, actual_start_date.date() if actual_start_date else None
         )
-
-        # Calculate TWR, and CAGR as the annualised TWR
-        twr_value = self._calculate_twr(portfolio_history_df)
-        period_start = actual_start_date or min(
-            t.transaction_date for t in all_transactions
-        )
-        cagr = self._calculate_cagr(twr_value, period_start, end_date)
+        twr_value = summary.get("twr_pct")
+        # CAGR is the annualised TWR; under a year it is the plain TWR
+        cagr = summary.get("twr_annualized_pct")
+        if cagr is None:
+            cagr = twr_value
+        xirr_value = summary.get("mwr_annualized_pct")
 
         result = {
             "portfolio_id": portfolio_id,
@@ -180,14 +146,14 @@ class PortfolioCalculationService:
             "period": actual_period,
             "start_date": actual_start_date,
             "end_date": end_date,
-            "current_value": current_value,
+            "current_value": summary.get("end_value", 0.0),
             "metrics": {
                 "cagr": cagr,
                 "xirr": xirr_value,
                 "twr": twr_value,
-                "mwr": xirr_value,  # MWR is essentially XIRR,
-                "volatility": volatility,
-                "max_drawdown": max_drawdown,
+                "mwr": summary.get("mwr_pct"),
+                "volatility": summary.get("volatility_pct"),
+                "max_drawdown": summary.get("max_drawdown_pct"),
             },
             "calculation_date": datetime.now(timezone.utc).isoformat(),
         }
@@ -1128,6 +1094,82 @@ class PortfolioCalculationService:
         drawdown = equity_curve / equity_curve.cummax() - 1
         return float(drawdown.min() * 100)
 
+    async def get_market_history(
+        self, asset_ids
+    ) -> Tuple[Dict[int, pd.Series], Dict[int, List[Split]], Dict[int, str]]:
+        """Split-adjusted closes, split events and symbols for the given assets."""
+        closes: Dict[int, pd.Series] = {}
+        splits: Dict[int, List[Split]] = {}
+        symbols: Dict[int, str] = {}
+        for asset_id in asset_ids:
+            asset = self.db.query(Asset).filter(Asset.id == asset_id).first()
+            if not asset:
+                raise ValueError(f"Asset {asset_id} not found")
+            symbols[asset_id] = asset.symbol
+            history = await self.market_data_service.get_daily_history(asset.symbol)
+            if history is None:
+                continue
+            closes[asset_id] = history["close"]
+            splits[asset_id] = [
+                (day.date(), Decimal(str(ratio)))
+                for day, ratio in history["splits"].items()
+            ]
+        return closes, splits, symbols
+
+    async def get_portfolio_series(
+        self, all_transactions: List[Transaction], end_date: datetime
+    ) -> pd.DataFrame:
+        """The canonical daily series from inception (see core.domain.valuation)."""
+        key = (
+            tuple(sorted(getattr(t, "id", None) or id(t) for t in all_transactions)),
+            end_date.date(),
+        )
+        if key not in self._series_cache:
+            asset_ids = sorted({t.asset_id for t in all_transactions})
+            closes, splits, symbols = await self.get_market_history(asset_ids)
+            trades = to_trades(all_transactions, splits)
+            self._series_cache[key] = daily_series(
+                trades, closes, end_date.date(), symbols
+            )
+        return self._series_cache[key]
+
+    async def get_performance_series(
+        self, portfolio_id: int, user_id: int, period: str
+    ) -> Dict[str, Any]:
+        """Daily points and the period summary the performance chart shows."""
+        if not self.get_portfolio(portfolio_id, user_id):
+            raise ValueError(f"Portfolio {portfolio_id} not found or not accessible")
+        end = datetime.now(timezone.utc)
+        start = PeriodType.get_start_date(period, end)
+        result: Dict[str, Any] = {
+            "portfolio_id": portfolio_id,
+            "period": period,
+            "points": [],
+        }
+        transactions = self.get_transactions(portfolio_id, None, end)
+        if not transactions:
+            return result
+        try:
+            series = await self.get_portfolio_series(transactions, end)
+        except (MissingPriceError, OversellError) as e:
+            result["error"] = str(e)
+            return result
+
+        start_day = start.date() if start else None
+        window, opening_value, _ = split_period(series, start_day)
+        invested = opening_value + (window["inflow"] - window["outflow"]).cumsum()
+        result["points"] = [
+            {
+                "date": day.date(),
+                "value": row["value"],
+                "invested": invested[day],
+                "cost_basis": row["cost_basis"],
+            }
+            for day, row in window.iterrows()
+        ]
+        result["summary"] = period_summary(series, start_day) or None
+        return result
+
     async def get_portfolio_history(
         self,
         all_transactions: List[Transaction],
@@ -1135,7 +1177,7 @@ class PortfolioCalculationService:
         end_date: datetime,
     ) -> Optional[pd.DataFrame]:
         """
-        Daily (business-day) series of portfolio value and cash flows.
+        Daily (trading-day) series of portfolio value and cash flows for a period.
 
         Columns:
             value         market value at the day's close
@@ -1143,68 +1185,18 @@ class PortfolioCalculationService:
             outflow       cash returned that day (net sale proceeds, dividends)
             net_cash_flow inflow - outflow
             daily_return  cash-flow-adjusted return, see compute_daily_returns
-
-        Weekend transactions are attributed to the next business day, so weekends
-        don't add artificial zero-return days to the series.
         """
         try:
             if not all_transactions:
                 return None
-
-            first_date = min(t.transaction_date for t in all_transactions)
-            period_start = start_date or first_date
-
-            if period_start > end_date:
-                return None
-
-            days = pd.bdate_range(start=period_start.date(), end=end_date.date())
-            if days.empty:
-                return None
-
-            transactions = sorted(all_transactions, key=lambda t: t.transaction_date)
-            asset_map: Dict[int, Optional[Asset]] = {}
-
-            # Holdings from everything strictly before the first day of the series
-            first_day = days[0].date()
-            opening = [t for t in transactions if t.transaction_date.date() < first_day]
-            pending = [
-                t for t in transactions if t.transaction_date.date() >= first_day
-            ]
-            holdings = await self._get_holdings_at_date(opening, None)
-            opening_value = await self._value_holdings(
-                holdings, (days[0] - pd.offsets.BDay(1)).date(), asset_map
+            series = await self.get_portfolio_series(all_transactions, end_date)
+            window, opening_value, _ = split_period(
+                series, start_date.date() if start_date else None
             )
-
-            history = []
-            next_tx = 0
-            for day in days:
-                inflow = outflow = 0.0
-                # Apply every transaction up to and including this day
-                while (
-                    next_tx < len(pending)
-                    and pending[next_tx].transaction_date.date() <= day.date()
-                ):
-                    transaction = pending[next_tx]
-                    next_tx += 1
-                    self._apply_to_holdings(holdings, transaction)
-                    cash_flow = self._investor_cash_flow(transaction)
-                    if cash_flow is not None and cash_flow < 0:
-                        inflow += -cash_flow
-                    elif cash_flow is not None:
-                        outflow += cash_flow
-
-                value = await self._value_holdings(holdings, day.date(), asset_map)
-                history.append(
-                    {
-                        "date": day,
-                        "value": value,
-                        "inflow": inflow,
-                        "outflow": outflow,
-                        "net_cash_flow": inflow - outflow,
-                    }
-                )
-
-            df = pd.DataFrame(history).set_index("date")
+            if window.empty:
+                return None
+            df = window[["value", "inflow", "outflow"]].copy()
+            df["net_cash_flow"] = df["inflow"] - df["outflow"]
             df["daily_return"] = compute_daily_returns(df, opening_value)
             return df
 
