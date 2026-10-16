@@ -193,7 +193,7 @@ Golden tests are written first for every item.
 | ✅ 2.6 | `domain/returns.py` and `domain/risk.py`: TWR, XIRR (with opening value), CAGR, calendar-date period returns, and risk metrics with a single risk-free rate and percent units. **Now:** `core/domain/returns.py`: TWR, XIRR (period + annual), CAGR, calendar periods, `period_summary`, one `RISK_FREE_RATE`; chart, /performance, /multi-period and risk agree exactly. | H1, H3, M6, M10 |
 | ✅ 2.7 | Benchmark shadow portfolio built on the same functions, with a total-return index. **Done:** `core/domain/benchmark.py` `shadow_series` + `GET /portfolios/calculations/portfolio/{id}/benchmark`, Performance Chart "Compare with"; old benchmark endpoints and ~560 lines of legacy helpers removed. FX for foreign-currency benchmarks waits on 2.3. | C4, H2 |
 | 🟡 2.8 | Today's P&L formula and a correct previous close (time-aware rather than `iloc[0]` of 2 days). **Now:** `day_change` implemented and used by holdings/summary/overview; previous close still `yf.download(2d)` first row, 12h cache. | H5 |
-| 🟡 2.9 | Allocation and rebalancing in shares. Fix the indicator formulas (Wilder RSI/ATR/ADX, population-std Bollinger, CCI, StochRSI). **Now:** Allocation from live holdings, rebalancing in shares with the stored threshold. Indicator formulas open (PSAR stub, non-Wilder RSI/ATR/ADX, sample-std Bollinger). | M8, Low |
+| ✅ 2.9 | Allocation and rebalancing in shares. Fix the indicator formulas (Wilder RSI/ATR/ADX, population-std Bollinger, CCI, StochRSI). **Done (2026-10-16):** all 17 indicators match `ta` (reference test), real PSAR, configuration UI wired. **Now:** Allocation from live holdings, rebalancing in shares with the stored threshold. Indicator formulas open (PSAR stub, non-Wilder RSI/ATR/ADX, sample-std Bollinger). | M8, Low |
 | 🟡 2.10 | `PortfolioAsset` becomes a derived cache, rebuilt on every transaction write. Remove the client-writable quantity and P&L fields. **Now:** Rebuilt on every transaction write and on refresh; client-writable `PUT /portfolios/{id}/assets/{asset_id}` remains. | M1 |
 | 🟡 2.11 | Re-run the Phase 0.7 characterisation snapshots and review **each** changed number against a hand calculation or a broker statement. **Now:** Characterisation snapshots unchanged through the refactor; demo data replayed independently to the cent. Broker-statement check open. | — |
 
@@ -314,6 +314,7 @@ Open:
 | 2026-10-16 | `feat/benchmark-shadow` | — | 2.7: shadow-portfolio benchmark (TWR = index return exactly, MWR/profit with the portfolio's own flows), `/benchmark` + `/benchmarks` endpoints, Performance Chart comparison; legacy benchmark maths deleted |
 | 2026-10-16 | `fix/error-leaks` | — | 1.3: `DomainError`/`NotFoundError`/`public_message`; 38 exception texts removed from HTTP details plus 6 from response bodies and parser warnings; 404 vs 400 split on performance endpoints; static guard test |
 | 2026-10-16 | `feat/single-currency-portfolios` | — | Currency guard on manual/bulk/pytr transaction writes, global DomainError handler, per-currency overview totals, money formatted in the portfolio/row/asset currency (`useMoney`), import review flags wrong-currency listings |
+| 2026-10-16 | `feat/indicators` | — | 2.9: RSI/StochRSI/MACD/ADX/Aroon/CCI/BB/ATR/Keltner/VPT/VWAP fixed and PSAR implemented, all pinned to `ta`; data now calculated oldest-first with ~400 days warm-up; second indicator class no longer dropped; saved configurations drive the chart (manager modal, configuration_id, list); one pane per oscillator; private configurations no longer readable by others |
 
 
 ## 6b. Findings and to-do (2026-10-16)
@@ -350,7 +351,7 @@ Open:
 3. **FX** (2.3): decide the source (open decision 1).
 4. ✅ Shadowed routes and the two 500s (1.2); ✅ `str(e)` leaks (1.3, envelope still open).
 5. **Watchlist enrichment** (UI Batch 4) and an alert worker (3.3).
-6. **Indicator formulas and configuration wiring** (2.9).
+6. ✅ Indicator formulas and configuration wiring (2.9).
 7. **Phase R release platform**, before any real data (1.6 Alembic baseline ✅).
 
 ---

@@ -268,9 +268,9 @@ const IndicatorConfigurationManager = ({
                                         <p className="text-sm text-gray-400 mb-3">{config.description}</p>
                                     )}
                                     <div className="flex flex-wrap gap-2 mb-3">
-                                        {config.indicators?.slice(0, 5).map(indicator => (
+                                        {config.indicators?.slice(0, 5).map((indicator, i) => (
                                             <span
-                                                key={indicator.id}
+                                                key={indicator.id ?? `${indicator.indicator_name}-${i}`}
                                                 className="px-2 py-1 text-xs bg-dark-600 text-gray-300 rounded-sm"
                                             >
                                                 {indicator.display_name || indicator.indicator_name}
@@ -531,9 +531,9 @@ const ConfigurationModal = ({
                         {config.indicators.length > 0 && (
                             <div className="space-y-3">
                                 <h5 className="text-md font-medium text-gray-100">Configured Indicators</h5>
-                                {config.indicators.map(indicator => (
+                                {config.indicators.map((indicator, i) => (
                                     <IndicatorConfigCard
-                                        key={indicator.id}
+                                        key={indicator.id ?? `${indicator.indicator_name}-${i}`}
                                         indicator={indicator}
                                         availableIndicators={availableIndicators}
                                         onUpdate={(updates) => updateIndicator(indicator.id, updates)}

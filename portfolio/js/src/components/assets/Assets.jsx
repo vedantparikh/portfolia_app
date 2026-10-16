@@ -50,7 +50,6 @@ const Assets = () => {
     const [viewMode, setViewMode] = useState('grid');
     const [modalMode, setModalMode] = useState('view');
     const [showAnalytics, setShowAnalytics] = useState(false);
-    const [chartData, setChartData] = useState([]);
     const [selectedConfiguration, setSelectedConfiguration] = useState(null);
     const [showConfigurationManager, setShowConfigurationManager] = useState(false);
     const [showTransactionModal, setShowTransactionModal] = useState(false);
@@ -185,10 +184,9 @@ const Assets = () => {
         setShowModal(true);
     };
 
-    const handleAnalyticsClick = async (asset) => {
+    const handleAnalyticsClick = (asset) => {
         setSelectedAsset(asset);
         setShowAnalytics(true);
-        await loadChartData(asset);
     };
 
     const handleTransactionClick = (asset) => {
@@ -208,17 +206,6 @@ const Assets = () => {
             const errorMessage = error.response?.data?.detail || 'Failed to create transaction';
             toast.error(errorMessage);
             throw error;
-        }
-    };
-
-    const loadChartData = async (asset) => {
-        if (!asset?.id) return;
-        try {
-            const response = await userAssetsAPI.getUserAsset(asset.id);
-            setChartData(response.price_history || []);
-        } catch (error) {
-            console.error('Failed to load chart data:', error);
-            setChartData([]);
         }
     };
 
@@ -533,9 +520,7 @@ const Assets = () => {
                             </div>
                             <AssetAnalyticsView
                                 asset={selectedAsset}
-                                chartData={chartData}
                                 selectedConfiguration={selectedConfiguration}
-                                onRefresh={() => loadChartData(selectedAsset)}
                             />
                         </div>
                     )}
@@ -616,31 +601,6 @@ const Assets = () => {
                                 />
                             )}
 
-                            {showConfigurationManager && (
-                                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                                    <div className="bg-dark-800 rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden">
-                                        <div className="flex items-center justify-between p-6 border-b border-dark-700">
-                                            <h3 className="text-xl font-semibold text-gray-100">Analysis Configurations</h3>
-                                            <button
-                                                onClick={() => setShowConfigurationManager(false)}
-                                                className="text-gray-400 hover:text-gray-100"
-                                            >
-                                                <X size={24} />
-                                            </button>
-                                        </div>
-                                        <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-                                            <IndicatorConfigurationManager
-                                                onConfigurationSelect={handleConfigurationSelect}
-                                                selectedConfigurationId={selectedConfiguration?.id}
-                                                showCreateButton={true}
-                                                showSearch={true}
-                                                showFilters={true}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
                             {showTransactionModal && transactionAsset && (
                                 <CreateTransactionModal
                                     portfolios={portfolios}
@@ -654,6 +614,31 @@ const Assets = () => {
                                 />
                             )}
                         </>
+                    )}
+
+                    {showConfigurationManager && (
+                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                            <div className="bg-dark-800 rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden">
+                                <div className="flex items-center justify-between p-6 border-b border-dark-700">
+                                    <h3 className="text-xl font-semibold text-gray-100">Analysis Configurations</h3>
+                                    <button
+                                        onClick={() => setShowConfigurationManager(false)}
+                                        className="text-gray-400 hover:text-gray-100"
+                                    >
+                                        <X size={24} />
+                                    </button>
+                                </div>
+                                <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+                                    <IndicatorConfigurationManager
+                                        onConfigurationSelect={handleConfigurationSelect}
+                                        selectedConfigurationId={selectedConfiguration?.id}
+                                        showCreateButton={true}
+                                        showSearch={true}
+                                        showFilters={true}
+                                    />
+                                </div>
+                            </div>
+                        </div>
                     )}
                 </div>
             </div>

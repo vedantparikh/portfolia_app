@@ -98,7 +98,9 @@ async def calculate_indicators(
 
     try:
         service = EnhancedStatisticalService(db)
-        result = await service.calculate_indicators(request)
+        result = await service.calculate_indicators(
+            request, current_user.id if current_user else None
+        )
         return result
     except ValueError as e:
         raise HTTPException(

@@ -77,7 +77,7 @@ Each feature has a `CLAUDE.md` with purpose, state, endpoints, UI, workflow, kno
 - When a session establishes a new non-obvious fact about the project, update this file or the plan's progress log.
 
 ## Known state (2026-10-16)
-- Gate: lint clean (ruff + eslint, 0 warnings); 234 tests passed, 42 quarantined xfail, plus 8 quarantined uncollectable files.
+- Gate: lint clean (ruff + eslint, 0 warnings); 240 tests passed, 42 quarantined xfail, plus 8 quarantined uncollectable files.
 - Demo data (`scripts/seed_demo_application.py --reset`, run inside `portfolio-api-1` against `http://localhost:8000`) uses real Yahoo prices, splits and dividends over ~3 years; an independent replay matched the engine to the cent on every day.
 - Still on old code paths: analytics `/summary` and `/users/dashboard` (snapshot metrics that count deposits as returns). Advance-risk beta uses `^GSPC` price index.
 - `tests/unit/test_calculation_snapshots.py` pins every computed number (engine, risk, indicators, analytics) against `snapshots/calculations.json`. If it fails, a number the app shows changed: fix the regression, or regenerate with `UPDATE_SNAPSHOTS=1` only for an intended change and explain it in the commit.
@@ -87,4 +87,5 @@ Each feature has a `CLAUDE.md` with purpose, state, endpoints, UI, workflow, kno
 - FastAPI 0.143 wraps included routers in a private `_IncludedRouter`, so `app.routes` does not list endpoints. Test routing through `TestClient` (see `tests/unit/test_route_order.py`, which also overrides the auth dependencies).
 - The SQLite test DB returns naive datetimes, so `calculate_portfolio_performance` (aware `now()` minus `transaction_date`) can't run against `test_db`. Test the engine through `get_performance_series` or stub it.
 - Dev stack: `main.py`, `config.py`, `start_api.py` etc. are **single-file** bind mounts. A tool that replaces a file atomically (e.g. `ruff format`) leaves the container on the old inode, so the API keeps running stale code — `docker compose restart api` after editing them. Directory mounts (`core/`, `api/`) are fine.
+- Technical indicators (`utils/indicators/`) are pinned to the `ta` library by `tests/unit/test_indicator_reference.py` (ta is a test-only dependency installed by `verify.sh`); deliberate differences (OBV start, PSAR two-lows cap) are documented there.
 - `npm test` is a placeholder. There are no frontend unit tests or e2e tests yet.

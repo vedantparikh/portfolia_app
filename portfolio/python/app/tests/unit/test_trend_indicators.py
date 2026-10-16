@@ -14,10 +14,10 @@ import ta.trend as ta_trend
 
 from utils.indicators.trend_indicators import (
     TrendIndicators,
-    calculate_bollinger_bands,
     calculate_ema,
     calculate_sma,
 )
+from utils.indicators.volatility_indicators import calculate_bollinger_bands
 
 
 class TestTrendIndicators(unittest.TestCase):
@@ -154,9 +154,9 @@ class TestTrendIndicators(unittest.TestCase):
         ta_bbm = ta_bb.bollinger_mavg()
 
         # Convert our results to pandas for comparison
-        our_bbh = our_result["upper"].to_pandas()
-        our_bbl = our_result["lower"].to_pandas()
-        our_bbm = our_result["middle"].to_pandas()
+        our_bbh = our_result["bb_bbh"].to_pandas()
+        our_bbl = our_result["bb_bbl"].to_pandas()
+        our_bbm = our_result["bb_bbm"].to_pandas()
 
         # Compare upper band (allowing for small implementation differences)
         bbh_our = our_bbh.dropna()
@@ -255,9 +255,9 @@ class TestTrendIndicators(unittest.TestCase):
         # Test calculate_bollinger_bands function
         bb_result = calculate_bollinger_bands(close_series, window=20)
         self.assertIsInstance(bb_result, pl.DataFrame)
-        self.assertIn("upper", bb_result.columns)
-        self.assertIn("middle", bb_result.columns)
-        self.assertIn("lower", bb_result.columns)
+        self.assertIn("bb_bbh", bb_result.columns)
+        self.assertIn("bb_bbm", bb_result.columns)
+        self.assertIn("bb_bbl", bb_result.columns)
 
     def test_all_trend_indicators(self):
         """Test that all trend indicators can be calculated together."""

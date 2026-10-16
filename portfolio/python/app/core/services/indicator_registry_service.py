@@ -13,7 +13,7 @@ import pandas as pd
 import polars as pl
 from sqlalchemy.orm import Session
 
-from app.core.schemas.statistical_indicators import (
+from core.schemas.statistical_indicators import (
     IndicatorCalculationError,
     IndicatorCategory,
     IndicatorConfiguration,
@@ -23,6 +23,7 @@ from app.core.schemas.statistical_indicators import (
     IndicatorPerformanceMetrics,
     IndicatorValidationError,
 )
+from utils.indicators.base import BaseIndicator
 from utils.indicators.momentum_indicators import MomentumIndicators
 from utils.indicators.trend_indicators import TrendIndicators
 from utils.indicators.volatility_indicators import VolatilityIndicators
@@ -346,7 +347,7 @@ class IndicatorRegistryService:
         errors = []
 
         try:
-            result_df = pl.from_pandas(data)
+            result_df = BaseIndicator(pl.from_pandas(data)).df
         except Exception as e:
             err = self._create_calculation_error(
                 "DataFrame Conversion",
@@ -370,14 +371,15 @@ class IndicatorRegistryService:
                         method = getattr(indicator_instance, indicator_def.method_name)
                         temp_df = method(**config.parameters)
 
-                        rename_mapping = {
-                            col: f"{col}_{config.id}"
+                        outputs = [
+                            col
                             for col in indicator_def.output_columns
-                            if col in temp_df.columns and config.id
-                        }
-
+                            if col in temp_df.columns
+                        ]
                         result_df = result_df.with_columns(
-                            temp_df.rename(rename_mapping)
+                            temp_df.select(outputs).rename(
+                                {col: f"{col}_{config.id}" for col in outputs}
+                            )
                         )
 
                     except Exception as e:

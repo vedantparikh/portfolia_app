@@ -51,12 +51,10 @@ class AnalysisConfigurationService:
     def get_configuration(
         self, config_id: int, user_id: Optional[int] = None
     ) -> Optional[AnalysisConfiguration]:
-        """Get a specific analysis configuration."""
+        """A configuration the user owns, or a public one (anonymous callers: public only)."""
         query = self.db.query(AnalysisConfigurationModel).filter(
             AnalysisConfigurationModel.id == config_id
         )
-
-        # If user_id is provided, only return if it's the user's config or it's public
         if user_id:
             query = query.filter(
                 or_(
@@ -64,6 +62,8 @@ class AnalysisConfigurationService:
                     AnalysisConfigurationModel.is_public == True,
                 )
             )
+        else:
+            query = query.filter(AnalysisConfigurationModel.is_public == True)
 
         db_config = query.first()
         if not db_config:
