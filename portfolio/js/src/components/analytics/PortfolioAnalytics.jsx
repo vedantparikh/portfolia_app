@@ -9,8 +9,21 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { analyticsAPI, portfolioCalculationsAPI } from '../../services/api';
-import { formatCurrency, formatPercentage } from '../../utils/formatters.jsx';
+import { formatPercentage, formatRatio } from '../../utils/formatters.jsx';
 import LoadingSpinner from '../shared/LoadingSpinner';
+
+const pct = (value, showSign = true) =>
+    value === null || value === undefined ? 'N/A' : formatPercentage(value, { showSign });
+
+const MetricRow = ({ label, hint, value }) => (
+    <div className="flex items-center justify-between gap-4">
+        <div>
+            <p className="text-sm text-gray-300">{label}</p>
+            <p className="text-xs text-gray-500">{hint}</p>
+        </div>
+        <span className="text-sm font-medium text-gray-100 shrink-0">{value}</span>
+    </div>
+);
 
 const PortfolioAnalytics = ({ portfolioId }) => {
     const [analyticsData, setAnalyticsData] = useState(null);
@@ -180,15 +193,15 @@ const PortfolioAnalytics = ({ portfolioId }) => {
                                 <Shield className="w-5 h-5 mr-2 text-primary-400" />
                                 Risk Metrics
                             </h3>
-                            <div className="space-y-4">
+                            <div className="space-y-3">
                                 <div className="flex items-center justify-between">
                                     <span className="text-sm text-gray-400 flex items-center">
                                         Risk Level
                                         {riskMetrics.risk_assessment && (
-                                            <Info 
-                                                size={14} 
+                                            <Info
+                                                size={14}
                                                 className="ml-1.5 text-gray-500 hover:text-gray-300 cursor-pointer"
-                                                onClick={() => setShowRiskModal(true)} 
+                                                onClick={() => setShowRiskModal(true)}
                                             />
                                         )}
                                     </span>
@@ -198,55 +211,18 @@ const PortfolioAnalytics = ({ portfolioId }) => {
                                         {riskMetrics.risk_assessment?.level?.replace('_', ' ').toUpperCase() || 'N/A'}
                                     </span>
                                 </div>
-
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm text-gray-400">Portfolio Volatility</span>
-                                    <span className="text-sm font-medium text-gray-100">
-                                        {riskMetrics.metrics?.annualized_volatility_pct ? formatPercentage(parseFloat(riskMetrics.metrics.annualized_volatility_pct)) : 'N/A'}
-                                    </span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm text-gray-400">VaR (95%)</span>
-                                    <span className="text-sm font-medium text-gray-100">
-                                        {riskMetrics.metrics?.value_at_risk_95_pct ? formatCurrency(parseFloat(riskMetrics.metrics.value_at_risk_95_pct)) : 'N/A'}
-                                    </span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm text-gray-400">VaR (99%)</span>
-                                    <span className="text-sm font-medium text-gray-100">
-                                        {riskMetrics.metrics?.value_at_risk_99_pct ? formatCurrency(parseFloat(riskMetrics.metrics.value_at_risk_99_pct)) : 'N/A'}
-                                    </span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm text-gray-400">CVaR (95%)</span>
-                                    <span className="text-sm font-medium text-gray-100">
-                                        {riskMetrics.metrics?.cvar_95 ? formatPercentage(parseFloat(riskMetrics.metrics.cvar_95)) : 'N/A'}
-                                    </span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm text-gray-400">Max Drawdown</span>
-                                    <span className="text-sm font-medium text-gray-100">
-                                        {riskMetrics.metrics?.max_drawdown ? formatPercentage(parseFloat(riskMetrics.metrics.max_drawdown)) : 'N/A'}
-                                    </span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm text-gray-400">Sharpe Ratio</span>
-                                    <span className="text-sm font-medium text-gray-100">
-                                        {riskMetrics.metrics?.sharpe_ratio ? parseFloat(riskMetrics.metrics.sharpe_ratio).toFixed(2) : 'N/A'}
-                                    </span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm text-gray-400">Sortino Ratio</span>
-                                    <span className="text-sm font-medium text-gray-100">
-                                        {riskMetrics.metrics?.sortino_ratio ? parseFloat(riskMetrics.metrics.sortino_ratio).toFixed(2) : 'N/A'}
-                                    </span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm text-gray-400">Calmar Ratio</span>
-                                    <span className="text-sm font-medium text-gray-100">
-                                        {riskMetrics.metrics?.calmar_ratio ? parseFloat(riskMetrics.metrics.calmar_ratio).toFixed(2) : 'N/A'}
-                                    </span>
-                                </div>
+                                {[
+                                    ['Volatility', 'Annualized swing in value', pct(riskMetrics.metrics?.annualized_volatility_pct, false)],
+                                    ['VaR (95%)', '1-in-20 bad day loses at least', pct(riskMetrics.metrics?.value_at_risk_95_pct)],
+                                    ['VaR (99%)', '1-in-100 bad day loses at least', pct(riskMetrics.metrics?.value_at_risk_99_pct)],
+                                    ['CVaR (95%)', 'Average loss on those bad days', pct(riskMetrics.metrics?.cvar_95)],
+                                    ['Max Drawdown', 'Worst fall from a peak', pct(riskMetrics.metrics?.max_drawdown)],
+                                    ['Sharpe Ratio', 'Return per unit of risk', formatRatio(riskMetrics.metrics?.sharpe_ratio)],
+                                    ['Sortino Ratio', 'Return per unit of downside risk', formatRatio(riskMetrics.metrics?.sortino_ratio)],
+                                    ['Calmar Ratio', 'Return relative to max drawdown', formatRatio(riskMetrics.metrics?.calmar_ratio)],
+                                ].map(([label, hint, value]) => (
+                                    <MetricRow key={label} label={label} hint={hint} value={value} />
+                                ))}
                             </div>
                         </div>
                     ) : (
@@ -264,37 +240,16 @@ const PortfolioAnalytics = ({ portfolioId }) => {
                                 <Target className="w-5 h-5 mr-2 text-primary-400" />
                                 Advanced Metrics
                             </h3>
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm text-gray-400">Beta</span>
-                                    <span className="text-sm font-medium text-gray-100">
-                                        {advanceRiskMetrics.metrics?.beta ? parseFloat(advanceRiskMetrics.metrics.beta).toFixed(2) : 'N/A'}
-                                    </span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm text-gray-400">Alpha</span>
-                                    <span className="text-sm font-medium text-gray-100">
-                                        {advanceRiskMetrics.metrics?.jensens_alpha_pct ? formatPercentage(parseFloat(advanceRiskMetrics.metrics.jensens_alpha_pct)) : 'N/A'}
-                                    </span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm text-gray-400">Concentration Risk</span>
-                                    <span className="text-sm font-medium text-gray-100">
-                                        {advanceRiskMetrics.metrics?.concentration_risk_hhi ? formatPercentage(parseFloat(advanceRiskMetrics.metrics.concentration_risk_hhi)) : 'N/A'}
-                                    </span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm text-gray-400">Diversification Ratio</span>
-                                    <span className="text-sm font-medium text-gray-100">
-                                        {advanceRiskMetrics.metrics?.diversification_ratio ? parseFloat(advanceRiskMetrics.metrics.diversification_ratio).toFixed(2) : 'N/A'}
-                                    </span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm text-gray-400">Effective Assets</span>
-                                    <span className="text-sm font-medium text-gray-100">
-                                        {advanceRiskMetrics.metrics?.effective_number_of_assets ? parseFloat(advanceRiskMetrics.metrics.effective_number_of_assets).toFixed(1) : 'N/A'}
-                                    </span>
-                                </div>
+                            <div className="space-y-3">
+                                {[
+                                    ['Beta', 'Moves vs. the market (1 = in line)', formatRatio(advanceRiskMetrics.metrics?.beta)],
+                                    ['Alpha', 'Return beyond what beta explains', pct(advanceRiskMetrics.metrics?.jensens_alpha_pct)],
+                                    ['Concentration (HHI)', '0 = spread out, 1 = a single holding', formatRatio(advanceRiskMetrics.metrics?.concentration_risk_hhi)],
+                                    ['Diversification Ratio', 'Above 1 means holdings offset each other', formatRatio(advanceRiskMetrics.metrics?.diversification_ratio)],
+                                    ['Effective Holdings', 'Equal-weight positions this behaves like', formatRatio(advanceRiskMetrics.metrics?.effective_number_of_assets, 1)],
+                                ].map(([label, hint, value]) => (
+                                    <MetricRow key={label} label={label} hint={hint} value={value} />
+                                ))}
                             </div>
                         </div>
                     ) : (
