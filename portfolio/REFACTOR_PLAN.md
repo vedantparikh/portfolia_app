@@ -303,6 +303,8 @@ Open:
 | 2026-10-15 | `chore/deps-wave1` (#69) | — | Node 22, unused deps removed, FastAPI 0.143 / Starlette 1.8 / SQLAlchemy 2.1 / pydantic 2.14, test tooling |
 | 2026-10-15 | `chore/deps-wave2` (#70) | — | React 19, React Router 7, Vite 8, ESLint 9 flat config |
 | 2026-10-15 | `chore/deps-wave3` | — | Calculation snapshots (0.7 ✅), Sentry removed, lucide 1, charts 5, Router 8, Tailwind 4, passlib → bcrypt, Python 3.14, numpy 2, pandas 3, polars 2, yfinance 1.7 |
+| 2026-10-16 | `chore/ui-modernize` (#73) | — | Dashboard and portfolio widgets, StatCard, analytics units fixed |
+| 2026-10-16 | `fix/calculations` | — | `core/domain` engine (2.1 splits/FIFO, 2.5 valuation, 2.6 returns, 2.8 today's P&L ✅); performance series endpoint + chart; summary/holdings/overview/allocation/rebalancing/history on the engine; realistic demo seed. Open: 2.2 importer dividends/tax, 2.3 FX, 2.7 benchmark, 2.10 derived cache |
 
 ---
 

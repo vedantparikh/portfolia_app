@@ -35,8 +35,8 @@ Never run pytest inside the running `portfolio-api-1`, which is wired to the sta
 - **Router mounting** is in `main.py` (try/import blocks), with prefix `/api/v1/<feature>`. Watch route order: literal paths go before `/{id}`.
 - **Auth:** `Depends(get_current_active_user)` from `core/auth/dependencies.py`. Every resource must be scoped by `user_id`.
 - **Errors:** services raise domain errors (`OversellError` in `portfolio_service.py`, `ValueError`). Routers map them to `HTTPException`. Don't put `str(e)` in a response `detail`.
-- **Financial math:** the canonical position engine is `compute_position` (FIFO lots, fees) in `core/services/portfolio_service.py`. Returns, TWR and XIRR are in `portfolio_calculation_service.py`. Reuse these; never add another copy of a metric. Percent units are 15.0, not 0.15. The frontend displays backend values and never computes them.
-- **Market data** goes only through `core/services/market_data_service.py` (Redis-cached yfinance). Tests mock it and never hit the network.
+- **Financial math lives in `core/domain/`** (pure, no DB/network, golden-tested in `tests/unit/test_domain_engine.py`): `positions.py` (split-adjusted trades in today's share units, FIFO lots with fees, `day_change`), `valuation.py` (`daily_series`: value, FIFO cost basis, net invested and flows per trading day; a held asset without a price raises `MissingPriceError`, never valued at cost), `returns.py` (TWR, XIRR, risk, `period_summary`, the one `RISK_FREE_RATE`). Services only load data and call these: `PortfolioCalculationService.get_portfolio_series` (memoised per request) feeds the series/performance/risk endpoints; `PortfolioService._holding_rows` feeds holdings, summary, overview and allocation. Never add another copy of a metric. Percent units are 15.0, not 0.15. The frontend displays backend values and never computes them.
+- **Market data** goes only through `core/services/market_data_service.py` (Redis-cached yfinance). Valuation uses `get_daily_history` (closes split-adjusted but *not* dividend-adjusted, plus split and dividend events, cached 6h); dividends count only via DIVIDEND transactions. Tests mock it and never hit the network.
 - **Schema:** models plus Alembic. The only migration is currently a no-op and the app still calls `create_all`. Schema changes need a real migration, and must be expand/contract: additive in release N, destructive in N+1.
 - **Frontend:** pages and components are in `js/src/components/<feature>/` (with an `index.js` barrel). All HTTP calls go through the axios objects in `js/src/services/api.js`. Auth state is in `contexts/AuthContext.jsx`. Data fetching is `useEffect`+`useState`, errors are shown with `react-hot-toast`, and formatting goes through `utils/formatters.jsx` (no inline `toFixed` or `$`).
 - **Config:** `config.py` `settings`, fed by compose `env_file` (`python/app/.env.docker`, `js/.env.docker`). These are gitignored secrets: never print or commit them. When you add a key, also add it to the matching `.env.example`.
@@ -51,8 +51,10 @@ Never run pytest inside the running `portfolio-api-1`, which is wired to the sta
 - Ask before deleting Docker volumes, changing published ports or touching anything outside `portfolio/`.
 - When a session establishes a new non-obvious fact about the project, update this file or the plan's progress log.
 
-## Known state (2026-10-15)
-- Gate: lint clean (ruff + eslint, 0 warnings); 134 tests passed, 42 quarantined xfail, plus 8 quarantined uncollectable files.
+## Known state (2026-10-16)
+- Gate: lint clean (ruff + eslint, 0 warnings); 165 tests passed, 42 quarantined xfail, plus 8 quarantined uncollectable files.
+- Demo data (`scripts/seed_demo_application.py --reset`, run inside `portfolio-api-1` against `http://localhost:8000`) uses real Yahoo prices, splits and dividends over ~3 years; an independent replay matched the engine to the cent on every day.
+- Still on old code paths: benchmark comparison (C4, hidden in the UI), analytics `/summary` and `/users/dashboard` (snapshot metrics that count deposits as returns; the dashboard route 500s). Advance-risk beta uses `^GSPC` price index.
 - `tests/unit/test_calculation_snapshots.py` pins every computed number (engine, risk, indicators, analytics) against `snapshots/calculations.json`. If it fails, a number the app shows changed: fix the regression, or regenerate with `UPDATE_SNAPSHOTS=1` only for an intended change and explain it in the commit.
 - Tailwind 4: theme tokens live in `@theme` in `src/index.css` (there is no `tailwind.config.js`). Use slash opacity (`bg-black/50`), not the removed `bg-opacity-*`.
 - ESLint stays on 9 until `eslint-plugin-react` supports 10. ruff `target-version` stays py312 on purpose (see pyproject).
