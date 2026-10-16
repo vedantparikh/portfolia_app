@@ -3,6 +3,8 @@ import {
   BarChart3,
   Bell,
   Bookmark,
+  Clock,
+  Layers,
   Menu,
   Plus,
   RefreshCw,
@@ -23,7 +25,7 @@ import {
   formatVolume,
 } from "../../utils/formatters";
 import EmailVerificationPrompt from "../auth/EmailVerificationPrompt";
-import { LoadingSpinner, Sidebar } from "../shared";
+import { LoadingSpinner, Sidebar, StatCard } from "../shared";
 
 const CardLoader = ({ text = "Loading..." }) => (
   <div className="flex items-center justify-center py-8">
@@ -41,6 +43,8 @@ const Dashboard = () => {
     recentTransactions: [],
     topAssets: [],
   });
+  const [overview, setOverview] = useState(null);
+  const [marketStatus, setMarketStatus] = useState(null);
   const [loadingStates, setLoadingStates] = useState({
     portfolios: true,
     transactions: true,
@@ -73,7 +77,21 @@ const Dashboard = () => {
     });
 
     // Independent sections load in parallel so a slow one doesn't block the others
-    await Promise.all([loadTransactions(), loadTopAssets(), loadPortfolios()]);
+    await Promise.all([
+      loadTransactions(),
+      loadTopAssets(),
+      loadPortfolios(),
+      loadOverview(),
+    ]);
+  };
+
+  const loadOverview = async () => {
+    const [stats, status] = await Promise.allSettled([
+      portfolioAPI.getStatisticsOverview(),
+      marketAPI.getMarketStatus(),
+    ]);
+    setOverview(stats.status === "fulfilled" ? stats.value : null);
+    setMarketStatus(status.status === "fulfilled" ? status.value : null);
   };
 
   const loadTransactions = async () => {
@@ -255,6 +273,41 @@ const Dashboard = () => {
               <p className="text-gray-400">
                 Here&apos;s what&apos;s happening with your portfolio today.
               </p>
+            </div>
+
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+              <StatCard
+                label="Total Value"
+                icon={Wallet}
+                className="col-span-2 lg:col-span-1"
+                value={overview ? formatCurrency(overview.total_value) : "—"}
+                sub="Across all portfolios"
+              />
+              <StatCard
+                label="Portfolios"
+                icon={Layers}
+                tone="gray"
+                value={overview ? overview.active_portfolios : "—"}
+                sub={
+                  overview && overview.total_portfolios !== overview.active_portfolios
+                    ? `${overview.total_portfolios} including inactive`
+                    : "Active"
+                }
+              />
+              <StatCard
+                label="Holdings"
+                icon={BarChart3}
+                tone="gray"
+                value={overview ? overview.total_assets : "—"}
+                sub="Positions across portfolios"
+              />
+              <StatCard
+                label="US Market"
+                icon={Clock}
+                tone={marketStatus?.is_open ? "success" : "gray"}
+                value={marketStatus ? (marketStatus.is_open ? "Open" : "Closed") : "—"}
+                sub="Mon–Fri 9:30–16:00 ET"
+              />
             </div>
 
             <>

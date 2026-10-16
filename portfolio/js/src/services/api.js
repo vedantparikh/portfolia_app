@@ -289,6 +289,15 @@ export const portfolioAPI = {
   },
 
   /* 
+      GET STATISTICS OVERVIEW - Totals across all of the user's portfolios
+      Returns: { total_portfolios, active_portfolios, total_assets, total_value }
+    */
+  getStatisticsOverview: async () => {
+    const response = await api.get("/portfolios/statistics/overview");
+    return response.data;
+  },
+
+  /* 
       CREATE PORTFOLIO - Create a new investment portfolio
       Parameters: portfolioData (object with portfolio information)
       Returns: Server response with created portfolio data
@@ -419,6 +428,15 @@ export const portfolioAPI = {
   These methods handle all market data and asset-related API calls
 */
 export const marketAPI = {
+  /*
+  GET MARKET STATUS - Whether the US market is open right now
+  Returns: { is_open, current_time_et, timezone }
+*/
+  getMarketStatus: async () => {
+    const response = await api.get("/market-data/market-status");
+    return response.data;
+  },
+
   /*
   GET MAJOR INDICES - Get list of major indices
   Returns: Server response with array of major indices

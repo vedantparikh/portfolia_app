@@ -16,8 +16,9 @@ const StatCard = ({
     detailClassName = 'text-gray-300',
     icon: Icon,
     tone = 'primary',
+    className = '',
 }) => (
-    <div className="card p-5 min-w-0">
+    <div className={`card p-5 min-w-0 ${className}`}>
         <div className="flex items-start justify-between gap-3">
             <p className="text-sm text-gray-400">{label}</p>
             {Icon && (
@@ -26,7 +27,7 @@ const StatCard = ({
                 </div>
             )}
         </div>
-        <p title={valueTitle} className={`text-2xl font-semibold truncate ${valueClassName}`}>
+        <p title={valueTitle} className={`text-xl sm:text-2xl font-semibold truncate ${valueClassName}`}>
             {value}
         </p>
         {sub && (
