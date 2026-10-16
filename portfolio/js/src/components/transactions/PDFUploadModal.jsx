@@ -30,11 +30,14 @@ const PDFUploadModal = ({ isOpen, onClose, onParsedData }) => {
         }
     };
 
+    const formats = providers.find((p) => p.id === selectedProvider)?.supported_formats || ['pdf'];
+    const extensions = formats.map((f) => `.${f}`);
+
     const handleFileSelect = (file) => {
-        if (file && file.type === 'application/pdf') {
+        if (file && extensions.some((ext) => file.name.toLowerCase().endsWith(ext))) {
             setSelectedFile(file);
         } else {
-            toast.error('Please select a valid PDF file');
+            toast.error(`Please select a ${extensions.join(' or ')} file`);
         }
     };
 
@@ -66,7 +69,7 @@ const PDFUploadModal = ({ isOpen, onClose, onParsedData }) => {
 
     const handleParse = async () => {
         if (!selectedProvider || !selectedFile) {
-            toast.error('Please select a provider and upload a PDF file');
+            toast.error('Please select a provider and upload a file');
             return;
         }
 
@@ -79,10 +82,10 @@ const PDFUploadModal = ({ isOpen, onClose, onParsedData }) => {
             );
 
             onParsedData(response.parsed_data);
-            toast.success('PDF parsed successfully!');
+            toast.success('Statement parsed');
         } catch (error) {
-            console.error('Failed to parse PDF:', error);
-            toast.error('Failed to parse PDF. Please try again.');
+            console.error('Failed to parse statement:', error);
+            toast.error(error.response?.data?.detail || 'Failed to parse the file. Please try again.');
         } finally {
             setIsParsing(false);
         }
@@ -108,7 +111,7 @@ const PDFUploadModal = ({ isOpen, onClose, onParsedData }) => {
                         </div>
                         <div>
                             <h2 className="text-xl font-semibold text-gray-100">Upload Account Statement</h2>
-                            <p className="text-sm text-gray-400">Parse your PDF statement to import transactions</p>
+                            <p className="text-sm text-gray-400">Parse a statement or export to import transactions</p>
                         </div>
                     </div>
                     <button
@@ -136,7 +139,10 @@ const PDFUploadModal = ({ isOpen, onClose, onParsedData }) => {
                                 {providers.map((provider) => (
                                     <button
                                         key={provider.id}
-                                        onClick={() => setSelectedProvider(provider.id)}
+                                        onClick={() => {
+                                            setSelectedProvider(provider.id);
+                                            setSelectedFile(null);
+                                        }}
                                         className={`p-4 rounded-lg border-2 transition-all ${selectedProvider === provider.id
                                             ? 'border-primary-500 bg-primary-500/10'
                                             : 'border-gray-600 hover:border-gray-500'
@@ -160,7 +166,7 @@ const PDFUploadModal = ({ isOpen, onClose, onParsedData }) => {
                     {/* File Upload */}
                     <div>
                         <label className="block text-sm font-medium text-gray-300 mb-3">
-                            Upload PDF Statement
+                            Upload Statement File
                         </label>
                         <div
                             className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${dragActive
@@ -191,11 +197,11 @@ const PDFUploadModal = ({ isOpen, onClose, onParsedData }) => {
                             ) : (
                                 <div className="space-y-2">
                                     <Upload className="w-12 h-12 text-gray-400 mx-auto" />
-                                    <div className="text-gray-100 font-medium">Drop your PDF here</div>
+                                    <div className="text-gray-100 font-medium">Drop your file here</div>
                                     <div className="text-sm text-gray-400">or click to browse</div>
                                     <input
                                         type="file"
-                                        accept=".pdf"
+                                        accept={extensions.join(",")}
                                         onChange={handleFileInputChange}
                                         className="hidden"
                                         id="pdf-upload"
@@ -218,7 +224,7 @@ const PDFUploadModal = ({ isOpen, onClose, onParsedData }) => {
                             <div className="text-sm text-yellow-200">
                                 <div className="font-medium mb-1">Important Notes:</div>
                                 <ul className="space-y-1 text-yellow-300/80">
-                                    <li>• Only PDF files are supported</li>
+                                    <li>• Accepted for this provider: {extensions.join(', ')}</li>
                                     <li>• Make sure your statement is clear and readable</li>
                                     <li>• You&apos;ll be able to review and edit parsed data before importing</li>
                                     <li>• Some transactions may need manual verification</li>

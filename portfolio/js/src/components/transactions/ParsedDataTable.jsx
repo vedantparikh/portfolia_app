@@ -15,9 +15,26 @@ import assetCache from "../../services/assetCache";
 import { formatCurrency, formatDate } from "../../utils/formatters";
 import transactionTypes from "../../utils/transactionTypes";
 import { ClientSideAssetSearch } from "../shared";
+import InstrumentMappingPanel from "./InstrumentMappingPanel";
 
 const LOCAL_STORAGE_DRAFT_KEY = "parsedImportDraftTransactions";
 const LOCAL_STORAGE_SOURCE_KEY = "parsedImportSourceData";
+const LOCAL_STORAGE_MAPPING_KEY = "parsedImportInstrumentMapping";
+
+const defaultChoice = (resolution) =>
+  resolution.status === "unmatched"
+    ? { symbol: "", asset_id: null, excluded: true }
+    : {
+        symbol: resolution.suggested_symbol,
+        asset_id: resolution.asset_id ?? null,
+        excluded: false,
+      };
+
+const clearDraft = () => {
+  localStorage.removeItem(LOCAL_STORAGE_DRAFT_KEY);
+  localStorage.removeItem(LOCAL_STORAGE_SOURCE_KEY);
+  localStorage.removeItem(LOCAL_STORAGE_MAPPING_KEY);
+};
 
 const ParsedDataTable = ({
   parsedData,
@@ -35,7 +52,20 @@ const ParsedDataTable = ({
   const [selectedPortfolio, setSelectedPortfolio] = useState("");
   const [localAssets, setLocalAssets] = useState(allAssets);
   const [isSaving, setIsSaving] = useState(false);
+  const [mapping, setMapping] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(LOCAL_STORAGE_MAPPING_KEY)) || {};
+    } catch {
+      return {};
+    }
+  });
   const rowRefs = useRef({});
+
+  const instruments = useMemo(() => parsedData?.instruments ?? [], [parsedData]);
+  const instrumentIsins = useMemo(
+    () => new Set(instruments.map((i) => i.isin)),
+    [instruments]
+  );
 
   const assetSymbolMap = useMemo(() => {
     if (!localAssets || localAssets.length === 0) return new Map();
@@ -82,8 +112,7 @@ const ParsedDataTable = ({
       } catch (error) {
         console.error("Failed to load import draft:", error);
         // Clear corrupted data
-        localStorage.removeItem(LOCAL_STORAGE_DRAFT_KEY);
-        localStorage.removeItem(LOCAL_STORAGE_SOURCE_KEY);
+        clearDraft();
       }
       return false; // No draft found
     };
@@ -92,6 +121,7 @@ const ParsedDataTable = ({
       return; // Stop here if we loaded a draft
     }
 
+    setMapping({});
     if (!parsedData?.transactions) {
       setTransactions([]);
       return;
@@ -102,12 +132,14 @@ const ParsedDataTable = ({
       return {
         ...t,
         symbol: t.symbol?.trim() || "",
+        isin: instrumentIsins.has(t.symbol?.trim()) ? t.symbol.trim() : null,
         id: t.id || `initial_${index}`,
         asset_id: matchedAsset?.id || null,
         name: matchedAsset?.name || t.name || "",
         quantity: parseFloat(t.quantity) || 0,
         price: parseFloat(t.price) || 0,
         fees: parseFloat(t.fees) || 0,
+        taxes: parseFloat(t.taxes) || 0,
         total_amount: parseFloat(t.total_amount) || 0,
         notes: t.notes || "",
       };
@@ -120,7 +152,39 @@ const ParsedDataTable = ({
       JSON.stringify(processedTransactions)
     );
     localStorage.setItem(LOCAL_STORAGE_SOURCE_KEY, JSON.stringify(parsedData));
-  }, [parsedData, assetSymbolMap]);
+  }, [parsedData, assetSymbolMap, instrumentIsins]);
+
+  useEffect(() => {
+    localStorage.setItem(LOCAL_STORAGE_MAPPING_KEY, JSON.stringify(mapping));
+    const applyMapping = (t) => {
+      const choice = t.isin && !t.manual ? mapping[t.isin] : null;
+      if (!choice) return t;
+      const symbol = choice.symbol || t.isin;
+      const asset = choice.asset_id ? { id: choice.asset_id } : assetSymbolMap.get(symbol);
+      const next = {
+        ...t,
+        symbol,
+        asset_id: asset?.id ?? null,
+        excluded: Boolean(choice.excluded),
+      };
+      return next.symbol === t.symbol &&
+        next.asset_id === t.asset_id &&
+        next.excluded === t.excluded
+        ? t
+        : next;
+    };
+    setTransactions((prev) => {
+      const next = prev.map(applyMapping);
+      return next.some((t, i) => t !== prev[i]) ? next : prev;
+    });
+  }, [mapping, assetSymbolMap, transactions.length]);
+
+  const handleMappingChange = (isin, choice, resolution) => {
+    setMapping((prev) => {
+      const next = choice ?? (prev[isin] ? null : defaultChoice(resolution));
+      return next ? { ...prev, [isin]: next } : prev;
+    });
+  };
 
   // Reconciliation step to catch matches after initial load
   useEffect(() => {
@@ -172,7 +236,9 @@ const ParsedDataTable = ({
   }, []); // Empty dependency array means this runs only once on mount.
 
   const isTransactionIncomplete = (txn) => {
-    if (!txn.asset_id && txn.symbol) return true;
+    if (txn.excluded) return false;
+    const newTicker = txn.isin && txn.symbol && txn.symbol !== txn.isin;
+    if (!txn.asset_id && txn.symbol && !newTicker) return true;
     const type = txn.transaction_type?.toLowerCase();
     if (["buy", "sell"].includes(type)) {
       if (Number(txn.quantity) === 0 || Number(txn.price) === 0) return true;
@@ -337,6 +403,7 @@ const ParsedDataTable = ({
           symbol: symbolValue,
           asset_id: matchedAsset?.id || null,
           name: matchedAsset?.name || "",
+          manual: true,
         };
       }
       return t;
@@ -348,7 +415,14 @@ const ParsedDataTable = ({
   const handleSymbolSelect = (id, asset) => {
     const applyChanges = (t) =>
       t.id === id
-        ? { ...t, symbol: asset.symbol, name: asset.name, asset_id: asset.id }
+        ? {
+            ...t,
+            symbol: asset.symbol,
+            name: asset.name,
+            asset_id: asset.id,
+            manual: true,
+            excluded: false,
+          }
         : t;
     setTransactions((prev) => prev.map(applyChanges));
     setTransactionsToRender((prev) => prev.map(applyChanges));
@@ -360,7 +434,12 @@ const ParsedDataTable = ({
       return;
     }
 
-    const incompleteCount = transactions.filter(isTransactionIncomplete).length;
+    const toSave = transactions.filter((t) => !t.excluded);
+    if (toSave.length === 0) {
+      toast.error("Nothing to import: every row is left out.");
+      return;
+    }
+    const incompleteCount = toSave.filter(isTransactionIncomplete).length;
     if (incompleteCount > 0) {
       toast.error(
         `${incompleteCount} transaction(s) have incomplete data and require attention.`
@@ -369,10 +448,12 @@ const ParsedDataTable = ({
     }
 
     setIsSaving(true);
-    const payload = transactions.map((txn) => ({
+    const payload = toSave.map((txn) => ({
       transaction_date: txn.transaction_date,
       transaction_type: txn.transaction_type,
       asset_id: txn.asset_id,
+      symbol: txn.asset_id ? undefined : txn.symbol,
+      isin: txn.isin || undefined,
       quantity: txn.quantity,
       price: txn.price,
       fees: txn.fees,
@@ -409,8 +490,7 @@ const ParsedDataTable = ({
       // If the import was fully successful, clear the draft and close the modal.
       if (total_created > 0 && total_failed === 0) {
         console.log("Clearing import draft from local storage.");
-        localStorage.removeItem(LOCAL_STORAGE_DRAFT_KEY);
-        localStorage.removeItem(LOCAL_STORAGE_SOURCE_KEY);
+        clearDraft();
         onCancel(); // This closes the modal
       }
     } catch (error) {
@@ -446,8 +526,7 @@ const ParsedDataTable = ({
           </div>
           <button
             onClick={() => {
-              localStorage.removeItem(LOCAL_STORAGE_DRAFT_KEY);
-              localStorage.removeItem(LOCAL_STORAGE_SOURCE_KEY);
+              clearDraft();
               onCancel();
             }}
             className="text-gray-400 hover:text-gray-300 transition-colors"
@@ -525,6 +604,14 @@ const ParsedDataTable = ({
               </div>
             )}
 
+          {instruments.length > 0 && (
+            <InstrumentMappingPanel
+              instruments={instruments}
+              mapping={mapping}
+              onChange={handleMappingChange}
+            />
+          )}
+
           {parsedData.skipped?.length > 0 && (
             <details className="bg-gray-700/40 border border-gray-600 rounded-lg p-3 mb-4 text-sm">
               <summary className="cursor-pointer text-gray-300">
@@ -575,6 +662,7 @@ const ParsedDataTable = ({
                 if (isEditing) rowClassName += " bg-primary-900/40";
                 else rowClassName += " hover:bg-gray-700/50";
                 if (isIncomplete) rowClassName += " bg-danger-900/20";
+                if (txn.excluded) rowClassName += " opacity-40";
 
                 return (
                   <tr
@@ -679,6 +767,16 @@ const ParsedDataTable = ({
                               ))}
                           </div>
                         </div>
+                      ) : !txn.asset_id && txn.isin && txn.symbol !== txn.isin ? (
+                        <div
+                          className="flex items-center space-x-2"
+                          title={`New asset ${txn.symbol}, created on import (${txn.isin})`}
+                        >
+                          <span>{txn.symbol}</span>
+                          <span className="px-1.5 rounded text-xs bg-primary-500/20 text-primary-300">
+                            new
+                          </span>
+                        </div>
                       ) : !txn.asset_id && txn.symbol ? (
                         <div
                           className="flex items-center space-x-2 text-danger-400"
@@ -722,7 +820,10 @@ const ParsedDataTable = ({
                           className="input-field py-1 px-2 text-sm w-full"
                         />
                       ) : (
-                        `$${txn.price?.toLocaleString() || "0.00"}`
+                        formatCurrency(txn.price, {
+                          currency: txn.currency || "USD",
+                          maximumFractionDigits: 4,
+                        })
                       )}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-300">
@@ -737,7 +838,7 @@ const ParsedDataTable = ({
                           className="input-field py-1 px-2 text-sm w-full"
                         />
                       ) : (
-                        `$${txn.fees?.toLocaleString() || "0.00"}`
+                        formatCurrency(txn.fees, { currency: txn.currency || "USD" })
                       )}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-300 font-medium">
@@ -756,12 +857,9 @@ const ParsedDataTable = ({
                           className="input-field py-1 px-2 text-sm w-full"
                         />
                       ) : (
-                        `$${
-                          txn.total_amount?.toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          }) || "0.00"
-                        }`
+                        formatCurrency(txn.total_amount, {
+                          currency: txn.currency || "USD",
+                        })
                       )}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-300 max-w-xs truncate">
@@ -829,8 +927,7 @@ const ParsedDataTable = ({
           <div className="flex items-center space-x-3">
             <button
               onClick={() => {
-                localStorage.removeItem(LOCAL_STORAGE_DRAFT_KEY);
-                localStorage.removeItem(LOCAL_STORAGE_SOURCE_KEY);
+                clearDraft();
                 onCancel();
               }}
               className="px-4 py-2 text-gray-400 hover:text-gray-300 transition-colors"
@@ -852,7 +949,10 @@ const ParsedDataTable = ({
               ) : (
                 <>
                   <Save size={16} />
-                  <span>Import {transactions.length} Transactions</span>
+                  <span>
+                    Import {transactions.filter((t) => !t.excluded).length}{" "}
+                    Transactions
+                  </span>
                 </>
               )}
             </button>

@@ -2,7 +2,7 @@
 
 **Purpose:** turn a broker PDF into reviewed transactions and create them in one atomic batch.
 
-**State (2026-10-16):** 🟡 pytr CSV: parse, ISIN resolution and asset creation on import (backend; review-table UI pending). Trade Republic PDF: trades, savings plans and dividends import in EUR; cash rows are listed as skipped. Tested on synthetic statement text only; a real PDF check is open (the text-layout assumptions in `_extract_transactions` are unverified). Not exercised by the demo data.
+**State (2026-10-16):** ✅ pytr CSV: parse, ISIN → listing matching in the review table, assets created on import (checked in the browser with a real 939-row export; not yet saved into a real portfolio). Trade Republic PDF: trades, savings plans and dividends import in EUR; cash rows are listed as skipped. Tested on synthetic statement text only; a real PDF check is open (the text-layout assumptions in `_extract_transactions` are unverified). Not exercised by the demo data.
 
 ## Backend — `router.py` (prefix `/api/v1/account-statements`), `core/services/account_statement_service.py`, `core/services/parsers/`
 | Endpoint | Behaviour |
@@ -13,7 +13,10 @@
 | `POST /transactions/bulk-create` | Atomic: insert all rows, recalculate each affected asset, one commit. A row gives `asset_id`, or `symbol` (+ `isin`): the user's asset with that ticker is used or created from Yahoo info (once per ticker), and the ISIN is stored on the asset so the next import maps it directly. A given `total_amount` within 1 cent of qty × price ± fees/taxes is kept as the exact cash. Also used by the manual Bulk Entry modal |
 
 ## Frontend
-`PDFUploadModal` (provider + file) → `ParsedDataTable` (map symbols to assets, inline edits, draft saved in localStorage, choose portfolio) → bulk-create. `accountStatementsAPI` in `services/api.js`.
+`PDFUploadModal` (provider + file; accepted extensions come from the provider's `supported_formats`) → `ParsedDataTable` (map symbols to assets, inline edits, draft saved in localStorage, choose portfolio) → bulk-create. `accountStatementsAPI` in `services/api.js`.
+- When the parse result has `instruments`, `InstrumentMappingPanel` resolves them 10 at a time and shows one line per ISIN: status (Your asset / Matched / Check / No match) with match %, a listing dropdown (venue, currency, % of fills), a free ticker field and an Import checkbox. Defaults: matched/existing/uncertain are included with the suggestion; unmatched are left out.
+- A choice applies to every row of that ISIN (rows keep `isin`), unless a row's asset was picked by hand (`manual`). Left-out rows are dimmed and not sent; new tickers show a "new" badge and are sent as `symbol` + `isin`. The mapping is part of the localStorage draft (`parsedImportInstrumentMapping`).
+- Amounts are shown in each row's currency.
 
 ## Trade Republic rules (`parsers/trade_republic.py`, tests `tests/unit/test_trade_republic_import.py`)
 - Rows come from the `UMSATZÜBERSICHT` block; the second-to-last amount on a line is the transaction amount, the last is the balance. Dates like `06 März 2025` / `09 Sept. 2025` are matched by month prefix.

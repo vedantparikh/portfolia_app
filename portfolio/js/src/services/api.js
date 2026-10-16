@@ -1447,6 +1447,20 @@ export const accountStatementsAPI = {
     return response.data;
   },
 
+  /*
+      RESOLVE INSTRUMENTS - Suggest the Yahoo listing for up to 10 ISINs
+      Parameters: instruments (array of { isin, name, transaction_count, fills })
+      Returns: { results: [{ isin, status, suggested_symbol, asset_id, candidates }] }
+    */
+  resolveInstruments: async (instruments) => {
+    const response = await api.post(
+      "/account-statements/instruments/resolve",
+      { instruments },
+      { timeout: 180000 }
+    );
+    return response.data;
+  },
+
   /* 
       BULK CREATE TRANSACTIONS - Create multiple transactions from parsed data
       Parameters: portfolioId (number), transactions (array of transaction objects)

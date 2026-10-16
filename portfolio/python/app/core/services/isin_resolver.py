@@ -27,6 +27,16 @@ from core.schemas.account_statements import (
 from core.services.market_data_service import MarketDataService
 
 GERMAN_VENUES = (".F", ".SG", ".DE", ".MU", ".DU", ".HM", ".BE", ".HA")
+VENUE_NAMES = {
+    ".F": "Frankfurt",
+    ".SG": "Stuttgart",
+    ".DE": "XETRA",
+    ".MU": "Munich",
+    ".DU": "Düsseldorf",
+    ".HM": "Hamburg",
+    ".BE": "Berlin",
+    ".HA": "Hanover",
+}
 TOLERANCE = 0.01
 MATCHED = 0.9
 PLAUSIBLE = 0.5
@@ -182,7 +192,7 @@ class IsinResolver:
             primary = [s for s in found if "." not in s and "=" not in s][:2]
             variants = german_variants(p + GERMAN_VENUES[0] for p in primary)
         for symbol in variants[: MAX_CANDIDATES - len(found)]:
-            found.setdefault(symbol, None)
+            found.setdefault(symbol, VENUE_NAMES["." + symbol.rsplit(".", 1)[1]])
         return found
 
     async def _search(self, query: str) -> list:
