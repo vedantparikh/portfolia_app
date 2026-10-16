@@ -284,6 +284,10 @@ class PortfolioSummary(BaseModel):
     recent_transactions: int
     is_active: bool
     is_public: bool
+    missing_prices: List[str] = Field(
+        default_factory=list,
+        description="Open positions without a live price, left out of value and P&L",
+    )
 
 
 class PortfolioHolding(BaseModel):
@@ -312,6 +316,9 @@ class PortfolioStatistics(BaseModel):
     active_portfolios: int
     total_assets: int
     total_value: float
+    today_pnl: float = 0.0
+    today_pnl_percent: float = 0.0
+    missing_prices: List[str] = Field(default_factory=list)
 
 
 # Legacy class for backward compatibility - maps to PortfolioAsset

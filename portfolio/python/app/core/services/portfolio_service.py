@@ -1,7 +1,8 @@
 import asyncio
-from datetime import date
+from collections import defaultdict
+from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from sqlalchemy import and_, case, desc
 from sqlalchemy.orm import Session
@@ -11,9 +12,15 @@ from core.database.models import (
     Portfolio,
     PortfolioAsset,
     Transaction,
+    TransactionStatus,
     TransactionType,
 )
-from core.domain.positions import OversellError, compute_position, to_trades
+from core.domain.positions import (
+    OversellError,
+    compute_position,
+    day_change,
+    to_trades,
+)
 from core.schemas.portfolio import (
     PortfolioAssetCreate,
     PortfolioAssetUpdate,
@@ -29,6 +36,10 @@ from core.schemas.portfolio import (
 from core.services.market_data_service import MarketDataService
 
 __all__ = ["OversellError", "PortfolioService", "compute_position"]
+
+
+def _opt_float(value) -> Optional[float]:
+    return float(value) if value is not None else None
 
 
 class PortfolioService:
@@ -538,66 +549,20 @@ class PortfolioService:
                 is_public=portfolio.is_public,
             )
 
-        # 2. Collect symbols for batch API calls
-        symbols = [asset.symbol for pa, asset in portfolio_assets_with_info]
-
-        # 3. Concurrently fetch today's and yesterday's market data
-        current_prices, yesterdays_prices = await asyncio.gather(
-            self.market_data_service.get_current_prices(symbols),
-            self.market_data_service.get_yesterdays_closes(symbols),
-        )
-
-        # 4. Calculate totals with explicit variable names for clarity
-        total_cost_basis = Decimal("0")
-        total_market_value_current = Decimal("0")
-        total_market_value_previous = Decimal("0")
-
-        for portfolio_asset, asset_info in portfolio_assets_with_info:
-            total_cost_basis += portfolio_asset.cost_basis_total
-
-            current_price = current_prices.get(asset_info.symbol)
-            yesterday_price = yesterdays_prices.get(asset_info.symbol)
-
-            # --- Step 4a: Calculate the current market value ---
-            # Fallback is cost basis. This is for displaying total portfolio worth.
-            if current_price is not None:
-                total_market_value_current += current_price * portfolio_asset.quantity
-            else:
-                total_market_value_current += portfolio_asset.cost_basis_total
-
-            # --- Step 4b: Calculate the previous day's market value ---
-            # This has a 2-step fallback to prevent matching the cost basis.
-            if yesterday_price is not None:
-                # Best case: Use yesterday's actual closing price.
-                total_market_value_previous += (
-                    yesterday_price * portfolio_asset.quantity
-                )
-            elif current_price is not None:
-                # Fallback 1: Use today's price. This assumes 0 change for the day for this asset.
-                total_market_value_previous += current_price * portfolio_asset.quantity
-            else:
-                # Fallback 2 (Last Resort): Use cost basis. This only happens if BOTH prices are unavailable.
-                total_market_value_previous += portfolio_asset.cost_basis_total
-
-        # 5. Convert to float and calculate final P&L metrics
-        total_current_value_f = float(total_market_value_current)
-        total_cost_basis_f = float(total_cost_basis)
-        total_previous_day_value_f = float(total_market_value_previous)
-
-        # --- UNREALIZED P&L (Current Value vs. Cost) ---
-        total_unrealized_pnl = total_current_value_f - total_cost_basis_f
+        rows = [r for r in await self._holding_rows(portfolio_id) if r[0].quantity > 0]
+        priced = [r for r in rows if r[0].current_value is not None]
+        total_cost_basis_f = sum(h.cost_basis_total for h, _, _ in rows)
+        total_current_value_f = sum(h.current_value for h, _, _ in priced)
+        priced_cost = sum(h.cost_basis_total for h, _, _ in priced)
+        total_unrealized_pnl = total_current_value_f - priced_cost
         total_unrealized_pnl_percent = (
-            (total_unrealized_pnl / total_cost_basis_f * 100)
-            if total_cost_basis_f > 0
-            else 0
+            total_unrealized_pnl / priced_cost * 100 if priced_cost > 0 else 0
         )
-
-        # --- TODAY'S P&L (Current Value vs. Yesterday's Value) ---
-        total_today_pnl = total_current_value_f - total_previous_day_value_f
+        today_rows = [(pnl, base) for _, pnl, base in rows if base]
+        total_today_pnl = float(sum((pnl for pnl, _ in today_rows), Decimal(0)))
+        today_base = float(sum((base for _, base in today_rows), Decimal(0)))
         total_today_pnl_percent = (
-            (total_today_pnl / total_previous_day_value_f * 100)
-            if total_previous_day_value_f > 0
-            else 0
+            total_today_pnl / today_base * 100 if today_base > 0 else 0
         )
 
         # 6. Fetch recent transactions
@@ -612,7 +577,7 @@ class PortfolioService:
             portfolio_id=portfolio.id,
             portfolio_name=portfolio.name,
             currency=portfolio.currency,
-            total_assets=len(portfolio_assets_with_info),
+            total_assets=len(rows),
             total_cost_basis=round(total_cost_basis_f, 2),
             total_current_value=round(total_current_value_f, 2),
             today_pnl=round(total_today_pnl, 2),
@@ -623,96 +588,95 @@ class PortfolioService:
             recent_transactions=recent_transactions_count,
             is_active=portfolio.is_active,
             is_public=portfolio.is_public,
+            missing_prices=[h.symbol for h, _, _ in rows if h.current_value is None],
         )
 
-    async def get_portfolio_holdings(
-        self,
-        portfolio_id: int,
-    ) -> List[PortfolioHolding]:
-        """
-        Fetches all asset and market data concurrently for performance.
-
-        Does NOT check ownership: callers must verify the portfolio belongs to the
-        user first (see get_user_portfolio_holdings).
-        """
-        # 1. Fetch all assets and their info in ONE database query using a JOIN.
+    async def _holding_rows(
+        self, portfolio_id: int
+    ) -> List[Tuple[PortfolioHolding, Optional[Decimal], Optional[Decimal]]]:
+        """Each position with live value, P&L and (today's P&L, capital it was earned on)."""
         portfolio_assets_with_info = (
             self.db.query(PortfolioAsset, Asset)
             .join(Asset, PortfolioAsset.asset_id == Asset.id)
             .filter(PortfolioAsset.portfolio_id == portfolio_id)
             .all()
         )
-
         if not portfolio_assets_with_info:
             return []
 
-        # 2. Collect all symbols for batch API calls.
         symbols = [asset.symbol for pa, asset in portfolio_assets_with_info]
-
-        # 3. Concurrently fetch today's and yesterday's market data.
         current_prices, yesterdays_prices = await asyncio.gather(
             self.market_data_service.get_current_prices(symbols),
             self.market_data_service.get_yesterdays_closes(symbols),
         )
+        today = date.today()
+        session_start = today - timedelta(days=max(0, today.weekday() - 4))
+        trades_today = defaultdict(list)
+        for tx in (
+            self.db.query(Transaction)
+            .filter(
+                Transaction.portfolio_id == portfolio_id,
+                Transaction.transaction_date
+                >= datetime.combine(session_start, time.min, tzinfo=timezone.utc),
+                Transaction.status == TransactionStatus.COMPLETED,
+            )
+            .all()
+        ):
+            trades_today[tx.asset_id].append(tx)
 
-        # 4. Build the response with all required fields calculated in the loop.
-        holdings = []
+        rows = []
         for portfolio_asset, asset_info in portfolio_assets_with_info:
-            current_price = current_prices.get(asset_info.symbol)
-            yesterday_price = yesterdays_prices.get(asset_info.symbol)
+            quantity = portfolio_asset.quantity
+            price = current_prices.get(asset_info.symbol)
+            prev_close = yesterdays_prices.get(asset_info.symbol)
+            current_value = unrealized_pnl = unrealized_pnl_percent = None
+            today_pnl = today_base = None
 
-            # Initialize all calculated fields
-            current_value = None
-            unrealized_pnl = None
-            unrealized_pnl_percent = None
-            today_pnl = None
-            today_pnl_percent = None
-
-            if current_price is not None and portfolio_asset.quantity > 0:
-                current_value = current_price * portfolio_asset.quantity
+            if price is not None and quantity > 0:
+                current_value = price * quantity
                 unrealized_pnl = current_value - portfolio_asset.cost_basis_total
                 if portfolio_asset.cost_basis_total > 0:
                     unrealized_pnl_percent = (
-                        unrealized_pnl / portfolio_asset.cost_basis_total
-                    ) * 100
+                        unrealized_pnl / portfolio_asset.cost_basis_total * 100
+                    )
+                if prev_close:
+                    today_pnl, today_base = day_change(
+                        quantity,
+                        prev_close,
+                        price,
+                        trades_today.get(portfolio_asset.asset_id, []),
+                    )
 
-                # Calculate today's P&L for the individual holding
-                if yesterday_price:
-                    previous_day_value = yesterday_price * portfolio_asset.quantity
-                    today_pnl = current_value - previous_day_value
-                    if previous_day_value > 0:
-                        today_pnl_percent = (today_pnl / previous_day_value) * 100
-
-            # Create the holding object with all required fields
             holding = PortfolioHolding(
                 asset_id=portfolio_asset.asset_id,
                 symbol=asset_info.symbol,
                 name=asset_info.name,
-                quantity=float(portfolio_asset.quantity),
+                quantity=float(quantity),
                 cost_basis=float(portfolio_asset.cost_basis),
                 cost_basis_total=float(portfolio_asset.cost_basis_total),
-                current_value=float(current_value)
-                if current_value is not None
-                else None,
-                unrealized_pnl=float(unrealized_pnl)
-                if unrealized_pnl is not None
-                else None,
-                unrealized_pnl_percent=float(unrealized_pnl_percent)
-                if unrealized_pnl_percent is not None
-                else None,
+                current_value=_opt_float(current_value),
+                unrealized_pnl=_opt_float(unrealized_pnl),
+                unrealized_pnl_percent=_opt_float(unrealized_pnl_percent),
                 today_pnl=float(today_pnl) if today_pnl is not None else 0.0,
-                today_pnl_percent=float(today_pnl_percent)
-                if today_pnl_percent is not None
+                today_pnl_percent=float(today_pnl / today_base * 100)
+                if today_base
                 else 0.0,
                 realized_pnl=float(portfolio_asset.realized_pnl),
-                realized_pnl_percent=float(portfolio_asset.realized_pnl_percent)
-                if portfolio_asset.realized_pnl_percent is not None
-                else None,
+                realized_pnl_percent=_opt_float(portfolio_asset.realized_pnl_percent),
                 last_updated=portfolio_asset.last_updated,
             )
-            holdings.append(holding)
+            rows.append((holding, today_pnl, today_base))
+        return rows
 
-        return holdings
+    async def get_portfolio_holdings(
+        self,
+        portfolio_id: int,
+    ) -> List[PortfolioHolding]:
+        """
+        Live holdings of a portfolio. Does NOT check ownership: callers must verify
+        the portfolio belongs to the user first (see get_user_portfolio_holdings).
+        """
+        return [holding for holding, _, _ in await self._holding_rows(portfolio_id)]
 
     def search_portfolios(
         self, user_id: int, search_term: str = None, currency: str = None
@@ -730,30 +694,37 @@ class PortfolioService:
 
         return query.all()
 
-    def get_portfolio_statistics(self, user_id: int) -> PortfolioStatistics:
-        """Get overall portfolio statistics for a user."""
-        portfolios = self.get_user_portfolios(user_id)
-
-        total_portfolios = len(portfolios)
-        active_portfolios = len([p for p in portfolios if p.is_active])
+    async def get_portfolio_statistics(self, user_id: int) -> PortfolioStatistics:
+        """Totals across the user's active portfolios, from live holdings."""
+        portfolios = self.get_user_portfolios(user_id, include_inactive=True)
         total_assets = 0
-        total_value = 0
-
+        total_value = today_pnl = today_base = Decimal(0)
+        missing: List[str] = []
         for portfolio in portfolios:
-            if portfolio.is_active:
-                assets = self.get_portfolio_assets(portfolio.id, user_id)
-                total_assets += len(assets)
-                for asset in assets:
-                    if asset.current_value:
-                        total_value += float(asset.current_value)
-                    else:
-                        total_value += float(asset.cost_basis_total)
+            if not portfolio.is_active:
+                continue
+            for holding, pnl, base in await self._holding_rows(portfolio.id):
+                if holding.quantity <= 0:
+                    continue
+                total_assets += 1
+                if holding.current_value is None:
+                    missing.append(holding.symbol)
+                    continue
+                total_value += Decimal(str(holding.current_value))
+                if base:
+                    today_pnl += pnl
+                    today_base += base
 
         return PortfolioStatistics(
-            total_portfolios=total_portfolios,
-            active_portfolios=active_portfolios,
+            total_portfolios=len(portfolios),
+            active_portfolios=len([p for p in portfolios if p.is_active]),
             total_assets=total_assets,
-            total_value=round(total_value, 2),
+            total_value=round(float(total_value), 2),
+            today_pnl=round(float(today_pnl), 2),
+            today_pnl_percent=round(float(today_pnl / today_base * 100), 2)
+            if today_base
+            else 0.0,
+            missing_prices=sorted(set(missing)),
         )
 
     async def refresh_portfolio_values(self, portfolio_id: int, user_id: int) -> bool:

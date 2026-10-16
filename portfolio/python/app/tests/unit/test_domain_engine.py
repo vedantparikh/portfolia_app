@@ -14,6 +14,7 @@ from core.database.models import Transaction, TransactionStatus, TransactionType
 from core.domain.positions import (
     OversellError,
     compute_position,
+    day_change,
     split_factor,
     to_trades,
 )
@@ -226,3 +227,22 @@ class TestRiskAndXirr:
 
     def test_xirr_needs_money_in_and_out(self):
         assert xirr_pct([(date(2024, 1, 1), -1000)]) is None
+
+
+class TestDayChange:
+    def test_held_all_day(self):
+        assert day_change(Decimal(10), Decimal(100), Decimal(105), []) == (50, 1000)
+
+    def test_buy_today_counts_from_its_price_not_yesterdays_close(self):
+        # 10 held from 100 -> 105 (+50); 5 bought at 104 -> 105 (+5)
+        pnl, base = day_change(
+            Decimal(15), Decimal(100), Decimal(105), [tx(BUY, 5, 104, THU)]
+        )
+        assert (pnl, base) == (55, 1000 + 520)
+
+    def test_sell_today_realises_against_the_previous_close(self):
+        # 10 held, 4 sold at 102 (+8), 6 left at 105 (+30)
+        pnl, base = day_change(
+            Decimal(6), Decimal(100), Decimal(105), [tx(SELL, 4, 102, THU)]
+        )
+        assert (pnl, base) == (38, 1000)

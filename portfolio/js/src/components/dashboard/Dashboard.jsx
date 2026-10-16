@@ -322,7 +322,11 @@ const Dashboard = () => {
                 icon={Wallet}
                 className="col-span-2 lg:col-span-1"
                 value={overview ? formatCurrency(overview.total_value) : "—"}
-                sub="Across all portfolios"
+                sub={
+                  overview
+                    ? `${formatCurrency(overview.today_pnl, { signDisplay: "exceptZero" })} (${formatPercentage(overview.today_pnl_percent)}) today`
+                    : "Across all portfolios"
+                }
               />
               <StatCard
                 label="Portfolios"

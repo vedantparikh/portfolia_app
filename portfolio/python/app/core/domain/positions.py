@@ -154,3 +154,35 @@ def compute_position(transactions: Iterable) -> Dict[str, Decimal]:
         "realized_pnl": realized_pnl,
         "cost_of_sold": cost_of_sold,
     }
+
+
+def day_change(
+    quantity_now: Decimal,
+    prev_close: Decimal,
+    price_now: Decimal,
+    trades_today: Iterable,
+) -> Tuple[Decimal, Decimal]:
+    """
+    Today's P&L of one position and the capital it was earned on.
+
+    Shares held all day move from the previous close, shares bought today from
+    their purchase price, and shares sold today realise their price against
+    the previous close. The base is the start-of-day value plus cash invested
+    today, so a purchase is not counted as a gain.
+    """
+    bought = sold = Decimal(0)
+    pnl = Decimal(0)
+    invested_today = Decimal(0)
+    for trade in trades_today:
+        quantity = Decimal(trade.quantity)
+        if trade.transaction_type == TransactionType.BUY:
+            bought += quantity
+            pnl += quantity * (price_now - Decimal(trade.price))
+            invested_today += quantity * Decimal(trade.price)
+        elif trade.transaction_type == TransactionType.SELL:
+            sold += quantity
+            pnl += quantity * (Decimal(trade.price) - prev_close)
+    held_all_day = quantity_now - bought
+    pnl += held_all_day * (price_now - prev_close)
+    base = (held_all_day + sold) * prev_close + invested_today
+    return pnl, base
