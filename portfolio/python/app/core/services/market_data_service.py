@@ -28,6 +28,7 @@ class MarketDataService:
         self.info_cache_ttl: int = 15 * 60  # 15 minutes for general info
         self.price_cache_ttl: int = 60  # 1 minute for current prices
         self.close_cache_ttl: int = 12 * 60 * 60  # 12 hours for previous day's close
+        self.daily_history_cache_ttl: int = 6 * 60 * 60
 
     def _get_info_cache_key(self, symbol: str) -> str:
         """Generates a consistent cache key for ticker info."""
@@ -284,6 +285,59 @@ class MarketDataService:
                 else:
                     logger.error("All attempts failed for %s", symbol)
                     return pd.DataFrame()
+
+    async def get_daily_history(self, symbol: str) -> Optional[Dict[str, pd.Series]]:
+        """
+        Daily history for valuation: `close` is split-adjusted but not
+        dividend-adjusted (dividends come from DIVIDEND transactions), plus the
+        `splits` (ratio) and `dividends` (per share) on their ex-dates.
+        Series are indexed by naive dates. Cached in Redis; None if unavailable.
+        """
+        key = f"yfinance:daily:{symbol.upper()}"
+        cached = await asyncio.to_thread(self.redis_client.get, key)
+        if not cached:
+
+            def fetch() -> Optional[Dict[str, Dict[str, float]]]:
+                data = yf.Ticker(symbol).history(
+                    period="max", interval="1d", auto_adjust=False, actions=True
+                )
+                if not isinstance(data, pd.DataFrame) or data.empty:
+                    return None
+                days = data.index.tz_localize(None).strftime("%Y-%m-%d")
+                out = {}
+                for column, name in (
+                    ("Close", "close"),
+                    ("Stock Splits", "splits"),
+                    ("Dividends", "dividends"),
+                ):
+                    values = data[column] if column in data else pd.Series(dtype=float)
+                    out[name] = {
+                        day: float(v)
+                        for day, v in zip(days, values)
+                        if pd.notna(v) and (name == "close" or v > 0)
+                    }
+                return out
+
+            try:
+                cached = await asyncio.to_thread(fetch)
+            except Exception as e:
+                logger.error("Daily history fetch failed for %s: %s", symbol, e)
+                return None
+            if not cached or not cached["close"]:
+                return None
+            await asyncio.to_thread(
+                self.redis_client.set,
+                key,
+                cached,
+                ex_seconds=self.daily_history_cache_ttl,
+            )
+
+        return {
+            name: pd.Series(
+                list(values.values()), index=pd.to_datetime(list(values)), dtype=float
+            )
+            for name, values in cached.items()
+        }
 
     async def search_symbols(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:  # noqa: ARG002
         """

@@ -215,10 +215,18 @@ class TestPortfolioHistory:
             index=[d.date() for d in pd.bdate_range("2025-01-01", "2025-01-09")],
         )
 
-        async def fake_price_data(symbol):
-            return prices
+        async def fake_daily_history(symbol):
+            return {
+                "close": pd.Series(
+                    prices["Close"].values, index=pd.to_datetime(prices.index)
+                ),
+                "splits": pd.Series(dtype=float),
+                "dividends": pd.Series(dtype=float),
+            }
 
-        monkeypatch.setattr(calc, "get_price_data", fake_price_data)
+        monkeypatch.setattr(
+            calc.market_data_service, "get_daily_history", fake_daily_history
+        )
         return calc
 
     @pytest.mark.asyncio

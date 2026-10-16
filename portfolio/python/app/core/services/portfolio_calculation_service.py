@@ -11,7 +11,8 @@ Supports period-based calculations and benchmark comparisons.
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from decimal import Decimal
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd  # type: ignore
@@ -26,7 +27,9 @@ from core.database.models import (
     TransactionStatus,
     TransactionType,
 )
-from core.domain.returns import compute_daily_returns
+from core.domain.positions import Split, to_trades
+from core.domain.returns import compute_daily_returns, split_period
+from core.domain.valuation import daily_series
 from core.services.market_data_service import MarketDataService
 from core.services.utils import CashFlow, PeriodType
 
@@ -1107,6 +1110,37 @@ class PortfolioCalculationService:
         drawdown = equity_curve / equity_curve.cummax() - 1
         return float(drawdown.min() * 100)
 
+    async def get_market_history(
+        self, asset_ids
+    ) -> Tuple[Dict[int, pd.Series], Dict[int, List[Split]], Dict[int, str]]:
+        """Split-adjusted closes, split events and symbols for the given assets."""
+        closes: Dict[int, pd.Series] = {}
+        splits: Dict[int, List[Split]] = {}
+        symbols: Dict[int, str] = {}
+        for asset_id in asset_ids:
+            asset = self.db.query(Asset).filter(Asset.id == asset_id).first()
+            if not asset:
+                raise ValueError(f"Asset {asset_id} not found")
+            symbols[asset_id] = asset.symbol
+            history = await self.market_data_service.get_daily_history(asset.symbol)
+            if history is None:
+                continue
+            closes[asset_id] = history["close"]
+            splits[asset_id] = [
+                (day.date(), Decimal(str(ratio)))
+                for day, ratio in history["splits"].items()
+            ]
+        return closes, splits, symbols
+
+    async def get_portfolio_series(
+        self, all_transactions: List[Transaction], end_date: datetime
+    ) -> pd.DataFrame:
+        """The canonical daily series from inception (see core.domain.valuation)."""
+        asset_ids = sorted({t.asset_id for t in all_transactions})
+        closes, splits, symbols = await self.get_market_history(asset_ids)
+        trades = to_trades(all_transactions, splits)
+        return daily_series(trades, closes, end_date.date(), symbols)
+
     async def get_portfolio_history(
         self,
         all_transactions: List[Transaction],
@@ -1114,7 +1148,7 @@ class PortfolioCalculationService:
         end_date: datetime,
     ) -> Optional[pd.DataFrame]:
         """
-        Daily (business-day) series of portfolio value and cash flows.
+        Daily (trading-day) series of portfolio value and cash flows for a period.
 
         Columns:
             value         market value at the day's close
@@ -1122,68 +1156,18 @@ class PortfolioCalculationService:
             outflow       cash returned that day (net sale proceeds, dividends)
             net_cash_flow inflow - outflow
             daily_return  cash-flow-adjusted return, see compute_daily_returns
-
-        Weekend transactions are attributed to the next business day, so weekends
-        don't add artificial zero-return days to the series.
         """
         try:
             if not all_transactions:
                 return None
-
-            first_date = min(t.transaction_date for t in all_transactions)
-            period_start = start_date or first_date
-
-            if period_start > end_date:
-                return None
-
-            days = pd.bdate_range(start=period_start.date(), end=end_date.date())
-            if days.empty:
-                return None
-
-            transactions = sorted(all_transactions, key=lambda t: t.transaction_date)
-            asset_map: Dict[int, Optional[Asset]] = {}
-
-            # Holdings from everything strictly before the first day of the series
-            first_day = days[0].date()
-            opening = [t for t in transactions if t.transaction_date.date() < first_day]
-            pending = [
-                t for t in transactions if t.transaction_date.date() >= first_day
-            ]
-            holdings = await self._get_holdings_at_date(opening, None)
-            opening_value = await self._value_holdings(
-                holdings, (days[0] - pd.offsets.BDay(1)).date(), asset_map
+            series = await self.get_portfolio_series(all_transactions, end_date)
+            window, opening_value, _ = split_period(
+                series, start_date.date() if start_date else None
             )
-
-            history = []
-            next_tx = 0
-            for day in days:
-                inflow = outflow = 0.0
-                # Apply every transaction up to and including this day
-                while (
-                    next_tx < len(pending)
-                    and pending[next_tx].transaction_date.date() <= day.date()
-                ):
-                    transaction = pending[next_tx]
-                    next_tx += 1
-                    self._apply_to_holdings(holdings, transaction)
-                    cash_flow = self._investor_cash_flow(transaction)
-                    if cash_flow is not None and cash_flow < 0:
-                        inflow += -cash_flow
-                    elif cash_flow is not None:
-                        outflow += cash_flow
-
-                value = await self._value_holdings(holdings, day.date(), asset_map)
-                history.append(
-                    {
-                        "date": day,
-                        "value": value,
-                        "inflow": inflow,
-                        "outflow": outflow,
-                        "net_cash_flow": inflow - outflow,
-                    }
-                )
-
-            df = pd.DataFrame(history).set_index("date")
+            if window.empty:
+                return None
+            df = window[["value", "inflow", "outflow"]].copy()
+            df["net_cash_flow"] = df["inflow"] - df["outflow"]
             df["daily_return"] = compute_daily_returns(df, opening_value)
             return df
 

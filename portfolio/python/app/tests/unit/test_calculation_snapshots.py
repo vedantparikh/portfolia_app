@@ -187,10 +187,17 @@ async def _combined_history(calc, frames, txs, end, monkeypatch):
 
     calc.db = _Db()
 
-    async def price_data(symbol):
-        return by_symbol[symbol]
+    async def daily_history(symbol):
+        frame = by_symbol[symbol]
+        return {
+            "close": pd.Series(
+                frame["Close"].values, index=pd.to_datetime(frame.index)
+            ),
+            "splits": pd.Series(dtype=float),
+            "dividends": pd.Series(dtype=float),
+        }
 
-    monkeypatch.setattr(calc, "get_price_data", price_data)
+    monkeypatch.setattr(calc.market_data_service, "get_daily_history", daily_history)
     return await calc.get_portfolio_history(txs, None, end)
 
 
