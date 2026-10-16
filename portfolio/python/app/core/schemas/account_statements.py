@@ -53,6 +53,19 @@ class ParsedTransaction(BaseModel):
     quantity: Decimal = Field(..., description="Transaction quantity")
     price: Optional[Decimal] = Field(None, description="Price per share")
     fees: Decimal = Field(default=Decimal("0"), description="Transaction fees")
+    taxes: Decimal = Field(default=Decimal("0"), description="Taxes withheld")
+    currency: Optional[str] = Field(None, description="ISO currency of the amounts")
+
+
+class SkippedRow(BaseModel):
+    """A statement row that is read but not imported."""
+
+    transaction_date: str = Field(..., description="Date in YYYY-MM-DD format")
+    kind: str = Field(..., description="Row type as printed on the statement")
+    description: str = Field(..., description="Row description")
+    amount: Decimal = Field(..., description="Amount as printed")
+    currency: Optional[str] = Field(None, description="ISO currency of the amount")
+    reason: str = Field(..., description="Why the row is not imported")
 
 
 class ParsingMetadata(BaseModel):
@@ -61,6 +74,7 @@ class ParsingMetadata(BaseModel):
     total_transactions: int = Field(
         ..., description="Total number of transactions parsed"
     )
+    total_skipped: int = Field(default=0, description="Rows read but not imported")
     warnings: List[str] = Field(default_factory=list, description="Parsing warnings")
 
 
@@ -71,6 +85,9 @@ class ParsedData(BaseModel):
     statement_period: StatementPeriod = Field(..., description="Statement period")
     transactions: List[ParsedTransaction] = Field(
         ..., description="Parsed transactions"
+    )
+    skipped: List[SkippedRow] = Field(
+        default_factory=list, description="Rows read but not imported"
     )
     metadata: ParsingMetadata = Field(..., description="Parsing metadata")
 
@@ -99,6 +116,10 @@ class BulkTransactionItem(BaseModel):
     price: Decimal = Field(..., description="Price per share")
     total_amount: Decimal = Field(..., description="Total transaction amount")
     fees: Decimal = Field(default=Decimal("0"), description="Transaction fees")
+    taxes: Decimal = Field(default=Decimal("0"), description="Taxes withheld")
+    currency: Optional[str] = Field(
+        None, description="ISO currency; defaults to the portfolio currency"
+    )
     notes: Optional[str] = Field(None, description="Transaction notes")
 
 
@@ -123,7 +144,9 @@ class CreatedTransaction(BaseModel):
     quantity: Decimal = Field(..., description="Transaction quantity")
     price: Decimal = Field(..., description="Price per share")
     fees: Decimal = Field(..., description="Transaction fees")
+    taxes: Decimal = Field(..., description="Taxes withheld")
     total_amount: Decimal = Field(..., description="Total transaction amount")
+    currency: str = Field(..., description="ISO currency")
     portfolio_id: int = Field(..., description="Portfolio ID")
     notes: Optional[str] = Field(None, description="Transaction notes")
     created_at: datetime = Field(..., description="Creation timestamp")

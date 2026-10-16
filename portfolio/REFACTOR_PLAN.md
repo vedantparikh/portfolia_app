@@ -186,7 +186,7 @@ Golden tests are written first for every item.
 | # | Work | Fixes |
 |---|---|---|
 | 🟡 2.1 | `domain/positions.py`: FIFO with fees, SPLIT, TRANSFER_IN/OUT and DIVIDEND (with a given amount and tax). Add schema validation: qty > 0 and price ≥ 0 per type. **Now:** `core/domain/positions.py`: completed-only, FIFO with fees, splits applied automatically from market data (trades in today's share units). TRANSFER_IN/OUT and per-type validation open. | C1, C2, M2, M3 |
-| ⏳ 2.2 | Importer fix: the Trade Republic dividend amount and withholding tax are kept, and the currency is set. Run a data migration that recomputes affected rows. **Now:** Confirmed: TR dividends stored as 0, tax rows dropped, fee folded into price, EUR stored as USD, unknown types (interest/deposit/withdrawal/tax) break the parse. | C2 |
+| 🟡 2.2 | Importer fix: the Trade Republic dividend amount and withholding tax are kept, and the currency is set. Run a data migration that recomputes affected rows. **Now:** `fix/tr-import`: dividends keep their cash amount, EUR currency and taxes stored, €1 trade fee split out (€0 savings plans), cash rows skipped with a reason, March/June dates and the confidence crash fixed. No data migration needed (no real data). Open: check against a real statement. | C2 |
 | ⏳ 2.3 | `modules/fx`: historical FX provider and cache. Add `asset.quote_currency`, and normalise GBp. | C3 |
 | 🟡 2.4 | `MarketDataProvider` interface with one Yahoo implementation: unadjusted closes and corporate-action feed, Redis pipeline cache, concurrency limit and backoff. Delete the 4 duplicate search paths so a single `/assets/search` remains. **Now:** `get_daily_history` (split-adjusted, not dividend-adjusted closes + splits/dividends, Redis 6h) is the valuation source. Provider interface, backoff and single search open. | C1, H5, perf |
 | 🟡 2.5 | `domain/valuation.py`: daily holdings × unadjusted price × FX on a trading calendar, with explicit stale/missing flags. **Now:** `core/domain/valuation.py` `daily_series` on the trading-day calendar; missing price raises instead of cost fallback. FX and stale-after-N-days flags open. | H4, H6, M5 |
@@ -309,6 +309,7 @@ Open:
 | 2026-10-16 | `fix/calculations` | — | `core/domain` engine (2.1 splits/FIFO, 2.5 valuation, 2.6 returns, 2.8 today's P&L ✅); performance series endpoint + chart; summary/holdings/overview/allocation/rebalancing/history on the engine; realistic demo seed. Open: 2.2 importer dividends/tax, 2.3 FX, 2.7 benchmark, 2.10 derived cache |
 | 2026-10-16 | `fix/shadowed-routes-500s` | — | Six shadowed literal routes reachable (and the 4 bugs behind them fixed); `/overview` and `/users/dashboard` 500s fixed; asset search scoped to the user; `test_route_order.py` |
 | 2026-10-16 | `chore/alembic-baseline` | — | 1.6: Alembic baseline from the models, `create_all` and the startup re-init removed, migration drift/round-trip check in the gate |
+| 2026-10-16 | `fix/tr-import` | — | 2.2: Trade Republic import keeps dividends, EUR, fees and taxes; cash rows skipped with a reason; date and confidence crashes fixed; import toasts/refresh fixed |
 
 
 ## 6b. Findings and to-do (2026-10-16)
@@ -327,7 +328,7 @@ Open:
 ### New findings (not in the original audit)
 | Area | Finding | Where |
 |---|---|---|
-| Import | The Trade Republic parser emits `interest`, `deposit`, `withdrawal` and `tax` types that `TransactionType` lacks, so a full statement likely fails to parse. Also: dividends stored as 0, fees folded into price, EUR stored as USD. The bulk-import UI checks `total_succeeded`, but the API returns `total_created` | `parsers/trade_republic.py`, `account_statement_service.py`, `Transactions.jsx` |
+| Import | 🟡 Fixed in `fix/tr-import` except the real-PDF check. Was: the Trade Republic parser emits `interest`, `deposit`, `withdrawal` and `tax` types that `TransactionType` lacks, so a full statement likely fails to parse. Also: dividends stored as 0, fees folded into price, EUR stored as USD. The bulk-import UI checks `total_succeeded`, but the API returns `total_created` | `parsers/trade_republic.py`, `account_statement_service.py`, `Transactions.jsx` |
 | Routing | ✅ Fixed: shadowed literal routes returned 422. Behind them were 4 more bugs (portfolio search response type, popular-assets schema, watchlist stats fields, JSON `tags.any`), now fixed | `GET /portfolios/search`, `/assets/search/popular` and `/suggestions`, `/watchlists/public` and `/stats`, `/statistical-indicators/configurations/search` |
 | Broken endpoints | ✅ Fixed: `/overview` 500 (a tuple used as a float; now reads the engine) and `/analytics/users/dashboard` 500 (called a missing method) | calculations and analytics routers |
 | Security | ✅ Fixed: `asset_search_service` was not scoped by user: `/assets/search/{id}` returned any user's asset, and popular/suggestions/breakdowns aggregated all users | `asset_search_service.py` |

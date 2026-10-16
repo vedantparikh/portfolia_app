@@ -1,4 +1,5 @@
 import base64
+import logging
 from datetime import datetime, timezone
 from typing import List, Tuple
 
@@ -16,6 +17,8 @@ from core.schemas.account_statements import (
 from core.services.parsers.portfolia import PortfoliaParser
 from core.services.parsers.trade_republic import TradeRepublicParser
 from core.services.portfolio_service import PortfolioService
+
+logger = logging.getLogger(__name__)
 
 
 class AccountStatementService:
@@ -91,29 +94,33 @@ class AccountStatementService:
         # 2. Prepare all transaction models and add them to the session
         for i, item in enumerate(transactions_data):
             try:
-                if item.transaction_type in [
-                    "deposit",
-                    "withdrawal",
-                    "interest",
-                    "tax",
-                ]:
-                    continue
-
                 if item.asset_id not in owned_asset_ids:
                     raise ValueError(f"Asset {item.asset_id} not found")
 
                 transaction_type = TransactionType(
                     getattr(item.transaction_type, "value", item.transaction_type)
                 )
+                if transaction_type == TransactionType.DIVIDEND:
+                    if item.total_amount <= 0:
+                        raise ValueError("Dividend amount must be positive")
+                    total_amount = item.total_amount
+                else:
+                    total_amount = Transaction.compute_total_amount(
+                        transaction_type,
+                        item.quantity,
+                        item.price,
+                        item.fees,
+                        item.taxes,
+                    )
                 transaction = Transaction(
                     portfolio_id=portfolio_id,
                     asset_id=item.asset_id,
                     transaction_type=transaction_type,
                     quantity=item.quantity,
                     price=item.price,
-                    total_amount=Transaction.compute_total_amount(
-                        transaction_type, item.quantity, item.price, item.fees
-                    ),
+                    total_amount=total_amount,
+                    currency=(item.currency or portfolio.currency).upper(),
+                    taxes=item.taxes,
                     transaction_date=datetime.strptime(
                         item.transaction_date, "%Y-%m-%d"
                     ).replace(tzinfo=timezone.utc),
@@ -124,8 +131,11 @@ class AccountStatementService:
                 affected_asset_ids.add(item.asset_id)
                 created_transaction_models.append(transaction)
 
-            except Exception as e:
-                errors.append(f"Data item {i + 1} ('{item.notes}'): {str(e)}")
+            except ValueError as e:
+                errors.append(f"Row {i + 1} ('{item.notes}'): {e}")
+            except Exception:
+                logger.exception("Bulk import row %s failed", i + 1)
+                errors.append(f"Row {i + 1} ('{item.notes}'): could not be created")
 
         # 3. Insert all valid transactions and recalculate each affected asset once,
         #    in a single database transaction so holdings never drift from history
@@ -137,12 +147,13 @@ class AccountStatementService:
                         portfolio_id, asset_id, commit=False
                     )
                 self.db.commit()
-        except Exception as e:
+        except Exception:
             self.db.rollback()
+            logger.exception("Bulk import failed for portfolio %s", portfolio_id)
             return [], BulkCreateSummary(
                 total_created=0,
                 total_failed=len(transactions_data),
-                errors=[f"Import failed, rolling back all changes: {e}"] + errors,
+                errors=["Import failed; no transactions were saved"] + errors,
             )
 
         # 5. Prepare the successful response data

@@ -10,9 +10,38 @@ from core.schemas.account_statements import (
     ParsedData,
     ParsedTransaction,
     ParsingMetadata,
+    SkippedRow,
     StatementPeriod,
 )
 from core.services.parsers.base import PDFParser
+
+TRADE_FEE = Decimal("1")
+GERMAN_MONTHS = {
+    m: i
+    for i, m in enumerate(
+        [
+            "jan",
+            "feb",
+            "mar",
+            "apr",
+            "mai",
+            "jun",
+            "jul",
+            "aug",
+            "sep",
+            "okt",
+            "nov",
+            "dez",
+        ],
+        start=1,
+    )
+}
+CASH_ROW_REASONS = {
+    "Zinszahlung": "Interest on cash: portfolios have no cash account",
+    "Überweisung": "Bank transfer: portfolios have no cash account",
+    "Kartentransaktion": "Card payment: portfolios have no cash account",
+    "Steuern": "Account-level tax: not linked to a security",
+}
 
 
 class TradeRepublicParser(PDFParser):
@@ -23,31 +52,16 @@ class TradeRepublicParser(PDFParser):
     """
 
     def _parse_german_date(self, date_str: str) -> str:
-        """Converts a German date string to ISO format (YYYY-MM-DD)."""
-        month_map = {
-            "Jan": "01",
-            "Feb": "02",
-            "Mär": "03",
-            "Apr": "04",
-            "Mai": "05",
-            "Jun": "06",
-            "Juli": "07",
-            "Aug": "08",
-            "Sept": "09",
-            "Okt": "10",
-            "Nov": "11",
-            "Dez": "12",
-        }
-        for k, v in month_map.items():
-            if k in date_str:
-                date_str = date_str.replace(k, v)
-                break
-
-        date_str = date_str.replace(".", "")
-
+        """'06 März 2025' / '02 Jan. 2025' → '2025-03-06'; '' when unparseable."""
+        match = re.match(r"^(\d{1,2})\s+([^\s\d]+?)\.?\s+(\d{4})$", date_str.strip())
+        if not match:
+            return ""
+        day, month, year = match.groups()
+        number = GERMAN_MONTHS.get(month.lower().replace("ä", "a")[:3])
+        if not number:
+            return ""
         try:
-            dt = datetime.strptime(date_str, "%d %m %Y")
-            return dt.strftime("%Y-%m-%d")
+            return datetime(int(year), number, int(day)).strftime("%Y-%m-%d")
         except ValueError:
             return ""
 
@@ -73,25 +87,23 @@ class TradeRepublicParser(PDFParser):
                 transactions=[],
                 metadata=ParsingMetadata(
                     total_transactions=0,
-                    parsing_confidence=0.0,
-                    warnings=[f"Error reading PDF file: {str(e)}"],
+                    warnings=[f"Error reading PDF file: {e}"],
                 ),
             )
 
         statement_period = self._extract_statement_period(full_text)
 
-        transactions, parse_warnings = self._extract_transactions(full_text)
+        transactions, skipped, parse_warnings = self._extract_transactions(full_text)
         warnings.extend(parse_warnings)
-
-        parsing_confidence = self._calculate_confidence(transactions)
 
         return ParsedData(
             provider="trade_republic",
             statement_period=statement_period,
             transactions=transactions,
+            skipped=skipped,
             metadata=ParsingMetadata(
                 total_transactions=len(transactions),
-                parsing_confidence=parsing_confidence,
+                total_skipped=len(skipped),
                 warnings=warnings,
             ),
         )
@@ -116,6 +128,7 @@ class TradeRepublicParser(PDFParser):
     ) -> Tuple[List[ParsedTransaction], List[str]]:
         """Extract transactions from PDF text."""
         transactions: List[ParsedTransaction] = []
+        skipped: List[SkippedRow] = []
         warnings: List[str] = []
 
         transaction_block_match = re.search(
@@ -124,7 +137,7 @@ class TradeRepublicParser(PDFParser):
             re.DOTALL,
         )
         if not transaction_block_match:
-            return [], ["Could not find the 'UMSATZÜBERSICHT' transaction block."]
+            return [], [], ["Could not find the 'UMSATZÜBERSICHT' transaction block."]
 
         content = transaction_block_match.group(1)
         content = re.sub(r".*?TRADE REPUBLIC.*|Seite \d+ von \d+", "", content)
@@ -186,94 +199,77 @@ class TradeRepublicParser(PDFParser):
             type_str = type_match.group(1)
             desc = middle_part[len(type_str) :].strip()
 
-            # Proceed with creating the transaction object
             transaction_date = self._parse_german_date(date_str)
+            if not transaction_date:
+                warnings.append(f"Could not read the date '{date_str}' in line {i + 1}")
+                continue
             total_amount = self._parse_german_number(amount_str)
+            row = self._map_row(type_str, desc)
+            if isinstance(row, str):
+                skipped.append(
+                    SkippedRow(
+                        transaction_date=transaction_date,
+                        kind=type_str,
+                        description=desc,
+                        amount=total_amount,
+                        currency="EUR",
+                        reason=row,
+                    )
+                )
+                continue
 
-            parsed_transaction = {
-                "id": f"temp_{len(transactions) + 1}",
-                "transaction_date": transaction_date,
-                "total_amount": total_amount,
-                "quantity": Decimal("0"),
-                "price": Decimal("0"),
-                "fees": Decimal("0"),
-                "name": desc,
-                "symbol": None,
-                "confidence_score": 0.8,
-                "needs_review": False,
+            if row["transaction_type"] == "dividend":
+                row.update(quantity=Decimal("0"), price=Decimal("0"))
+            else:
+                quantity, fee = row["quantity"], row["fees"]
+                net = (
+                    total_amount - fee
+                    if row["transaction_type"] == "buy"
+                    else total_amount + fee
+                )
+                row["price"] = net / quantity
+
+            transactions.append(
+                ParsedTransaction(
+                    id=f"temp_{len(transactions) + 1}",
+                    transaction_date=transaction_date,
+                    total_amount=total_amount,
+                    currency="EUR",
+                    **row,
+                )
+            )
+
+        return transactions, skipped, warnings
+
+    def _map_row(self, type_str: str, desc: str) -> dict | str:
+        """Fields of an importable row, or the reason it is skipped."""
+        if type_str == "Handel":
+            trade = re.search(
+                r"(?i)(buy trade|sell trade|savings plan execution)\s+([A-Z0-9]{12})\s+(.*?),\s+quantity:\s*([\d\.,]+)",
+                desc,
+            )
+            if not trade:
+                return "Trade description not recognised"
+            kind, isin, name, quantity_str = trade.groups()
+            quantity = self._parse_german_number(quantity_str)
+            if not quantity:
+                return "Trade without a quantity"
+            savings_plan = kind.lower() == "savings plan execution"
+            return {
+                "transaction_type": "sell" if "sell" in kind.lower() else "buy",
+                "name": name.strip(),
+                "symbol": isin,
+                "quantity": quantity,
+                "fees": Decimal("0") if savings_plan else TRADE_FEE,
             }
-
-            if type_str == "Handel":
-                trade_match = re.search(
-                    r"(?i)(buy trade|sell trade|savings plan execution)\s+([A-Z0-9]{12})\s+(.*?),\s+quantity:\s*([\d\.,]+)",
-                    desc,
-                )
-                if trade_match:
-                    trade_type, isin, name, quantity_str = trade_match.groups()
-                    quantity = self._parse_german_number(quantity_str)
-
-                    parsed_transaction.update(
-                        {
-                            "transaction_type": "sell"
-                            if "sell" in trade_type.lower()
-                            else "buy",
-                            "name": name.strip(),
-                            "symbol": isin,
-                            "quantity": quantity,
-                            "price": (total_amount / quantity)
-                            if quantity
-                            else Decimal("0"),
-                            "confidence_score": 0.95,
-                        }
-                    )
-                else:
-                    warnings.append(
-                        f"Could not parse trade details from description: '{desc}'"
-                    )
-                    parsed_transaction["needs_review"] = True
-            elif type_str == "Erträge":
-                dividend_match = re.search(
-                    r"(?i)Cash Dividend for ISIN\s+([A-Z0-9]{12})", desc
-                )
-                symbol = dividend_match.group(1) if dividend_match else "Unknown"
-                parsed_transaction.update(
-                    {
-                        "transaction_type": "dividend",
-                        "name": f"Dividend for {symbol}",
-                        "symbol": symbol,
-                    }
-                )
-            elif type_str == "Zinszahlung":
-                parsed_transaction.update(
-                    {"transaction_type": "interest", "name": "Interest Payment"}
-                )
-            elif type_str == "Überweisung":
-                parsed_transaction.update(
-                    {"transaction_type": "deposit", "name": "Incoming Transfer"}
-                )
-            elif type_str == "Kartentransaktion":
-                parsed_transaction.update(
-                    {
-                        "transaction_type": "withdrawal",
-                        "name": f"Card Transaction: {desc}",
-                    }
-                )
-            elif type_str == "Steuern":
-                parsed_transaction.update(
-                    {"transaction_type": "tax", "name": "Tax Optimisation"}
-                )
-
-            transactions.append(ParsedTransaction(**parsed_transaction))
-
-        return transactions, warnings
-
-    def _calculate_confidence(self, transactions: List[ParsedTransaction]) -> float:
-        """Calculate overall parsing confidence."""
-        if not transactions:
-            return 0.0
-        total_confidence = sum(t.confidence_score for t in transactions)
-        return float(total_confidence / len(transactions))
-
-    def _generate_warnings(self, transactions: List[ParsedTransaction]) -> List[str]:
-        # This is now handled within the main parse function for better context.
-        return []
+        if type_str == "Erträge":
+            dividend = re.search(r"(?i)Cash Dividend for ISIN\s+([A-Z0-9]{12})", desc)
+            if not dividend:
+                return "Income row without an ISIN"
+            isin = dividend.group(1)
+            return {
+                "transaction_type": "dividend",
+                "name": f"Dividend {isin}",
+                "symbol": isin,
+            }
+        return CASH_ROW_REASONS[type_str]
