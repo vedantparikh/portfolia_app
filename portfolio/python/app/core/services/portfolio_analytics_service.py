@@ -829,9 +829,6 @@ class PortfolioAnalyticsService:
                 .all()
             )
 
-            # Get user's assets
-            await self.get_user_assets_for_analytics(user_id)
-
             # Portfolio summaries
             portfolio_summaries = []
             for portfolio in user_portfolios:

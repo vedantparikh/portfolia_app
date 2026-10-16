@@ -112,6 +112,68 @@ async def get_user_watchlists(
         )
 
 
+@router.get("/public", response_model=List[WatchlistResponse])
+async def get_public_watchlists(
+    limit: int = Query(
+        20, ge=1, le=100, description="Maximum number of watchlists to return"
+    ),
+    db: Session = Depends(get_db),
+):
+    """Get public watchlists from all users."""
+    log_api_request(
+        logger,
+        "GET",
+        "/watchlists/public",
+        None,
+        f"Getting public watchlists (limit: {limit})",
+    )
+    start_time = time.time()
+    try:
+        service = WatchlistService(db)
+        watchlists = service.get_public_watchlists(limit)
+
+        response_time = time.time() - start_time
+        log_api_response(logger, "GET", "/watchlists/public", 200, response_time)
+        return watchlists
+
+    except Exception as e:
+        logger.error(f"Failed to get public watchlists: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve public watchlists",
+        )
+
+
+@router.get("/stats", response_model=WatchlistStatsResponse)
+async def get_watchlist_statistics(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get watchlist statistics for the current user."""
+    log_api_request(
+        logger,
+        "GET",
+        "/watchlists/stats",
+        current_user.id,
+        "Getting watchlist statistics",
+    )
+    start_time = time.time()
+    try:
+        service = WatchlistService(db)
+        stats = service.get_watchlist_statistics(current_user.id)
+
+        response_time = time.time() - start_time
+        log_api_response(logger, "GET", "/watchlists/stats", 200, response_time)
+        return stats
+
+    except Exception as e:
+        logger.error(f"Failed to get watchlist statistics: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve watchlist statistics",
+        )
+
+
 @router.get("/{watchlist_id}", response_model=WatchlistWithItemsResponse)
 async def get_watchlist(
     watchlist_id: int,
@@ -553,66 +615,4 @@ async def reorder_watchlist_items(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to reorder watchlist items",
-        )
-
-
-@router.get("/public", response_model=List[WatchlistResponse])
-async def get_public_watchlists(
-    limit: int = Query(
-        20, ge=1, le=100, description="Maximum number of watchlists to return"
-    ),
-    db: Session = Depends(get_db),
-):
-    """Get public watchlists from all users."""
-    log_api_request(
-        logger,
-        "GET",
-        "/watchlists/public",
-        None,
-        f"Getting public watchlists (limit: {limit})",
-    )
-    start_time = time.time()
-    try:
-        service = WatchlistService(db)
-        watchlists = service.get_public_watchlists(limit)
-
-        response_time = time.time() - start_time
-        log_api_response(logger, "GET", "/watchlists/public", 200, response_time)
-        return watchlists
-
-    except Exception as e:
-        logger.error(f"Failed to get public watchlists: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve public watchlists",
-        )
-
-
-@router.get("/stats", response_model=WatchlistStatsResponse)
-async def get_watchlist_statistics(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """Get watchlist statistics for the current user."""
-    log_api_request(
-        logger,
-        "GET",
-        "/watchlists/stats",
-        current_user.id,
-        "Getting watchlist statistics",
-    )
-    start_time = time.time()
-    try:
-        service = WatchlistService(db)
-        stats = service.get_watchlist_statistics(current_user.id)
-
-        response_time = time.time() - start_time
-        log_api_response(logger, "GET", "/watchlists/stats", 200, response_time)
-        return stats
-
-    except Exception as e:
-        logger.error(f"Failed to get watchlist statistics: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve watchlist statistics",
         )

@@ -2,7 +2,7 @@
 
 **Purpose:** risk metrics, target allocations with drift and rebalancing trades, benchmark records, and the daily value history.
 
-**State (2026-10-16):** ✅ risk, advance-risk, allocation analysis, rebalancing, history. ⚠️ benchmarks are records only (no comparison). ⚠️ `/summary`, `/performance/snapshot`, `/performance/comparison` use legacy snapshot metrics. ❌ `/users/dashboard` 500s.
+**State (2026-10-16):** ✅ risk, advance-risk, allocation analysis, rebalancing, history. ⚠️ benchmarks are records only (no comparison). ⚠️ `/summary`, `/performance/snapshot`, `/performance/comparison` use legacy snapshot metrics. ⚠️ `/users/dashboard` responds but uses legacy metrics.
 
 ## Backend — `router.py` (prefix `/api/v1/analytics`)
 | Endpoint | Service | Behaviour |
@@ -16,7 +16,7 @@
 | `POST/GET /portfolios/{id}/benchmarks` | router | Benchmark records (symbol, name, primary) |
 | `GET /portfolios/{id}/performance/history?days=` | engine | Daily value + FIFO cost basis, newest first, read-only (no snapshot writes). Used by no screen now |
 | `GET /portfolios/{id}/performance/snapshot`, `DELETE …/{snapshot_id}`, `GET /summary`, `GET /performance/comparison` | legacy | Persisted `PortfolioPerformanceHistory` rows from `create_performance_snapshot`; metrics count deposits as returns, calendar days, fractions. No UI caller |
-| `GET /users/dashboard` | legacy | ❌ calls a nonexistent method |
+| `GET /users/dashboard?force_refresh=` | legacy | Per-portfolio `get_portfolio_analytics_summary` (cost-basis fallback when no price) + snapshot count. `force_refresh` (default true) re-prices every asset from Yahoo and writes snapshots. Wired in `api.js`, no screen uses it |
 
 ## Frontend — `js/src/components/analytics/` (tabs inside Holdings Detail)
 - **Analytics** `PortfolioAnalytics.jsx`: Risk Metrics + Advanced Metrics cards with plain-language hints, period select, risk-level modal (renders `reasoning` HTML via `dangerouslySetInnerHTML` — XSS item 4.6).

@@ -9,6 +9,8 @@ from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
+from core.schemas.portfolio import Portfolio
+
 
 class PortfolioPerformance(BaseModel):
     """Portfolio performance metrics."""
@@ -48,7 +50,7 @@ class PortfolioRefreshResponse(BaseModel):
 class PortfolioSearchResponse(BaseModel):
     """Portfolio search response."""
 
-    portfolios: List[dict] = Field(..., description="Search results")
+    portfolios: List[Portfolio] = Field(..., description="Search results")
     total_count: int = Field(..., description="Total results count")
     search_term: Optional[str] = Field(None, description="Search term")
     currency: Optional[str] = Field(None, description="Currency filter")

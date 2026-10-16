@@ -14,7 +14,7 @@
 | `POST /calculate` | OHLCV plus the requested indicator series |
 | `POST/GET /configurations`, `GET/PUT/DELETE /configurations/{id}`, `POST /configurations/{id}/duplicate` | Saved sets (user's own, or public) |
 | `GET /templates`, `POST /templates/{name}/create`, `POST /validate`, `GET /statistics`, `GET /popular` | Templates and helpers. No UI for templates, statistics or popular |
-| `GET /configurations/search` | **Shadowed** by `/configurations/{id}` (422) |
+| `GET /configurations/search?q=` | Name, description or tags (JSON cast to text) contain `q`; own + public |
 
 **Indicators:**
 - Momentum: rsi, roc, stoch_rsi, stoch_oscillator.

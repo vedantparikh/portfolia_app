@@ -67,6 +67,53 @@ async def get_user_portfolios(
     return portfolios
 
 
+@router.get("/search", response_model=PortfolioSearchResponse)
+async def search_portfolios(
+    search_term: Optional[str] = Query(
+        None, description="Search term for portfolio names"
+    ),
+    currency: Optional[str] = Query(None, description="Filter by currency"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """Search portfolios with filters."""
+    portfolio_service = PortfolioService(db)
+    portfolios = portfolio_service.search_portfolios(
+        current_user.id, search_term=search_term, currency=currency
+    )
+    return PortfolioSearchResponse(
+        portfolios=portfolios,
+        total_count=len(portfolios),
+        search_term=search_term,
+        currency=currency,
+    )
+
+
+@router.get("/statistics/overview", response_model=PortfolioStatistics)
+async def get_portfolio_statistics(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """Get overall portfolio statistics for the authenticated user."""
+    portfolio_service = PortfolioService(db)
+    statistics = await portfolio_service.get_portfolio_statistics(current_user.id)
+    return statistics
+
+
+@router.get("/public/discover", response_model=PortfolioDiscoverResponse)
+async def discover_public_portfolios(
+    limit: int = Query(50, ge=1, le=100, description="Number of portfolios to return"),
+    offset: int = Query(0, ge=0, description="Number of portfolios to skip"),
+    db: Session = Depends(get_db),
+):
+    """Discover public portfolios (no authentication required)."""
+    portfolio_service = PortfolioService(db)
+    portfolios = portfolio_service.get_public_portfolios(limit=limit, offset=offset)
+    return PortfolioDiscoverResponse(
+        portfolios=portfolios, total_count=len(portfolios), limit=limit, offset=offset
+    )
+
+
 @router.get("/{portfolio_id}", response_model=Portfolio)
 async def get_portfolio(
     portfolio_id: int,
@@ -343,53 +390,6 @@ async def refresh_portfolio_values(
         )
 
     return PortfolioRefreshResponse(message="Portfolio values refreshed successfully")
-
-
-@router.get("/search", response_model=PortfolioSearchResponse)
-async def search_portfolios(
-    search_term: Optional[str] = Query(
-        None, description="Search term for portfolio names"
-    ),
-    currency: Optional[str] = Query(None, description="Filter by currency"),
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    """Search portfolios with filters."""
-    portfolio_service = PortfolioService(db)
-    portfolios = portfolio_service.search_portfolios(
-        current_user.id, search_term=search_term, currency=currency
-    )
-    return PortfolioSearchResponse(
-        portfolios=portfolios,
-        total_count=len(portfolios),
-        search_term=search_term,
-        currency=currency,
-    )
-
-
-@router.get("/statistics/overview", response_model=PortfolioStatistics)
-async def get_portfolio_statistics(
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    """Get overall portfolio statistics for the authenticated user."""
-    portfolio_service = PortfolioService(db)
-    statistics = await portfolio_service.get_portfolio_statistics(current_user.id)
-    return statistics
-
-
-@router.get("/public/discover", response_model=PortfolioDiscoverResponse)
-async def discover_public_portfolios(
-    limit: int = Query(50, ge=1, le=100, description="Number of portfolios to return"),
-    offset: int = Query(0, ge=0, description="Number of portfolios to skip"),
-    db: Session = Depends(get_db),
-):
-    """Discover public portfolios (no authentication required)."""
-    portfolio_service = PortfolioService(db)
-    portfolios = portfolio_service.get_public_portfolios(limit=limit, offset=offset)
-    return PortfolioDiscoverResponse(
-        portfolios=portfolios, total_count=len(portfolios), limit=limit, offset=offset
-    )
 
 
 # Legacy endpoints for backward compatibility

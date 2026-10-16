@@ -171,8 +171,8 @@ There is no production data yet, so this is the cheapest moment to set up how re
 | # | Work |
 |---|---|
 | ⏳ 1.1 | Rewrite `config.py` as pure pydantic-settings. Collapse the duplicate keys (`SECRET_KEY`/`JWT_SECRET_KEY`, `ALGORITHM`/`JWT_ALGORITHM`). Fix `REFRESH_TOKEN_EXPIRE_DAYS`. Make Redis read its settings from config. |
-| 🟡 1.2 | Add an `app` factory with explicit router aggregation, deleting the ~230 lines of `try/import` blocks. Standardise prefixes and tags. Fix the `/assets/search` shadowing and the duplicate operationIds. **Now:** `/assets/search/{query}` removed (#73); still shadowed: `GET /portfolios/search`, `/assets/search/popular|suggestions`, `/watchlists/public|stats`, `/statistical-indicators/configurations/search`. |
-| ⏳ 1.3 | Add `DomainError` classes, global handlers and the uniform error envelope. Remove the `detail=str(e)` leaks and the blanket `except Exception`. **Now:** 48 `detail=str(e)` left in routers. |
+| 🟡 1.2 | Add an `app` factory with explicit router aggregation, deleting the ~230 lines of `try/import` blocks. Standardise prefixes and tags. Fix the `/assets/search` shadowing and the duplicate operationIds. **Now:** `/assets/search/{query}` removed (#73); shadowed routes fixed and pinned by `test_route_order.py` (`fix/shadowed-routes-500s`). App factory and duplicate operationIds open. |
+| ⏳ 1.3 | Add `DomainError` classes, global handlers and the uniform error envelope. Remove the `detail=str(e)` leaks and the blanket `except Exception`. **Now:** 40 `str(e)` leaks left in routers. |
 | ⏳ 1.4 | Add middleware for request-id, structured access logging and timing. Configure logging once and remove the `print()` calls. **Now:** SQLAlchemy echoes every SQL statement to the API log in dev. |
 | ⏳ 1.5 | Add a unit-of-work session dependency and a `get_owned_portfolio` dependency. Make DB endpoints `def`. |
 | ⏳ 1.6 | **Alembic as the only schema authority.** Autogenerate a baseline migration from the models. There is no production data yet, so it simply runs on empty DBs in every env, with no `stamp`. Do this **before** the first prod release (R.4) so prod is born on Alembic. Remove every `create_all` and the auto-seeding on startup. A CI check fails on model/migration drift. |
@@ -307,6 +307,7 @@ Open:
 | 2026-10-15 | `chore/deps-wave3` | — | Calculation snapshots (0.7 ✅), Sentry removed, lucide 1, charts 5, Router 8, Tailwind 4, passlib → bcrypt, Python 3.14, numpy 2, pandas 3, polars 2, yfinance 1.7 |
 | 2026-10-16 | `chore/ui-modernize` (#73) | — | Dashboard and portfolio widgets, StatCard, analytics units fixed |
 | 2026-10-16 | `fix/calculations` | — | `core/domain` engine (2.1 splits/FIFO, 2.5 valuation, 2.6 returns, 2.8 today's P&L ✅); performance series endpoint + chart; summary/holdings/overview/allocation/rebalancing/history on the engine; realistic demo seed. Open: 2.2 importer dividends/tax, 2.3 FX, 2.7 benchmark, 2.10 derived cache |
+| 2026-10-16 | `fix/shadowed-routes-500s` | — | Six shadowed literal routes reachable (and the 4 bugs behind them fixed); `/overview` and `/users/dashboard` 500s fixed; asset search scoped to the user; `test_route_order.py` |
 
 
 ## 6b. Findings and to-do (2026-10-16)
@@ -326,8 +327,9 @@ Open:
 | Area | Finding | Where |
 |---|---|---|
 | Import | The Trade Republic parser emits `interest`, `deposit`, `withdrawal` and `tax` types that `TransactionType` lacks, so a full statement likely fails to parse. Also: dividends stored as 0, fees folded into price, EUR stored as USD. The bulk-import UI checks `total_succeeded`, but the API returns `total_created` | `parsers/trade_republic.py`, `account_statement_service.py`, `Transactions.jsx` |
-| Routing | Shadowed literal routes return 422 | `GET /portfolios/search`, `/assets/search/popular` and `/suggestions`, `/watchlists/public` and `/stats`, `/statistical-indicators/configurations/search` |
-| Broken endpoints | `GET /portfolios/calculations/portfolio/{id}/overview` returns 500 (a tuple used as a float). `GET /analytics/users/dashboard` returns 500 (calls a missing method) | calculations and analytics routers |
+| Routing | ✅ Fixed: shadowed literal routes returned 422. Behind them were 4 more bugs (portfolio search response type, popular-assets schema, watchlist stats fields, JSON `tags.any`), now fixed | `GET /portfolios/search`, `/assets/search/popular` and `/suggestions`, `/watchlists/public` and `/stats`, `/statistical-indicators/configurations/search` |
+| Broken endpoints | ✅ Fixed: `/overview` 500 (a tuple used as a float; now reads the engine) and `/analytics/users/dashboard` 500 (called a missing method) | calculations and analytics routers |
+| Security | ✅ Fixed: `asset_search_service` was not scoped by user: `/assets/search/{id}` returned any user's asset, and popular/suggestions/breakdowns aggregated all users | `asset_search_service.py` |
 | Watchlists | Alerts are never evaluated (the only caller is unused); `WatchlistPerformance` is only written on add; rating, thesis and tags have no UI | `watchlist_service.py` |
 | Indicators | Selecting a saved configuration doesn't change the chart; the saved list never renders; performance metrics are hard-coded to 0; mixed `app.core` and `core` imports | `AssetAnalyticsView.jsx`, indicator services |
 | Assets | The search box, sorting and "of N" count don't work (parameter and response mismatch); the dashboard's "Top Market Assets" are the user's own unsorted assets | `Assets.jsx`, `assets/router.py`, `Dashboard.jsx` |
@@ -340,7 +342,7 @@ Open:
 1. **Benchmark comparison** as a shadow portfolio on `daily_series` (2.7), shown in the Performance view.
 2. **Trade Republic import fixes** (2.2) plus the import UI counter.
 3. **FX** (2.3): decide the source (open decision 1).
-4. **Shadowed routes and the two 500s** (1.2), and the `str(e)` cleanup (1.3).
+4. ✅ Shadowed routes and the two 500s (1.2). Still open: the `str(e)` cleanup (1.3).
 5. **Watchlist enrichment** (UI Batch 4) and an alert worker (3.3).
 6. **Indicator formulas and configuration wiring** (2.9).
 7. **Phase R release platform** and Phase 1.6 Alembic baseline, before any real data.

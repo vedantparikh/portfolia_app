@@ -17,9 +17,15 @@ class AssetSearchService:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_asset_details(self, asset_id: int) -> Optional[Dict[str, Any]]:
+    def get_asset_details(
+        self, user_id: int, asset_id: int
+    ) -> Optional[Dict[str, Any]]:
         """Get detailed asset information."""
-        asset = self.db.query(Asset).filter(Asset.id == asset_id).first()
+        asset = (
+            self.db.query(Asset)
+            .filter(Asset.id == asset_id, Asset.user_id == user_id)
+            .first()
+        )
 
         if not asset:
             return None
@@ -42,7 +48,7 @@ class AssetSearchService:
             "updated_at": asset.updated_at,
         }
 
-    def get_popular_assets(self, limit: int = 20) -> List[Dict[str, Any]]:
+    def get_popular_assets(self, user_id: int, limit: int = 20) -> List[Dict[str, Any]]:
         """Get popular assets based on portfolio holdings."""
         # Count how many portfolios hold each asset
         popular_assets = (
@@ -52,12 +58,15 @@ class AssetSearchService:
                 Asset.name,
                 Asset.asset_type,
                 Asset.sector,
+                Asset.exchange,
+                Asset.country,
+                Asset.currency,
+                Asset.is_active,
                 func.count().label("portfolio_count"),
             )
             .join(Asset.portfolio_holdings)
-            .group_by(
-                Asset.id, Asset.symbol, Asset.name, Asset.asset_type, Asset.sector
-            )
+            .filter(Asset.user_id == user_id)
+            .group_by(Asset.id)
             .order_by(desc("portfolio_count"))
             .limit(limit)
             .all()
@@ -70,12 +79,16 @@ class AssetSearchService:
                 "name": asset.name,
                 "asset_type": asset.asset_type.value,
                 "sector": asset.sector,
+                "exchange": asset.exchange,
+                "country": asset.country,
+                "currency": asset.currency,
+                "is_active": asset.is_active,
                 "portfolio_count": asset.portfolio_count,
             }
             for asset in popular_assets
         ]
 
-    def get_sector_breakdown(self) -> List[Dict[str, Any]]:
+    def get_sector_breakdown(self, user_id: int) -> List[Dict[str, Any]]:
         """Get asset breakdown by sector."""
         sector_data = (
             self.db.query(
@@ -84,7 +97,11 @@ class AssetSearchService:
                 func.count(Asset.portfolio_holdings).label("portfolio_count"),
             )
             .outerjoin(Asset.portfolio_holdings)
-            .filter(Asset.is_active == True, Asset.sector.isnot(None))
+            .filter(
+                Asset.user_id == user_id,
+                Asset.is_active == True,
+                Asset.sector.isnot(None),
+            )
             .group_by(Asset.sector)
             .order_by(desc("asset_count"))
             .all()
@@ -99,7 +116,7 @@ class AssetSearchService:
             for sector in sector_data
         ]
 
-    def get_asset_type_breakdown(self) -> List[Dict[str, Any]]:
+    def get_asset_type_breakdown(self, user_id: int) -> List[Dict[str, Any]]:
         """Get asset breakdown by type."""
         type_data = (
             self.db.query(
@@ -108,7 +125,7 @@ class AssetSearchService:
                 func.count(Asset.portfolio_holdings).label("portfolio_count"),
             )
             .outerjoin(Asset.portfolio_holdings)
-            .filter(Asset.is_active == True)
+            .filter(Asset.user_id == user_id, Asset.is_active == True)
             .group_by(Asset.asset_type)
             .order_by(desc("asset_count"))
             .all()
@@ -123,7 +140,7 @@ class AssetSearchService:
             for asset_type in type_data
         ]
 
-    def get_exchange_breakdown(self) -> List[Dict[str, Any]]:
+    def get_exchange_breakdown(self, user_id: int) -> List[Dict[str, Any]]:
         """Get asset breakdown by exchange."""
         exchange_data = (
             self.db.query(
@@ -132,7 +149,11 @@ class AssetSearchService:
                 func.count(Asset.portfolio_holdings).label("portfolio_count"),
             )
             .outerjoin(Asset.portfolio_holdings)
-            .filter(Asset.is_active == True, Asset.exchange.isnot(None))
+            .filter(
+                Asset.user_id == user_id,
+                Asset.is_active == True,
+                Asset.exchange.isnot(None),
+            )
             .group_by(Asset.exchange)
             .order_by(desc("asset_count"))
             .all()
@@ -148,7 +169,7 @@ class AssetSearchService:
         ]
 
     def get_search_suggestions(
-        self, query: str, limit: int = 10
+        self, user_id: int, query: str, limit: int = 10
     ) -> List[Dict[str, Any]]:
         """Get search suggestions based on partial query."""
         if len(query) < 2:
@@ -158,6 +179,7 @@ class AssetSearchService:
             self.db.query(Asset.symbol, Asset.name, Asset.asset_type)
             .filter(
                 and_(
+                    Asset.user_id == user_id,
                     Asset.is_active == True,
                     or_(
                         Asset.symbol.ilike(f"{query}%"),

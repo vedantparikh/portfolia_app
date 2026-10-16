@@ -372,24 +372,13 @@ async def get_portfolio_performance_overview(
         if not portfolio:
             raise HTTPException(status_code=404, detail="Portfolio not found")
 
-        # This is a placeholder implementation
-        # In a full implementation, you would:
-        # 1. Calculate portfolio summary across all periods
-        # 2. Get all assets and their individual performance
-        # 3. Identify top and worst performers
-        # 4. Optionally compare to benchmark
-
-        # For now, return a basic response
-        current_value = await service.get_current_portfolio_value(portfolio_id)
-
-        # Get basic portfolio performance
         portfolio_performance = await service.calculate_portfolio_performance(
             portfolio_id=portfolio_id,
             user_id=current_user.id,
             period=PeriodType.INCEPTION,
         )
+        current_value = portfolio_performance.get("current_value", 0.0)
 
-        # Create simplified overview
         overview = {
             "portfolio_summary": {
                 "portfolio_id": portfolio_id,
