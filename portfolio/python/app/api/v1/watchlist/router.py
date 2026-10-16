@@ -16,6 +16,9 @@ from core.schemas.portfolio_performance import (
     WatchlistReorderResponse,
 )
 from core.schemas.watchlist import (
+    AcknowledgeAlertsRequest,
+    AcknowledgeAlertsResponse,
+    AlertEventsResponse,
     WatchlistBulkAddRequest,
     WatchlistCreate,
     WatchlistItemCreate,
@@ -173,6 +176,28 @@ async def get_watchlist_statistics(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve watchlist statistics",
         )
+
+
+@router.get("/alerts", response_model=AlertEventsResponse)
+async def get_alerts(
+    unread_only: bool = Query(False),
+    limit: int = Query(50, ge=1, le=500),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Triggered watchlist alerts (checked by the worker), newest first."""
+    return WatchlistService(db).get_alert_events(current_user.id, unread_only, limit)
+
+
+@router.post("/alerts/acknowledge", response_model=AcknowledgeAlertsResponse)
+async def acknowledge_alerts(
+    request: AcknowledgeAlertsRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Mark alerts as read (all unread ones when no ids are given)."""
+    count = WatchlistService(db).acknowledge_alerts(current_user.id, request.alert_ids)
+    return AcknowledgeAlertsResponse(acknowledged=count)
 
 
 @router.get("/{watchlist_id}", response_model=WatchlistWithItemsResponse)

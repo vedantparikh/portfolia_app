@@ -5,7 +5,9 @@ const EditSymbolModal = ({ isOpen, onClose, symbol, onUpdate }) => {
     const [formData, setFormData] = useState({
         notes: '',
         alert_price_high: '',
-        alert_price_low: ''
+        alert_price_low: '',
+        alert_price_change_percent: '',
+        alerts_enabled: true,
     });
     const [loading, setLoading] = useState(false);
 
@@ -13,8 +15,10 @@ const EditSymbolModal = ({ isOpen, onClose, symbol, onUpdate }) => {
         if (symbol) {
             setFormData({
                 notes: symbol.notes || '',
-                alert_price_high: symbol.alert_price_high || '',
-                alert_price_low: symbol.alert_price_low || ''
+                alert_price_high: symbol.alert_price_high ?? '',
+                alert_price_low: symbol.alert_price_low ?? '',
+                alert_price_change_percent: symbol.alert_price_change_percent ?? '',
+                alerts_enabled: symbol.alerts_enabled ?? true,
             });
         }
     }, [symbol]);
@@ -25,9 +29,15 @@ const EditSymbolModal = ({ isOpen, onClose, symbol, onUpdate }) => {
         setLoading(true);
         try {
             const updateData = {};
-            if (formData.notes !== symbol?.notes) updateData.notes = formData.notes;
-            if (formData.alert_price_high !== symbol?.alert_price_high) updateData.alert_price_high = formData.alert_price_high;
-            if (formData.alert_price_low !== symbol?.alert_price_low) updateData.alert_price_low = formData.alert_price_low;
+            if (formData.notes !== (symbol?.notes || '')) updateData.notes = formData.notes;
+            for (const field of ['alert_price_high', 'alert_price_low', 'alert_price_change_percent']) {
+                const value = formData[field] === '' ? null : String(formData[field]);
+                const before = symbol?.[field] == null ? null : String(symbol[field]);
+                if (value !== before) updateData[field] = value;
+            }
+            if (formData.alerts_enabled !== (symbol?.alerts_enabled ?? true)) {
+                updateData.alerts_enabled = formData.alerts_enabled;
+            }
             
             await onUpdate(symbol.id, updateData);
             handleClose();
@@ -107,53 +117,59 @@ const EditSymbolModal = ({ isOpen, onClose, symbol, onUpdate }) => {
                             <h3 className="text-sm font-medium text-gray-300">Price Alerts</h3>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            {/* High Alert */}
+                        <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={formData.alerts_enabled}
+                                onChange={(e) => setFormData(prev => ({ ...prev, alerts_enabled: e.target.checked }))}
+                            />
+                            Alerts on
+                        </label>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                                    High Alert Price
+                                    High price
                                 </label>
-                                <div className="relative">
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        value={formData.alert_price_high}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, alert_price_high: e.target.value }))}
-                                        className="w-full pl-8 pr-3 py-2 bg-dark-800 border border-dark-600 rounded-lg text-gray-100 placeholder-gray-400 focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                                        placeholder="0.00"
-                                    />
-                                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm">
-                                        $
-                                    </span>
-                                </div>
-                                <p className="text-xs text-gray-400 mt-1">
-                                    Alert when price goes above this value
-                                </p>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={formData.alert_price_high}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, alert_price_high: e.target.value }))}
+                                    className="input-field w-full"
+                                    placeholder="Off"
+                                />
+                                <p className="text-xs text-gray-400 mt-1">At or above this price</p>
                             </div>
-
-                            {/* Low Alert */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                                    Low Alert Price
+                                    Low price
                                 </label>
-                                <div className="relative">
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        value={formData.alert_price_low}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, alert_price_low: e.target.value }))}
-                                        className="w-full pl-8 pr-3 py-2 bg-dark-800 border border-dark-600 rounded-lg text-gray-100 placeholder-gray-400 focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                                        placeholder="0.00"
-                                    />
-                                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm">
-                                        $
-                                    </span>
-                                </div>
-                                <p className="text-xs text-gray-400 mt-1">
-                                    Alert when price goes below this value
-                                </p>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={formData.alert_price_low}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, alert_price_low: e.target.value }))}
+                                    className="input-field w-full"
+                                    placeholder="Off"
+                                />
+                                <p className="text-xs text-gray-400 mt-1">At or below this price</p>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-300 mb-2">
+                                    Move since added (%)
+                                </label>
+                                <input
+                                    type="number"
+                                    step="0.1"
+                                    min="0"
+                                    value={formData.alert_price_change_percent}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, alert_price_change_percent: e.target.value }))}
+                                    className="input-field w-full"
+                                    placeholder="Off"
+                                />
+                                <p className="text-xs text-gray-400 mt-1">Up or down by this much</p>
                             </div>
                         </div>
 
@@ -164,9 +180,10 @@ const EditSymbolModal = ({ isOpen, onClose, symbol, onUpdate }) => {
                                 <div className="text-xs text-yellow-300">
                                     <p className="font-medium mb-1">Price Alerts:</p>
                                     <ul className="space-y-1">
-                                        <li>• You&apos;ll receive notifications when price targets are reached</li>
-                                        <li>• Alerts are sent via email and in-app notifications</li>
-                                        <li>• Leave empty to disable alerts</li>
+                                        <li>• Checked in the background about every 15 minutes</li>
+                                        <li>• Shown in the app: the Watchlist alerts panel and the dashboard</li>
+                                        <li>• Each alert fires once, and again only after the price has moved back</li>
+                                        <li>• Leave a field empty to switch that alert off</li>
                                     </ul>
                                 </div>
                             </div>

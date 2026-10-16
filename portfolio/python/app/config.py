@@ -53,6 +53,9 @@ class Settings(BaseSettings):
     POOL_TIMEOUT: int = env.int("POOL_TIMEOUT", 30)
     POOL_RECYCLE: int = env.int("POOL_RECYCLE", 3600)
 
+    # Background worker (workers/run.py)
+    WORKER_INTERVAL_SECONDS: int = env.int("WORKER_INTERVAL_SECONDS", 900)
+
     # Redis settings
     REDIS_HOST: str = env.str("REDIS_HOST", "localhost")
     REDIS_PORT: int = env.int("REDIS_PORT", 6379)

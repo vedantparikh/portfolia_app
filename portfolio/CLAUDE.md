@@ -17,6 +17,7 @@ scripts/check_migrations.sh  # throwaway Postgres: upgrade from empty, `alembic 
 scripts/verify.sh --stack    # + rebuild/restart local stack and smoke-test UI, /api proxy, API health
 docker compose up -d --wait  # run stack → UI http://localhost:3000, API http://127.0.0.1:8000/docs
 docker compose logs -f api
+docker compose logs -f worker   # background jobs (watchlist prices + alerts, every WORKER_INTERVAL_SECONDS)
 ```
 Single test file (same env as the gate):
 ```
@@ -42,7 +43,7 @@ Never run pytest inside the running `portfolio-api-1`, which is wired to the sta
 - **Schema:** Alembic is the only schema authority; the app never calls `create_all` (tests do, on SQLite). `start_api.sh` runs `alembic upgrade head` before the API starts and aborts on failure. Baseline = `alembic/versions/e97c82868ff5_baseline.py` (rewritten in place from the old no-op, so existing dev DBs stamped at it are already correct). A model change needs a migration: autogenerate it against a throwaway Postgres (pattern in `scripts/check_migrations.sh`), review it, drop any new Postgres enum types in `downgrade()`, and keep it expand/contract: additive in release N, destructive in N+1. The gate fails on model/migration drift.
 - **Frontend:** pages and components are in `js/src/components/<feature>/` (with an `index.js` barrel). All HTTP calls go through the axios objects in `js/src/services/api.js`. Auth state is in `contexts/AuthContext.jsx`. Data fetching is `useEffect`+`useState`, errors are shown with `react-hot-toast`, and formatting goes through `utils/formatters.jsx` (no inline `toFixed` or `$`). Money in portfolio views uses `useMoney()` (`hooks/useMoney.js`, provided by `CurrencyProvider` in `Portfolio.jsx`); lists that mix portfolios pass the row's own `currency`; market data uses the asset's `currency`.
 - **Config:** `config.py` `settings`, fed by compose `env_file` (`python/app/.env.docker`, `js/.env.docker`). These are gitignored secrets: never print or commit them. When you add a key, also add it to the matching `.env.example`.
-- **Compose:** `docker-compose.yml` is currently the dev stack (bind mounts, reload, Vite dev server) with memory limits and log rotation. It must keep working from the `.env.example` templates, because CI runs it that way.
+- **Compose:** `docker-compose.yml` is currently the dev stack (bind mounts, reload, Vite dev server) with memory limits and log rotation. Services: app, api (runs `alembic upgrade head` on start), worker (`workers/run.py`, same image, waits for api healthy, heartbeat healthcheck), postgres, redis. It must keep working from the `.env.example` templates, because CI runs it that way.
 
 ## Feature docs (read the one for the feature you touch)
 Each feature has a `CLAUDE.md` with purpose, state, endpoints, UI, workflow, known gaps and plans. Frontend feature folders point to them.
@@ -77,7 +78,7 @@ Each feature has a `CLAUDE.md` with purpose, state, endpoints, UI, workflow, kno
 - When a session establishes a new non-obvious fact about the project, update this file or the plan's progress log.
 
 ## Known state (2026-10-16)
-- Gate: lint clean (ruff + eslint, 0 warnings); 234 tests passed, 42 quarantined xfail, plus 8 quarantined uncollectable files.
+- Gate: lint clean (ruff + eslint, 0 warnings); 245 tests passed, 42 quarantined xfail, plus 8 quarantined uncollectable files.
 - Demo data (`scripts/seed_demo_application.py --reset`, run inside `portfolio-api-1` against `http://localhost:8000`) uses real Yahoo prices, splits and dividends over ~3 years; an independent replay matched the engine to the cent on every day.
 - Still on old code paths: analytics `/summary` and `/users/dashboard` (snapshot metrics that count deposits as returns). Advance-risk beta uses `^GSPC` price index.
 - `tests/unit/test_calculation_snapshots.py` pins every computed number (engine, risk, indicators, analytics) against `snapshots/calculations.json`. If it fails, a number the app shows changed: fix the regression, or regenerate with `UPDATE_SNAPSHOTS=1` only for an intended change and explain it in the commit.

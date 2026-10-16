@@ -13,7 +13,7 @@ step "compose config"
 docker compose config -q
 
 step "build images"
-docker compose build -q api app postgres
+docker compose build -q api app postgres worker
 
 step "lint: ruff (backend), eslint (frontend)"
 docker run --rm --user "$(id -u):$(id -g)" -v "$ROOT/python/app:/app" -w /app \
