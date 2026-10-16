@@ -52,21 +52,6 @@ async def init_db():
         return False
 
 
-async def create_tables():
-    """Create all database tables."""
-    try:
-        # Import all models to ensure they are registered
-        from core.database.models.base import Base
-
-        # Create all tables
-        Base.metadata.create_all(bind=engine)
-        logger.info("Database tables created successfully")
-        return True
-    except Exception as e:
-        logger.error(f"Failed to create database tables: {e}")
-        return False
-
-
 async def get_db_health() -> dict:
     """Get database health status."""
     try:

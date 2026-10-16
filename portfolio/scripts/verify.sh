@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Pre-push gate mirroring CI. Needs only Docker (the Jetson host has no py3.12/node).
-#   scripts/verify.sh          compose config + lint + backend tests + frontend build
+#   scripts/verify.sh          compose config + lint + backend tests + migrations + frontend build
 #   scripts/verify.sh --stack  also rebuild/restart the local stack and smoke-test it
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -13,7 +13,7 @@ step "compose config"
 docker compose config -q
 
 step "build images"
-docker compose build -q api app
+docker compose build -q api app postgres
 
 step "lint: ruff (backend), eslint (frontend)"
 docker run --rm --user "$(id -u):$(id -g)" -v "$ROOT/python/app:/app" -w /app \
@@ -32,6 +32,9 @@ docker run --rm --user "$(id -u):$(id -g)" \
     pip install -q --disable-pip-version-check --no-deps --target /tmp/extra ta &&
     python -c "import main; assert len(main.app.openapi()[\"paths\"]) >= 85" &&
     python -m pytest tests -q -p no:cacheprovider'
+
+step "migrations: upgrade, drift check, downgrade (throwaway Postgres)"
+scripts/check_migrations.sh
 
 step "frontend: production build"
 docker run --rm --network none \

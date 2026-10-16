@@ -66,11 +66,8 @@ This document describes the database architecture and setup for the Portfolia po
 ### Quick Setup
 
 ```bash
-# 1. Start the database (if using Docker)
-docker-compose up -d db
-
-# 2. Run the setup script
-./setup_database.sh
+# The API container runs `alembic upgrade head` on start (start_api.sh)
+docker compose up -d --wait
 ```
 
 ### Manual Setup
@@ -82,12 +79,7 @@ source .venv/bin/activate
 # 2. Install dependencies
 pip install -r requirements.txt
 
-# 3. Initialize database
-python database/init_db.py
-
-# 4. Set up Alembic migrations
-alembic init alembic
-alembic revision --autogenerate -m "Initial database schema"
+# 3. Create or update the schema (Alembic is the only schema authority)
 alembic upgrade head
 ```
 
