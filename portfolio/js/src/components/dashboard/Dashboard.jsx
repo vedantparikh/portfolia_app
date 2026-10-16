@@ -1,7 +1,6 @@
 import {
   Activity,
   BarChart3,
-  Bell,
   Bookmark,
   Clock,
   Layers,
@@ -284,11 +283,6 @@ const Dashboard = () => {
             </div>
 
             <div className="flex items-center space-x-4">
-              <button className="p-2 rounded-lg hover:bg-dark-800 transition-colors relative">
-                <Bell size={20} className="text-gray-400" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-primary-500 rounded-full"></span>
-              </button>
-
               <div className="flex items-center space-x-3">
                 <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center">
                   <User size={16} className="text-white" />

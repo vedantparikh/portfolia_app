@@ -4,8 +4,6 @@ import {
   ChevronDown,
   ChevronUp,
   ChevronsUpDown,
-  Download,
-  Plus,
   RefreshCw,
   Target,
   TrendingUp,
@@ -229,14 +227,6 @@ const PortfolioDetail = ({ portfolio }) => {
                     className={loadingHoldings ? "animate-spin" : ""}
                   />
                   <span>Refresh</span>
-                </button>
-                <button className="btn-outline text-sm flex items-center space-x-2">
-                  <Download size={16} />
-                  <span>Export</span>
-                </button>
-                <button className="btn-primary text-sm flex items-center space-x-2">
-                  <Plus size={16} />
-                  <span>Add Position</span>
                 </button>
               </div>
             </div>
