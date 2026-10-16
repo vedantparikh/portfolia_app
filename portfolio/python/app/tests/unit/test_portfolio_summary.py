@@ -84,3 +84,14 @@ async def test_summary(service):
     # 10 held all day +50, 5 bought today at 104 -> +5; base 1000 + 520
     assert summary.today_pnl == 55
     assert summary.today_pnl_percent == pytest.approx(55 / 1520 * 100, abs=0.01)
+
+
+@pytest.mark.asyncio
+async def test_holdings_carry_price_and_weight(service):
+    service, portfolio, asset_ids = service
+    for asset_id in asset_ids:
+        await service.recalculate_asset_state(portfolio.id, asset_id)
+    holdings = {h.symbol: h for h in await service.get_portfolio_holdings(portfolio.id)}
+    assert holdings["PRC"].current_price == 105
+    assert holdings["PRC"].weight_percent == 100
+    assert holdings["NOP"].weight_percent is None

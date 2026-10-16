@@ -93,7 +93,8 @@ const PortfolioAssets = ({ portfolio }) => {
                     price_change_percentage_24h: asset?.detail?.price_change_percentage_24h,
                     quantity: holding.quantity,
                     purchase_price: holding.cost_basis,
-                    current_price: holding.current_value && holding.quantity ? holding.current_value / holding.quantity : 0,
+                    current_price: holding.current_price,
+                    weight_percent: holding.weight_percent,
                     total_value: holding.current_value,
                     purchase_date: holding.purchase_date,
                     // Calculate P&L
@@ -368,7 +369,6 @@ const PortfolioAssets = ({ portfolio }) => {
     };
 
     const highlights = getPortfolioHighlights();
-    const totalPortfolioValue = filteredAssets.reduce((sum, asset) => sum + (asset.total_value || 0), 0);
     if (loading) {
         return (
             <div className="space-y-6">
@@ -481,7 +481,6 @@ const PortfolioAssets = ({ portfolio }) => {
                             key={asset.id}
                             asset={asset}
                             viewMode={viewMode}
-                            portfolioTotalValue={totalPortfolioValue}
                             onClick={() => handleAssetClick(asset)}
                             onTransaction={() => handleTransactionClick(asset)}
                             onAnalytics={() => handleAnalyticsClick(asset)}

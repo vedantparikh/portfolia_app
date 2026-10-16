@@ -549,7 +549,8 @@ class PortfolioService:
                 is_public=portfolio.is_public,
             )
 
-        rows = [r for r in await self._holding_rows(portfolio_id) if r[0].quantity > 0]
+        all_rows = await self._holding_rows(portfolio_id)
+        rows = [r for r in all_rows if r[0].quantity > 0]
         priced = [r for r in rows if r[0].current_value is not None]
         total_cost_basis_f = sum(h.cost_basis_total for h, _, _ in rows)
         total_current_value_f = sum(h.current_value for h, _, _ in priced)
@@ -588,6 +589,9 @@ class PortfolioService:
             recent_transactions=recent_transactions_count,
             is_active=portfolio.is_active,
             is_public=portfolio.is_public,
+            total_realized_pnl=round(
+                sum(h.realized_pnl or 0 for h, _, _ in all_rows), 2
+            ),
             missing_prices=[h.symbol for h, _, _ in rows if h.current_value is None],
         )
 
@@ -661,11 +665,17 @@ class PortfolioService:
                 today_pnl_percent=float(today_pnl / today_base * 100)
                 if today_base
                 else 0.0,
+                current_price=_opt_float(price),
                 realized_pnl=float(portfolio_asset.realized_pnl),
                 realized_pnl_percent=_opt_float(portfolio_asset.realized_pnl_percent),
                 last_updated=portfolio_asset.last_updated,
             )
             rows.append((holding, today_pnl, today_base))
+
+        priced_total = sum(h.current_value for h, _, _ in rows if h.current_value)
+        for holding, _, _ in rows:
+            if holding.current_value is not None and priced_total > 0:
+                holding.weight_percent = holding.current_value / priced_total * 100
         return rows
 
     async def get_portfolio_holdings(

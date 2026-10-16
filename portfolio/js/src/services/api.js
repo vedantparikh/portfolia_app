@@ -641,39 +641,6 @@ export const userAssetsAPI = {
   },
 
   /* 
-      GET USER ASSET SUMMARY - Get summary statistics for user's assets
-      Returns: Server response with asset summary data
-    */
-  getUserAssetSummary: async () => {
-    // Get all user assets first
-    const assetsResponse = await userAssetsAPI.getUserAssets();
-    const assets = assetsResponse.assets || [];
-
-    // Calculate summary statistics
-    const totalValue = assets.reduce((sum, asset) => {
-      const value = (asset.quantity || 0) * (asset.current_price || 0);
-      return sum + value;
-    }, 0);
-
-    const totalInvested = assets.reduce((sum, asset) => {
-      const invested = (asset.quantity || 0) * (asset.purchase_price || 0);
-      return sum + invested;
-    }, 0);
-
-    const totalPnL = totalValue - totalInvested;
-    const totalPnLPercentage =
-      totalInvested > 0 ? (totalPnL / totalInvested) * 100 : 0;
-
-    return {
-      total_assets: assets.length,
-      total_value: totalValue,
-      total_invested: totalInvested,
-      total_pnl: totalPnL,
-      total_pnl_percentage: totalPnLPercentage,
-    };
-  },
-
-  /* 
       BULK UPDATE USER ASSETS - Update multiple assets at once
       Parameters: updates (array of asset update objects)
       Returns: Server response with updated assets data

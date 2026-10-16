@@ -284,6 +284,7 @@ class PortfolioSummary(BaseModel):
     recent_transactions: int
     is_active: bool
     is_public: bool
+    total_realized_pnl: float = 0.0
     missing_prices: List[str] = Field(
         default_factory=list,
         description="Open positions without a live price, left out of value and P&L",
@@ -306,6 +307,10 @@ class PortfolioHolding(BaseModel):
     realized_pnl_percent: Optional[float]
     today_pnl: Optional[float]
     today_pnl_percent: Optional[float]
+    current_price: Optional[float] = None
+    weight_percent: Optional[float] = Field(
+        None, description="Share of the priced portfolio value (%)"
+    )
     last_updated: datetime
 
 
