@@ -15,7 +15,12 @@ import {
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { useAuth } from "../../contexts/AuthContext";
-import { analyticsAPI, marketAPI, portfolioAPI, transactionAPI } from "../../services/api";
+import {
+  marketAPI,
+  portfolioAPI,
+  portfolioCalculationsAPI,
+  transactionAPI,
+} from "../../services/api";
 import {
   formatCurrency,
   formatDateTime,
@@ -172,7 +177,7 @@ const Dashboard = () => {
           ),
           Promise.allSettled(
             portfolios.map((p) =>
-              analyticsAPI.getPortfolioPerformanceHistory(p.id, 90)
+              portfolioCalculationsAPI.getPerformanceSeries(p.id, "3m")
             )
           ),
         ]);
@@ -184,9 +189,7 @@ const Dashboard = () => {
               : null,
           history:
             histories[index].status === "fulfilled"
-              ? [...(histories[index].value.history || [])]
-                .sort((a, b) => a.snapshot_date.localeCompare(b.snapshot_date))
-                .map((h) => Number(h.total_value))
+              ? histories[index].value.points.map((p) => p.value)
               : [],
         }));
         setDashboardData((prev) => ({
@@ -422,7 +425,7 @@ const Dashboard = () => {
                               width={72}
                               height={18}
                               className="ml-auto mt-1 text-primary-400"
-                              title="Value, last 90 days"
+                              title="Value, last 3 months"
                             />
                             <p className="text-xs text-gray-500 mt-1 md:hidden">
                               Total Value

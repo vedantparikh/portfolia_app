@@ -1325,6 +1325,19 @@ export const portfolioCalculationsAPI = {
   },
 
   /* 
+      GET PERFORMANCE SERIES - Daily value, net invested and cost basis plus the period summary
+      Parameters: portfolioId (string or number), period (1m, 3m, 6m, ytd, 1y, 2y, 3y, 5y, inception)
+      Returns: { points: [{ date, value, net_invested, cost_basis }], summary, error }
+    */
+  getPerformanceSeries: async (portfolioId, period = "1y") => {
+    const response = await api.get(
+      `/portfolios/calculations/portfolio/${portfolioId}/performance/series`,
+      { params: { period } }
+    );
+    return response.data;
+  },
+
+  /* 
       CALCULATE PORTFOLIO PERFORMANCE - Calculate comprehensive portfolio performance metrics
       Parameters: portfolioId (string or number), requestData (object with period, end_date, etc.)
       Returns: Server response with portfolio performance data

@@ -718,10 +718,7 @@ const Portfolio = () => {
                         )}
 
                         {viewMode === "chart" && selectedPortfolio && (
-                          <PortfolioChart
-                            portfolio={selectedPortfolio}
-                            stats={stats}
-                          />
+                          <PortfolioChart portfolio={selectedPortfolio} />
                         )}
 
                         {viewMode === "performance" && selectedPortfolio && (
