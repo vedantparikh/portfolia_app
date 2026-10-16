@@ -2,7 +2,7 @@ import asyncio
 from collections import defaultdict
 from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy import and_, case, desc
 from sqlalchemy.orm import Session
@@ -21,7 +21,9 @@ from core.domain.positions import (
     day_change,
     to_trades,
 )
+from core.errors import ensure_same_currency
 from core.schemas.portfolio import (
+    CurrencyTotals,
     PortfolioAssetCreate,
     PortfolioAssetUpdate,
     PortfolioAssetWithDetails,
@@ -400,11 +402,14 @@ class PortfolioService:
         portfolio = self.get_portfolio(portfolio_id, user_id)
         if not portfolio:
             return None
-        if not self._get_owned_asset(transaction_data.asset_id, user_id):
+        asset = self._get_owned_asset(transaction_data.asset_id, user_id)
+        if not asset:
             return None
+        ensure_same_currency(portfolio.currency, asset.currency, asset.symbol)
 
         values = transaction_data.dict()
         values["portfolio_id"] = portfolio_id
+        values["currency"] = portfolio.currency
         values["total_amount"] = Transaction.compute_total_amount(
             transaction_data.transaction_type,
             transaction_data.quantity,
@@ -705,35 +710,59 @@ class PortfolioService:
         return query.all()
 
     async def get_portfolio_statistics(self, user_id: int) -> PortfolioStatistics:
-        """Totals across the user's active portfolios, from live holdings."""
+        """Totals across the user's active portfolios, per currency, from live holdings."""
         portfolios = self.get_user_portfolios(user_id, include_inactive=True)
-        total_assets = 0
-        total_value = today_pnl = today_base = Decimal(0)
+        sums: Dict[str, Dict[str, Any]] = {}
         missing: List[str] = []
         for portfolio in portfolios:
             if not portfolio.is_active:
                 continue
+            bucket = sums.setdefault(
+                portfolio.currency,
+                {
+                    "portfolios": 0,
+                    "assets": 0,
+                    "value": Decimal(0),
+                    "pnl": Decimal(0),
+                    "base": Decimal(0),
+                },
+            )
+            bucket["portfolios"] += 1
             for holding, pnl, base in await self._holding_rows(portfolio.id):
                 if holding.quantity <= 0:
                     continue
-                total_assets += 1
+                bucket["assets"] += 1
                 if holding.current_value is None:
                     missing.append(holding.symbol)
                     continue
-                total_value += Decimal(str(holding.current_value))
+                bucket["value"] += Decimal(str(holding.current_value))
                 if base:
-                    today_pnl += pnl
-                    today_base += base
+                    bucket["pnl"] += pnl
+                    bucket["base"] += base
 
+        totals = [
+            CurrencyTotals(
+                currency=currency,
+                portfolios=b["portfolios"],
+                total_assets=b["assets"],
+                total_value=round(float(b["value"]), 2),
+                today_pnl=round(float(b["pnl"]), 2),
+                today_pnl_percent=round(float(b["pnl"] / b["base"] * 100), 2)
+                if b["base"]
+                else 0.0,
+            )
+            for currency, b in sorted(sums.items(), key=lambda kv: -kv[1]["value"])
+        ]
+        single = totals[0] if len(totals) == 1 else None
         return PortfolioStatistics(
             total_portfolios=len(portfolios),
-            active_portfolios=len([p for p in portfolios if p.is_active]),
-            total_assets=total_assets,
-            total_value=round(float(total_value), 2),
-            today_pnl=round(float(today_pnl), 2),
-            today_pnl_percent=round(float(today_pnl / today_base * 100), 2)
-            if today_base
-            else 0.0,
+            active_portfolios=sum(t.portfolios for t in totals),
+            total_assets=sum(t.total_assets for t in totals),
+            totals=totals,
+            total_value=single.total_value if single else None,
+            currency=single.currency if single else None,
+            today_pnl=single.today_pnl if single else None,
+            today_pnl_percent=single.today_pnl_percent if single else None,
             missing_prices=sorted(set(missing)),
         )
 

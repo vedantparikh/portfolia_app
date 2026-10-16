@@ -32,6 +32,7 @@ Portfolio charts: `portfolio/PerformanceSeriesChart.jsx` (Value / Invested / Cos
 
 ## Conventions
 - All HTTP goes through `services/api.js` (axios, refresh interceptor). Data fetching uses `useEffect` + `useState`; errors show via `react-hot-toast`.
+- Money: in portfolio-scoped views `const money = useMoney()` (`hooks/useMoney.js`; `money(v, opts)`, `money.price(v)`, `money.currency`) — `Portfolio.jsx` wraps its views in `CurrencyProvider` with the selected portfolio's currency, the dashboard wraps nothing and passes `currency` per row/total. `formatCurrency` falls back to USD when `currency` is missing.
 - Formatting only through `utils/formatters.jsx`:
   - `formatCurrency` takes Intl options, so use `signDisplay: "exceptZero"`; `showSign` is ignored by it.
   - `formatPercentage({showSign, precision})`, `formatRatio`, `formatQuantity`, `formatDate`.

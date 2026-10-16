@@ -1,3 +1,4 @@
+import { useMoney } from "../../hooks/useMoney";
 import {
     Activity,
     Award,
@@ -17,11 +18,12 @@ import AssetModal from '../assets/AssetModal';
 import LoadingSpinner from '../shared/LoadingSpinner';
 import StatCard from '../shared/StatCard';
 import CreateTransactionModal from '../transactions/CreateTransactionModal';
-import { formatCurrency, formatPercentage, getChangeColor } from '../../utils/formatters.jsx';
+import { formatPercentage, getChangeColor } from '../../utils/formatters.jsx';
 import PortfolioAssetCard from './PortfolioAssetCard';
 
 
 const PortfolioAssets = ({ portfolio }) => {
+  const money = useMoney();
     const [assets, setAssets] = useState([]);
     const [filteredAssets, setFilteredAssets] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -420,9 +422,9 @@ const PortfolioAssets = ({ portfolio }) => {
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard label="Best Performer" icon={Award} tone="success" value={highlights.bestPerformer.symbol} valueTitle={highlights.bestPerformer.name} sub={highlights.bestPerformer.name} detail={formatPercentage(highlights.bestPerformer.value)} detailClassName={getChangeColor(highlights.bestPerformer.value)} />
-                <StatCard label="Largest Holding" icon={Gem} value={highlights.largestHolding.symbol} valueTitle={highlights.largestHolding.name} sub={highlights.largestHolding.name} detail={formatCurrency(highlights.largestHolding.value)} />
-                <StatCard label="Top Contributor" icon={TrendingUp} tone="success" value={highlights.topContributor.symbol} valueTitle={highlights.topContributor.name} sub={highlights.topContributor.name} detail={`${highlights.topContributor.value >= 0 ? '+' : ''}${formatCurrency(highlights.topContributor.value)}`} detailClassName={getChangeColor(highlights.topContributor.value)} />
-                <StatCard label="Daily Mover" icon={Activity} tone={highlights.dailyMover.value >= 0 ? 'success' : 'danger'} value={highlights.dailyMover.symbol} valueTitle={highlights.dailyMover.name} sub={highlights.dailyMover.name} detail={`${highlights.dailyMover.value >= 0 ? '+' : ''}${formatCurrency(highlights.dailyMover.value)}`} detailClassName={getChangeColor(highlights.dailyMover.value)} />
+                <StatCard label="Largest Holding" icon={Gem} value={highlights.largestHolding.symbol} valueTitle={highlights.largestHolding.name} sub={highlights.largestHolding.name} detail={money(highlights.largestHolding.value)} />
+                <StatCard label="Top Contributor" icon={TrendingUp} tone="success" value={highlights.topContributor.symbol} valueTitle={highlights.topContributor.name} sub={highlights.topContributor.name} detail={`${highlights.topContributor.value >= 0 ? '+' : ''}${money(highlights.topContributor.value)}`} detailClassName={getChangeColor(highlights.topContributor.value)} />
+                <StatCard label="Daily Mover" icon={Activity} tone={highlights.dailyMover.value >= 0 ? 'success' : 'danger'} value={highlights.dailyMover.symbol} valueTitle={highlights.dailyMover.name} sub={highlights.dailyMover.name} detail={`${highlights.dailyMover.value >= 0 ? '+' : ''}${money(highlights.dailyMover.value)}`} detailClassName={getChangeColor(highlights.dailyMover.value)} />
             </div>
             {/* Filters */}
             {showFilters && (

@@ -233,6 +233,7 @@ async def get_assets(
                 asset_type=asset.asset_type,
                 exchange=asset.exchange,
                 isin=asset.isin,
+                currency=asset.currency,
                 cusip=asset.cusip,
                 sector=asset.sector,
                 industry=asset.industry,

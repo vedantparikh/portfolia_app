@@ -20,6 +20,22 @@ class NotFoundError(DomainError):
     """The requested resource does not exist or is not the user's."""
 
 
+class CurrencyMismatchError(DomainError):
+    """An asset or cash amount in a currency other than the portfolio's (no FX yet)."""
+
+
+def ensure_same_currency(
+    portfolio_currency: str, currency: str | None, what: str
+) -> None:
+    """Portfolios hold one currency until FX conversion exists."""
+    if (currency or "").upper() != (portfolio_currency or "").upper():
+        raise CurrencyMismatchError(
+            f"{what} is in {currency or 'an unknown currency'} but the portfolio is in "
+            f"{portfolio_currency}; use a {portfolio_currency} listing or a "
+            f"{currency or 'matching'} portfolio"
+        )
+
+
 def public_message(error: BaseException, fallback: str) -> str:
     """`str(error)` for a DomainError, otherwise `fallback` (and the error is logged)."""
     if isinstance(error, DomainError):

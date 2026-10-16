@@ -5,6 +5,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { assetAPI, marketAPI } from "../../services/api";
 import assetCache from "../../services/assetCache";
 import { ClientSideAssetSearch, SymbolSearch } from "../shared";
+import { formatCurrency } from "../../utils/formatters.jsx";
 import transactionTypes, { colorSchemes } from "../../utils/transactionTypes";
 
 const CreateTransactionModal = ({
@@ -73,6 +74,9 @@ const CreateTransactionModal = ({
   };
 
   // Helper function to format quantity with max 4 decimal places
+  const portfolioCurrency =
+    portfolios.find((p) => String(p.id) === String(formData.portfolio_id))?.currency || "USD";
+
   const formatQuantity = (quantity) => {
     if (!quantity) return "";
     const num = parseFloat(quantity);
@@ -453,7 +457,7 @@ const CreateTransactionModal = ({
         portfolio_id: parseInt(formData.portfolio_id),
         transaction_type: formData.transaction_type,
         asset_id: parseInt(formData.asset_id),
-        currency: formData.currency,
+        currency: portfolioCurrency,
         quantity: parseFloat(formData.quantity),
         price: parseFloat(formData.price),
         fees: parseFloat(formData.fees) || 0,
@@ -1080,7 +1084,7 @@ const CreateTransactionModal = ({
                   )
                     ? "-"
                     : "+";
-                  return `${sign}$${totalAmount.toFixed(2)}`;
+                  return `${sign}${formatCurrency(totalAmount, { currency: portfolioCurrency })}`;
                 })()}
               </span>
             </div>
@@ -1096,11 +1100,12 @@ const CreateTransactionModal = ({
                 ];
 
                 if (monetaryTypes.includes(selectedType.value)) {
-                  return `${formatQuantity(formData.quantity) || 0} × $${
-                    formData.price || 0
-                  } + $${formData.fees || 0} fees`;
+                  return `${formatQuantity(formData.quantity) || 0} × ${formatCurrency(
+                    formData.price || 0,
+                    { currency: portfolioCurrency }
+                  )} + ${formatCurrency(formData.fees || 0, { currency: portfolioCurrency })} fees`;
                 } else {
-                  return `$${formData.fees || 0} fees only`;
+                  return `${formatCurrency(formData.fees || 0, { currency: portfolioCurrency })} fees only`;
                 }
               })()}
             </div>

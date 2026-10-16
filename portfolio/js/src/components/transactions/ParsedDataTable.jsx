@@ -27,6 +27,8 @@ const defaultChoice = (resolution) =>
     : {
         symbol: resolution.suggested_symbol,
         asset_id: resolution.asset_id ?? null,
+        currency: resolution.candidates.find((c) => c.symbol === resolution.suggested_symbol)
+          ?.currency,
         excluded: false,
       };
 
@@ -434,6 +436,19 @@ const ParsedDataTable = ({
       return;
     }
 
+    const portfolioCurrency = portfolios.find(
+      (p) => String(p.id) === String(selectedPortfolio)
+    )?.currency;
+    const wrongCurrency = Object.values(mapping).filter(
+      (c) => !c.excluded && c.currency && portfolioCurrency && c.currency !== portfolioCurrency
+    );
+    if (wrongCurrency.length > 0) {
+      toast.error(
+        `${wrongCurrency.map((c) => c.symbol).join(", ")} trade in another currency than this ${portfolioCurrency} portfolio. Pick ${portfolioCurrency} listings or leave them out.`,
+        { duration: 6000 }
+      );
+      return;
+    }
     const toSave = transactions.filter((t) => !t.excluded);
     if (toSave.length === 0) {
       toast.error("Nothing to import: every row is left out.");
@@ -609,6 +624,9 @@ const ParsedDataTable = ({
               instruments={instruments}
               mapping={mapping}
               onChange={handleMappingChange}
+              portfolioCurrency={
+                portfolios.find((p) => String(p.id) === String(selectedPortfolio))?.currency
+              }
             />
           )}
 

@@ -90,12 +90,12 @@ const TransactionCard = ({ transaction, onEdit, onDelete }) => {
               {getTransactionArrow(type)}
               <span className="text-base font-semibold text-gray-100">
                 {type === "buy" ? "-" : "+"}
-                {formatCurrency(Math.abs(transaction.total_amount) || 0)}
+                {formatCurrency(Math.abs(transaction.total_amount) || 0, { currency: transaction.currency })}
               </span>
             </div>
             <div className="text-sm text-gray-400">
               {formatQuantity(transaction.quantity)} @{" "}
-              {formatCurrency(transaction.price || 0)}
+              {formatCurrency(transaction.price || 0, { currency: transaction.currency })}
             </div>
           </div>
 
@@ -103,7 +103,7 @@ const TransactionCard = ({ transaction, onEdit, onDelete }) => {
             <div className="text-right hidden md:block">
               <div className="text-sm text-gray-400">Fees</div>
               <div className="text-sm font-medium text-gray-300">
-                {formatCurrency(transaction.fees)}
+                {formatCurrency(transaction.fees, { currency: transaction.currency })}
               </div>
             </div>
           )}

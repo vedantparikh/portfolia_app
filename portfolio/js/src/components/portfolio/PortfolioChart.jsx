@@ -1,8 +1,8 @@
+import { useMoney } from "../../hooks/useMoney";
 import { RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { portfolioCalculationsAPI } from "../../services/api";
 import {
-  formatCurrency,
   formatDate,
   formatPercentage,
   formatPercentagePoints,
@@ -24,7 +24,6 @@ const PERIODS = [
   ["All", "inception"],
 ];
 
-const signed = (v) => formatCurrency(v, { signDisplay: "exceptZero" });
 const day = (d) => formatDate(`${d}T12:00:00`);
 
 const Row = ({ label, hint, value, className = "text-gray-100" }) => (
@@ -54,6 +53,8 @@ const Versus = ({ label, hint, mine, theirs, diff, format, diffFormat = format, 
 );
 
 const BenchmarkCard = ({ comparison }) => {
+  const money = useMoney();
+  const signed = (v) => money(v, { signDisplay: "exceptZero" });
   const { benchmark, portfolio: p, shadow: b, difference: d, warnings = [], error } = comparison;
   return (
     <div className="card p-6">
@@ -79,7 +80,7 @@ const BenchmarkCard = ({ comparison }) => {
               mine={p.end_value}
               theirs={b.end_value}
               diff={d?.end_value}
-              format={formatCurrency}
+              format={money}
               diffFormat={signed}
               level
             />
@@ -115,6 +116,8 @@ const BenchmarkCard = ({ comparison }) => {
 };
 
 const PortfolioChart = ({ portfolio }) => {
+  const money = useMoney();
+  const signed = (v) => money(v, { signDisplay: "exceptZero" });
   const [period, setPeriod] = useState("1y");
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -211,8 +214,8 @@ const PortfolioChart = ({ portfolio }) => {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               <StatCard
                 label="Value"
-                value={formatCurrency(s.end_value)}
-                sub={s.start_value ? `from ${formatCurrency(s.start_value)}` : "Since the first trade"}
+                value={money(s.end_value)}
+                sub={s.start_value ? `from ${money(s.start_value)}` : "Since the first trade"}
               />
               <StatCard
                 label="Profit"
@@ -220,8 +223,8 @@ const PortfolioChart = ({ portfolio }) => {
                 valueClassName={getChangeColor(s.profit)}
                 sub={
                   s.net_contributions < 0
-                    ? `${formatCurrency(-s.net_contributions)} net withdrawn`
-                    : `${formatCurrency(s.net_contributions)} net added`
+                    ? `${money(-s.net_contributions)} net withdrawn`
+                    : `${money(s.net_contributions)} net added`
                 }
               />
               <StatCard
@@ -343,10 +346,10 @@ const PortfolioChart = ({ portfolio }) => {
           <div className="card p-6">
             <h4 className="font-semibold text-gray-100 mb-2">Money in and out</h4>
             <Row label="Period" value={`${day(s.start_date)} – ${day(s.end_date)}`} hint={`${s.trading_days} trading days`} />
-            <Row label="Value at start" value={formatCurrency(s.start_value)} />
-            <Row label="Deposits" hint="Buys, including fees" value={formatCurrency(s.deposits)} />
-            <Row label="Withdrawals" hint="Sale proceeds and dividends" value={formatCurrency(s.withdrawals)} />
-            <Row label="Value at end" value={formatCurrency(s.end_value)} />
+            <Row label="Value at start" value={money(s.start_value)} />
+            <Row label="Deposits" hint="Buys, including fees" value={money(s.deposits)} />
+            <Row label="Withdrawals" hint="Sale proceeds and dividends" value={money(s.withdrawals)} />
+            <Row label="Value at end" value={money(s.end_value)} />
             <Row
               label="Profit"
               hint="End − start − net deposits"

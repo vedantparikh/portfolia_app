@@ -109,7 +109,11 @@ def portfolio(test_db):
     test_db.flush()
     portfolio = Portfolio(user_id=user.id, name="TR", currency="EUR")
     asset = Asset(
-        symbol="AAPL", name="Apple", asset_type=AssetType.EQUITY, user_id=user.id
+        symbol="APC.F",
+        name="Apple",
+        asset_type=AssetType.EQUITY,
+        currency="EUR",
+        user_id=user.id,
     )
     test_db.add_all([portfolio, asset])
     test_db.commit()
@@ -123,7 +127,9 @@ def _item(asset, **fields):
 
 
 @pytest.mark.asyncio
-async def test_bulk_create_keeps_dividend_amount_taxes_and_currency(test_db, portfolio):
+async def test_bulk_create_keeps_dividend_amount_taxes_and_rejects_other_currencies(
+    test_db, portfolio
+):
     portfolio, asset = portfolio
     service = AccountStatementService(test_db)
 
@@ -145,17 +151,26 @@ async def test_bulk_create_keeps_dividend_amount_taxes_and_currency(test_db, por
                 price=Decimal("0"),
                 total_amount=Decimal("0.37"),
                 taxes=Decimal("0.13"),
-                currency="usd",
+                currency="eur",
+            ),
+            _item(
+                asset,
+                transaction_type="dividend",
+                quantity=Decimal("0"),
+                price=Decimal("0"),
+                total_amount=Decimal("1"),
+                currency="USD",
             ),
         ],
         portfolio.user_id,
     )
 
-    assert (summary.total_created, summary.total_failed) == (2, 0)
+    assert (summary.total_created, summary.total_failed) == (2, 1)
+    assert "The statement is in USD but the portfolio is in EUR" in summary.errors[0]
     rows = test_db.query(Transaction).order_by(Transaction.id).all()
     assert [(r.transaction_type.value, r.total_amount, r.currency) for r in rows] == [
         ("buy", Decimal("301"), "EUR"),
-        ("dividend", Decimal("0.37"), "USD"),
+        ("dividend", Decimal("0.37"), "EUR"),
     ]
     assert rows[1].taxes == Decimal("0.13")
 

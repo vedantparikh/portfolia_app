@@ -1,3 +1,4 @@
+import { CurrencyProvider } from "../../contexts/CurrencyContext";
 import {
   Activity,
   ArrowLeft,
@@ -577,6 +578,7 @@ const Portfolio = () => {
 
               {/* Portfolio Content */}
               {selectedPortfolio && (
+                <CurrencyProvider currency={selectedPortfolio.currency}>
                 <div className="space-y-6">
                   {viewMode === "overview" && (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -671,11 +673,11 @@ const Portfolio = () => {
                                     {transaction.transaction_type === "buy"
                                       ? "-"
                                       : "+"}
-                                    {formatCurrency(transaction.total_amount)}
+                                    {formatCurrency(transaction.total_amount, { currency: selectedPortfolio.currency })}
                                   </p>
                                   <p className="text-xs text-gray-400">
                                     {formatQuantity(transaction.quantity)} @{" "}
-                                    {formatCurrency(transaction.price)}
+                                    {formatCurrency(transaction.price, { currency: selectedPortfolio.currency })}
                                   </p>
                                 </div>
                               </div>
@@ -729,6 +731,7 @@ const Portfolio = () => {
                       </>
                     ))}
                 </div>
+                </CurrencyProvider>
               )}
             </>
           )}

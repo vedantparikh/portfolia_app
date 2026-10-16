@@ -153,6 +153,7 @@ class AssetDetail(BaseModel):
 
 class Asset(AssetBase):
     id: int
+    currency: Optional[str] = Field(None, description="Quote currency (from Yahoo)")
     created_at: datetime
     updated_at: Optional[datetime] = None
     detail: Optional[AssetDetail] = None
@@ -231,8 +232,8 @@ class TransactionBase(BaseModel):
     settlement_date: Optional[datetime] = None
     notes: Optional[str] = None
     reference_number: Optional[str] = None
-    fees: Decimal = Field(default=0)
-    taxes: Decimal = Field(default=0)
+    fees: Decimal = Field(default=Decimal("0"))
+    taxes: Decimal = Field(default=Decimal("0"))
 
 
 class TransactionCreate(TransactionBase):
@@ -314,15 +315,32 @@ class PortfolioHolding(BaseModel):
     last_updated: datetime
 
 
+class CurrencyTotals(BaseModel):
+    """Active portfolios in one currency, summed (values are never mixed across currencies)."""
+
+    currency: str
+    portfolios: int
+    total_assets: int
+    total_value: float
+    today_pnl: float = 0.0
+    today_pnl_percent: float = 0.0
+
+
 class PortfolioStatistics(BaseModel):
     """Overall portfolio statistics for a user"""
 
     total_portfolios: int
     active_portfolios: int
     total_assets: int
-    total_value: float
-    today_pnl: float = 0.0
-    today_pnl_percent: float = 0.0
+    totals: List[CurrencyTotals] = Field(
+        default_factory=list, description="One entry per portfolio currency"
+    )
+    total_value: Optional[float] = Field(
+        None, description="Only when every active portfolio has the same currency"
+    )
+    currency: Optional[str] = None
+    today_pnl: Optional[float] = None
+    today_pnl_percent: Optional[float] = None
     missing_prices: List[str] = Field(default_factory=list)
 
 

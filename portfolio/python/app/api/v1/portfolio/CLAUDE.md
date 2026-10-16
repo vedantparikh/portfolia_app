@@ -10,7 +10,7 @@
 | `POST/GET /`, `GET/PUT/DELETE /{id}`, `DELETE /{id}/hard` | CRUD; delete is soft (is_active) unless `/hard` |
 | `GET /{id}/holdings` | Live holdings: quantity (today's share units), cost basis (FIFO+fees), `current_price`, `current_value`, unrealized, today's P&L (`day_change`), realized, `weight_percent`. No price → value fields null. Includes fully sold assets (qty 0) for realized P&L |
 | `GET /{id}/summary` | Sum of the same holding rows (open positions only): value, cost, unrealized (priced positions only), today's P&L / % on start-of-day value + cash invested today, `total_realized_pnl`, `missing_prices` |
-| `GET /statistics/overview` | Same rows across active portfolios: total value, holdings count, today's P&L/%, missing prices. Dashboard "Total Value" tile |
+| `GET /statistics/overview` | Same rows across active portfolios, summed **per currency** in `totals[]` (value, holdings, today's P&L/%); `total_value`/`currency`/`today_pnl` only when all portfolios share one currency; missing prices. Dashboard "Total Value" tile |
 | `POST /{id}/refresh` | Rebuilds every position from transactions (picks up new splits) and re-prices |
 | `POST/GET /{id}/assets`, `GET /{id}/assets/details`, `PUT/DELETE /{id}/assets/{asset_id}`, `POST /{id}/assets/legacy` | Position records (`PortfolioAsset`) |
 | `POST/GET /{id}/transactions` | Portfolio-scoped transaction create/list (create triggers `recalculate_asset_state`) |
@@ -34,7 +34,7 @@ Create portfolio → add transactions (Transactions page, PDF import, or Add Pos
 ## Known gaps
 - `PUT /{id}/assets/{asset_id}` lets clients write quantity/cost/P&L directly (bypasses transactions) — plan 2.10.
 - `PortfolioSummary()` returned bare for a foreign portfolio (validation error path).
-- No FX: values assume asset currency = portfolio currency (plan 2.3).
+- No FX yet (plan 2.3): a portfolio holds only assets quoted in its own currency — `add_transaction` raises `CurrencyMismatchError` (400) otherwise, and records the portfolio currency on the transaction.
 - Today's P&L previous close: `yf.download(period="2d")` first row, cached 12h.
 - Delete flows have no undo; holdings include zero-quantity rows in the table.
 
