@@ -27,9 +27,9 @@ from core.database.models import (
     TransactionStatus,
     TransactionType,
 )
-from core.domain.positions import Split, to_trades
-from core.domain.returns import compute_daily_returns, split_period
-from core.domain.valuation import daily_series
+from core.domain.positions import OversellError, Split, to_trades
+from core.domain.returns import compute_daily_returns, period_summary, split_period
+from core.domain.valuation import MissingPriceError, daily_series
 from core.services.market_data_service import MarketDataService
 from core.services.utils import CashFlow, PeriodType
 
@@ -1140,6 +1140,42 @@ class PortfolioCalculationService:
         closes, splits, symbols = await self.get_market_history(asset_ids)
         trades = to_trades(all_transactions, splits)
         return daily_series(trades, closes, end_date.date(), symbols)
+
+    async def get_performance_series(
+        self, portfolio_id: int, user_id: int, period: str
+    ) -> Dict[str, Any]:
+        """Daily points and the period summary the performance chart shows."""
+        if not self.get_portfolio(portfolio_id, user_id):
+            raise ValueError(f"Portfolio {portfolio_id} not found or not accessible")
+        end = datetime.now(timezone.utc)
+        start = PeriodType.get_start_date(period, end)
+        result: Dict[str, Any] = {
+            "portfolio_id": portfolio_id,
+            "period": period,
+            "points": [],
+        }
+        transactions = self.get_transactions(portfolio_id, None, end)
+        if not transactions:
+            return result
+        try:
+            series = await self.get_portfolio_series(transactions, end)
+        except (MissingPriceError, OversellError) as e:
+            result["error"] = str(e)
+            return result
+
+        start_day = start.date() if start else None
+        window, _, _ = split_period(series, start_day)
+        result["points"] = [
+            {
+                "date": day.date(),
+                "value": row["value"],
+                "net_invested": row["net_invested"],
+                "cost_basis": row["cost_basis"],
+            }
+            for day, row in window.iterrows()
+        ]
+        result["summary"] = period_summary(series, start_day) or None
+        return result
 
     async def get_portfolio_history(
         self,

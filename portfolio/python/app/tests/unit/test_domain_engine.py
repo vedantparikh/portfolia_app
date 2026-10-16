@@ -18,6 +18,7 @@ from core.domain.positions import (
     to_trades,
 )
 from core.domain.returns import (
+    annualize_pct,
     compute_daily_returns,
     max_drawdown_pct,
     period_summary,
@@ -199,6 +200,14 @@ class TestPeriodSummary:
         summary = period_summary(frame([100, 110, 99], [100, 0, 0]))
         assert summary["best_day"]["return_pct"] == pytest.approx(10)
         assert summary["worst_day"]["return_pct"] == pytest.approx(-10)
+
+
+class TestAnnualize:
+    def test_a_one_year_window_is_annualised(self):
+        assert annualize_pct(21.0, 364) == pytest.approx(21.0, abs=0.1)
+
+    def test_shorter_periods_are_not_extrapolated(self):
+        assert annualize_pct(5.0, 90) is None
 
 
 class TestRiskAndXirr:

@@ -43,8 +43,8 @@ def twr_pct(returns: pd.Series) -> Optional[float]:
 
 
 def annualize_pct(total_pct: Optional[float], days: int) -> Optional[float]:
-    """Annualised rate, only for periods of at least a year (shorter ones would extrapolate)."""
-    if total_pct is None or days < 365 or total_pct <= -100:
+    """Annualised rate, only for periods of about a year or more (shorter ones would extrapolate)."""
+    if total_pct is None or days < 360 or total_pct <= -100:
         return None
     return float(((1 + total_pct / 100) ** (365.25 / days) - 1) * 100)
 
