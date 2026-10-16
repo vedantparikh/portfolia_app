@@ -317,7 +317,10 @@ class SeriesPoint(BaseModel):
 
     date: date
     value: float = Field(..., description="Market value at the close")
-    net_invested: float = Field(..., description="Cash put in minus cash taken out")
+    invested: float = Field(
+        ...,
+        description="Value at the period start plus deposits minus withdrawals since",
+    )
     cost_basis: float = Field(..., description="FIFO cost of the open positions")
 
 

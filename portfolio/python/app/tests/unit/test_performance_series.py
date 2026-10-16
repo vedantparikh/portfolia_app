@@ -65,7 +65,7 @@ async def test_inception_series_and_summary(test_db, monkeypatch, portfolio):
     )
 
     assert [p["value"] for p in result["points"]] == [1000, 1100, 1210]
-    assert {p["net_invested"] for p in result["points"]} == {1000}
+    assert {p["invested"] for p in result["points"]} == {1000}
     summary = result["summary"]
     assert summary["profit"] == pytest.approx(210)
     assert summary["twr_pct"] == pytest.approx(21)

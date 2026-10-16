@@ -1164,12 +1164,13 @@ class PortfolioCalculationService:
             return result
 
         start_day = start.date() if start else None
-        window, _, _ = split_period(series, start_day)
+        window, opening_value, _ = split_period(series, start_day)
+        invested = opening_value + (window["inflow"] - window["outflow"]).cumsum()
         result["points"] = [
             {
                 "date": day.date(),
                 "value": row["value"],
-                "net_invested": row["net_invested"],
+                "invested": invested[day],
                 "cost_basis": row["cost_basis"],
             }
             for day, row in window.iterrows()
