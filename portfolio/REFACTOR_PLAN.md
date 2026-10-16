@@ -13,7 +13,7 @@ Target host: NVIDIA Jetson AGX Xavier home server shared with ~35 other containe
 | Area | State | Most important issues |
 |---|---|---|
 | **Calculation correctness** | 🟡 Core fixed (2026-10-16) | *Fixed:* one engine in `core/domain` (FIFO with fees, automatic splits, completed-only, no cost fallback for missing prices, correct today's P&L, one risk-free rate); chart, performance, multi-period, risk, summary, holdings, overview, allocation and rebalancing all read it and agree; verified to the cent against an independent replay. *Open:* FX (EUR vs USD), Trade Republic dividends/tax/fees/currency, benchmark maths, legacy analytics snapshot metrics, indicator formulas. |
-| **Backend architecture** | ⚠️ Inconsistent | Every endpoint is `async def` but uses a sync SQLAlchemy session, so it blocks the event loop. There is no repository layer, and routers (analytics, assets, auth) run queries and commits directly. There are no domain exceptions; 53 `detail=str(e)` leak internal errors. Three config systems are stacked. The only Alembic migration is a no-op, and `create_all` runs 3× on every start. `/assets/search` is shadowed by `/{asset_id}`. Symbol search exists in 5 places. The dashboard router is dead and never mounted. |
+| **Backend architecture** | ⚠️ Inconsistent | Every endpoint is `async def` but uses a sync SQLAlchemy session, so it blocks the event loop. There is no repository layer, and routers (analytics, assets, auth) run queries and commits directly. There are no domain exceptions; 53 `detail=str(e)` leak internal errors. Three config systems are stacked. Alembic owns the schema (1.6 ✅). `/assets/search` is shadowed by `/{asset_id}`. Symbol search exists in 5 places. The dashboard router is dead and never mounted. |
 | **Frontend** | 🟡 Cleaner, still hard to extend | *Done:* modernised dashboard/portfolio screens, shared `StatCard`/`Sparkline`/charts, financial maths removed from the main views, React 19/Vite 8/Tailwind 4, Sentry removed. *Open:* zero tests, `api.js` 1,731 lines, no data-fetching layer, tokens in localStorage, `dangerouslySetInnerHTML`, hard-coded `$`, 24 hand-rolled modals. |
 | **Tests** | 🟡 Green gate, thin coverage | Gate: 165 passed, 42 quarantined xfail, 8 quarantined uncollectable files. Golden tests for the engine (`test_domain_engine.py`), SQLite service tests for positions/summary/series, characterisation snapshots. Still no frontend or e2e tests; integration tests mostly quarantined. |
 | **Infra / CI** | ⚠️ Gated, still dev-only | *Fixed:* CI now runs `verify.sh --stack` on arm64, compose is hardened for the shared host, and secrets are out of images. *Open:* there is a single dev compose (reload, bind mounts, DEBUG), the API image is 1.9 GB and runs as root, there is no release or deploy process, and the remaining docs are stale. |
@@ -148,7 +148,7 @@ Each step is roughly one PR. The order matters: **safety net → release platfor
 |---|---|---|
 | ✅ 0.1 | ✅ Compose for the shared host: UI port fixed, API on loopback only, DB/Redis not published, named volumes, memory limits, log rotation (`fe0e6c3`) | Stack healthy, UI :3000 → 200 |
 | 🟡 0.2 | ✅ `.env.example` templates and `.dockerignore` files, so secrets are no longer baked into images (`f5579c3`). ⏳ **Still to do:** rotate the Brevo SMTP password (Sentry was removed on 2026-10-15), check history commits `508abfd`/`51bdb8d`, and add gitleaks to CI. | gitleaks clean, secrets rotated |
-| 🟡 0.3 | ✅ Repo hygiene: 59 dead or stray files removed (`a1b50e4`). ⏳ Rewrite the root README and `STARTUP_GUIDE.md`, and fix or delete `setup-docker.sh` and `scripts/setup_database.sh`. | README accurate |
+| 🟡 0.3 | ✅ Repo hygiene: 59 dead or stray files removed (`a1b50e4`). ⏳ Rewrite the root README and `STARTUP_GUIDE.md`, and fix or delete `setup-docker.sh` (`scripts/setup_database.sh` deleted in 1.6). | README accurate |
 | ⏳ 0.4 | One import root and one dependency file. Use a single `pyproject.toml` with uv and a lock file. Split dev and prod deps. Add `ta` for tests. Drop `schedule`, `requests`, `scipy` and `PyPDF2`. Set `requires-python >= 3.12`. Delete the empty `python/app/app/` dir, which shadows the `app` package. **Now:** Still `requirements.txt` + `pyproject.toml`, empty `python/app/app/`, `ta` installed ad hoc by the gate. | `pytest --collect-only` collects with **0 errors** |
 | 🟡 0.5 | **Burn down `tests/quarantine.txt`** (50 entries: 8 uncollectable files, 42 xfail). Fix the `/app/v1` → `/api/v1` prefix and delete tests for removed APIs. Then turn on blocking lint: ruff on changed files via pre-commit, and eslint once `react/prop-types` is solved by TS or disabled. **Now:** Lint is gating (ruff + eslint, 0 warnings, 2026-10-15). Quarantine unchanged: 50 entries. | Quarantine file empty, lint is a required check |
 | 🟡 0.6 | ✅ CI gate: `scripts/verify.sh --stack` on `ubuntu-24.04-arm` for every PR and every push to master (`e30df0f`). ⏳ Turn on GitHub branch protection: require the `verify` check, squash-merge only, no direct pushes to `master`. **Now:** CI runs `verify.sh --stack` on arm64; branch protection not confirmed. | A red check blocks merge |
@@ -175,7 +175,7 @@ There is no production data yet, so this is the cheapest moment to set up how re
 | ⏳ 1.3 | Add `DomainError` classes, global handlers and the uniform error envelope. Remove the `detail=str(e)` leaks and the blanket `except Exception`. **Now:** 40 `str(e)` leaks left in routers. |
 | ⏳ 1.4 | Add middleware for request-id, structured access logging and timing. Configure logging once and remove the `print()` calls. **Now:** SQLAlchemy echoes every SQL statement to the API log in dev. |
 | ⏳ 1.5 | Add a unit-of-work session dependency and a `get_owned_portfolio` dependency. Make DB endpoints `def`. |
-| ⏳ 1.6 | **Alembic as the only schema authority.** Autogenerate a baseline migration from the models. There is no production data yet, so it simply runs on empty DBs in every env, with no `stamp`. Do this **before** the first prod release (R.4) so prod is born on Alembic. Remove every `create_all` and the auto-seeding on startup. A CI check fails on model/migration drift. |
+| ✅ 1.6 | **Alembic as the only schema authority.** Autogenerate a baseline migration from the models. There is no production data yet, so it simply runs on empty DBs in every env, with no `stamp`. Do this **before** the first prod release (R.4) so prod is born on Alembic. Remove every `create_all` and the auto-seeding on startup. A CI check fails on model/migration drift. **Done:** baseline in `e97c82868ff5_baseline.py`, no `create_all` at startup, `scripts/check_migrations.sh` (upgrade, `alembic check`, full downgrade, upgrade) in `verify.sh`. |
 | ⏳ 1.7 | Models: move to SQLAlchemy 2 `Mapped[]`, make all DateTimes timezone-aware (in a migration), and widen price precision. |
 | ⏳ 1.8 | Health endpoints: `/health/live` and `/health/ready` with real checks, returning 503 when unhealthy. Delete `health_router` (the test router) and the hardcoded timestamp. |
 | 🟡 1.9 | Auth hardening: python-jose → PyJWT, passlib → bcrypt (or argon2) directly, hash refresh tokens at rest, dummy hash on unknown users, remove the no-op `require_admin`. Optional: refresh token in an httpOnly cookie (see Phase 4.6). **Now:** passlib → bcrypt done (wave 3); python-jose, plain refresh tokens remain. |
@@ -308,6 +308,7 @@ Open:
 | 2026-10-16 | `chore/ui-modernize` (#73) | — | Dashboard and portfolio widgets, StatCard, analytics units fixed |
 | 2026-10-16 | `fix/calculations` | — | `core/domain` engine (2.1 splits/FIFO, 2.5 valuation, 2.6 returns, 2.8 today's P&L ✅); performance series endpoint + chart; summary/holdings/overview/allocation/rebalancing/history on the engine; realistic demo seed. Open: 2.2 importer dividends/tax, 2.3 FX, 2.7 benchmark, 2.10 derived cache |
 | 2026-10-16 | `fix/shadowed-routes-500s` | — | Six shadowed literal routes reachable (and the 4 bugs behind them fixed); `/overview` and `/users/dashboard` 500s fixed; asset search scoped to the user; `test_route_order.py` |
+| 2026-10-16 | `chore/alembic-baseline` | — | 1.6: Alembic baseline from the models, `create_all` and the startup re-init removed, migration drift/round-trip check in the gate |
 
 
 ## 6b. Findings and to-do (2026-10-16)
@@ -345,7 +346,7 @@ Open:
 4. ✅ Shadowed routes and the two 500s (1.2). Still open: the `str(e)` cleanup (1.3).
 5. **Watchlist enrichment** (UI Batch 4) and an alert worker (3.3).
 6. **Indicator formulas and configuration wiring** (2.9).
-7. **Phase R release platform** and Phase 1.6 Alembic baseline, before any real data.
+7. **Phase R release platform**, before any real data (1.6 Alembic baseline ✅).
 
 ---
 

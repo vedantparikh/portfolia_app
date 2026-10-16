@@ -7,8 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from config import settings
-from core.database.connection import create_tables, init_db
-from core.database.init_db import init_database
+from core.database.connection import init_db
 from core.logging_config import get_logger, setup_logging
 from core.services.portfolio_service import OversellError
 from health_check import router as health_router
@@ -50,20 +49,6 @@ async def lifespan(app: FastAPI):
         logger.info(
             f"✅ Database connection initialized successfully in {db_init_time:.3f}s"
         )
-
-        # Run database migrations and create schemas
-        logger.info("🔄 Running database migrations and creating schemas...")
-        migration_start_time = time.time()
-        await create_tables()
-        migration_time = time.time() - migration_start_time
-        logger.info(f"✅ Database migrations completed in {migration_time:.3f}s")
-
-        # Initialize database with sample data if needed
-        logger.info("📊 Initializing database with sample data...")
-        data_start_time = time.time()
-        await init_database()
-        data_init_time = time.time() - data_start_time
-        logger.info(f"✅ Sample data initialization completed in {data_init_time:.3f}s")
 
         total_startup_time = time.time() - startup_time
         logger.info(

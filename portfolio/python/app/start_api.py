@@ -3,9 +3,8 @@
 Startup script for Portfolia API with automatic database initialization.
 This script will:
 1. Wait for the database to be ready
-2. Run migrations and create schemas
-3. Initialize sample data
-4. Start the FastAPI application
+2. Start the FastAPI application
+Schema migrations run before this, in start_api.sh (alembic upgrade head).
 """
 
 import asyncio
@@ -17,8 +16,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config import settings
-from core.database.connection import create_tables, init_db
-from core.database.init_db import init_database
+from core.database.connection import init_db
 
 # Configure logging
 logging.basicConfig(
@@ -49,29 +47,6 @@ async def wait_for_database(max_retries: int = 30, retry_delay: int = 2):
     return False
 
 
-async def initialize_database():
-    """Initialize database with migrations and sample data."""
-    try:
-        # Create tables
-        logger.info("Creating database tables...")
-        if await create_tables():
-            logger.info("Database tables created successfully!")
-        else:
-            logger.error("Failed to create database tables")
-            return False
-
-        # Initialize sample data
-        logger.info("Initializing sample data...")
-        await init_database()
-        logger.info("Sample data initialized successfully!")
-
-        return True
-
-    except Exception as e:
-        logger.error(f"Database initialization failed: {e}")
-        return False
-
-
 async def startup_sequence():
     """Run the startup sequence for database initialization."""
     logger.info("Starting Portfolia API...")
@@ -80,13 +55,6 @@ async def startup_sequence():
     if not await wait_for_database():
         logger.error("Failed to connect to database. Exiting.")
         sys.exit(1)
-
-    # Initialize database
-    if not await initialize_database():
-        logger.error("Failed to initialize database. Exiting.")
-        sys.exit(1)
-
-    logger.info("Database initialization completed successfully!")
 
 
 def main():
