@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd  # type: ignore
 from sqlalchemy.orm import Session
 
+from core.domain.returns import RISK_FREE_RATE
 from core.services.portfolio_calculation_service import (
     PortfolioCalculationService,
 )
@@ -35,7 +36,7 @@ class PortfolioRiskMetricsService:
         # ASSUMPTION: A constant annualized risk-free rate of 3.0%.
         # For a production system, this should be fetched dynamically from a reliable source
         # (e.g., FRED for US Treasury Bill rates).
-        self.ANNUALIZED_RISK_FREE_RATE = 0.03
+        self.ANNUALIZED_RISK_FREE_RATE = RISK_FREE_RATE
 
     async def calculate_portfolio_risk_metrics(
         self,
