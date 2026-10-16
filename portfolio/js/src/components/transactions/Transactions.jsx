@@ -294,21 +294,19 @@ const Transactions = () => {
         portfolioId,
         transactionData
       );
-      if (response.summary?.total_succeeded > 0) {
-        toast.success(
-          `Successfully imported ${response.summary.total_succeeded} transactions.`
-        );
-        handleRefresh();
-      }
+      const created = response.summary?.total_created ?? 0;
       if (context === "create") {
-        onSuccess();
-        toast.success(
-          `Successfully created ${
-            response.summary?.total_created || transactionData.length
-          } transactions.`
+        if (created > 0) {
+          onSuccess();
+          toast.success(`Created ${created} transaction(s).`);
+        } else {
+          toast.error("No transactions were created.");
+        }
+        (response.summary?.errors ?? []).forEach((message) =>
+          toast.error(message, { duration: 5000 })
         );
-        handleRefresh();
       }
+      if (created > 0) handleRefresh();
       return response;
     } catch (error) {
       const verb = context === "import" ? "import" : "create";

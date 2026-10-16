@@ -12,6 +12,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import assetCache from "../../services/assetCache";
+import { formatCurrency, formatDate } from "../../utils/formatters";
 import transactionTypes from "../../utils/transactionTypes";
 import { ClientSideAssetSearch } from "../shared";
 
@@ -172,9 +173,11 @@ const ParsedDataTable = ({
 
   const isTransactionIncomplete = (txn) => {
     if (!txn.asset_id && txn.symbol) return true;
-    if (["buy", "sell"].includes(txn.transaction_type?.toLowerCase())) {
-      if (txn.quantity === 0 || txn.price === 0) return true;
+    const type = txn.transaction_type?.toLowerCase();
+    if (["buy", "sell"].includes(type)) {
+      if (Number(txn.quantity) === 0 || Number(txn.price) === 0) return true;
     }
+    if (type === "dividend" && !(Number(txn.total_amount) > 0)) return true;
     return false;
   };
 
@@ -373,7 +376,9 @@ const ParsedDataTable = ({
       quantity: txn.quantity,
       price: txn.price,
       fees: txn.fees,
+      taxes: txn.taxes,
       total_amount: txn.total_amount,
+      currency: txn.currency,
       notes:
         txn.notes ||
         `Imported from ${parsedData?.provider ?? "unknown source"} statement`,
@@ -434,6 +439,8 @@ const ParsedDataTable = ({
                 {parsedData.provider} •{" "}
                 {parsedData.metadata?.total_transactions || 0} transactions
                 found
+                {parsedData.metadata?.total_skipped > 0 &&
+                  ` • ${parsedData.metadata.total_skipped} rows not imported`}
               </p>
             </div>
           </div>
@@ -517,6 +524,24 @@ const ParsedDataTable = ({
                 </div>
               </div>
             )}
+
+          {parsedData.skipped?.length > 0 && (
+            <details className="bg-gray-700/40 border border-gray-600 rounded-lg p-3 mb-4 text-sm">
+              <summary className="cursor-pointer text-gray-300">
+                {parsedData.skipped.length} statement rows not imported
+              </summary>
+              <ul className="mt-2 space-y-1 text-gray-400">
+                {parsedData.skipped.map((row, index) => (
+                  <li key={index}>
+                    {formatDate(`${row.transaction_date}T12:00:00`)} · {row.kind}{" "}
+                    · {row.description} ·{" "}
+                    {formatCurrency(row.amount, { currency: row.currency || "EUR" })} —{" "}
+                    {row.reason}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
 
           <table className="w-full">
             <thead className="bg-gray-700 sticky top-0 z-10">

@@ -3,6 +3,7 @@ Account statement parsing and bulk transaction creation router.
 """
 
 import base64
+import logging
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
@@ -17,6 +18,8 @@ from core.schemas.account_statements import (
     ProvidersResponse,
 )
 from core.services.account_statement_service import AccountStatementService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/account-statements", tags=["account-statements"])
 
@@ -62,9 +65,10 @@ async def parse_statement(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
         ) from e
     except Exception as e:
+        logger.exception("Statement parsing failed")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An unexpected error occurred while parsing the statement: {str(e)}",
+            detail="An unexpected error occurred while parsing the statement",
         ) from e
 
 
@@ -93,7 +97,8 @@ async def bulk_create_transactions(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
         ) from e
     except Exception as e:
+        logger.exception("Bulk transaction creation failed")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An unexpected error occurred while creating transactions: {str(e)}",
+            detail="An unexpected error occurred while creating transactions",
         ) from e
