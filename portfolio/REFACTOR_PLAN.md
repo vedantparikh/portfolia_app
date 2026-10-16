@@ -310,6 +310,7 @@ Open:
 | 2026-10-16 | `fix/shadowed-routes-500s` | — | Six shadowed literal routes reachable (and the 4 bugs behind them fixed); `/overview` and `/users/dashboard` 500s fixed; asset search scoped to the user; `test_route_order.py` |
 | 2026-10-16 | `chore/alembic-baseline` | — | 1.6: Alembic baseline from the models, `create_all` and the startup re-init removed, migration drift/round-trip check in the gate |
 | 2026-10-16 | `fix/tr-import` | — | 2.2: Trade Republic import keeps dividends, EUR, fees and taxes; cash rows skipped with a reason; date and confidence crashes fixed; import toasts/refresh fixed |
+| 2026-10-16 | `feat/pytr-csv-import` | — | pytr CSV provider (full TR history), ISIN → Yahoo listing resolver scored on the user's own fills, assets created on import with their ISIN; UI to follow |
 
 
 ## 6b. Findings and to-do (2026-10-16)

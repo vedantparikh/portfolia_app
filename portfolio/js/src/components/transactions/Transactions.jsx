@@ -405,11 +405,11 @@ const Transactions = () => {
                 <button
                   onClick={() => setShowPDFUpload(true)}
                   className="btn-outline flex items-center space-x-2"
-                  aria-label="Upload PDF"
-                  title="Upload PDF"
+                  aria-label="Import statement"
+                  title="Import statement"
                 >
                   <FileText size={16} />
-                  <span className="hidden sm:inline">Upload PDF</span>
+                  <span className="hidden sm:inline">Import statement</span>
                 </button>
                 <button
                   onClick={() => setShowBulkModal(true)}
