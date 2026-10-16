@@ -9,17 +9,18 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { statisticalIndicatorsAPI } from "../../services/api";
 import EnhancedChart from "../shared/EnhancedChart";
+import { seriesLabel } from "../../utils/indicatorLabels";
 import LoadingSpinner from "../shared/LoadingSpinner";
 
-const AssetAnalyticsView = ({ asset, onRefresh, height = 500 }) => {
+const DEFAULT_INDICATORS = ["rsi_indicator", "macd_indicator"];
+
+const AssetAnalyticsView = ({ asset, onRefresh, selectedConfiguration = null, height = 500 }) => {
   const [period, setPeriod] = useState("30d");
   const [chartData, setChartData] = useState([]);
   const [analysisData, setAnalysisData] = useState(null);
   const [indicatorConfigurations, setIndicatorConfigurations] = useState([]);
-  const [selectedIndicators, setSelectedIndicators] = useState([
-    "rsi_indicator",
-    "macd_indicator",
-  ]);
+  const [selectedIndicators, setSelectedIndicators] = useState(DEFAULT_INDICATORS);
+  const [activeConfiguration, setActiveConfiguration] = useState(selectedConfiguration);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showAdvancedAnalysis, setShowAdvancedAnalysis] = useState(false);
@@ -32,26 +33,25 @@ const AssetAnalyticsView = ({ asset, onRefresh, height = 500 }) => {
       setLoading(true);
       setError(null);
 
+      // A saved configuration is calculated server-side with its own parameters
       const response = await statisticalIndicatorsAPI.calculateIndicators({
         symbol: asset.symbol,
         period: period,
         interval: "1d",
-        indicators: selectedIndicators.map((indicatorName) => ({
-          indicator_name: indicatorName,
-          parameters: {},
-          enabled: true,
-        })),
+        ...(activeConfiguration
+          ? { configuration_id: activeConfiguration.id }
+          : {
+              indicators: selectedIndicators.map((indicatorName) => ({
+                indicator_name: indicatorName,
+                parameters: {},
+                enabled: true,
+              })),
+            }),
       });
 
       setChartData(response.data || []);
       setAnalysisData({
         indicators: response.indicator_series || [],
-        performance: {
-          volatility: 0,
-          sharpe_ratio: 0,
-          max_drawdown: 0,
-          beta: 0,
-        },
         indicatorPanelData: response.indicator_series || [],
         fullResponse: response,
       });
@@ -61,7 +61,19 @@ const AssetAnalyticsView = ({ asset, onRefresh, height = 500 }) => {
     } finally {
       setLoading(false);
     }
-  }, [asset?.symbol, period, selectedIndicators]);
+  }, [asset?.symbol, period, selectedIndicators, activeConfiguration]);
+
+  useEffect(() => {
+    setActiveConfiguration(selectedConfiguration);
+    if (selectedConfiguration?.indicators?.length) {
+      setSelectedIndicators(selectedConfiguration.indicators.map((i) => i.indicator_name));
+    }
+  }, [selectedConfiguration]);
+
+  const applyConfiguration = (config) => {
+    setActiveConfiguration(config);
+    setSelectedIndicators((config.indicators || []).map((i) => i.indicator_name));
+  };
 
   // Load configurations only once when asset changes
   useEffect(() => {
@@ -79,8 +91,8 @@ const AssetAnalyticsView = ({ asset, onRefresh, height = 500 }) => {
 
   const loadIndicatorConfigurations = async () => {
     try {
-      const configurations = await statisticalIndicatorsAPI.getConfigurations();
-      setIndicatorConfigurations(configurations || []);
+      const response = await statisticalIndicatorsAPI.getConfigurations(0, 100, true);
+      setIndicatorConfigurations(response?.configurations || []);
     } catch (err) {
       console.error("Failed to load indicator configurations:", err);
     }
@@ -90,7 +102,9 @@ const AssetAnalyticsView = ({ asset, onRefresh, height = 500 }) => {
     setPeriod(newPeriod);
   };
 
+  // Toggling indicators by hand leaves the saved configuration
   const handleIndicatorChange = (newIndicators) => {
+    setActiveConfiguration(null);
     setSelectedIndicators(newIndicators);
   };
 
@@ -235,9 +249,7 @@ const AssetAnalyticsView = ({ asset, onRefresh, height = 500 }) => {
                       >
                         <div className="flex items-center justify-between mb-2">
                           <h4 className="font-medium text-gray-100">
-                            {indicatorName
-                              .replace("_indicator", "")
-                              .toUpperCase()}
+                            {seriesLabel(indicatorSeries)}
                           </h4>
                           <span
                             className={`text-sm font-semibold ${isOverbought
@@ -320,21 +332,23 @@ const AssetAnalyticsView = ({ asset, onRefresh, height = 500 }) => {
                 </p>
 
                 <div className="flex flex-wrap gap-1 mb-3">
-                  {config.indicators?.map((indicator) => (
+                  {config.indicators?.map((indicator, i) => (
                     <span
-                      key={indicator}
+                      key={indicator.id ?? `${indicator.indicator_name}-${i}`}
                       className="px-2 py-1 bg-primary-600/20 text-primary-400 text-xs rounded-full"
                     >
-                      {indicator}
+                      {indicator.indicator_name}
                     </span>
                   ))}
                 </div>
 
                 <button
-                  onClick={() => setSelectedIndicators(config.indicators || [])}
-                  className="btn-outline w-full text-sm"
+                  onClick={() => applyConfiguration(config)}
+                  className={`w-full text-sm ${
+                    activeConfiguration?.id === config.id ? "btn-primary" : "btn-outline"
+                  }`}
                 >
-                  Apply Configuration
+                  {activeConfiguration?.id === config.id ? "Applied" : "Apply Configuration"}
                 </button>
               </div>
             ))}

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { statisticalIndicatorsAPI } from "../../services/api";
+import { isFlagSeries, seriesLabel } from "../../utils/indicatorLabels";
 import {
   formatCurrency,
   formatPercentage,
@@ -55,6 +56,7 @@ const EnhancedChart = ({
   const [selectedIndicators, setSelectedIndicators] =
     useState(defaultIndicators);
   const [indicatorData, setIndicatorData] = useState({});
+  const [indicatorFamilies, setIndicatorFamilies] = useState({});
   const [showIndicatorPanel, setShowIndicatorPanel] = useState(false);
   const [showReturnsPanel, setShowReturnsPanel] = useState(true);
   const [metricsData, setMetricsData] = useState({});
@@ -87,20 +89,24 @@ const EnhancedChart = ({
   useEffect(() => {
     if (indicatorOverlayData) {
       const transformedData = {};
+      const families = {};
       if (Array.isArray(indicatorOverlayData)) {
         indicatorOverlayData.forEach((series) => {
-          if (series.data && Array.isArray(series.data)) {
+          if (series.data && Array.isArray(series.data) && !isFlagSeries(series)) {
             const chartData = series.data
               .map((item) => ({
                 time: new Date(item.date).getTime() / 1000,
                 value: item.value,
               }))
               .sort((a, b) => a.time - b.time);
-            transformedData[series.indicator_name] = chartData;
+            const key = seriesLabel(series);
+            transformedData[key] = chartData;
+            families[key] = series.indicator_name;
           }
         });
       }
       setIndicatorData(transformedData);
+      setIndicatorFamilies(families);
       return;
     }
     if (selectedIndicators.length > 0 && assetId && data.length > 0) {
@@ -429,6 +435,14 @@ const EnhancedChart = ({
     }
 
     if (showIndicators && Object.keys(indicatorData).length > 0) {
+      // Each oscillator family (RSI, MACD, ADX, ...) gets its own pane below the price
+      const paneOf = {};
+      const paneFor = (name) => {
+        if (!isOscillator(name)) return 0;
+        const family = indicatorFamilies[name] || name;
+        if (!(family in paneOf)) paneOf[family] = Object.keys(paneOf).length + 1;
+        return paneOf[family];
+      };
       Object.entries(indicatorData).forEach(
         ([indicatorName, indicatorValues]) => {
           if (indicatorValues && indicatorValues.length > 0) {
@@ -448,7 +462,7 @@ const EnhancedChart = ({
                   }),
                 }),
               },
-              isOscillator(indicatorName) ? 1 : 0
+              paneFor(indicatorName)
             );
             series.setData(indicatorValues);
 
@@ -473,10 +487,7 @@ const EnhancedChart = ({
           }
         }
       );
-      const panes = chart.panes();
-      if (panes.length > 1) {
-        panes[1].setHeight(Math.round(height * 0.28));
-      }
+      chart.panes().forEach((pane, i) => pane.setStretchFactor(i === 0 ? 1 : 0.35));
     }
 
     if (showVolume) {
@@ -645,24 +656,24 @@ const EnhancedChart = ({
     symbol,
     showIndicators,
     indicatorData,
+    indicatorFamilies,
   ]);
 
   const getIndicatorColor = (indicatorName) => {
     const colors = {
-      sma: "#ff6b6b",
-      ema: "#4ecdc4",
-      rsi_indicator: "#45b7d1",
-      macd_indicator: "#96ceb4",
-      bollinger_bands_indicator: "#feca57",
-      stoch_oscillator_indicator: "#ff9ff3",
-      adx_indicator: "#54a0ff",
-      cci_indicator: "#5f27cd",
-      roc_indicator: "#00d2d3",
-      average_true_range_indicator: "#ff9f43",
+      RSI: "#45b7d1",
+      MACD: "#96ceb4",
+      "MACD signal": "#feca57",
+      "MACD histogram": "#94a3b8",
+      "BOLLINGER BANDS bb bbm": "#feca57",
+      ADX: "#54a0ff",
+      CCI: "#5f27cd",
+      ROC: "#00d2d3",
+      "AVERAGE TRUE RANGE": "#ff9f43",
     };
-    return (
-      colors[indicatorName] || colors[indicatorName.toLowerCase()] || "#8884d8"
-    );
+    const palette = ["#ff6b6b", "#4ecdc4", "#ff9ff3", "#a29bfe", "#fd79a8", "#55efc4", "#fab1a0"];
+    const hash = [...indicatorName].reduce((h, c) => h + c.charCodeAt(0), 0);
+    return colors[indicatorName] || palette[hash % palette.length];
   };
 
   const isOscillator = (indicatorName) => {
@@ -673,6 +684,10 @@ const EnhancedChart = ({
       "roc",
       "williams",
       "momentum",
+      "macd",
+      "adx",
+      "aroon",
+      "mfi",
     ];
     const lowerName = indicatorName.toLowerCase();
     return oscillators.some((indicator) =>

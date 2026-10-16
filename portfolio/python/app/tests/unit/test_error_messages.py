@@ -86,7 +86,7 @@ def test_internal_error_text_never_reaches_the_client(client, monkeypatch):
 
 
 def test_domain_error_text_reaches_the_client(client, monkeypatch):
-    async def missing(self, request):
+    async def missing(self, request, user_id=None):
         raise DomainError("No market data found for symbol ZZZZ")
 
     monkeypatch.setattr(EnhancedStatisticalService, "calculate_indicators", missing)

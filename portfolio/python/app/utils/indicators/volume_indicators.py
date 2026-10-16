@@ -99,13 +99,13 @@ class VolumeIndicators(BaseIndicator):
         :param fillna: If True, fill NaN values.
         :return: DataFrame with VPT indicator field.
         """
-        # Calculate price change percentage
+        # VPT = previous VPT + volume × (close − previous close) / previous close
         prev_close = pl.col("close").shift(1)
 
         price_change_pct = (
             pl.when(prev_close == 0)
             .then(None)
-            .otherwise((pl.col("close") - prev_close) / prev_close * 100)
+            .otherwise((pl.col("close") - prev_close) / prev_close)
         )
 
         # Calculate VPT
@@ -132,13 +132,17 @@ class VolumeIndicators(BaseIndicator):
 
         return self.df
 
-    def vwap_indicator(self, fillna: bool = False) -> pl.DataFrame:
+    def vwap_indicator(self, window: int = 14, fillna: bool = False) -> pl.DataFrame:
         """
-        Volume Weighted Average Price (VWAP)
+        Volume Weighted Average Price over the last `window` bars:
+        sum(typical price × volume) / sum(volume). (A session VWAP resets each day,
+        which daily bars cannot express.)
         https://www.investopedia.com/terms/v/vwap.asp
+        :param window: Number of bars.
         :param fillna: If True, fill NaN values.
         :return: DataFrame with VWAP indicator field.
         """
+        min_periods = 1 if fillna else window
         # Calculate typical price
         self.df = self.df.with_columns(
             [
@@ -153,11 +157,15 @@ class VolumeIndicators(BaseIndicator):
             [(pl.col("typical_price") * pl.col("volume")).alias("price_volume")]
         )
 
-        # Calculate cumulative price * volume and cumulative volume
+        # Rolling sums of price × volume and of volume
         self.df = self.df.with_columns(
             [
-                pl.col("price_volume").cum_sum().alias("cum_price_volume"),
-                pl.col("volume").cum_sum().alias("cum_volume"),
+                pl.col("price_volume")
+                .rolling_sum(window_size=window, min_samples=min_periods)
+                .alias("cum_price_volume"),
+                pl.col("volume")
+                .rolling_sum(window_size=window, min_samples=min_periods)
+                .alias("cum_volume"),
             ]
         )
 

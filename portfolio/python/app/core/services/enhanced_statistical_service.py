@@ -3,24 +3,42 @@ Enhanced Statistical Service
 Service for calculating indicators with user configurations and chart data generation.
 """
 
-from datetime import datetime
+import logging
+import re
+from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 import polars as pl
 from sqlalchemy.orm import Session
 
-from app.core.schemas.statistical_indicators import (
+from core.errors import DomainError, NotFoundError, public_message
+from core.schemas.statistical_indicators import (
     IndicatorCalculationRequest,
     IndicatorCalculationResponse,
     IndicatorConfiguration,
     VolumeDataPoint,
 )
-from app.core.services.analysis_configuration_service import (
+from core.services.analysis_configuration_service import (
     AnalysisConfigurationService,
 )
-from app.core.services.indicator_registry_service import IndicatorRegistryService
-from app.core.services.market_data_service import MarketDataService
-from core.errors import DomainError, NotFoundError, public_message
+from core.services.indicator_registry_service import IndicatorRegistryService
+from core.services.market_data_service import MarketDataService
+
+logger = logging.getLogger(__name__)
+
+WARM_UP_DAYS = 400
+
+
+def period_start(period: str, now: datetime) -> Optional[date]:
+    """First day of a chart period ('30d', '3mo', '1y', 'ytd'); None for 'max' or unknown."""
+    if period == "ytd":
+        return date(now.year, 1, 1)
+    match = re.fullmatch(r"(\d+)(d|mo|y)", period or "")
+    if not match:
+        return None
+    count, unit = int(match.group(1)), match.group(2)
+    days = {"d": 1, "mo": 30.44, "y": 365.25}[unit] * count
+    return (now - timedelta(days=round(days))).date()
 
 
 class EnhancedStatisticalService:
@@ -33,24 +51,41 @@ class EnhancedStatisticalService:
         self.market_data_service = MarketDataService()
 
     async def calculate_indicators(
-        self, request: IndicatorCalculationRequest
+        self, request: IndicatorCalculationRequest, user_id: Optional[int] = None
     ) -> IndicatorCalculationResponse:
         """Calculate indicators based on user configuration."""
 
         try:
             # Get market data
-            market_data = await self.market_data_service.fetch_ticker_data(
-                symbol=request.symbol, period=request.period, interval=request.interval
-            )
+            # Indicators need history before the visible window (MACD ~35 bars,
+            # Wilder averages several times their window): fetch ~250 trading days
+            # more, calculate on all of it, return only the requested period.
+            window_start = period_start(request.period, datetime.now())
+            if window_start:
+                market_data = await self.market_data_service.fetch_ticker_data(
+                    symbol=request.symbol,
+                    interval=request.interval,
+                    start_date=(
+                        window_start - timedelta(days=WARM_UP_DAYS)
+                    ).isoformat(),
+                    end_date=(date.today() + timedelta(days=1)).isoformat(),
+                )
+            else:
+                market_data = await self.market_data_service.fetch_ticker_data(
+                    symbol=request.symbol,
+                    period=request.period,
+                    interval=request.interval,
+                )
 
             if market_data.empty:
                 raise DomainError(f"No market data found for symbol {request.symbol}")
+            # fetch_ticker_data returns newest first; indicators run forward in time
+            market_data = market_data.sort_values("Date").reset_index(drop=True)
 
             # Get indicator configurations
             if request.configuration_id:
                 config = self.configuration_service.get_configuration(
-                    request.configuration_id,
-                    user_id=None,  # Allow public configurations
+                    request.configuration_id, user_id=user_id
                 )
                 if not config:
                     raise NotFoundError(
@@ -75,11 +110,17 @@ class EnhancedStatisticalService:
                 raise DomainError(f"Validation errors: {error_messages}")
 
             # Calculate indicators
-            result_df, _, performance_metrics = (
+            result_df, calculation_errors, performance_metrics = (
                 self.indicator_registry.calculate_indicators(
                     market_data, indicator_configs
                 )
             )
+            if window_start:
+                result_df = result_df.filter(pl.col("date").dt.date() >= window_start)
+            for error in calculation_errors:
+                logger.warning(
+                    "Indicator %s failed: %s", error.indicator_name, error.error_message
+                )
 
             # Convert to response format
             data_records = result_df.to_dicts()
@@ -114,14 +155,10 @@ class EnhancedStatisticalService:
                 period=request.period,
                 interval=request.interval,
                 start_date=(
-                    market_data["date"].min()
-                    if "date" in market_data.columns
-                    else datetime.now()
+                    result_df["date"].min() if result_df.height else datetime.now()
                 ),
                 end_date=(
-                    market_data["date"].max()
-                    if "date" in market_data.columns
-                    else datetime.now()
+                    result_df["date"].max() if result_df.height else datetime.now()
                 ),
                 configuration_name=configuration_name,
                 data=data_records,

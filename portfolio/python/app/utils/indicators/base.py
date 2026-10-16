@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import polars as pl
 
@@ -54,3 +55,25 @@ class BaseIndicator:
             df = df.rename(rename_dict)
 
         return df
+
+
+def true_range(high: np.ndarray, low: np.ndarray, close: np.ndarray) -> np.ndarray:
+    """max(high - low, |high - prev close|, |low - prev close|); the first bar is high - low."""
+    prev_close = np.concatenate([[np.nan], close[:-1]])
+    return np.fmax(
+        high - low, np.fmax(np.abs(high - prev_close), np.abs(low - prev_close))
+    )
+
+
+def wilder_average(values: np.ndarray, window: int) -> np.ndarray:
+    """
+    Wilder's smoothing (RMA): the mean of the first `window` values, then
+    (previous * (window - 1) + value) / window. NaN before the first full window.
+    """
+    out = np.full(len(values), np.nan)
+    if len(values) < window:
+        return out
+    out[window - 1] = values[:window].mean()
+    for i in range(window, len(values)):
+        out[i] = (out[i - 1] * (window - 1) + values[i]) / window
+    return out

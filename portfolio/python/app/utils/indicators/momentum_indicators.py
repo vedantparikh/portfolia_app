@@ -35,17 +35,16 @@ class MomentumIndicators(BaseIndicator):
             ]
         )
 
-        # Calculate RSI using exponential moving averages
-        # This `min_periods` logic is a good way to handle fillna at the source
+        # Wilder's smoothing: an EMA with alpha = 1/window
         min_periods = 0 if fillna else window
 
         self.df = self.df.with_columns(
             [
                 pl.col("gains")
-                .ewm_mean(span=window, min_samples=min_periods)
+                .ewm_mean(alpha=1 / window, adjust=False, min_samples=min_periods)
                 .alias("avg_gains"),
                 pl.col("losses")
-                .ewm_mean(span=window, min_samples=min_periods)
+                .ewm_mean(alpha=1 / window, adjust=False, min_samples=min_periods)
                 .alias("avg_losses"),
             ]
         )
@@ -118,42 +117,30 @@ class MomentumIndicators(BaseIndicator):
         if "rsi" not in self.df.columns:
             self.df = self.rsi_indicator(window=window, fillna=fillna)
 
-        # Calculate Stochastic RSI
-        # %K = (RSI - RSI_min) / (RSI_max - RSI_min)
+        # Raw StochRSI = (RSI - lowest RSI) / (highest RSI - lowest RSI), in percent;
+        # %K = SMA(raw, smooth1), %D = SMA(%K, smooth2)
         self.df = self.df.with_columns(
             [
                 pl.col("rsi").rolling_min(window_size=window).alias("rsi_min"),
                 pl.col("rsi").rolling_max(window_size=window).alias("rsi_max"),
             ]
         )
-
         self.df = self.df.with_columns(
-            [
-                # ***FIXED***: Added when/otherwise to handle division by zero
-                pl.when(pl.col("rsi_max") == pl.col("rsi_min"))
-                .then(0.0)  # Or 100.0 if RSI == rsi_max, but 0.0 is safer
-                .otherwise(
-                    (
-                        (pl.col("rsi") - pl.col("rsi_min"))
-                        / (pl.col("rsi_max") - pl.col("rsi_min"))
-                    )
-                    * 100
-                )
-                .alias("stoch_rsi_k")
-            ]
+            pl.when(pl.col("rsi_max") == pl.col("rsi_min"))
+            .then(None)
+            .otherwise(
+                (pl.col("rsi") - pl.col("rsi_min"))
+                / (pl.col("rsi_max") - pl.col("rsi_min"))
+                * 100
+            )
+            .alias("stoch_rsi")
         )
-
-        # %D = SMA of %K
         self.df = self.df.with_columns(
-            [
-                pl.col("stoch_rsi_k")
-                .rolling_mean(window_size=smooth1)
-                .alias("stoch_rsi_d")
-            ]
+            pl.col("stoch_rsi").rolling_mean(window_size=smooth1).alias("stoch_rsi_k")
         )
-
-        # Stochastic RSI = %D
-        self.df = self.df.with_columns([pl.col("stoch_rsi_d").alias("stoch_rsi")])
+        self.df = self.df.with_columns(
+            pl.col("stoch_rsi_k").rolling_mean(window_size=smooth2).alias("stoch_rsi_d")
+        )
 
         # Clean up temporary columns
         self.df = self.df.drop(["rsi_min", "rsi_max"])
