@@ -1,8 +1,10 @@
 import base64
+import hashlib
 import logging
+from collections import defaultdict
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import List, Tuple
+from typing import Iterable, List, Tuple
 
 from sqlalchemy.orm import Session
 
@@ -18,6 +20,7 @@ from core.schemas.account_statements import (
     BulkCreateSummary,
     BulkTransactionItem,
     CreatedTransaction,
+    ImportedCheckRow,
     ParsedData,
     SupportedFormat,
 )
@@ -29,6 +32,42 @@ from core.services.parsers.trade_republic import TradeRepublicParser
 from core.services.portfolio_service import PortfolioService
 
 logger = logging.getLogger(__name__)
+
+
+def _number(value) -> str:
+    return f"{Decimal(value).normalize():f}"
+
+
+def assign_source_keys(result: ParsedData) -> None:
+    """Hash each row's identity (parser-given or date/type/symbol/amounts), numbering repeats."""
+    seen = defaultdict(int)
+    for t in result.transactions:
+        base = t.source_key or "|".join(
+            [
+                t.transaction_date,
+                t.transaction_type.value,
+                t.symbol or t.name,
+                _number(t.quantity),
+                _number(t.total_amount),
+            ]
+        )
+        seen[base] += 1
+        t.source_key = hashlib.sha256(
+            f"{result.provider}|{base}#{seen[base]}".encode()
+        ).hexdigest()
+
+
+def _content(row, isin: str | None) -> tuple:
+    day = row.transaction_date
+    if isinstance(day, datetime):
+        day = (day.astimezone(timezone.utc) if day.tzinfo else day).date().isoformat()
+    return (
+        day,
+        getattr(row.transaction_type, "value", row.transaction_type),
+        isin,
+        Decimal(row.quantity).quantize(Decimal("0.00000001")),
+        Decimal(row.total_amount).quantize(Decimal("0.01")),
+    )
 
 
 class AccountStatementService:
@@ -84,11 +123,59 @@ class AccountStatementService:
 
         parser = self._parsers[provider_id]
         result = parser.parse(pdf_content)
+        assign_source_keys(result)
 
         if filename and result.metadata:
             result.metadata.warnings.insert(0, f"Parsed from file: {filename}")
 
         return result
+
+    def _find_imported(
+        self, portfolio_id: int, rows: Iterable[ImportedCheckRow | BulkTransactionItem]
+    ) -> Tuple[set, dict]:
+        """Keys of rows already in the portfolio, and keyless older imports they match.
+
+        A row matches by `source_key`; failing that, by date, type, ISIN, quantity and
+        cash amount against a transaction imported before keys existed (each used once).
+        """
+        rows = [r for r in rows if r.source_key]
+        keys = {r.source_key for r in rows}
+        if not keys:
+            return set(), {}
+        imported = {
+            key
+            for (key,) in self.db.query(Transaction.source_key).filter(
+                Transaction.portfolio_id == portfolio_id,
+                Transaction.source_key.in_(keys),
+            )
+        }
+        pending = [r for r in rows if r.source_key not in imported]
+        legacy = {}
+        if pending:
+            candidates = defaultdict(list)
+            for transaction, isin in (
+                self.db.query(Transaction, Asset.isin)
+                .join(Asset, Asset.id == Transaction.asset_id)
+                .filter(
+                    Transaction.portfolio_id == portfolio_id,
+                    Transaction.source_key.is_(None),
+                )
+                .order_by(Transaction.id)
+            ):
+                candidates[_content(transaction, isin)].append(transaction)
+            for row in pending:
+                match = candidates.get(_content(row, row.isin))
+                if match and row.source_key not in legacy:
+                    legacy[row.source_key] = match.pop(0)
+        return imported | set(legacy), legacy
+
+    def imported_keys(
+        self, portfolio_id: int, rows: List[ImportedCheckRow], user_id: int
+    ) -> List[str]:
+        if not self.portfolio_service.get_portfolio(portfolio_id, user_id):
+            raise NotFoundError("Portfolio not found")
+        imported, _ = self._find_imported(portfolio_id, rows)
+        return sorted(imported)
 
     async def _asset_for_symbol(
         self,
@@ -129,6 +216,10 @@ class AccountStatementService:
 
         created_transaction_models = []
         errors = []
+        skipped = 0
+        imported, legacy = self._find_imported(portfolio_id, transactions_data)
+        for key, transaction in legacy.items():
+            transaction.source_key = key
         affected_asset_ids = set()
         owned = self.db.query(Asset).filter(Asset.user_id == user_id).all()
         assets_by_id = {a.id: a for a in owned}
@@ -137,6 +228,11 @@ class AccountStatementService:
 
         # 2. Prepare all transaction models and add them to the session
         for i, item in enumerate(transactions_data):
+            if item.source_key and item.source_key in imported:
+                skipped += 1
+                continue
+            if item.source_key:
+                imported.add(item.source_key)
             try:
                 if item.asset_id is not None:
                     asset = assets_by_id.get(item.asset_id)
@@ -192,6 +288,7 @@ class AccountStatementService:
                     ).replace(tzinfo=timezone.utc),
                     fees=item.fees,
                     notes=item.notes,
+                    source_key=item.source_key,
                 )
                 self.db.add(transaction)
                 affected_asset_ids.add(asset.id)
@@ -209,7 +306,7 @@ class AccountStatementService:
         # 3. Insert all valid transactions and recalculate each affected asset once,
         #    in a single database transaction so holdings never drift from history
         try:
-            if created_transaction_models:
+            if created_transaction_models or legacy:
                 self.db.flush()
                 for asset_id in affected_asset_ids:
                     await self.portfolio_service.recalculate_asset_state(
@@ -221,7 +318,8 @@ class AccountStatementService:
             logger.exception("Bulk import failed for portfolio %s", portfolio_id)
             return [], BulkCreateSummary(
                 total_created=0,
-                total_failed=len(transactions_data),
+                total_failed=len(transactions_data) - skipped,
+                total_skipped=skipped,
                 errors=["Import failed; no transactions were saved"] + errors,
             )
 
@@ -232,6 +330,7 @@ class AccountStatementService:
         summary = BulkCreateSummary(
             total_created=len(final_created_list),
             total_failed=len(errors),
+            total_skipped=skipped,
             errors=errors,
         )
         return final_created_list, summary

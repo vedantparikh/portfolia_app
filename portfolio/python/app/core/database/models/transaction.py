@@ -81,6 +81,7 @@ class Transaction(Base):
     settlement_date = Column(DateTime(timezone=True), nullable=True)
     notes = Column(Text, nullable=True)
     reference_number = Column(String(100), nullable=True)  # External reference
+    source_key = Column(String(64), nullable=True)  # Imported statement row
     fees = Column(Numeric(20, 4), default=0, nullable=False)  # Transaction fees
     taxes = Column(Numeric(20, 4), default=0, nullable=False)  # Tax implications
 
@@ -114,6 +115,12 @@ class Transaction(Base):
         Index("idx_transactions_date", "transaction_date"),
         Index("idx_transactions_portfolio_date", "portfolio_id", "transaction_date"),
         Index("idx_transactions_asset_date", "asset_id", "transaction_date"),
+        Index(
+            "uq_transactions_portfolio_source_key",
+            "portfolio_id",
+            "source_key",
+            unique=True,
+        ),
     )
 
     @staticmethod
