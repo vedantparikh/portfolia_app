@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
+import { accountStatementsAPI } from "../../services/api";
 import assetCache from "../../services/assetCache";
 import { formatCurrency, formatDate } from "../../utils/formatters";
 import transactionTypes from "../../utils/transactionTypes";
@@ -54,6 +55,7 @@ const ParsedDataTable = ({
   const [selectedPortfolio, setSelectedPortfolio] = useState("");
   const [localAssets, setLocalAssets] = useState(allAssets);
   const [isSaving, setIsSaving] = useState(false);
+  const [importedKeys, setImportedKeys] = useState(() => new Set());
   const [mapping, setMapping] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem(LOCAL_STORAGE_MAPPING_KEY)) || {};
@@ -68,6 +70,37 @@ const ParsedDataTable = ({
     () => new Set(instruments.map((i) => i.isin)),
     [instruments]
   );
+
+  useEffect(() => {
+    setImportedKeys(new Set());
+    const rows = (parsedData?.transactions ?? [])
+      .filter((t) => t.source_key)
+      .map((t) => ({
+        source_key: t.source_key,
+        transaction_date: t.transaction_date,
+        transaction_type: t.transaction_type,
+        isin: instrumentIsins.has(t.symbol?.trim()) ? t.symbol.trim() : null,
+        quantity: t.quantity,
+        total_amount: t.total_amount,
+      }));
+    if (!selectedPortfolio || rows.length === 0) return;
+    let cancelled = false;
+    accountStatementsAPI
+      .importedTransactions(parseInt(selectedPortfolio, 10), rows)
+      .then(({ imported_keys }) => {
+        if (!cancelled) setImportedKeys(new Set(imported_keys));
+      })
+      .catch(() => {
+        if (!cancelled) toast.error("Could not check which rows are already imported.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedPortfolio, parsedData, instrumentIsins]);
+
+  const isImported = (txn) => Boolean(txn.source_key && importedKeys.has(txn.source_key));
+  const importedCount = transactions.filter(isImported).length;
+  const importableCount = transactions.filter((t) => !t.excluded && !isImported(t)).length;
 
   const assetSymbolMap = useMemo(() => {
     if (!localAssets || localAssets.length === 0) return new Map();
@@ -238,7 +271,7 @@ const ParsedDataTable = ({
   }, []); // Empty dependency array means this runs only once on mount.
 
   const isTransactionIncomplete = (txn) => {
-    if (txn.excluded) return false;
+    if (txn.excluded || isImported(txn)) return false;
     const newTicker = txn.isin && txn.symbol && txn.symbol !== txn.isin;
     if (!txn.asset_id && txn.symbol && !newTicker) return true;
     const type = txn.transaction_type?.toLowerCase();
@@ -256,7 +289,8 @@ const ParsedDataTable = ({
       if (aIsIncomplete !== bIsIncomplete) return aIsIncomplete ? -1 : 1;
       return new Date(b.transaction_date) - new Date(a.transaction_date);
     });
-  }, [transactions]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- isTransactionIncomplete reads importedKeys, listed instead of the function
+  }, [transactions, importedKeys]);
 
   const filteredTransactions = useMemo(() => {
     return sortedTransactions.filter((txn) => {
@@ -449,9 +483,13 @@ const ParsedDataTable = ({
       );
       return;
     }
-    const toSave = transactions.filter((t) => !t.excluded);
+    const toSave = transactions.filter((t) => !t.excluded && !isImported(t));
     if (toSave.length === 0) {
-      toast.error("Nothing to import: every row is left out.");
+      toast.error(
+        importedCount > 0
+          ? "Nothing to import: every row is already in this portfolio or left out."
+          : "Nothing to import: every row is left out."
+      );
       return;
     }
     const incompleteCount = toSave.filter(isTransactionIncomplete).length;
@@ -478,6 +516,7 @@ const ParsedDataTable = ({
       notes:
         txn.notes ||
         `Imported from ${parsedData?.provider ?? "unknown source"} statement`,
+      source_key: txn.source_key || undefined,
     }));
 
     try {
@@ -487,6 +526,7 @@ const ParsedDataTable = ({
       const {
         total_created = 0,
         total_failed = 0,
+        total_skipped = 0,
         errors = [],
       } = response.summary;
 
@@ -498,12 +538,16 @@ const ParsedDataTable = ({
         toast.success(`${total_created} transaction(s) imported.`);
       }
 
+      if (total_skipped > 0) {
+        toast(`${total_skipped} row(s) were already in this portfolio and were skipped.`);
+      }
+
       if (total_failed > 0 && errors.length === 0) {
         toast.error(`${total_failed} transaction(s) failed to import.`);
       }
 
       // If the import was fully successful, clear the draft and close the modal.
-      if (total_created > 0 && total_failed === 0) {
+      if (total_created + total_skipped > 0 && total_failed === 0) {
         console.log("Clearing import draft from local storage.");
         clearDraft();
         onCancel(); // This closes the modal
@@ -536,6 +580,7 @@ const ParsedDataTable = ({
                 found
                 {parsedData.metadata?.total_skipped > 0 &&
                   ` • ${parsedData.metadata.total_skipped} rows not imported`}
+                {importedCount > 0 && ` • ${importedCount} already in this portfolio`}
               </p>
             </div>
           </div>
@@ -619,6 +664,14 @@ const ParsedDataTable = ({
               </div>
             )}
 
+          {importedCount > 0 && (
+            <div className="bg-primary-500/10 border border-primary-500/20 rounded-lg p-3 mb-4 text-sm text-primary-200">
+              {importedCount === transactions.length
+                ? `All ${importedCount} rows are already in this portfolio; there is nothing new to import.`
+                : `${importedCount} of ${transactions.length} rows are already in this portfolio and are left out.`}
+            </div>
+          )}
+
           {instruments.length > 0 && (
             <InstrumentMappingPanel
               instruments={instruments}
@@ -680,7 +733,7 @@ const ParsedDataTable = ({
                 if (isEditing) rowClassName += " bg-primary-900/40";
                 else rowClassName += " hover:bg-gray-700/50";
                 if (isIncomplete) rowClassName += " bg-danger-900/20";
-                if (txn.excluded) rowClassName += " opacity-40";
+                if (txn.excluded || isImported(txn)) rowClassName += " opacity-40";
 
                 return (
                   <tr
@@ -703,7 +756,17 @@ const ParsedDataTable = ({
                           className="input-field py-1 px-2 text-sm w-full"
                         />
                       ) : (
-                        txn.transaction_date
+                        <div className="flex items-center space-x-2">
+                          <span>{txn.transaction_date}</span>
+                          {isImported(txn) && (
+                            <span
+                              className="px-1.5 rounded text-xs bg-gray-600 text-gray-200"
+                              title="Already in this portfolio; not imported again"
+                            >
+                              imported
+                            </span>
+                          )}
+                        </div>
                       )}
                     </td>
                     <td className="px-4 py-3 text-sm">
@@ -968,8 +1031,7 @@ const ParsedDataTable = ({
                 <>
                   <Save size={16} />
                   <span>
-                    Import {transactions.filter((t) => !t.excluded).length}{" "}
-                    Transactions
+                    Import {importableCount} Transactions
                   </span>
                 </>
               )}

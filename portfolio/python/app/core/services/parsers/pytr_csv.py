@@ -145,6 +145,15 @@ class PytrCsvParser(PDFParser):
                     id=f"pytr_{line_no}",
                     transaction_date=day,
                     currency="EUR",
+                    source_key="|".join(
+                        [
+                            row["date"].strip(),
+                            parsed["transaction_type"],
+                            isin,
+                            f"{parsed['quantity'].normalize():f}",
+                            f"{parsed['total_amount'].normalize():f}",
+                        ]
+                    ),
                     **parsed,
                 )
             )

@@ -55,6 +55,9 @@ class ParsedTransaction(BaseModel):
     fees: Decimal = Field(default=Decimal("0"), description="Transaction fees")
     taxes: Decimal = Field(default=Decimal("0"), description="Taxes withheld")
     currency: Optional[str] = Field(None, description="ISO currency of the amounts")
+    source_key: Optional[str] = Field(
+        None, description="Stable id of the statement row, used to skip re-imports"
+    )
 
 
 class SkippedRow(BaseModel):
@@ -146,6 +149,11 @@ class BulkTransactionItem(BaseModel):
         None, description="ISO currency; defaults to the portfolio currency"
     )
     notes: Optional[str] = Field(None, description="Transaction notes")
+    source_key: Optional[str] = Field(
+        None,
+        max_length=64,
+        description="Statement row id from /parse; a row already in the portfolio is skipped",
+    )
 
 
 class BulkTransactionCreate(BaseModel):
@@ -182,6 +190,9 @@ class BulkCreateSummary(BaseModel):
 
     total_created: int = Field(..., description="Number of transactions created")
     total_failed: int = Field(..., description="Number of transactions that failed")
+    total_skipped: int = Field(
+        default=0, description="Rows skipped because they were already imported"
+    )
     errors: List[str] = Field(default_factory=list, description="Error messages")
 
 
@@ -192,6 +203,28 @@ class BulkCreateResponse(BaseModel):
         ..., description="Successfully created transactions"
     )
     summary: BulkCreateSummary = Field(..., description="Creation summary")
+
+
+class ImportedCheckRow(BaseModel):
+    """A parsed row to look up in a portfolio."""
+
+    source_key: str = Field(..., max_length=64)
+    transaction_date: str = Field(..., description="Date in YYYY-MM-DD format")
+    transaction_type: TransactionType
+    isin: Optional[str] = None
+    quantity: Decimal
+    total_amount: Decimal
+
+
+class ImportedCheckRequest(BaseModel):
+    portfolio_id: int
+    transactions: List[ImportedCheckRow]
+
+
+class ImportedCheckResponse(BaseModel):
+    imported_keys: List[str] = Field(
+        ..., description="source_keys of the rows already in the portfolio"
+    )
 
 
 class ResolveInstrumentsRequest(BaseModel):

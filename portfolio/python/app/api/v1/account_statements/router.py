@@ -15,6 +15,8 @@ from core.errors import public_message
 from core.schemas.account_statements import (
     BulkCreateResponse,
     BulkTransactionCreate,
+    ImportedCheckRequest,
+    ImportedCheckResponse,
     ParseResponse,
     ProvidersResponse,
     ResolveInstrumentsRequest,
@@ -86,6 +88,19 @@ async def resolve_instruments(
     """Suggest the Yahoo listing each ISIN was traded on (max 10 per call; slow when uncached)."""
     results = await IsinResolver(db).resolve(request.instruments, current_user.id)
     return ResolveInstrumentsResponse(results=results)
+
+
+@router.post("/transactions/imported", response_model=ImportedCheckResponse)
+async def imported_transactions(
+    request: ImportedCheckRequest,
+    current_user: User = Depends(get_current_verified_user),
+    db: Session = Depends(get_db),
+) -> ImportedCheckResponse:
+    """Which parsed rows are already in the portfolio (bulk-create would skip them)."""
+    keys = AccountStatementService(db).imported_keys(
+        request.portfolio_id, request.transactions, current_user.id
+    )
+    return ImportedCheckResponse(imported_keys=keys)
 
 
 @router.post("/transactions/bulk-create", response_model=BulkCreateResponse)

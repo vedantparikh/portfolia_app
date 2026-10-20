@@ -1452,6 +1452,19 @@ export const accountStatementsAPI = {
     return response.data;
   },
 
+  /*
+      IMPORTED TRANSACTIONS - Which parsed rows are already in a portfolio
+      Parameters: portfolioId (number), transactions (array of { source_key, transaction_date, transaction_type, isin, quantity, total_amount })
+      Returns: { imported_keys: [source_key] }
+    */
+  importedTransactions: async (portfolioId, transactions) => {
+    const response = await api.post("/account-statements/transactions/imported", {
+      portfolio_id: portfolioId,
+      transactions,
+    });
+    return response.data;
+  },
+
   /* 
       BULK CREATE TRANSACTIONS - Create multiple transactions from parsed data
       Parameters: portfolioId (number), transactions (array of transaction objects)

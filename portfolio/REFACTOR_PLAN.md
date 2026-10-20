@@ -316,6 +316,7 @@ Open:
 | 2026-10-16 | `feat/single-currency-portfolios` | — | Currency guard on manual/bulk/pytr transaction writes, global DomainError handler, per-currency overview totals, money formatted in the portfolio/row/asset currency (`useMoney`), import review flags wrong-currency listings |
 | 2026-10-16 | `feat/watchlist-alerts` | — | Alerts work: thresholds now save, pure `check_alerts`, notify-once-per-crossing events, `worker` service (prices + alerts every 15 min), `/watchlists/alerts` + acknowledge, in-app alerts panel/bell/dashboard link; migration `acknowledged_at` |
 | 2026-10-16 | `feat/indicators` | — | 2.9: RSI/StochRSI/MACD/ADX/Aroon/CCI/BB/ATR/Keltner/VPT/VWAP fixed and PSAR implemented, all pinned to `ta`; data now calculated oldest-first with ~400 days warm-up; second indicator class no longer dropped; saved configurations drive the chart (manager modal, configuration_id, list); one pane per oscillator; private configurations no longer readable by others |
+| 2026-10-20 | `feat/import-dedup` | — | Re-importing a statement is safe: each parsed row gets a `source_key` (stored on `transactions`, unique per portfolio, migration `a3f1c9d2e7b4`); bulk-create skips known rows (`total_skipped`) and keys older keyless imports it matches by date/type/ISIN/qty/amount; `/transactions/imported` lets the review table mark and leave out rows already in the chosen portfolio |
 
 
 ## 6b. Findings and to-do (2026-10-16)
